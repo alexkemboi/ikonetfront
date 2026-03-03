@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import ReduxProvider from "@/providers/ReduxProvider";
+import { Toaster } from "sonner";
 import "./globals.css";
+import AuthProvider from "./authProvider";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -30,7 +32,10 @@ export default function RootLayout({
       <body
         className={`${inter.variable} ${jetbrainsMono.variable} antialiased`}
       >
-        <ReduxProvider>{children}</ReduxProvider>
+        <AuthProvider>
+          <ReduxProvider>{children}</ReduxProvider>
+          <Toaster richColors position="top-right" />
+        </AuthProvider>
       </body>
     </html>
   );

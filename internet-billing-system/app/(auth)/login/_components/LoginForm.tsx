@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useState } from "react";
 import { useFormik } from "formik";
 import * as Yup from "yup";
@@ -8,6 +7,8 @@ import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import Link from "next/link";
+import { signIn } from "next-auth/react";
 
 const validationSchema = Yup.object({
   username: Yup.string().trim().required("Username is required"),
@@ -28,7 +29,12 @@ export default function LoginForm() {
     onSubmit: async (_values) => {
       // Logic to be implemented by developer
       // Placeholder to show loading state
-      await new Promise((r) => setTimeout(r, 500));
+      await signIn("credentials", {
+        username: formik.values.username,
+        password: formik.values.password,
+        redirect: true,
+        callbackUrl: "/settings/profile", // Redirect to profile after login (can be changed as needed)
+      })
     },
   });
 
@@ -36,12 +42,12 @@ export default function LoginForm() {
     <form onSubmit={formik.handleSubmit} noValidate className="space-y-5">
       {/* Username */}
       <div className="space-y-2">
-        <Label htmlFor="username">Username</Label>
+        <Label htmlFor="username">Username / Account Number</Label>
         <Input
           id="username"
           type="text"
           autoComplete="username"
-          placeholder="e.g. admin"
+          placeholder="e.g. admin or BSM-00124"
           {...formik.getFieldProps("username")}
           aria-invalid={
             formik.touched.username && !!formik.errors.username
@@ -106,7 +112,7 @@ export default function LoginForm() {
       {/* Submit */}
       <Button
         type="submit"
-        className="w-full h-10"
+        className="w-full h-10 bg-warning text-warning-foreground hover:bg-warning/90"
         disabled={formik.isSubmitting}
       >
         {formik.isSubmitting ? (

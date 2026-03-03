@@ -1,11 +1,13 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { toast } from "sonner";
 import {
-  Shield, Users, Plus, Search, ChevronDown, ChevronRight,
-  Check, Pencil, Trash2, UserPlus, X, Save, RotateCcw,
-  MoreHorizontal, CheckCircle2, Circle,
+  Shield, Users, Plus, Search, ChevronDown,
+  Check, Pencil, UserPlus, X, Save, RotateCcw,
+  MoreHorizontal, CheckCircle2, Loader2,
 } from "lucide-react";
+import { addRoleAction } from "@/actions/roles";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -164,12 +166,36 @@ function CreateRoleSheet({
   open: boolean;
   onClose: () => void;
 }) {
-  const [name, setName]     = useState("");
-  const [desc, setDesc]     = useState("");
+  const [roleCode, setRoleCode] = useState("");
+  const [name, setName]         = useState("");
+  const [desc, setDesc]         = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
   function handleClose() {
-    setName(""); setDesc("");
+    setRoleCode(""); setName(""); setDesc("");
     onClose();
+  }
+
+  async function handleCreate() {
+    if (!roleCode.trim() || !name.trim()) return;
+    setIsLoading(true);
+    try {
+      const result = await addRoleAction({
+        roleCode: roleCode.trim(),
+        name: name.trim(),
+        description: desc.trim(),
+      });
+      if (result.success) {
+        toast.success("Role created", { description: result.message });
+        handleClose();
+      } else {
+        toast.error("Failed to create role", { description: result.message });
+      }
+    } catch {
+      toast.error("Network error", { description: "Could not reach the server." });
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   return (
@@ -178,10 +204,20 @@ function CreateRoleSheet({
         <SheetHeader className="px-6 py-5 border-b border-border">
           <SheetTitle>Create New Role</SheetTitle>
           <SheetDescription>
-            Define the role name and description. You can assign permissions after creation.
+            Define the role code, name, and description. You can assign permissions after creation.
           </SheetDescription>
         </SheetHeader>
         <div className="flex-1 px-6 py-6 space-y-5">
+          <div className="space-y-2">
+            <Label htmlFor="role-code">Role Code</Label>
+            <Input
+              id="role-code"
+              placeholder="e.g. ENG, FIN, ADM"
+              value={roleCode}
+              onChange={(e) => setRoleCode(e.target.value)}
+            />
+            <p className="text-xs text-muted-foreground">Short unique identifier for this role.</p>
+          </div>
           <div className="space-y-2">
             <Label htmlFor="role-name">Role Name</Label>
             <Input
@@ -204,10 +240,14 @@ function CreateRoleSheet({
           </div>
         </div>
         <div className="px-6 py-4 border-t border-border flex gap-3">
-          <Button className="flex-1" disabled={!name.trim()}>
-            Create Role
+          <Button
+            className="flex-1"
+            disabled={!roleCode.trim() || !name.trim() || isLoading}
+            onClick={handleCreate}
+          >
+            {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Create Role"}
           </Button>
-          <Button variant="outline" onClick={handleClose}>
+          <Button variant="outline" onClick={handleClose} disabled={isLoading}>
             Cancel
           </Button>
         </div>
