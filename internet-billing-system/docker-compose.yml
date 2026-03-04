@@ -1,0 +1,19 @@
+
+services:
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - AUTH_SECRET=${AUTH_SECRET}
+      - AUTH_URL=http://localhost:3000
+    
+
+
+
+
+networks:
+  default:
+    external:
+      name: beesnet-network

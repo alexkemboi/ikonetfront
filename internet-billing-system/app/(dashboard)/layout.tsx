@@ -1,42 +1,56 @@
 import type { ReactNode } from "react";
 import Sidebar from "./_components/Sidebar";
 import TopBar from "./_components/TopBar";
-import { adminNavGroups } from "@/config/nav-admin";
+import { auth } from "@/lib/auth";
+import { fetchRoleMenusRaw, apiMenusToNavGroups } from "@/lib/data/nav";
 
 /**
  * Dashboard shell — server component.
  *
- * To build a different portal (e.g. customer portal) with a different sidebar:
- *   1. Create a new nav config:  config/nav-customer.ts
- *   2. Create a new layout:      app/(customer)/layout.tsx
- *   3. Pass the new config:      <Sidebar navGroups={customerNavGroups} />
+ * Nav is fetched from the API using the logged-in user's role code.
+ * Cached with `next: { tags: ["nav-menus"] }` — call revalidateTag("nav-menus")
+ * to refresh after permission changes.
  *
- * The Sidebar component itself never needs to change.
+ * To build a different portal (e.g. customer portal) with a different sidebar:
+ *   1. Create a new layout:  app/(customer)/layout.tsx
+ *   2. Fetch menus for the customer role and pass to <Sidebar>
+ *   The Sidebar component itself never needs to change.
  */
+export default async function DashboardLayout({ children }: { children: ReactNode }) {
+  const session = await auth();
 
-// Placeholder user — replace with session data when auth is wired up
-const CURRENT_USER = {
-  name: "John Kamau",
-  email: "john@beesmart.co.ke",
-  role: "Admin",
-  initials: "JK",
-};
+  const roleCode = session?.user?.role    ?? "";
+  const apiToken = session?.user?.apiToken ?? "";
 
-export default function DashboardLayout({ children }: { children: ReactNode }) {
+  const sidebarUser = session?.user
+    ? {
+        name:     session.user.fname ?? session.user.name ?? "User",
+        email:    session.user.email ?? "",
+        role:     session.user.role  ?? "",
+        initials: (session.user.fname?.[0] ?? "U").toUpperCase() +
+                  (session.user.name?.split(" ")[1]?.[0] ?? ""),
+      }
+    : undefined;
+
+  // Fetch nav from API — cached by Next.js with tag "nav-menus"
+  const rawMenus   = await fetchRoleMenusRaw(roleCode, apiToken);
+  const navGroups  = apiMenusToNavGroups(rawMenus);
+
   return (
     <div className="flex h-screen overflow-hidden bg-background">
-      {/* Sidebar receives the nav config — swap adminNavGroups for any other config */}
       <Sidebar
-        navGroups={adminNavGroups}
+        navGroups={navGroups}
         brandName="Beesmart"
-        user={CURRENT_USER}
+        user={sidebarUser}
       />
 
-      {/* Main content */}
       <div className="flex flex-1 flex-col overflow-hidden">
         <TopBar
-          notificationCount={5}
-          user={{ name: CURRENT_USER.name, initials: CURRENT_USER.initials, role: CURRENT_USER.role }}
+          notificationCount={0}
+          user={sidebarUser
+            ? { name: sidebarUser.name, initials: sidebarUser.initials, role: sidebarUser.role }
+            : undefined
+          }
         />
         <main className="flex-1 overflow-y-auto">
           {children}

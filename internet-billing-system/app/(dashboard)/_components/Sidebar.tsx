@@ -3,10 +3,17 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard, Receipt, Users, Network, Headphones,
   BarChart3, Settings, Shield, UserCog, Server, ChevronRight,
   LogOut, Home, FileText, CreditCard, PieChart, Wifi,
+  // Material icon aliases (API returns Material Design icon names)
+  ShieldCheck, BadgeCheck, User, BarChart, Users2,
+  CheckCircle2, Package, Bell, MessageSquare, Mail,
+  Router, DollarSign, Database, TrendingUp, Landmark,
+  Clock, Lock, History, Smartphone, ShoppingCart,
+  RotateCcw, Gauge, Megaphone, Search,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -16,8 +23,10 @@ import { Badge } from "@/components/ui/badge";
 import type { NavGroup, NavItem } from "@/lib/nav";
 
 // ── Icon registry ─────────────────────────────────────────────────────
-// Add icons here as new nav items are introduced.
+// Supports both Lucide kebab-case names (used by static nav configs)
+// and Material Design icon names (returned by the API menus endpoint).
 const ICON_MAP: Record<string, LucideIcon> = {
+  // ── Lucide names (static configs) ──────────────────────────────────
   "layout-dashboard": LayoutDashboard,
   "receipt":          Receipt,
   "users":            Users,
@@ -33,12 +42,67 @@ const ICON_MAP: Record<string, LucideIcon> = {
   "credit-card":      CreditCard,
   "pie-chart":        PieChart,
   "wifi":             Wifi,
+
+  // ── Material Design names (API menus endpoint) ──────────────────────
+  "dashboard":             LayoutDashboard,
+  "admin_panel_settings":  ShieldCheck,
+  "badge":                 BadgeCheck,
+  "person":                User,
+  "leaderboard":           BarChart,
+  "people":                Users,
+  "group":                 Users2,
+  "check_circle":          CheckCircle2,
+  "lan":                   Network,
+  "person_search":         Search,
+  "support_agent":         Headphones,
+  "attach_money":          DollarSign,
+  "inventory":             Package,
+  "receipt_long":          Receipt,
+  "confirmation_number":   FileText,
+  "description":           FileText,
+  "notifications":         Bell,
+  "sms":                   MessageSquare,
+  "email":                 Mail,
+  "campaign":              Megaphone,
+  "router":                Router,
+  "dns":                   Server,
+  "device_hub":            Network,
+  "shopping_cart":         ShoppingCart,
+  "payments":              CreditCard,
+  "payment":               CreditCard,
+  "autorenew":             RotateCcw,
+  "phone_android":         Smartphone,
+  "speed":                 Gauge,
+  "lock":                  Lock,
+  "history":               History,
+  "bar_chart":             BarChart3,
+  "data_usage":            Database,
+  "trending_up":           TrendingUp,
+  "account_balance":       Landmark,
+  "schedule":              Clock,
 };
 
 function NavIcon({ name, className }: { name: string; className?: string }) {
   const Icon = ICON_MAP[name] ?? Settings;
   return <Icon className={cn("w-4 h-4 shrink-0", className)} />;
 }
+
+// ── Animation variants ─────────────────────────────────────────────────
+// Bezier array is cast to a tuple so Framer Motion's Variants type is satisfied.
+const EASE = [0.4, 0, 0.2, 1] as [number, number, number, number];
+
+const submenuVariants = {
+  open: {
+    height: "auto",
+    opacity: 1,
+    transition: { duration: 0.22, ease: EASE },
+  },
+  closed: {
+    height: 0,
+    opacity: 0,
+    transition: { duration: 0.18, ease: EASE },
+  },
+} as const;
 
 // ── Single nav item (leaf) ─────────────────────────────────────────────
 function NavLeaf({
@@ -57,19 +121,21 @@ function NavLeaf({
     <Link
       href={item.href}
       className={cn(
-        "group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150",
+        "group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors duration-150",
         isChild && "ml-4 py-2 text-[13px]",
         isActive
-          ? "bg-sidebar-accent text-white border-l-2 border-warning pl-[10px]"
-          : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground border-l-2 border-transparent pl-[10px]"
+          ? "bg-sidebar-accent text-white border-l-2 border-warning pl-2.5"
+          : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground border-l-2 border-transparent pl-2.5"
       )}
     >
       {!isChild && <NavIcon name={item.icon} />}
       {isChild && (
         <span
           className={cn(
-            "w-1.5 h-1.5 rounded-full shrink-0",
-            isActive ? "bg-warning" : "bg-sidebar-foreground/30 group-hover:bg-sidebar-foreground/60"
+            "w-1.5 h-1.5 rounded-full shrink-0 transition-colors",
+            isActive
+              ? "bg-warning"
+              : "bg-sidebar-foreground/30 group-hover:bg-sidebar-foreground/60"
           )}
         />
       )}
@@ -84,53 +150,67 @@ function NavLeaf({
 }
 
 // ── Expandable nav item (parent with children) ─────────────────────────
-function NavParent({
-  item,
-  defaultOpen = false,
-}: {
-  item: NavItem;
-  defaultOpen?: boolean;
-}) {
+function NavParent({ item }: { item: NavItem }) {
   const pathname = usePathname();
+
   const isAnyChildActive = item.children?.some(
     (c) => pathname === c.href || pathname.startsWith(c.href + "/")
-  );
-  const [open, setOpen] = useState(defaultOpen || !!isAnyChildActive);
+  ) ?? false;
 
-  // Auto-open when a child is active
+  // Start open if a child is already active (SSR-safe: default to false,
+  // the useEffect below syncs immediately on mount)
+  const [open, setOpen] = useState(false);
+
+  // Auto-open when navigating to a child route
   useEffect(() => {
     if (isAnyChildActive) setOpen(true);
   }, [isAnyChildActive]);
 
   return (
     <div>
+      {/* Parent button */}
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
         className={cn(
-          "w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150 border-l-2 border-transparent pl-[10px]",
-          isAnyChildActive
-            ? "text-sidebar-foreground bg-sidebar-accent/30"
+          "w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors duration-150 border-l-2 border-transparent pl-2.5",
+          isAnyChildActive || open
+            ? "text-sidebar-foreground bg-sidebar-accent/30 border-l-warning"
             : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
         )}
       >
         <NavIcon name={item.icon} />
         <span className="flex-1 text-left leading-none">{item.label}</span>
-        <ChevronRight
-          className={cn(
-            "w-3.5 h-3.5 shrink-0 transition-transform duration-200",
-            open && "rotate-90"
-          )}
-        />
+
+        {/* Animated caret — rotates 90° when open */}
+        <motion.div
+          animate={{ rotate: open ? 90 : 0 }}
+          transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
+          className="shrink-0"
+        >
+          <ChevronRight className="w-3.5 h-3.5" />
+        </motion.div>
       </button>
 
-      {open && item.children && (
-        <div className="mt-0.5 space-y-0.5">
-          {item.children.map((child) => (
-            <NavLeaf key={child.href} item={child} isChild />
-          ))}
-        </div>
-      )}
+      {/* Animated submenu — slides open/closed */}
+      <AnimatePresence initial={false}>
+        {open && item.children && (
+          <motion.div
+            key="submenu"
+            variants={submenuVariants}
+            initial="closed"
+            animate="open"
+            exit="closed"
+            className="overflow-hidden"
+          >
+            <div className="mt-0.5 space-y-0.5">
+              {item.children.map((child) => (
+                <NavLeaf key={child.href} item={child} isChild />
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

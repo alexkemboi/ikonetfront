@@ -1,3 +1,28 @@
+/** Menu/permission item returned by the /{roleCode}/menus endpoint */
+export type ApiMenuItem = {
+  /** Database primary key — required for POST /menus assignment calls */
+  menuItemId: number;
+  label: string;
+  route: string;
+  /** Material Design icon name — mapped to Lucide in the Sidebar's ICON_MAP */
+  icon: string;
+  sortOrder: number;
+  canView: boolean;
+  canCreate: boolean;
+  canEdit: boolean;
+  canDelete: boolean;
+  children: ApiMenuItem[];
+};
+
+/** Payload sent to POST /{roleCode}/menus for each menu item */
+export type MenuAssignment = {
+  menuItemId: number;
+  canView: boolean;
+  canCreate: boolean;
+  canEdit: boolean;
+  canDelete: boolean;
+};
+
 /** Raw role shape returned by the API */
 export type ApiRole = {
   idxno: number;
@@ -7,16 +32,6 @@ export type ApiRole = {
   createdAt: string | null;
 };
 
-/**
- * Shape of each menu/permission entry from the menus endpoint.
- * Extend specific fields once real API data is confirmed (endpoint currently returns []).
- */
-export type RoleMenu = {
-  menuCode?: string;
-  menuId?: string;
-  name?: string;
-  [key: string]: unknown;
-};
 
 export type AddRolePayload = {
   roleCode: string;

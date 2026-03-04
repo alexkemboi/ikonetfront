@@ -7,7 +7,7 @@ import {
   Check, Pencil, UserPlus, X, Save, RotateCcw,
   MoreHorizontal, CheckCircle2, Loader2,
 } from "lucide-react";
-import { addRoleAction } from "@/actions/roles";
+import { addRoleAction, saveRoleMenusAction } from "@/actions/roles";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,7 +33,8 @@ import {
   startEditingRole,
   stopEditingRole,
 } from "@/store/slices/rolesSlice";
-import type { Role, RoleUser, MenuNode } from "../page";
+import type { MenuNode } from "@/lib/nav";
+import type { Role, RoleUser } from "../page";
 
 // ── Role color accent map ──────────────────────────────────────────────
 const ROLE_COLORS: Record<string, string> = {
@@ -426,18 +427,66 @@ function PermissionsTab({
   role: Role;
   menuTree: MenuNode[];
 }) {
-  const dispatch   = useAppDispatch();
-  const pending    = useAppSelector((s) => s.roles.pendingPermissions[role.id]);
-  const isDirty    = useAppSelector((s) => s.roles.dirtyRoles[role.id]);
+  const dispatch    = useAppDispatch();
+  const pending     = useAppSelector((s) => s.roles.pendingPermissions[role.id]);
+  const isDirty     = useAppSelector((s) => s.roles.dirtyRoles[role.id]);
   const permissions = pending ?? role.permissions;
+  const [isSaving, setIsSaving] = useState(false);
 
-  // Seed Redux when this tab mounts
+  // Seed Redux when role changes
   useEffect(() => {
     dispatch(initPendingPermissions({ roleId: role.id, permissions: role.permissions }));
   }, [role.id, role.permissions, dispatch]);
 
-  const totalGranted = permissions.length;
+  const totalGranted  = permissions.length;
   const totalPossible = menuTree.flatMap((m) => getAllIds(m)).length;
+
+  // Flatten tree into a list of { id (route), menuItemId } pairs
+  function flattenTree() {
+    const nodes: Array<{ id: string; menuItemId: number }> = [];
+    for (const node of menuTree) {
+      nodes.push({ id: node.id, menuItemId: node.menuItemId });
+      for (const child of node.children ?? []) {
+        nodes.push({ id: child.id, menuItemId: child.menuItemId });
+      }
+    }
+    return nodes;
+  }
+
+  async function handleSave() {
+    setIsSaving(true);
+    try {
+      // Build complete assignment list — every menu item in the tree.
+      // Checked items get all flags true; unchecked get all flags false.
+      const assignments = flattenTree().map(({ id, menuItemId }) => {
+        const granted = permissions.includes(id);
+        return {
+          menuItemId,
+          canView:   granted,
+          canCreate: granted,
+          canEdit:   granted,
+          canDelete: granted,
+        };
+      });
+
+      const { success, failed } = await saveRoleMenusAction(role.id, assignments);
+
+      if (failed === 0) {
+        toast.success("Permissions saved", {
+          description: `${success} item${success !== 1 ? "s" : ""} updated.`,
+        });
+        dispatch(markSaved(role.id));
+      } else {
+        toast.error("Partial save", {
+          description: `${success} succeeded, ${failed} failed. Retry to fix failures.`,
+        });
+      }
+    } catch {
+      toast.error("Network error", { description: "Could not reach the server." });
+    } finally {
+      setIsSaving(false);
+    }
+  }
 
   return (
     <div className="space-y-4">
@@ -458,6 +507,7 @@ function PermissionsTab({
               size="sm"
               variant="outline"
               className="h-7 text-xs gap-1"
+              disabled={isSaving}
               onClick={() => dispatch(discardChanges(role.id))}
             >
               <RotateCcw className="w-3 h-3" />
@@ -466,10 +516,14 @@ function PermissionsTab({
             <Button
               size="sm"
               className="h-7 text-xs gap-1"
-              onClick={() => dispatch(markSaved(role.id))}
+              disabled={isSaving}
+              onClick={handleSave}
             >
-              <Save className="w-3 h-3" />
-              Save
+              {isSaving
+                ? <Loader2 className="w-3 h-3 animate-spin" />
+                : <Save className="w-3 h-3" />
+              }
+              {isSaving ? "Saving…" : "Save"}
             </Button>
           </div>
         )}

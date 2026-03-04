@@ -33,7 +33,7 @@ export default function LoginForm() {
         username: formik.values.username,
         password: formik.values.password,
         redirect: true,
-        callbackUrl: "/settings/profile", // Redirect to profile after login (can be changed as needed)
+        callbackUrl: "/settings/access", // Redirect to profile after login (can be changed as needed)
       })
     },
   });

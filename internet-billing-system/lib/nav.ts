@@ -28,3 +28,16 @@ export type NavGroup = {
   label?: string;
   items: NavItem[];
 };
+
+/**
+ * A node in the permissions tree shown on the Roles page.
+ * `id` = route string for permission tracking.
+ * `menuItemId` = DB primary key for POST /menus assignment calls.
+ */
+export type MenuNode = {
+  id: string;
+  menuItemId: number;
+  label: string;
+  icon: string;
+  children?: Omit<MenuNode, "children">[];
+};
