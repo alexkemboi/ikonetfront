@@ -2,19 +2,18 @@ import { NextResponse } from "next/server";
 import { auth } from "./lib/auth";
 
 const publicRoutes = ["/hotspot"];
-
 const apiAuthPrefix = "/api/auth";
 const authRoutes = ["/login", "/forgot-password", "/reset-password", "/signout"];
-
 const DEFAULT_LOGIN_REDIRECT = "/system/access";
 
-export default auth((req) => {
+// Assign the auth-wrapped function to a variable named `proxy`
+export const proxy = auth((req) => {
     const { nextUrl } = req;
     const isAuthenticated = !!req.auth;
 
     const isApiAuthRoute = nextUrl.pathname.startsWith(apiAuthPrefix);
-    const isPublicRoute  = publicRoutes.some((route) => nextUrl.pathname.startsWith(route));
-    const isAuthRoute    = authRoutes.some((route) => nextUrl.pathname.startsWith(route));
+    const isPublicRoute = publicRoutes.some((route) => nextUrl.pathname.startsWith(route));
+    const isAuthRoute = authRoutes.some((route) => nextUrl.pathname.startsWith(route));
 
     // Always let NextAuth's own API routes through
     if (isApiAuthRoute) return NextResponse.next();
@@ -38,6 +37,16 @@ export default auth((req) => {
     return NextResponse.next();
 });
 
+// Export the matcher config as before
 export const config = {
-    matcher: ["/((?!_next/static|_next/image|favicon.ico).*)", "/:path*"],
+    matcher: [
+        "/((?!_next/static|_next/image|favicon\\.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|css|js|woff|woff2|ttf|ico|map)).*)",
+        "/",
+        "/login",
+        "/forgot-password",
+        "/reset-password",
+        "/signout",
+        "/hotspot",
+        "/settings/:path*"
+    ],
 };
