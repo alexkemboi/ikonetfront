@@ -1,0 +1,37 @@
+# .github/workflows/deploy.yml
+
+name: Deploy to VPS
+
+on:
+  push:
+    branches:
+      - main # This workflow runs when you push changes to the 'main' branch
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest # The type of virtual machine to run the job on
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4 # Action to get your repository's code
+
+    - name: Set up SSH
+      uses: webfactory/ssh-agent@v0.9.0
+      with:
+        ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }} # Your VPS SSH private key (stored securely in GitHub Secrets)
+
+    - name: Deploy to VPS
+      run: |
+        # Connect to your VPS and run deployment commands
+        ssh -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} << 'EOF'
+          cd /path/to/your/internet-billing-system # Navigate to your project directory on the VPS
+          git pull origin main # Pull the latest code from your GitHub repo
+          
+          # Optional: Recreate .env file if it's not managed by other means
+          # echo "NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }}" > .env
+          # echo "DATABASE_URL=${{ secrets.DATABASE_URL }}" >> .env
+          
+          docker-compose build # Rebuild your Docker images
+          docker-compose up -d --remove-orphans # Restart containers, removing any old ones
+          docker system prune -f # Clean up old Docker images/volumes to save space
+        EOF
