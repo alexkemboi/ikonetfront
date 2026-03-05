@@ -1,19 +1,26 @@
-
 services:
-  app:
-    build: .
+  beesnet-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
     ports:
       - "3000:3000"
+    env_file:
+      - .env.local
     environment:
       - NODE_ENV=production
-      - AUTH_SECRET=${AUTH_SECRET}
-      - AUTH_URL=http://localhost:3000
-    
+      - HOSTNAME=0.0.0.0
+    networks: 
+      - default          # <-
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
-
-
+  
 
 networks:
   default:
-    external:
-      name: beesnet-network
+    driver: bridge

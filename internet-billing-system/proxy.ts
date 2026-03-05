@@ -4,9 +4,9 @@ import { auth } from "./lib/auth";
 const publicRoutes = ["/hotspot"];
 
 const apiAuthPrefix = "/api/auth";
-const authRoutes = ["/login", "/forgot-password", "/reset-password"];
+const authRoutes = ["/login", "/forgot-password", "/reset-password", "/signout"];
 
-const DEFAULT_LOGIN_REDIRECT = "/dashboard";
+const DEFAULT_LOGIN_REDIRECT = "/system/access";
 
 export default auth((req) => {
     const { nextUrl } = req;
@@ -21,7 +21,7 @@ export default auth((req) => {
 
     // On login/reset pages: send already-authed users to dashboard
     if (isAuthRoute) {
-        if (isAuthenticated) {
+        if (isAuthenticated && nextUrl.pathname !== "/signout") {
             return NextResponse.redirect(new URL(DEFAULT_LOGIN_REDIRECT, req.url));
         }
         return NextResponse.next();
@@ -39,5 +39,5 @@ export default auth((req) => {
 });
 
 export const config = {
-    matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
+    matcher: ["/((?!_next/static|_next/image|favicon.ico).*)", "/:path*"],
 };

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -153,6 +153,8 @@ function NavLeaf({
 function NavParent({ item }: { item: NavItem }) {
   const pathname = usePathname();
 
+  
+
   const isAnyChildActive = item.children?.some(
     (c) => pathname === c.href || pathname.startsWith(c.href + "/")
   ) ?? false;
@@ -255,7 +257,9 @@ export default function Sidebar({
   brandName = "Beesmart",
   user,
 }: SidebarProps) {
+  const router = useRouter();
   return (
+    
     <aside className="flex h-screen w-64 shrink-0 flex-col bg-sidebar border-r border-sidebar-border">
       {/* ── Brand ── */}
       <div className="flex h-16 items-center gap-3 px-5 border-b border-sidebar-border shrink-0">
@@ -301,6 +305,7 @@ export default function Sidebar({
             <button
               type="button"
               aria-label="Sign out"
+              onClick={() => router.push("/signout")}
               className="text-sidebar-foreground/40 hover:text-sidebar-foreground transition-colors shrink-0"
             >
               <LogOut className="w-4 h-4" />
