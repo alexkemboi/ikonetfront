@@ -23,7 +23,20 @@ jobs:
         password: ${{ secrets.VPS_PASSWORD }}
         script: |
           cd opt/internet-billing-systemf/
+          
+          # Pull latest code
           git pull origin main
+
+          # Stop any running containers to avoid port conflicts
+          docker compose down --remove-orphans
+
+          # Optional: prune unused containers, networks, images, and volumes
+          docker system prune -af
+
+          # Build images
           docker compose build
-          docker compose up -d --remove-orphans
-          docker system prune -f
+
+          # Start containers in detached mode
+          docker compose up -d
+
+          docker system prune -af
