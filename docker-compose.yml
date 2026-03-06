@@ -2,7 +2,7 @@ services:
   beesnet-app:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: DockerFile
     restart: unless-stopped
     ports:
       - "3001:3001"
