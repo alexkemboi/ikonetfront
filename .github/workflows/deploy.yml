@@ -22,7 +22,7 @@ jobs:
         username: ${{ secrets.VPS_USER }}
         password: ${{ secrets.VPS_PASSWORD }}
         script: |
-          cd /opt/internet-billing-systemf
+          cd opt/internet-billing-systemf
           git pull origin main
           docker compose build
           docker compose up -d --remove-orphans
