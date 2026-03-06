@@ -40,6 +40,6 @@ COPY --from=production /app/.next/standalone ./
 COPY --from=production /app/.next/static ./.next/static
 COPY --from=production /app/public ./public
 
-EXPOSE 3001 
+EXPOSE 3456
 
 CMD ["node", "server.js"]
