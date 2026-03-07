@@ -253,15 +253,15 @@ export type SidebarProps = {
   user?: SidebarUser;
 };
 
-export default function Sidebar({
+// ── Sidebar inner content (shared between desktop aside + mobile Sheet) ──
+export function SidebarInner({
   navGroups,
   brandName = "Beesmart",
   user,
 }: SidebarProps) {
   const router = useRouter();
   return (
-    
-    <aside className="flex h-screen w-64 shrink-0 flex-col bg-sidebar border-r border-sidebar-border">
+    <div className="flex h-full w-full flex-col bg-sidebar">
       {/* ── Brand ── */}
       <div className="flex h-16 items-center gap-3 px-5 border-b border-sidebar-border shrink-0">
         <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/15">
@@ -314,6 +314,14 @@ export default function Sidebar({
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+export default function Sidebar(props: SidebarProps) {
+  return (
+    <aside className="hidden md:flex h-screen w-64 shrink-0 flex-col border-r border-sidebar-border">
+      <SidebarInner {...props} />
     </aside>
   );
 }

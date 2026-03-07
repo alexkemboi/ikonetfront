@@ -52,6 +52,9 @@ export default async function DashboardLayout({ children }: { children: ReactNod
             ? { username: sidebarUser.username, initials: sidebarUser.initials, role: sidebarUser.role }
             : undefined
           }
+          navGroups={navGroups}
+          brandName="Beesmart"
+          sidebarUser={sidebarUser}
         />
         <main className="flex-1 overflow-y-auto">
           {children}

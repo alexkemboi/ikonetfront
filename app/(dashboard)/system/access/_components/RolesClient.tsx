@@ -651,7 +651,7 @@ export default function RolesClient({
       </div>
 
       {/* Two-pane layout */}
-      <div className="flex gap-5 h-[calc(100vh-180px)]">
+      <div className="flex flex-col md:flex-row gap-5 h-[calc(100vh-180px)]">
 
         {/* ── Left: Role list ── */}
         <div className="w-72 shrink-0 flex flex-col gap-3">
