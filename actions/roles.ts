@@ -6,9 +6,6 @@ import type { ApiResponse } from "@/lib/types/auth";
 import type { ApiRole, ApiMenuItem, AddRolePayload, MenuAssignment } from "@/lib/types/roles";
 import { NAV_MENUS_TAG } from "@/lib/data/nav";
 
-/** Number of assignment calls to fire in parallel per batch */
-const BATCH_SIZE = 5;
-
 async function getAuthHeaders(): Promise<HeadersInit> {
   const session = await auth();
   const headers: HeadersInit = { "Content-Type": "application/json" };
@@ -57,18 +54,8 @@ export async function addRoleAction(
 }
 
 /**
- * Save all menu permission assignments for a role.
- *
- * Sends one POST per menu item. To avoid overwhelming the server:
- * - Splits into chunks of BATCH_SIZE (5)
- * - Each chunk runs in parallel with Promise.allSettled
- * - Chunks run sequentially — so max 5 concurrent requests at any time
- * - A single item failure does NOT abort the rest
- *
- * After all batches complete, invalidates the nav-menus cache so the
- * sidebar and roles page reflect the new permissions immediately.
- *
- * Returns { success, failed } counts so the client can show a granular toast.
+ * Save all menu permission assignments for a role in a single API call.
+ * Sends POST with { permissions: [...] } — the API handles all items atomically.
  */
 export async function saveRoleMenusAction(
   roleCode: string,
@@ -77,37 +64,24 @@ export async function saveRoleMenusAction(
   const headers = await getAuthHeaders();
   const url = `${process.env.BASE_API_URL}system-setup/${roleCode}/menus`;
 
-  let success = 0;
-  let failed  = 0;
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ permissions: assignments }),
+      cache: "no-store",
+    });
 
-  for (let i = 0; i < assignments.length; i += BATCH_SIZE) {
-    const batch = assignments.slice(i, i + BATCH_SIZE);
+    const data: ApiResponse<unknown> = await res.json();
 
-    const results = await Promise.allSettled(
-      batch.map((assignment) =>
-        fetch(url, {
-          method: "POST",
-          headers,
-          body: JSON.stringify(assignment),
-          cache: "no-store",
-        }).then((r) => r.json() as Promise<ApiResponse<unknown>>)
-      )
-    );
-
-    for (const result of results) {
-      if (result.status === "fulfilled" && result.value?.success) {
-        success++;
-      } else {
-        failed++;
-      }
+    if (data.success) {
+      revalidateTag(NAV_MENUS_TAG, 'max');
+      revalidatePath("/settings/roles");
+      return { success: assignments.length, failed: 0 };
     }
-  }
 
-  // Revalidate so sidebar + roles page show updated permissions
-  if (success > 0) {
-    revalidateTag(NAV_MENUS_TAG, 'max');
-    revalidatePath("/settings/roles");
+    return { success: 0, failed: assignments.length };
+  } catch {
+    return { success: 0, failed: assignments.length };
   }
-
-  return { success, failed };
 }

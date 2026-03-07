@@ -24,7 +24,7 @@ function useBreadcrumb() {
 
 type TopBarProps = {
   notificationCount?: number;
-  user?: { name: string; initials: string; role: string };
+  user?: { username: string; initials: string; role: string };
 };
 
 export default function TopBar({ notificationCount = 0, user }: TopBarProps) {
@@ -72,7 +72,7 @@ export default function TopBar({ notificationCount = 0, user }: TopBarProps) {
         {user && (
           <div className="flex items-center gap-2">
             <div className="hidden sm:block text-right">
-              <p className="text-xs font-medium text-foreground leading-none">{user.name}</p>
+              <p className="text-xs font-medium text-foreground leading-none">{user.username}</p>
               <p className="text-[10px] text-muted-foreground mt-0.5 leading-none">{user.role}</p>
             </div>
             <Avatar className="h-7 w-7">

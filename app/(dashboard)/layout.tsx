@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { use, type ReactNode } from "react";
 import Sidebar from "./_components/Sidebar";
 import TopBar from "./_components/TopBar";
 import { auth } from "@/lib/auth";
@@ -29,6 +29,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
         role:     session.user.role  ?? "",
         initials: (session.user.fname?.[0] ?? "U").toUpperCase() +
                   (session.user.name?.split(" ")[1]?.[0] ?? ""),
+        username: session.user.username ?? session.user.name ?? "user",
       }
     : undefined;
 
@@ -48,7 +49,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
         <TopBar
           notificationCount={0}
           user={sidebarUser
-            ? { name: sidebarUser.name, initials: sidebarUser.initials, role: sidebarUser.role }
+            ? { username: sidebarUser.username, initials: sidebarUser.initials, role: sidebarUser.role }
             : undefined
           }
         />

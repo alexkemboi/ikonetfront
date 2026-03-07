@@ -40,7 +40,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                     middleName:  payload.middleName,
                     otherName:   payload.otherName,
                     phoneNumber: payload.phoneNumber,
-                    username:    payload.username,
+                    username:    result.data.username ?? payload.username,
                     apiToken:    result.data.token,
                 }
             },

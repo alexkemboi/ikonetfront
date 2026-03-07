@@ -243,6 +243,7 @@ export type SidebarUser = {
   email: string;
   role: string;
   initials: string;
+  username?: string;
 };
 
 export type SidebarProps = {
@@ -296,7 +297,7 @@ export default function Sidebar({
             </Avatar>
             <div className="flex-1 overflow-hidden">
               <p className="text-sm font-medium text-sidebar-foreground leading-none truncate">
-                {user.name}
+                {user.username || user.name}
               </p>
               <p className="text-[11px] text-sidebar-foreground/50 mt-0.5 leading-none truncate">
                 {user.role}
