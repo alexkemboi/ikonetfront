@@ -1,6 +1,6 @@
 import RolesClient from "./_components/RolesClient";
 import { auth } from "@/lib/auth";
-import { getRolesAction, getRoleMenusAction } from "@/actions/roles";
+import { getRolesAction, getRoleMenusAction, getRoleUsersAction } from "@/actions/roles";
 import { fetchRoleMenusRaw, apiMenusToMenuTree, extractPermissions } from "@/lib/data/nav";
 import type { MenuNode } from "@/lib/nav";
 
@@ -56,20 +56,33 @@ export default async function RolesPage() {
     const rolesResult = await getRolesAction();
     const apiRoles = rolesResult.success ? rolesResult.data : [];
 
-    // Fetch menus for every role in parallel to read their canView flags
-    const menusResults = await Promise.all(
-      apiRoles.map((r) => getRoleMenusAction(r.roleCode))
-    );
+    // Fetch menus and users for every role in parallel
+    const [menusResults, usersResults] = await Promise.all([
+      Promise.all(apiRoles.map((r) => getRoleMenusAction(r.roleCode))),
+      Promise.all(apiRoles.map((r) => getRoleUsersAction(r.roleCode))),
+    ]);
 
-    roles = apiRoles.map((apiRole, i) => ({
-      id:          apiRole.roleCode,
-      name:        apiRole.name,
-      description: apiRole.description,
-      userCount:   0,         // users endpoint not yet wired
-      permissions: extractPermissions(menusResults[i]?.data ?? []),
-      users:       [],        // users endpoint not yet wired
-      createdAt:   apiRole.createdAt ?? "",
-    }));
+    roles = apiRoles.map((apiRole, i) => {
+      const apiUsers = usersResults[i]?.data ?? [];
+      const users: RoleUser[] = apiUsers.map((u) => ({
+        id:       u.userId,
+        name:     u.fullName,
+        email:    u.email,
+        status:   u.isActive ? "active" : "inactive",
+        initials: (u.fname?.[0] ?? "U").toUpperCase() + (u.middleName?.[0] ?? "").toUpperCase(),
+        joinedAt: u.createdAt,
+      }));
+
+      return {
+        id:          apiRole.roleCode,
+        name:        apiRole.name,
+        description: apiRole.description,
+        userCount:   users.length,
+        permissions: extractPermissions(menusResults[i]?.data ?? []),
+        users,
+        createdAt:   apiRole.createdAt ?? "",
+      };
+    });
   } catch {
     roles = [];
   }

@@ -23,6 +23,23 @@ export type MenuAssignment = {
   canDelete: boolean;
 };
 
+/** User returned by GET /{roleCode}/users */
+export type ApiRoleUser = {
+  idxno: number;
+  username: string;
+  userId: string;
+  role: string;
+  createdAt: string;
+  isActive: boolean;
+  fname: string;
+  middleName: string;
+  otherName: string;
+  fullName: string;
+  email: string;
+  phoneNumber: string;
+  canLogin: boolean;
+};
+
 /** Raw role shape returned by the API */
 export type ApiRole = {
   idxno: number;

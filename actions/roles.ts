@@ -3,7 +3,7 @@
 import { revalidatePath, revalidateTag } from "next/cache";
 import { auth } from "@/lib/auth";
 import type { ApiResponse } from "@/lib/types/auth";
-import type { ApiRole, ApiMenuItem, AddRolePayload, MenuAssignment } from "@/lib/types/roles";
+import type { ApiRole, ApiMenuItem, ApiRoleUser, AddRolePayload, MenuAssignment } from "@/lib/types/roles";
 import { NAV_MENUS_TAG } from "@/lib/data/nav";
 
 async function getAuthHeaders(): Promise<HeadersInit> {
@@ -29,6 +29,16 @@ export async function getRoleMenusAction(
 ): Promise<ApiResponse<ApiMenuItem[]>> {
   const res = await fetch(
     `${process.env.BASE_API_URL}system-setup/${roleCode}/menus`,
+    { headers: await getAuthHeaders(), cache: "no-store" }
+  );
+  return res.json();
+}
+
+export async function getRoleUsersAction(
+  roleCode: string
+): Promise<ApiResponse<ApiRoleUser[]>> {
+  const res = await fetch(
+    `${process.env.BASE_API_URL}system-setup/${roleCode}/users`,
     { headers: await getAuthHeaders(), cache: "no-store" }
   );
   return res.json();
