@@ -24,6 +24,14 @@ export async function getRolesAction(): Promise<ApiResponse<ApiRole[]>> {
   return res.json();
 }
 
+export async function getAllMenusAction(): Promise<ApiResponse<ApiMenuItem[]>> {
+  const res = await fetch(
+    `${process.env.BASE_API_URL}system-setup/all-menus`,
+    { headers: await getAuthHeaders(), cache: "no-store" }
+  );
+  return res.json();
+}
+
 export async function getRoleMenusAction(
   roleCode: string
 ): Promise<ApiResponse<ApiMenuItem[]>> {

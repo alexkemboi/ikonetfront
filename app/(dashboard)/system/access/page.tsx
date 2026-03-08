@@ -1,7 +1,6 @@
 import RolesClient from "./_components/RolesClient";
-import { auth } from "@/lib/auth";
-import { getRolesAction, getRoleMenusAction, getRoleUsersAction } from "@/actions/roles";
-import { fetchRoleMenusRaw, apiMenusToMenuTree, extractPermissions } from "@/lib/data/nav";
+import { getAllMenusAction, getRolesAction, getRoleMenusAction, getRoleUsersAction } from "@/actions/roles";
+import { apiMenusToMenuTree, extractPermissions } from "@/lib/data/nav";
 import type { MenuNode } from "@/lib/nav";
 
 export const metadata = { title: "Roles & Permissions — Beesmart" };
@@ -36,17 +35,11 @@ export type { MenuNode };
 
 // ── Page ────────────────────────────────────────────────────────────────
 export default async function RolesPage() {
-  const session = await auth();
-
-  const roleCode = session?.user?.role    ?? "";
-  const apiToken = session?.user?.apiToken ?? "";
-
   // ── Full menu catalog (permission tree) ─────────────────────────────
-  // The API returns the complete menu catalog for any role code.
-  // We use the current user's role — an admin will have the full set.
-  // Cached with NAV_MENUS_TAG so revalidateTag("nav-menus") refreshes it
-  // after permission assignment changes.
-  const catalogMenus = await fetchRoleMenusRaw(roleCode, apiToken);
+  // Fetches ALL menus from the catalog endpoint so the permission tree
+  // is always complete — regardless of which role the logged-in user has.
+  const catalogResult = await getAllMenusAction();
+  const catalogMenus  = catalogResult.success ? catalogResult.data : [];
   const menuTree: MenuNode[] = apiMenusToMenuTree(catalogMenus);
 
   // ── Roles + per-role permissions ────────────────────────────────────
