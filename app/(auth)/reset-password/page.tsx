@@ -6,35 +6,33 @@ export const metadata = {
   title: "Set New Password — Beesmart Billing",
 };
 
-export default function ResetPasswordPage({
+export default async function ResetPasswordPage({
   searchParams,
 }: {
-  searchParams: Promise<{ token?: string }>;
+  searchParams: Promise<{ email?: string }>;
 }) {
+  const { email = "" } = await searchParams;
+
   return (
     <div className="space-y-8">
-      {/* Back link */}
       <Link
-        href="/login"
+        href="/forgot-password"
         className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
       >
         <ArrowLeft className="w-3.5 h-3.5" />
-        Back to login
+        Back
       </Link>
 
-      {/* Heading */}
       <div className="space-y-1.5">
         <h2 className="text-2xl font-bold tracking-tight text-foreground">
           Set New Password
         </h2>
         <p className="text-sm text-muted-foreground">
-          Choose a strong password. You&apos;ll be asked to sign in again after
-          resetting.
+          Enter the code from your email and choose a new password.
         </p>
       </div>
 
-      {/* Form — token passed as prop, validation handled server-side by dev */}
-      <ResetPasswordForm />
+      <ResetPasswordForm email={email} />
     </div>
   );
 }

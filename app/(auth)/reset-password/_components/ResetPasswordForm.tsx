@@ -1,7 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useFormik } from "formik";
 import * as Yup from "yup";
 import { Eye, EyeOff, Loader2, CheckCircle2 } from "lucide-react";
@@ -9,8 +9,26 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
+import { resetPasswordAction } from "@/actions/auth";
 
+// ── Password strength ───────────────────────────────────────────────────
+function getStrength(password: string): number {
+  let score = 0;
+  if (password.length >= 8) score++;
+  if (/[A-Z]/.test(password)) score++;
+  if (/[0-9]/.test(password)) score++;
+  if (/[^A-Za-z0-9]/.test(password)) score++;
+  return score;
+}
+
+const strengthLabels = ["", "Weak", "Fair", "Good", "Strong"];
+const strengthColors = ["", "bg-destructive", "bg-warning", "bg-warning", "bg-success"];
+
+// ── Validation ──────────────────────────────────────────────────────────
 const validationSchema = Yup.object({
+  otp: Yup.string()
+    .matches(/^\d{4,8}$/, "Enter the numeric code from your email")
+    .required("Reset code is required"),
   password: Yup.string()
     .min(8, "Must be at least 8 characters")
     .matches(/[A-Z]/, "Must include at least one uppercase letter")
@@ -21,63 +39,86 @@ const validationSchema = Yup.object({
     .required("Please confirm your password"),
 });
 
-function getStrength(password: string): number {
-  let score = 0;
-  if (password.length >= 8) score++;
-  if (/[A-Z]/.test(password)) score++;
-  if (/[0-9]/.test(password)) score++;
-  if (/[^A-Za-z0-9]/.test(password)) score++;
-  return score; // 0-4
-}
-
-const strengthLabels = ["", "Weak", "Fair", "Good", "Strong"];
-const strengthColors = [
-  "",
-  "bg-destructive",
-  "bg-warning",
-  "bg-warning",
-  "bg-success",
-];
-
-export default function ResetPasswordForm() {
+export default function ResetPasswordForm({ email }: { email: string }) {
+  const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
-  const [showConfirm, setShowConfirm] = useState(false);
+  const [showConfirm, setShowConfirm]   = useState(false);
+  const [apiError, setApiError]         = useState<string | null>(null);
+  const [done, setDone]                 = useState(false);
 
   const formik = useFormik({
-    initialValues: { password: "", confirmPassword: "" },
+    initialValues: { otp: "", password: "", confirmPassword: "" },
     validationSchema,
-    onSubmit: async (_values) => {
-      // Logic to be implemented by developer
-      await new Promise((r) => setTimeout(r, 600));
+    onSubmit: async (values) => {
+      setApiError(null);
+      const result = await resetPasswordAction({
+        email,
+        otp:         values.otp,
+        newPassword: values.password,
+      });
+      if (result.success) {
+        setDone(true);
+        setTimeout(() => router.push("/login"), 2000);
+      } else {
+        setApiError(result.message ?? "Invalid code or something went wrong. Please try again.");
+      }
     },
   });
 
   const strength = getStrength(formik.values.password);
 
-  if (formik.submitCount > 0 && !formik.isSubmitting && formik.isValid) {
+  // ── Success screen ────────────────────────────────────────────────────
+  if (done) {
     return (
       <div className="flex flex-col items-center gap-4 py-6 text-center">
-        <div className="w-12 h-12 rounded-full bg-success/10 flex items-center justify-center">
-          <CheckCircle2 className="w-6 h-6 text-success" />
+        <div className="w-14 h-14 rounded-full bg-success/10 flex items-center justify-center">
+          <CheckCircle2 className="w-7 h-7 text-success" />
         </div>
         <div className="space-y-1">
           <p className="font-semibold text-foreground">Password updated</p>
           <p className="text-sm text-muted-foreground">
-            Your password has been reset successfully.
+            Your password has been reset. Redirecting to login…
           </p>
         </div>
-        <Link
-          href="/login"
-          className="text-sm font-medium text-primary underline-offset-4 hover:underline"
-        >
-          Sign in with new password
-        </Link>
       </div>
     );
   }
 
+  // ── Form ──────────────────────────────────────────────────────────────
   return (
     <form onSubmit={formik.handleSubmit} noValidate className="space-y-5">
+
+      {/* API error banner */}
+      {apiError && (
+        <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3">
+          <p className="text-sm text-destructive">{apiError}</p>
+        </div>
+      )}
+
+      {/* OTP */}
+      <div className="space-y-2">
+        <Label htmlFor="otp">Reset Code</Label>
+        <Input
+          id="otp"
+          type="text"
+          inputMode="numeric"
+          autoComplete="one-time-code"
+          placeholder="Enter the code from your email"
+          maxLength={8}
+          {...formik.getFieldProps("otp")}
+          aria-invalid={formik.touched.otp && !!formik.errors.otp}
+          className={cn(
+            "tracking-widest font-mono-tech text-center text-lg",
+            formik.touched.otp && formik.errors.otp
+              ? "border-destructive focus-visible:ring-destructive/30"
+              : ""
+          )}
+        />
+        {formik.touched.otp && formik.errors.otp && (
+          <p className="text-xs text-destructive">{formik.errors.otp}</p>
+        )}
+      </div>
+
       {/* New Password */}
       <div className="space-y-2">
         <Label htmlFor="password">New Password</Label>
@@ -89,12 +130,7 @@ export default function ResetPasswordForm() {
             placeholder="Min. 8 characters"
             {...formik.getFieldProps("password")}
             aria-invalid={formik.touched.password && !!formik.errors.password}
-            className={cn(
-              "pr-10",
-              formik.touched.password && formik.errors.password
-                ? "border-destructive focus-visible:ring-destructive/30"
-                : ""
-            )}
+            className={cn("pr-10", formik.touched.password && formik.errors.password ? "border-destructive focus-visible:ring-destructive/30" : "")}
           />
           <button
             type="button"
@@ -102,11 +138,7 @@ export default function ResetPasswordForm() {
             onClick={() => setShowPassword((v) => !v)}
             className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
           >
-            {showPassword ? (
-              <EyeOff className="w-4 h-4" />
-            ) : (
-              <Eye className="w-4 h-4" />
-            )}
+            {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
           </button>
         </div>
 
@@ -115,27 +147,10 @@ export default function ResetPasswordForm() {
           <div className="space-y-1">
             <div className="flex gap-1">
               {[1, 2, 3, 4].map((i) => (
-                <div
-                  key={i}
-                  className={cn(
-                    "h-1 flex-1 rounded-full transition-all duration-300",
-                    i <= strength
-                      ? strengthColors[strength]
-                      : "bg-border"
-                  )}
-                />
+                <div key={i} className={cn("h-1 flex-1 rounded-full transition-all duration-300", i <= strength ? strengthColors[strength] : "bg-border")} />
               ))}
             </div>
-            <p
-              className={cn(
-                "text-xs",
-                strength <= 1
-                  ? "text-destructive"
-                  : strength <= 3
-                  ? "text-warning"
-                  : "text-success"
-              )}
-            >
+            <p className={cn("text-xs", strength <= 1 ? "text-destructive" : strength <= 3 ? "text-warning" : "text-success")}>
               {strengthLabels[strength]}
             </p>
           </div>
@@ -156,15 +171,8 @@ export default function ResetPasswordForm() {
             autoComplete="new-password"
             placeholder="Re-enter your password"
             {...formik.getFieldProps("confirmPassword")}
-            aria-invalid={
-              formik.touched.confirmPassword && !!formik.errors.confirmPassword
-            }
-            className={cn(
-              "pr-10",
-              formik.touched.confirmPassword && formik.errors.confirmPassword
-                ? "border-destructive focus-visible:ring-destructive/30"
-                : ""
-            )}
+            aria-invalid={formik.touched.confirmPassword && !!formik.errors.confirmPassword}
+            className={cn("pr-10", formik.touched.confirmPassword && formik.errors.confirmPassword ? "border-destructive focus-visible:ring-destructive/30" : "")}
           />
           <button
             type="button"
@@ -172,31 +180,16 @@ export default function ResetPasswordForm() {
             onClick={() => setShowConfirm((v) => !v)}
             className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
           >
-            {showConfirm ? (
-              <EyeOff className="w-4 h-4" />
-            ) : (
-              <Eye className="w-4 h-4" />
-            )}
+            {showConfirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
           </button>
         </div>
         {formik.touched.confirmPassword && formik.errors.confirmPassword && (
-          <p className="text-xs text-destructive">
-            {formik.errors.confirmPassword}
-          </p>
+          <p className="text-xs text-destructive">{formik.errors.confirmPassword}</p>
         )}
       </div>
 
-      {/* Submit */}
-      <Button
-        type="submit"
-        className="w-full h-10"
-        disabled={formik.isSubmitting}
-      >
-        {formik.isSubmitting ? (
-          <Loader2 className="w-4 h-4 animate-spin" />
-        ) : (
-          "Update Password"
-        )}
+      <Button type="submit" className="w-full h-10" disabled={formik.isSubmitting}>
+        {formik.isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Reset Password"}
       </Button>
     </form>
   );

@@ -42,6 +42,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
   "credit-card":      CreditCard,
   "pie-chart":        PieChart,
   "wifi":             Wifi,
+  "shield-check":     ShieldCheck,
 
   // ── Material Design names (API menus endpoint) ──────────────────────
   "dashboard":             LayoutDashboard,

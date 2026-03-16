@@ -26,6 +26,13 @@ export const adminNavGroups: NavGroup[] = [
     ],
   },
   {
+    label: "System",
+    items: [
+      { href: "/system/internet-packages", label: "Internet Packages", icon: "wifi"          },
+      { href: "/system/access",            label: "Access Control",    icon: "shield-check"  },
+    ],
+  },
+  {
     label: "Admin",
     items: [
       {
