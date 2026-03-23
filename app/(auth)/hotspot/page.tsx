@@ -1,11 +1,25 @@
 import HotspotFlow from "./_components/HotspotFlow";
 import { Wifi } from "lucide-react";
+import { getHotspotPackages, checkActiveSession } from "@/actions/hotspot";
+import { HotspotPackage } from "@/lib/types/hotspot";
 
 export const metadata = {
   title: "Connect to Wi-Fi — Beesmart Hotspot",
 };
 
-export default function HotspotPage() {
+export default async function HotspotPage() {
+  const packagesResponse = await getHotspotPackages();
+  const packages: HotspotPackage[] = packagesResponse.success ? packagesResponse.data : [];
+
+  // TODO: Dynamically retrieve macAddress and ipAddress from request headers or query parameters
+  // For now, using placeholder values. In a real captive portal scenario, these would be provided.
+  const macAddress = "00:00:00:00:00:00"; // Placeholder
+  const ipAddress = "127.0.0.1"; // Placeholder
+
+  const sessionResponse = await checkActiveSession(macAddress, ipAddress);
+  const hasActiveSession = sessionResponse.success ? sessionResponse.data.hasActiveSession : false;
+  const sessionMessage = sessionResponse.success ? sessionResponse.data.message : sessionResponse.message;
+
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6">
       {/* Header */}
@@ -24,7 +38,13 @@ export default function HotspotPage() {
 
       {/* Multi-step flow (client component) */}
       <div className="w-full max-w-6xl">
-        <HotspotFlow />
+        <HotspotFlow
+          initialPackages={packages}
+          initialHasActiveSession={hasActiveSession}
+          initialSessionMessage={sessionMessage}
+          macAddress={macAddress}
+          ipAddress={ipAddress}
+        />
       </div>
 
       {/* Footer branding */}
@@ -35,3 +55,4 @@ export default function HotspotPage() {
     </div>
   );
 }
+

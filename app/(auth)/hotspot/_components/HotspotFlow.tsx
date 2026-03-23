@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useFormik } from "formik";
 import * as Yup from "yup";
 import {
@@ -11,6 +11,7 @@ import {
   Loader2,
   CheckCircle2,
   Smartphone,
+  XCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,48 +19,21 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
+import { useDispatch, useSelector } from "react-redux";
+import { RootState } from "@/store";
+import {
+  setHotspotPackages,
+  setSelectedPackage,
+  setPaymentStatus,
+  setPaymentMessage,
+  setHasActiveSession,
+  setSessionMessage,
+  resetHotspotState,
+} from "@/store/slices/hotspotSlice";
+import { HotspotPackage } from "@/lib/types/hotspot";
+import { initiateHotspotPayment } from "@/actions/hotspot";
+import { useRouter } from "next/navigation";
 
-// ── Dummy package data (replace with API data later) ──────────────────
-const PACKAGES = [
-  {
-    id: "daily-1gb",
-    name: "Daily 1 GB",
-    speed: "5 Mbps",
-    duration: "24 hours",
-    price: 50,
-    popular: false,
-    tag: "Basic",
-  },
-  {
-    id: "daily-5gb",
-    name: "Daily 5 GB",
-    speed: "10 Mbps",
-    duration: "24 hours",
-    price: 100,
-    popular: true,
-    tag: "Popular",
-  },
-  {
-    id: "weekly-20gb",
-    name: "Weekly 20 GB",
-    speed: "10 Mbps",
-    duration: "7 days",
-    price: 350,
-    popular: false,
-    tag: "Value",
-  },
-  {
-    id: "monthly-unlimited",
-    name: "Monthly Unlimited",
-    speed: "20 Mbps",
-    duration: "30 days",
-    price: 1500,
-    popular: false,
-    tag: "Best",
-  },
-];
-
-type Package = (typeof PACKAGES)[number];
 type PaymentMethod = "mpesa" | "airtel";
 
 type Step =
@@ -67,7 +41,8 @@ type Step =
   | "payment-method"
   | "phone"
   | "confirming"
-  | "success";
+  | "success"
+  | "active-session";
 
 const phoneSchema = Yup.object({
   phone: Yup.string()
@@ -83,6 +58,7 @@ const STEP_LABELS: Record<Step, string> = {
   phone: "Phone",
   confirming: "Confirm",
   success: "Done",
+  "active-session": "Connected",
 };
 
 const STEP_ORDER: Step[] = [
@@ -134,51 +110,51 @@ function PackageCard({
   pkg,
   onSelect,
 }: {
-  pkg: Package;
-  onSelect: (pkg: Package) => void;
+  pkg: HotspotPackage;
+  onSelect: (pkg: HotspotPackage) => void;
 }) {
   return (
     <div
       className={cn(
         "relative bg-card border rounded-xl p-6 cursor-pointer transition-all duration-200",
         "hover:border-primary hover:shadow-md hover:-translate-y-0.5",
-        pkg.popular ? "border-primary ring-1 ring-primary/20" : "border-border"
+        pkg.isApproved ? "border-primary ring-1 ring-primary/20" : "border-border"
       )}
       onClick={() => onSelect(pkg)}
       role="button"
       tabIndex={0}
       onKeyDown={(e) => e.key === "Enter" && onSelect(pkg)}
-      aria-label={`Select ${pkg.name} package`}
+      aria-label={`Select ${pkg.packageName} package`}
     >
-      {pkg.popular && (
+      {pkg.isApproved && (
         <Badge className="absolute -top-2.5 left-4 bg-primary text-primary-foreground text-[10px] px-2 py-0.5">
-          {pkg.tag}
+          Approved
         </Badge>
       )}
-      {!pkg.popular && (
+      {!pkg.isApproved && (
         <Badge
           variant="outline"
           className="absolute -top-2.5 left-4 text-[10px] px-2 py-0.5 bg-card"
         >
-          {pkg.tag}
+          Pending
         </Badge>
       )}
 
       <div className="flex items-start flex-col justify-between mb-3">
-        <h3 className="font-semibold text-foreground text-sm">{pkg.name}</h3>
+        <h3 className="font-semibold text-foreground text-sm">{pkg.packageName}</h3>
         <span className="text-lg font-bold text-foreground balance-display">
           KES {pkg.price.toLocaleString()}
         </span>
       </div>
 
-      <div className="flex gap-4 text-xs text-muted-foreground">
+      <div className="flex flex-col gap-4 text-xs text-muted-foreground">
         <span className="flex items-center gap-1">
           <Zap className="w-3 h-3" />
-          {pkg.speed}
+          {pkg.speedDownload} Mbps / {pkg.speedUpload} Mbps
         </span>
         <span className="flex items-center gap-1">
           <Clock className="w-3 h-3" />
-          {pkg.duration}
+          {pkg.validityValue} {pkg.validityType}
         </span>
       </div>
 
@@ -190,23 +166,93 @@ function PackageCard({
 }
 
 // ── Main component ────────────────────────────────────────────────────
-export default function HotspotFlow() {
-  const [step, setStep] = useState<Step>("packages");
-  const [selectedPackage, setSelectedPackage] = useState<Package | null>(null);
+interface HotspotFlowProps {
+  initialPackages: HotspotPackage[];
+  initialHasActiveSession: boolean;
+  initialSessionMessage: string | null;
+  macAddress: string;
+  ipAddress: string;
+}
+
+export default function HotspotFlow({
+  initialPackages,
+  initialHasActiveSession,
+  initialSessionMessage,
+  macAddress,
+  ipAddress,
+}: HotspotFlowProps) {
+  const dispatch = useDispatch();
+  const router = useRouter();
+
+  const {
+    packages,
+    selectedPackage,
+    paymentStatus,
+    paymentMessage,
+    hasActiveSession,
+    sessionMessage,
+  } = useSelector((state: RootState) => state.hotspot);
+
+  const [step, setStep] = useState<Step>(
+    initialHasActiveSession ? "active-session" : "packages"
+  );
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(null);
+
+  useEffect(() => {
+    dispatch(setHotspotPackages(initialPackages));
+    dispatch(setHasActiveSession(initialHasActiveSession));
+    dispatch(setSessionMessage(initialSessionMessage));
+
+    if (initialHasActiveSession) {
+      setStep("active-session");
+    }
+  }, [
+    dispatch,
+    initialPackages,
+    initialHasActiveSession,
+    initialSessionMessage,
+  ]);
 
   const phoneFormik = useFormik({
     initialValues: { phone: "" },
     validationSchema: phoneSchema,
-    onSubmit: async (_values) => {
-      // Logic to be implemented by developer
-      await new Promise((r) => setTimeout(r, 400));
+    onSubmit: async (values) => {
+      if (!selectedPackage || !paymentMethod) return;
+
+      dispatch(setPaymentStatus("loading"));
+      dispatch(setPaymentMessage(null));
       setStep("confirming");
+
+      try {
+        const response = await initiateHotspotPayment({
+          packageId: selectedPackage.idxno,
+          phone: values.phone,
+          paymentMode: paymentMethod,
+          macAddress: macAddress,
+          clientMac: macAddress, // Assuming clientMac is the same as macAddress for now
+          clientIp: ipAddress,
+        });
+
+        if (response.success) {
+          dispatch(setPaymentStatus("succeeded"));
+          dispatch(setPaymentMessage(response.message));
+          // Optionally, move to success step immediately or wait for user confirmation
+          // For now, we'll let the user confirm they've paid.
+        } else {
+          dispatch(setPaymentStatus("failed"));
+          dispatch(setPaymentMessage(response.message));
+          setStep("phone"); // Go back to phone step on failure
+        }
+      } catch (error: any) {
+        dispatch(setPaymentStatus("failed"));
+        dispatch(setPaymentMessage(error.message || "Payment initiation failed."));
+        setStep("phone"); // Go back to phone step on failure
+      }
     },
   });
 
-  function handleSelectPackage(pkg: Package) {
-    setSelectedPackage(pkg);
+  function handleSelectPackage(pkg: HotspotPackage) {
+    dispatch(setSelectedPackage(pkg));
     setStep("payment-method");
   }
 
@@ -216,12 +262,50 @@ export default function HotspotFlow() {
   }
 
   function handleConfirmPayment() {
+    // In a real scenario, this would involve checking payment status with the backend
+    // For now, we'll assume success after user confirms.
+    dispatch(setPaymentStatus("succeeded"));
+    dispatch(setPaymentMessage("Payment confirmed. You are now connected!"));
     setStep("success");
+    // router.push("/hotspot/connected"); // Redirect to a connected page if needed
   }
 
   function handleBack() {
     const idx = STEP_ORDER.indexOf(step);
-    if (idx > 0) setStep(STEP_ORDER[idx - 1]);
+    if (idx > 0) {
+      setStep(STEP_ORDER[idx - 1]);
+      if (STEP_ORDER[idx - 1] === "packages") {
+        dispatch(setSelectedPackage(null));
+      }
+    }
+  }
+
+  function handleStartOver() {
+    dispatch(resetHotspotState());
+    setPaymentMethod(null);
+    phoneFormik.resetForm();
+    setStep("packages");
+  }
+
+  if (hasActiveSession && step === "active-session") {
+    return (
+      <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm p-8 text-center">
+        <div className="flex flex-col items-center gap-6 py-10">
+          <div className="w-20 h-20 rounded-full bg-success/10 flex items-center justify-center">
+            <Wifi className="w-10 h-10 text-success" />
+          </div>
+          <div className="space-y-2">
+            <h2 className="text-xl font-bold text-foreground">
+              You're Already Connected!
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              {sessionMessage || "You have an active internet session."}
+            </p>
+          </div>
+          <Button onClick={handleStartOver}>Purchase New Package</Button>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -241,9 +325,15 @@ export default function HotspotFlow() {
               Choose a Package
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-              {PACKAGES.map((pkg) => (
-                <PackageCard key={pkg.id} pkg={pkg} onSelect={handleSelectPackage} />
-              ))}
+              {packages.length > 0 ? (
+                packages.map((pkg) => (
+                  <PackageCard key={pkg.idxno} pkg={pkg} onSelect={handleSelectPackage} />
+                ))
+              ) : (
+                <p className="text-muted-foreground col-span-full text-center">
+                  No packages available at the moment.
+                </p>
+              )}
             </div>
           </div>
         )}
@@ -267,7 +357,7 @@ export default function HotspotFlow() {
 
             {/* Selected package summary */}
             <div className="bg-muted rounded-xl px-5 py-4 flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">{selectedPackage.name}</span>
+              <span className="text-muted-foreground">{selectedPackage.packageName}</span>
               <span className="font-semibold text-foreground balance-display">
                 KES {selectedPackage.price.toLocaleString()}
               </span>
@@ -326,7 +416,7 @@ export default function HotspotFlow() {
 
             <div className="bg-muted rounded-xl px-5 py-4 flex items-center justify-between text-sm">
               <span className="text-muted-foreground">
-                {selectedPackage.name} via{" "}
+                {selectedPackage.packageName} via{" "}
                 <span className="capitalize">{paymentMethod}</span>
               </span>
               <span className="font-semibold text-foreground balance-display">
@@ -366,12 +456,19 @@ export default function HotspotFlow() {
                 </p>
               </div>
 
+              {paymentStatus === "failed" && paymentMessage && (
+                <div className="flex items-center gap-2 text-destructive text-sm">
+                  <XCircle className="w-4 h-4" />
+                  <span>{paymentMessage}</span>
+                </div>
+              )}
+
               <Button
                 type="submit"
                 className="w-full h-10"
-                disabled={phoneFormik.isSubmitting}
+                disabled={phoneFormik.isSubmitting || paymentStatus === "loading"}
               >
-                {phoneFormik.isSubmitting ? (
+                {phoneFormik.isSubmitting || paymentStatus === "loading" ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
                 ) : (
                   "Send Payment Request"
@@ -382,7 +479,7 @@ export default function HotspotFlow() {
         )}
 
         {/* ── Step 4: Confirming ── */}
-        {step === "confirming" && (
+        {step === "confirming" && selectedPackage && (
           <div className="space-y-8">
             <h2 className="text-base font-semibold text-foreground">
               Confirm Payment
@@ -408,7 +505,7 @@ export default function HotspotFlow() {
               <div className="flex justify-between py-0.5">
                 <span className="text-muted-foreground">Package</span>
                 <span className="font-medium text-foreground">
-                  {selectedPackage?.name}
+                  {selectedPackage?.packageName}
                 </span>
               </div>
               <Separator />
@@ -442,16 +539,21 @@ export default function HotspotFlow() {
               <Button
                 variant="outline"
                 className="w-full h-10"
-                onClick={handleBack}
+                onClick={() => phoneFormik.submitForm()} // Resend STK push
+                disabled={phoneFormik.isSubmitting || paymentStatus === "loading"}
               >
-                Resend STK Push
+                {phoneFormik.isSubmitting || paymentStatus === "loading" ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  "Resend STK Push"
+                )}
               </Button>
             </div>
           </div>
         )}
 
         {/* ── Step 5: Success ── */}
-        {step === "success" && (
+        {step === "success" && selectedPackage && (
           <div className="flex flex-col items-center gap-6 py-10 text-center">
             <div className="w-20 h-20 rounded-full bg-success/10 flex items-center justify-center">
               <Wifi className="w-10 h-10 text-success" />
@@ -469,21 +571,21 @@ export default function HotspotFlow() {
               <div className="flex justify-between py-3">
                 <span className="text-muted-foreground">Package</span>
                 <span className="font-medium text-foreground">
-                  {selectedPackage?.name}
+                  {selectedPackage?.packageName}
                 </span>
               </div>
               <Separator />
               <div className="flex justify-between py-3">
                 <span className="text-muted-foreground">Speed</span>
                 <span className="font-medium text-foreground">
-                  {selectedPackage?.speed}
+                  {selectedPackage?.speedDownload} Mbps / {selectedPackage?.speedUpload} Mbps
                 </span>
               </div>
               <Separator />
               <div className="flex justify-between py-3">
                 <span className="text-muted-foreground">Valid for</span>
                 <span className="font-medium text-foreground">
-                  {selectedPackage?.duration}
+                  {selectedPackage?.validityValue} {selectedPackage?.validityType}
                 </span>
               </div>
             </div>
@@ -493,12 +595,7 @@ export default function HotspotFlow() {
               <button
                 type="button"
                 className="underline underline-offset-2 hover:text-foreground transition-colors"
-                onClick={() => {
-                  setStep("packages");
-                  setSelectedPackage(null);
-                  setPaymentMethod(null);
-                  phoneFormik.resetForm();
-                }}
+                onClick={handleStartOver}
               >
                 start over
               </button>
