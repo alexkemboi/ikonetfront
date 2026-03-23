@@ -2,19 +2,35 @@ import HotspotFlow from "./_components/HotspotFlow";
 import { Wifi } from "lucide-react";
 import { getHotspotPackages, checkActiveSession } from "@/actions/hotspot";
 import { HotspotPackage } from "@/lib/types/hotspot";
+import { headers } from "next/headers";
 
 export const metadata = {
   title: "Connect to Wi-Fi — Beesmart Hotspot",
 };
 
-export default async function HotspotPage() {
+export default async function HotspotPage({
+  searchParams,
+}: {
+  searchParams: { [key: string]: string | string[] | undefined };
+}) {
   const packagesResponse = await getHotspotPackages();
   const packages: HotspotPackage[] = packagesResponse.success ? packagesResponse.data : [];
 
-  // TODO: Dynamically retrieve macAddress and ipAddress from request headers or query parameters
-  // For now, using placeholder values. In a real captive portal scenario, these would be provided.
-  const macAddress = "00:00:00:00:00:00"; // Placeholder
-  const ipAddress = "127.0.0.1"; // Placeholder
+  const headerList = await headers();
+
+  // Prioritize searchParams, then custom headers, then fallback
+  const macAddress =
+    (searchParams.mac as string) ||
+    headerList.get("x-mac-address") ||
+    "00:00:00:00:00:00"; // Fallback placeholder
+
+  // For IP address, prioritize standard proxy headers, then custom, then searchParams
+  const ipAddress =
+    headerList.get("x-forwarded-for")?.split(',')[0].trim() || // Get first IP if multiple are forwarded
+    headerList.get("x-real-ip") ||
+    headerList.get("x-client-ip") ||
+    (searchParams.ip as string) ||
+    "127.0.0.1"; // Fallback placeholder
 
   const sessionResponse = await checkActiveSession(macAddress, ipAddress);
   const hasActiveSession = sessionResponse.success ? sessionResponse.data.hasActiveSession : false;
