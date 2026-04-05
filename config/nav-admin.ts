@@ -15,7 +15,14 @@ export const adminNavGroups: NavGroup[] = [
     items: [
       { href: "/billing",   label: "Billing",   icon: "receipt"  },
       { href: "/customers", label: "Customers", icon: "users"    },
-      { href: "/network",   label: "Network",   icon: "network"  },
+      {
+        href: "/network",
+        label: "Network",
+        icon: "network",
+        children: [
+          { href: "/network/microtick", label: "MikroTik Devices", icon: "router" },
+        ],
+      },
     ],
   },
   {
