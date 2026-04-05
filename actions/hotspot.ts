@@ -8,7 +8,7 @@ import {
   ReconnectResponse,
 } from '@/lib/types/hotspot';
 
-const BASE_URL = 'http://184.168.21.114/api/v1/hotspot';
+const BASE_URL = process.env.BASE_API_URL!
 
 export async function getHotspotPackages(): Promise<HotspotPackagesResponse> {
   try {
@@ -54,7 +54,9 @@ export async function initiateHotspotPayment(
       throw new Error(errorData.message || 'Failed to initiate payment');
     }
 
-    revalidateTag('hotspot-packages'); // Revalidate packages after payment
+    revalidateTag('hotspot-packages', 
+      "max"
+    ); // Revalidate packages after payment
     return response.json();
   } catch (error) {
     console.error('Error initiating hotspot payment:', error);
