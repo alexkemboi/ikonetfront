@@ -32,7 +32,7 @@ import {
 } from "@/store/slices/hotspotSlice";
 import { HotspotPackage } from "@/lib/types/hotspot";
 import { initiateHotspotPayment } from "@/actions/hotspot";
-// import { useRouter } from "next/navigation"; // Removed as it's not used
+import { useRouter } from "next/navigation"; // Removed as it's not used
 
 type PaymentMethod = "mpesa" | "airtel";
 

@@ -48,12 +48,9 @@ const CustomerForm = () => {
     validationSchema: validationSchema,
     onSubmit: async (values, { setSubmitting, resetForm }) => {
       try {
-        // Filter out empty string values for optional fields to avoid sending them if not provided
-        const payload = Object.fromEntries(
-          Object.entries(values).filter(([, value]) => value !== "")
-        );
+        
 
-        const result = await addCustomer(payload);
+        const result = await addCustomer(values);
         if (result.success) {
           toast.success("Customer created successfully!");
           resetForm();

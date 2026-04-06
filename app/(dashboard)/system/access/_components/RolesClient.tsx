@@ -336,9 +336,11 @@ function AssignUserSheet({
 function UsersTab({
   users,
   roleName,
+  roleId,
 }: {
   users: RoleUser[];
   roleName: string;
+  roleId: string;
 }) {
   const [assignOpen, setAssignOpen] = useState(false);
 
