@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { SidebarInner, type SidebarUser } from "./Sidebar";
 import type { NavGroup } from "@/lib/nav";
 
@@ -45,18 +45,17 @@ export default function TopBar({
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  // Close sheet on navigation
-  useEffect(() => {
-    if (mobileOpen) { // Only close if it's currently open
-      setMobileOpen(false);
-    }
-  }, [pathname, mobileOpen]);
+
+
+  // console.log("TopBar render", { mobileOpen}); // Debug log
 
   return (
     <>
       {/* Mobile sidebar sheet */}
       <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+        {/* <SheetTrigger>test</SheetTrigger>  */}
         <SheetContent
+        
           side="left"
           className="w-64 p-0 bg-sidebar border-sidebar-border [&>button]:hidden"
         >
@@ -75,7 +74,7 @@ export default function TopBar({
           size="icon"
           className="md:hidden h-8 w-8 shrink-0"
           aria-label="Open menu"
-          onClick={() => setMobileOpen(true)}
+          onClick={() => setMobileOpen(!mobileOpen)}
         >
           <Menu className="w-5 h-5" />
         </Button>
