@@ -54,7 +54,7 @@ export interface CustomerApiResponse<T> {
     empty: boolean;
   };
   timestamp: string;
-  error?: any;
+  error?: unknown;
 }
 
 export interface AddCustomerPayload {

@@ -23,7 +23,7 @@ export async function getMikrotikDevices(): Promise<
     });
     if (!response.ok) {
       const contentType = response.headers.get('content-type');
-      let errorData: any;
+      let errorData: unknown;
       if (contentType && contentType.includes('application/json')) {
         errorData = await response.json();
       } else {
@@ -34,18 +34,18 @@ export async function getMikrotikDevices(): Promise<
         success: false,
         data: [],
         timestamp: new Date().toISOString(),
-        message: typeof errorData === 'string' ? errorData : errorData.message || 'Failed to fetch MikroTik devices',
-        error: errorData.message || errorData || 'An unknown error occurred',
+        message: typeof errorData === 'string' ? errorData : (errorData as { message?: string })?.message || 'Failed to fetch MikroTik devices',
+        error: (errorData as { message?: string })?.message || String(errorData) || 'An unknown error occurred',
       };
     }
     const data: ApiResponse<MikrotikDevice[]> = await response.json();
     return data;
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error fetching MikroTik devices:", error);
     return {
       status: 500,
       success: false,
-      message: error.message || "An unexpected error occurred",
+      message: (error instanceof Error ? error.message : String(error)) || "An unexpected error occurred",
       data: [],
       timestamp: new Date().toISOString(),
     };
@@ -65,11 +65,11 @@ export async function addMikrotikDevice(
     });
 
     if (!response.ok) {
-      const errorData = await response.json();
+      const errorData: unknown = await response.json();
       return {
         status: response.status,
         success: false,
-        message: errorData.message || "Failed to add MikroTik device",
+        message: (errorData as { message?: string })?.message || "Failed to add MikroTik device",
         data: null,
         timestamp: new Date().toISOString(),
       };
@@ -78,12 +78,12 @@ export async function addMikrotikDevice(
     const data: ApiResponse<MikrotikDevice> = await response.json();
     revalidatePath("/network/microtick"); // Revalidate the page to show the new device
     return data;
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error adding MikroTik device:", error);
     return {
       status: 500,
       success: false,
-      message: error.message || "An unexpected error occurred",
+      message: (error instanceof Error ? error.message : String(error)) || "An unexpected error occurred",
       data: null,
       timestamp: new Date().toISOString(),
     };
@@ -100,23 +100,23 @@ export async function getMikrotikDeviceStatus(
       },
     });
     if (!response.ok) {
-      const errorData = await response.json();
+      const errorData: unknown = await response.json();
       return {
         status: response.status,
         success: false,
-        message: errorData.message || "Failed to fetch device status",
+        message: (errorData as { message?: string })?.message || "Failed to fetch device status",
         data: null,
         timestamp: new Date().toISOString(),
       };
     }
     const data: ApiResponse<MikrotikDeviceStatus> = await response.json();
     return data;
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error(`Error fetching status for device ${id}:`, error);
     return {
       status: 500,
       success: false,
-      message: error.message || "An unexpected error occurred",
+      message: (error instanceof Error ? error.message : String(error)) || "An unexpected error occurred",
       data: null,
       timestamp: new Date().toISOString(),
     };
@@ -138,7 +138,7 @@ export async function getMikrotikDeviceInterfaces(
     );
     if (!response.ok) {
       const contentType = response.headers.get('content-type');
-      let errorData: any;
+      let errorData: unknown;
       if (contentType && contentType.includes('application/json')) {
         errorData = await response.json();
       } else {
@@ -147,20 +147,20 @@ export async function getMikrotikDeviceInterfaces(
       return {
         status: response.status,
         success: false,
-        message: typeof errorData === 'string' ? errorData : errorData.message || 'Failed to fetch device interfaces',
+        message: typeof errorData === 'string' ? errorData : (errorData as { message?: string })?.message || 'Failed to fetch device interfaces',
         data: [],
         timestamp: new Date().toISOString(),
-        error: errorData.message || errorData || 'An unknown error occurred',
+        error: (errorData as { message?: string })?.message || String(errorData) || 'An unknown error occurred',
       };
     }
     const data: ApiResponse<MikrotikInterface[]> = await response.json();
     return data;
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error(`Error fetching interfaces for device ${id}:`, error);
     return {
       status: 500,
       success: false,
-      message: error.message || "An unexpected error occurred",
+      message: (error instanceof Error ? error.message : String(error)) || "An unexpected error occurred",
       data: [],
       timestamp: new Date().toISOString(),
     };

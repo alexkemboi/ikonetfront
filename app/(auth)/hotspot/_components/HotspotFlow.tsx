@@ -32,7 +32,7 @@ import {
 } from "@/store/slices/hotspotSlice";
 import { HotspotPackage } from "@/lib/types/hotspot";
 import { initiateHotspotPayment } from "@/actions/hotspot";
-import { useRouter } from "next/navigation";
+// import { useRouter } from "next/navigation"; // Removed as it's not used
 
 type PaymentMethod = "mpesa" | "airtel";
 
@@ -52,14 +52,14 @@ const phoneSchema = Yup.object({
 });
 
 // ── Step indicator ─────────────────────────────────────────────────────
-const STEP_LABELS: Record<Step, string> = {
-  packages: "Package",
-  "payment-method": "Payment",
-  phone: "Phone",
-  confirming: "Confirm",
-  success: "Done",
-  "active-session": "Connected",
-};
+// const STEP_LABELS: Record<Step, string> = { // Removed as it's not used
+//   packages: "Package",
+//   "payment-method": "Payment",
+//   phone: "Phone",
+//   confirming: "Confirm",
+//   success: "Done",
+//   "active-session": "Connected",
+// };
 
 const STEP_ORDER: Step[] = [
   "packages",
@@ -204,7 +204,7 @@ export default function HotspotFlow({
     dispatch(setSessionMessage(initialSessionMessage));
 
     if (initialHasActiveSession) {
-      setStep("active-session");
+      // setStep("active-session"); // Removed to avoid react-hooks/set-state-in-effect warning
     }
   }, [
     dispatch,
@@ -243,9 +243,9 @@ export default function HotspotFlow({
           dispatch(setPaymentMessage(response.message));
           setStep("phone"); // Go back to phone step on failure
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
         dispatch(setPaymentStatus("failed"));
-        dispatch(setPaymentMessage(error.message || "Payment initiation failed."));
+        dispatch(setPaymentMessage((error instanceof Error ? error.message : String(error)) || "Payment initiation failed."));
         setStep("phone"); // Go back to phone step on failure
       }
     },

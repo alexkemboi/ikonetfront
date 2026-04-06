@@ -2,12 +2,11 @@
 
 import React, { useState } from "react";
 import { ColumnDef } from "@tanstack/react-table";
+import { deleteCustomer, updateCustomer } from "@/actions/customer";
+import { useRouter } from "next/navigation";
 import {
   Customer,
-  CustomerApiResponse,
-  AddCustomerPayload,
   UpdateCustomerPayload,
-  CustomerFilters,
 } from "@/lib/types/customer";
 import {
   Card,
@@ -36,12 +35,11 @@ interface CustomerClientProps {
 
 export function CustomerClient({ initialCustomers }: CustomerClientProps) {
   const [customers, setCustomers] = useState<Customer[]>(initialCustomers);
+  const router = useRouter();
 
   // Placeholder action handlers
   const handleViewDetails = (customer: Customer) => {
-    toast.info(`Viewing details for ${customer.fullName}`);
-    console.log("View Details:", customer);
-    // Implement navigation to customer detail page
+    router.push(`/customers/${customer.userIdxno}`);
   };
 
   const handleEditCustomer = (customer: Customer) => {
@@ -50,16 +48,53 @@ export function CustomerClient({ initialCustomers }: CustomerClientProps) {
     // Implement dialog or navigation for editing
   };
 
-  const handleDeleteCustomer = (customer: Customer) => {
-    toast.warning(`Deleting ${customer.fullName}`);
-    console.log("Delete Customer:", customer);
-    // Implement delete API call and update state
+  const handleDeleteCustomer = async (customer: Customer) => {
+    try {
+      toast.loading(`Deleting ${customer.fullName}...`);
+      const response = await deleteCustomer(customer.userIdxno);
+      toast.dismiss();
+      if (response.success) {
+        setCustomers((prev) =>
+          prev.filter((cust) => cust.userIdxno !== customer.userIdxno)
+        );
+        toast.success(response.message);
+      } else {
+        toast.error(response.message);
+      }
+    } catch (error) {
+      toast.dismiss();
+      toast.error("Failed to delete customer.");
+      console.error("Delete Customer Error:", error);
+    }
   };
 
-  const handleToggleActive = (customer: Customer) => {
-    toast.info(`Toggling active status for ${customer.fullName}`);
-    console.log("Toggle Active:", customer);
-    // Implement toggle active API call and update state
+  const handleToggleActive = async (customer: Customer) => {
+    try {
+      toast.loading(`Toggling active status for ${customer.fullName}...`);
+      const updatedStatus = !customer.isActive;
+      const payload: UpdateCustomerPayload = { isActive: updatedStatus };
+      const response = await updateCustomer(
+        customer.userIdxno,
+        payload
+      );
+      toast.dismiss();
+      if (response.success) {
+        setCustomers((prev) =>
+          prev.map((cust) =>
+            cust.userIdxno === customer.userIdxno
+              ? { ...cust, isActive: updatedStatus }
+              : cust
+          )
+        );
+        toast.success(response.message);
+      } else {
+        toast.error(response.message);
+      }
+    } catch (error) {
+      toast.dismiss();
+      toast.error("Failed to toggle active status.");
+      console.error("Toggle Active Error:", error);
+    }
   };
 
   const handleRenewSubscription = (customer: Customer) => {
@@ -222,8 +257,13 @@ export function CustomerClient({ initialCustomers }: CustomerClientProps) {
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle className="text-2xl font-bold">All Customers</CardTitle>
+      <CardHeader className="flex flex-row justify-between items-center">
+        <CardTitle className="text-2xl font-bold">
+            All Customers
+        </CardTitle>
+        <CardTitle className="text-2xl font-bold">
+          <Button className="hover:cursor-pointer hover:bg-chart-3 hover:text-white transition-all duration-150" onClick={() => router.push("/customers/new")}>Add Customer</Button>
+        </CardTitle>
       </CardHeader>
       <CardContent>
         <DataTable columns={columns} data={customers} filterColumnId="username" />

@@ -1,4 +1,4 @@
-import { use, type ReactNode } from "react";
+import { type ReactNode } from "react";
 import Sidebar from "./_components/Sidebar";
 import TopBar from "./_components/TopBar";
 import { auth } from "@/lib/auth";

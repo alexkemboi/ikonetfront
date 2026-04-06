@@ -11,12 +11,12 @@ import {
 
 const BASE_URL = "http://184.168.21.114/api/v1";
 
-const handleApiResponse = async <T>(
+const handleApiResponse = async(
   response: Response,
   defaultErrorMessage: string
-): Promise<CustomerApiResponse<T>> => {
+)=> {
   const contentType = response.headers.get("content-type");
-  let errorData: any;
+  let errorData: unknown;
 
   if (contentType && contentType.includes("application/json")) {
     errorData = await response.json();
@@ -30,7 +30,7 @@ const handleApiResponse = async <T>(
     message:
       typeof errorData === "string"
         ? errorData
-        : errorData.message || defaultErrorMessage,
+        : (errorData as { message?: string }).message  || defaultErrorMessage,
     data: {
       content: [],
       pageable: {
@@ -50,9 +50,9 @@ const handleApiResponse = async <T>(
       number: 0,
       sort: { unsorted: true, sorted: false, empty: true },
       empty: true,
-    } as any, // Cast to any to satisfy the type for empty data
+    },
     timestamp: new Date().toISOString(),
-    error: errorData.message || errorData || "An unknown error occurred",
+    error: (errorData as { message?: string })?.message || String(errorData) || "An unknown error occurred",
   };
 };
 
@@ -60,7 +60,7 @@ export async function getCustomers(
   page: number = 0,
   size: number = 10,
   filters?: CustomerFilters
-): Promise<CustomerApiResponse<Customer[]>> {
+) {
   try {
     const params = new URLSearchParams();
     params.append("page", page.toString());
@@ -86,14 +86,14 @@ export async function getCustomers(
       return handleApiResponse(response, "Failed to fetch customers");
     }
 
-    const data: CustomerApiResponse<Customer[]> = await response.json();
+    const data = await response.json();
     return data;
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error fetching customers:", error);
     return {
       status: 500,
       success: false,
-      message: error.message || "An unexpected error occurred",
+      message: (error instanceof Error ? error.message : String(error)) || "An unexpected error occurred",
       data: {
         content: [],
         pageable: {
@@ -121,7 +121,7 @@ export async function getCustomers(
 
 export async function getCustomerById(
   id: number
-): Promise<CustomerApiResponse<Customer>> {
+){
   try {
     const response = await fetch(`${BASE_URL}/customers/${id}`, {
       next: {
@@ -133,15 +133,15 @@ export async function getCustomerById(
       return handleApiResponse(response, "Failed to fetch customer by ID");
     }
 
-    const data: CustomerApiResponse<Customer> = await response.json();
+    const data = await response.json();
     return data;
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error(`Error fetching customer ${id}:`, error);
     return {
       status: 500,
       success: false,
-      message: error.message || "An unexpected error occurred",
-      data: {} as any, // Cast to any for single customer data
+      message: (error instanceof Error ? error.message : String(error)) || "An unexpected error occurred",
+      data: {}, // Return an empty Customer object or null if appropriate
       timestamp: new Date().toISOString(),
     };
   }
@@ -149,7 +149,7 @@ export async function getCustomerById(
 
 export async function addCustomer(
   payload: AddCustomerPayload
-): Promise<CustomerApiResponse<Customer>> {
+){
   try {
     const response = await fetch(`${BASE_URL}/customers`, {
       method: "POST",
@@ -163,18 +163,16 @@ export async function addCustomer(
       return handleApiResponse(response, "Failed to add customer");
     }
 
-    const data: CustomerApiResponse<Customer> = await response.json();
+    const data= await response.json();
     revalidatePath("/customers/all");
-    revalidatePath("/customers/active");
-    revalidatePath("/customers/pppoe");
     return data;
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error adding customer:", error);
     return {
       status: 500,
       success: false,
-      message: error.message || "An unexpected error occurred",
-      data: {} as any,
+      message: (error instanceof Error ? error.message : String(error)) || "An unexpected error occurred",
+      data: {} as Customer,
       timestamp: new Date().toISOString(),
     };
   }
@@ -183,7 +181,7 @@ export async function addCustomer(
 export async function updateCustomer(
   id: number,
   payload: UpdateCustomerPayload
-): Promise<CustomerApiResponse<Customer>> {
+){
   try {
     const response = await fetch(`${BASE_URL}/customers/${id}`, {
       method: "PUT",
@@ -197,19 +195,19 @@ export async function updateCustomer(
       return handleApiResponse(response, "Failed to update customer");
     }
 
-    const data: CustomerApiResponse<Customer> = await response.json();
+    const data= await response.json();
     revalidatePath("/customers/all");
     revalidatePath("/customers/active");
     revalidatePath("/customers/pppoe");
     revalidatePath(`/customers/${id}`);
     return data;
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error(`Error updating customer ${id}:`, error);
     return {
       status: 500,
       success: false,
-      message: error.message || "An unexpected error occurred",
-      data: {} as any,
+      message: (error instanceof Error ? error.message : String(error)) || "An unexpected error occurred",
+      data: {} as Customer,
       timestamp: new Date().toISOString(),
     };
   }
@@ -217,7 +215,7 @@ export async function updateCustomer(
 
 export async function deleteCustomer(
   id: number
-): Promise<CustomerApiResponse<null>> {
+){
   try {
     const response = await fetch(`${BASE_URL}/customers/${id}`, {
       method: "DELETE",
@@ -227,18 +225,18 @@ export async function deleteCustomer(
       return handleApiResponse(response, "Failed to delete customer");
     }
 
-    const data: CustomerApiResponse<null> = await response.json();
+    const data = await response.json();
     revalidatePath("/customers/all");
     revalidatePath("/customers/active");
     revalidatePath("/customers/pppoe");
     return data;
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error(`Error deleting customer ${id}:`, error);
     return {
       status: 500,
       success: false,
-      message: error.message || "An unexpected error occurred",
-      data: null as any,
+      message: (error instanceof Error ? error.message : String(error)) || "An unexpected error occurred",
+      data: null, // data is null for delete
       timestamp: new Date().toISOString(),
     };
   }
@@ -246,7 +244,7 @@ export async function deleteCustomer(
 
 export async function toggleCustomerActiveStatus(
   id: number
-): Promise<CustomerApiResponse<null>> {
+){
   try {
     const response = await fetch(`${BASE_URL}/customers/${id}/toggle-active`, {
       method: "PATCH",
@@ -259,18 +257,18 @@ export async function toggleCustomerActiveStatus(
       );
     }
 
-    const data: CustomerApiResponse<null> = await response.json();
+    const data = await response.json();
     revalidatePath("/customers/all");
     revalidatePath("/customers/active");
     revalidatePath(`/customers/${id}`);
     return data;
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error(`Error toggling active status for customer ${id}:`, error);
     return {
       status: 500,
       success: false,
-      message: error.message || "An unexpected error occurred",
-      data: null as any,
+      message: (error instanceof Error ? error.message : String(error)) || "An unexpected error occurred",
+      data: null,
       timestamp: new Date().toISOString(),
     };
   }
@@ -280,7 +278,7 @@ export async function renewCustomerSubscription(
   id: number,
   duration: number,
   unit: string
-): Promise<CustomerApiResponse<null>> {
+){
   try {
     const response = await fetch(
       `${BASE_URL}/customers/${id}/renew?duration=${duration}&unit=${unit}`,
@@ -293,19 +291,19 @@ export async function renewCustomerSubscription(
       return handleApiResponse(response, "Failed to renew customer subscription");
     }
 
-    const data: CustomerApiResponse<null> = await response.json();
+    const data = await response.json();
     revalidatePath("/customers/all");
     revalidatePath("/customers/active");
     revalidatePath("/customers/pppoe");
     revalidatePath(`/customers/${id}`);
     return data;
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error(`Error renewing subscription for customer ${id}:`, error);
     return {
       status: 500,
       success: false,
-      message: error.message || "An unexpected error occurred",
-      data: null as any,
+      message: (error instanceof Error ? error.message : String(error)) || "An unexpected error occurred",
+      data: null,
       timestamp: new Date().toISOString(),
     };
   }
@@ -314,7 +312,7 @@ export async function renewCustomerSubscription(
 export async function changeCustomerPassword(
   id: number,
   newPassword: string
-): Promise<CustomerApiResponse<null>> {
+) {
   try {
     const response = await fetch(
       `${BASE_URL}/customers/${id}/change-password?newPassword=${newPassword}`,
@@ -332,13 +330,13 @@ export async function changeCustomerPassword(
     revalidatePath("/customers/pppoe");
     revalidatePath(`/customers/${id}`);
     return data;
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error(`Error changing password for customer ${id}:`, error);
     return {
       status: 500,
       success: false,
-      message: error.message || "An unexpected error occurred",
-      data: null as any,
+      message: (error instanceof Error ? error.message : String(error)) || "An unexpected error occurred",
+      data: null,
       timestamp: new Date().toISOString(),
     };
   }

@@ -47,8 +47,10 @@ export default function TopBar({
 
   // Close sheet on navigation
   useEffect(() => {
-    setMobileOpen(false);
-  }, [pathname]);
+    if (mobileOpen) { // Only close if it's currently open
+      setMobileOpen(false);
+    }
+  }, [pathname, mobileOpen]);
 
   return (
     <>

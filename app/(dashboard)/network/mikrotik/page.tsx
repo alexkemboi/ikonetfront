@@ -1,7 +1,7 @@
 
 import { MikrotikClient } from "./_components/MikrotikClient";
 import { getMikrotikDevices } from "@/actions/mikrotik";
-import { MikrotikDevice } from "@/lib/types/mikrotik";
+// import { MikrotikDevice } from "@/lib/types/mikrotik"; // Removed as it's not used
 
 export default async function MikrotikPage() {
   const { data: devices } = await getMikrotikDevices();

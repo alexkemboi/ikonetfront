@@ -162,12 +162,12 @@ function NavParent({ item }: { item: NavItem }) {
 
   // Start open if a child is already active (SSR-safe: default to false,
   // the useEffect below syncs immediately on mount)
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(isAnyChildActive);
 
   // Auto-open when navigating to a child route
-  useEffect(() => {
-    if (isAnyChildActive) setOpen(true);
-  }, [isAnyChildActive]);
+  // useEffect(() => {
+  //   if (isAnyChildActive) setOpen(true);
+  // }, [isAnyChildActive]);
 
   return (
     <div>

@@ -4,12 +4,12 @@
 import React, { useState } from "react";
 import { ColumnDef } from "@tanstack/react-table";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+  // Table, // Removed as it's not used
+  // TableBody, // Removed as it's not used
+  // TableCell, // Removed as it's not used
+  // TableHead, // Removed as it's not used
+  // TableHeader, // Removed as it's not used
+  // TableRow, // Removed as it's not used
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,7 +23,9 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
+import {
+  // Switch, // Removed as it's not used
+} from "@/components/ui/switch";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
@@ -117,8 +119,8 @@ export function MikrotikClient({ initialDevices }: MikrotikClientProps) {
         } else {
           toast.error(result.message);
         }
-      } catch (error: any) {
-        toast.error(`Failed to add device: ${error.message}`);
+      } catch (error: unknown) {
+        toast.error(`Failed to add device: ${(error instanceof Error ? error.message : String(error))}`);
       } finally {
         setSubmitting(false);
       }
@@ -135,8 +137,8 @@ export function MikrotikClient({ initialDevices }: MikrotikClientProps) {
       } else {
         toast.error(result.message);
       }
-    } catch (error: any) {
-      toast.error(`Failed to fetch status: ${error.message}`);
+    } catch (error: unknown) {
+      toast.error(`Failed to fetch status: ${(error instanceof Error ? error.message : String(error))}`);
     } finally {
       setLoadingStatus((prev) => ({ ...prev, [deviceId]: false }));
     }
@@ -152,8 +154,8 @@ export function MikrotikClient({ initialDevices }: MikrotikClientProps) {
       } else {
         toast.error(result.message);
       }
-    } catch (error: any) {
-      toast.error(`Failed to fetch interfaces: ${error.message}`);
+    } catch (error: unknown) {
+      toast.error(`Failed to fetch interfaces: ${(error instanceof Error ? error.message : String(error))}`);
     } finally {
       setLoadingInterfaces((prev) => ({ ...prev, [deviceId]: false }));
     }

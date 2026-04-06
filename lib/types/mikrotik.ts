@@ -108,5 +108,5 @@ export interface ApiResponse<T> {
   message: string;
   data: T;
   timestamp: string;
-  error?: any;
+  error?: unknown;
 }
