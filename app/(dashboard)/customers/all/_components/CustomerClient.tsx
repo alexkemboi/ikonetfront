@@ -1,19 +1,10 @@
 "use client";
 
-import React, { useState } from "react";
 import { ColumnDef } from "@tanstack/react-table";
-import { deleteCustomer, updateCustomer } from "@/actions/customer";
+import { deleteCustomer, toggleCustomerActiveStatus } from "@/actions/customer";
 import { useRouter } from "next/navigation";
-import {
-  Customer,
-  UpdateCustomerPayload,
-} from "@/lib/types/customer";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Customer } from "@/lib/types/customer";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -28,86 +19,56 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
+import { motion } from "framer-motion";
+import { useAppDispatch } from "@/store/hooks";
+import { openRenewSheet, openPasswordSheet } from "@/store/slices/customerslice";
+import { RenewSubscriptionSheet } from "../../_components/RenewSubscriptionSheet";
+import { ChangePasswordSheet } from "../../_components/ChangePasswordSheet";
+import { resolveExpiryDateColorClass, formatCustomerDate } from "@/lib/utils/customerFormatters";
 
 interface CustomerClientProps {
   initialCustomers: Customer[];
 }
 
 export function CustomerClient({ initialCustomers }: CustomerClientProps) {
-  const [customers, setCustomers] = useState<Customer[]>(initialCustomers);
+  const dispatch = useAppDispatch();
   const router = useRouter();
 
-  // Placeholder action handlers
-  const handleViewDetails = (customer: Customer) => {
+  function navigateToCustomerDetail(customer: Customer) {
     router.push(`/customers/${customer.userIdxno}`);
-  };
+  }
 
-  const handleEditCustomer = (customer: Customer) => {
-    toast.info(`Editing ${customer.fullName}`);
-    console.log("Edit Customer:", customer);
-    // Implement dialog or navigation for editing
-  };
-
-  const handleDeleteCustomer = async (customer: Customer) => {
+  async function handleToggleCustomerActiveStatus(customer: Customer) {
+    toast.loading(`Updating status for ${customer.fullName}...`);
     try {
-      toast.loading(`Deleting ${customer.fullName}...`);
-      const response = await deleteCustomer(customer.userIdxno);
+      const result = await toggleCustomerActiveStatus(customer.userIdxno);
       toast.dismiss();
-      if (response.success) {
-        setCustomers((prev) =>
-          prev.filter((cust) => cust.userIdxno !== customer.userIdxno)
-        );
-        toast.success(response.message);
+      if (result.success) {
+        toast.success(result.message || "Status updated.");
       } else {
-        toast.error(response.message);
+        toast.error(result.message || "Failed to update status.");
       }
-    } catch (error) {
+    } catch {
+      toast.dismiss();
+      toast.error("Failed to update status.");
+    }
+  }
+
+  async function handleDeleteCustomer(customer: Customer) {
+    toast.loading(`Deleting ${customer.fullName}...`);
+    try {
+      const result = await deleteCustomer(customer.userIdxno);
+      toast.dismiss();
+      if (result.success) {
+        toast.success(result.message || "Customer deleted.");
+      } else {
+        toast.error(result.message || "Failed to delete customer.");
+      }
+    } catch {
       toast.dismiss();
       toast.error("Failed to delete customer.");
-      console.error("Delete Customer Error:", error);
     }
-  };
-
-  const handleToggleActive = async (customer: Customer) => {
-    try {
-      toast.loading(`Toggling active status for ${customer.fullName}...`);
-      const updatedStatus = !customer.isActive;
-      const payload: UpdateCustomerPayload = { isActive: updatedStatus };
-      const response = await updateCustomer(
-        customer.userIdxno,
-        payload
-      );
-      toast.dismiss();
-      if (response.success) {
-        setCustomers((prev) =>
-          prev.map((cust) =>
-            cust.userIdxno === customer.userIdxno
-              ? { ...cust, isActive: updatedStatus }
-              : cust
-          )
-        );
-        toast.success(response.message);
-      } else {
-        toast.error(response.message);
-      }
-    } catch (error) {
-      toast.dismiss();
-      toast.error("Failed to toggle active status.");
-      console.error("Toggle Active Error:", error);
-    }
-  };
-
-  const handleRenewSubscription = (customer: Customer) => {
-    toast.info(`Renewing subscription for ${customer.fullName}`);
-    console.log("Renew Subscription:", customer);
-    // Implement renew subscription dialog/API call
-  };
-
-  const handleChangePppoePassword = (customer: Customer) => {
-    toast.info(`Changing PPPoE password for ${customer.fullName}`);
-    console.log("Change PPPoE Password:", customer);
-    // Implement change password dialog/API call
-  };
+  }
 
   const columns: ColumnDef<Customer>[] = [
     {
@@ -134,79 +95,80 @@ export function CustomerClient({ initialCustomers }: CustomerClientProps) {
     },
     {
       accessorKey: "username",
-      header: ({ column }) => {
-        return (
-          <Button
-            variant="ghost"
-            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-          >
-            Username
-            <ArrowUpDown className="ml-2 h-4 w-4" />
-          </Button>
-        );
-      },
-      cell: ({ row }) => <div className="lowercase">{row.getValue("username")}</div>,
+      header: ({ column }) => (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        >
+          Username
+          <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
+      ),
+      cell: ({ row }) => (
+        <span className="font-mono text-sm">{row.getValue("username")}</span>
+      ),
     },
     {
       accessorKey: "fullName",
-      header: ({ column }) => {
-        return (
-          <Button
-            variant="ghost"
-            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-          >
-            Full Name
-            <ArrowUpDown className="ml-2 h-4 w-4" />
-          </Button>
-        );
-      },
+      header: ({ column }) => (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        >
+          Full Name
+          <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
+      ),
     },
     {
       accessorKey: "email",
-      header: ({ column }) => {
-        return (
-          <Button
-            variant="ghost"
-            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-          >
-            Email
-            <ArrowUpDown className="ml-2 h-4 w-4" />
-          </Button>
-        );
-      },
+      header: "Email",
     },
     {
       accessorKey: "phoneNumber",
-      header: "Phone Number",
-    },
-    {
-      accessorKey: "isActive",
-      header: "Active",
-      cell: ({ row }) => {
-        const isActive = row.getValue("isActive");
-        return (
-          <Badge variant={isActive ? "default" : "destructive"}>
-            {isActive ? "Yes" : "No"}
-          </Badge>
-        );
-      },
+      header: "Phone",
     },
     {
       accessorKey: "custtype",
-      header: "Customer Type",
-      cell: ({ row }) => <div>{row.getValue("custtype") || "N/A"}</div>,
+      header: "Type",
+      cell: ({ row }) => (
+        <Badge variant="outline" className="capitalize">
+          {row.getValue("custtype") || "N/A"}
+        </Badge>
+      ),
     },
     {
       accessorKey: "packageName",
       header: "Package",
-      cell: ({ row }) => <div>{row.getValue("packageName") || "N/A"}</div>,
+      cell: ({ row }) => (
+        <span className="text-sm">{row.getValue("packageName") || "N/A"}</span>
+      ),
     },
     {
-      accessorKey: "createdAt",
-      header: "Created At",
+      accessorKey: "expiryDate",
+      header: "Expiry",
       cell: ({ row }) => {
-        const date = new Date(row.getValue("createdAt"));
-        return <div>{date.toLocaleDateString()}</div>;
+        const expiryDate = row.getValue("expiryDate") as string | null;
+        return (
+          <span className={`text-sm font-medium ${resolveExpiryDateColorClass(expiryDate)}`}>
+            {formatCustomerDate(expiryDate)}
+          </span>
+        );
+      },
+    },
+    {
+      accessorKey: "isActive",
+      header: "Status",
+      cell: ({ row }) => {
+        const isActive = row.getValue("isActive") as boolean;
+        return (
+          <Badge
+            className={isActive ? "bg-primary text-white" : ""}
+            variant={isActive ? "default" : "destructive"}
+          >
+            {isActive ? "Active" : "Inactive"}
+          </Badge>
+        );
       },
     },
     {
@@ -214,7 +176,6 @@ export function CustomerClient({ initialCustomers }: CustomerClientProps) {
       enableHiding: false,
       cell: ({ row }) => {
         const customer = row.original;
-
         return (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -225,26 +186,32 @@ export function CustomerClient({ initialCustomers }: CustomerClientProps) {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuLabel>Actions</DropdownMenuLabel>
-              <DropdownMenuItem onClick={() => handleViewDetails(customer)}>
+              <DropdownMenuItem onClick={() => navigateToCustomerDetail(customer)}>
                 View Details
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleEditCustomer(customer)}>
-                Edit Customer
+              <DropdownMenuItem
+                onClick={() => handleToggleCustomerActiveStatus(customer)}
+              >
+                {customer.isActive ? "Deactivate" : "Activate"}
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleDeleteCustomer(customer)}>
+              <DropdownMenuItem
+                className="text-destructive"
+                onClick={() => handleDeleteCustomer(customer)}
+              >
                 Delete Customer
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => handleToggleActive(customer)}>
-                Toggle Active Status
               </DropdownMenuItem>
               {customer.custtype === "pppoe" && (
                 <>
-                  <DropdownMenuItem onClick={() => handleRenewSubscription(customer)}>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={() => dispatch(openRenewSheet(customer.userIdxno))}
+                  >
                     Renew Subscription
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleChangePppoePassword(customer)}>
-                    Change PPPoE Password
+                  <DropdownMenuItem
+                    onClick={() => dispatch(openPasswordSheet(customer.userIdxno))}
+                  >
+                    Change Password
                   </DropdownMenuItem>
                 </>
               )}
@@ -256,18 +223,31 @@ export function CustomerClient({ initialCustomers }: CustomerClientProps) {
   ];
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row justify-between items-center">
-        <CardTitle className="text-2xl font-bold">
-            All Customers
-        </CardTitle>
-        <CardTitle className="text-2xl font-bold">
-          <Button className="hover:cursor-pointer hover:bg-chart-3 hover:text-white transition-all duration-150" onClick={() => router.push("/customers/new")}>Add Customer</Button>
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <DataTable columns={columns} data={customers} filterColumnId="username" />
-      </CardContent>
-    </Card>
+    <>
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35, ease: "easeOut" }}
+      >
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle className="text-2xl font-bold">All Customers</CardTitle>
+            <Button onClick={() => router.push("/customers/new")}>
+              Add Customer
+            </Button>
+          </CardHeader>
+          <CardContent>
+            <DataTable
+              columns={columns}
+              data={initialCustomers}
+              filterColumnId="username"
+            />
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      <RenewSubscriptionSheet customers={initialCustomers} />
+      <ChangePasswordSheet customers={initialCustomers} />
+    </>
   );
 }

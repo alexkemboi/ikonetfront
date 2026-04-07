@@ -1,95 +1,121 @@
-import React from "react";
 import { FormikProps } from "formik";
-import * as Yup from "yup";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { AddCustomerPayload } from "@/lib/types/customer";
 
-interface BasicInfoStepProps {
-  formik: FormikProps<AddCustomerPayload>;
-}
-
-const BasicInfoStep = ({ formik }:{
+const BasicInfoStep = ({
+  formik,
+}: {
   formik: FormikProps<AddCustomerPayload>;
 }) => {
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col gap-2">
-        <Label htmlFor="username">Username</Label>
-        <Input
-          id="username"
-          type="text"
-          {...formik.getFieldProps("username")}
-          className={formik.touched.username && formik.errors.username ? "border-red-500" : ""}
-        />
-        {formik.touched.username && formik.errors.username ? (
-          <div className="text-red-500 text-sm">{formik.errors.username}</div>
-        ) : null}
-      </div>
-
-      <div className="flex flex-col gap-2">
-        <Label htmlFor="password">Password</Label>
-        <Input
-          id="password"
-          type="password"
-          {...formik.getFieldProps("password")}
-          className={formik.touched.password && formik.errors.password ? "border-red-500" : ""}
-        />
-        {formik.touched.password && formik.errors.password ? (
-          <div className="text-red-500 text-sm">{formik.errors.password}</div>
-        ) : null}
-      </div>
-
-      <div className="flex flex-col gap-2">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+      <div className="space-y-2">
         <Label htmlFor="firstname">First Name</Label>
         <Input
           id="firstname"
           type="text"
+          placeholder="John"
           {...formik.getFieldProps("firstname")}
-          className={formik.touched.firstname && formik.errors.firstname ? "border-red-500" : ""}
+          className={
+            formik.touched.firstname && formik.errors.firstname
+              ? "border-destructive"
+              : ""
+          }
         />
-        {formik.touched.firstname && formik.errors.firstname ? (
-          <div className="text-red-500 text-sm">{formik.errors.firstname}</div>
-        ) : null}
+        {formik.touched.firstname && formik.errors.firstname && (
+          <p className="text-xs text-destructive">{formik.errors.firstname}</p>
+        )}
       </div>
 
-      <div className="flex flex-col gap-2">
+      <div className="space-y-2">
         <Label htmlFor="lname">Last Name</Label>
         <Input
           id="lname"
           type="text"
+          placeholder="Doe"
           {...formik.getFieldProps("lname")}
-          className={formik.touched.lname && formik.errors.lname ? "border-red-500" : ""}
+          className={
+            formik.touched.lname && formik.errors.lname
+              ? "border-destructive"
+              : ""
+          }
         />
-        {formik.touched.lname && formik.errors.lname ? (
-          <div className="text-red-500 text-sm">{formik.errors.lname}</div>
-        ) : null}
+        {formik.touched.lname && formik.errors.lname && (
+          <p className="text-xs text-destructive">{formik.errors.lname}</p>
+        )}
       </div>
 
-      <div className="flex flex-col gap-2">
+      <div className="space-y-2">
+        <Label htmlFor="username">Username</Label>
+        <Input
+          id="username"
+          type="text"
+          placeholder="johndoe"
+          {...formik.getFieldProps("username")}
+          className={
+            formik.touched.username && formik.errors.username
+              ? "border-destructive"
+              : ""
+          }
+        />
+        {formik.touched.username && formik.errors.username && (
+          <p className="text-xs text-destructive">{formik.errors.username}</p>
+        )}
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="password">Password</Label>
+        <Input
+          id="password"
+          type="password"
+          placeholder="Min. 6 characters"
+          {...formik.getFieldProps("password")}
+          className={
+            formik.touched.password && formik.errors.password
+              ? "border-destructive"
+              : ""
+          }
+        />
+        {formik.touched.password && formik.errors.password && (
+          <p className="text-xs text-destructive">{formik.errors.password}</p>
+        )}
+      </div>
+
+      <div className="space-y-2">
         <Label htmlFor="email">Email</Label>
         <Input
           id="email"
           type="email"
+          placeholder="john@example.com"
           {...formik.getFieldProps("email")}
-          className={formik.touched.email && formik.errors.email ? "border-red-500" : ""}
+          className={
+            formik.touched.email && formik.errors.email
+              ? "border-destructive"
+              : ""
+          }
         />
-        {formik.touched.email && formik.errors.email ? (
-          <div className="text-red-500 text-sm">{formik.errors.email}</div>
-        ) : null}
+        {formik.touched.email && formik.errors.email && (
+          <p className="text-xs text-destructive">{formik.errors.email}</p>
+        )}
       </div>
 
-      <div className="flex flex-col gap-2">
+      <div className="space-y-2">
         <Label htmlFor="phoneNumber">Phone Number</Label>
         <Input
           id="phoneNumber"
           type="text"
+          placeholder="+254 700 000 000"
           {...formik.getFieldProps("phoneNumber")}
-          className={formik.touched.phoneNumber && formik.errors.phoneNumber ? "border-red-500" : ""}
+          className={
+            formik.touched.phoneNumber && formik.errors.phoneNumber
+              ? "border-destructive"
+              : ""
+          }
         />
-        {formik.touched.phoneNumber && formik.errors.phoneNumber ? (
-          <div className="text-red-500 text-sm">{formik.errors.phoneNumber}</div>
-        ) : null}
+        {formik.touched.phoneNumber && formik.errors.phoneNumber && (
+          <p className="text-xs text-destructive">{formik.errors.phoneNumber}</p>
+        )}
       </div>
     </div>
   );

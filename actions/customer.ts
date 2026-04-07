@@ -260,6 +260,7 @@ export async function toggleCustomerActiveStatus(
     const data = await response.json();
     revalidatePath("/customers/all");
     revalidatePath("/customers/active");
+    revalidatePath("/customers/pppoe");
     revalidatePath(`/customers/${id}`);
     return data;
   } catch (error: unknown) {
