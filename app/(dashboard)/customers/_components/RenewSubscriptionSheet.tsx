@@ -88,7 +88,7 @@ export function RenewSubscriptionSheet({ customers }: RenewSubscriptionSheetProp
       open={renewSheetCustomerId !== null}
       onOpenChange={handleSheetOpenChange}
     >
-      <SheetContent side="right" className="w-full sm:max-w-md">
+      <SheetContent side="right" className="w-full sm:max-w-md p-4">
         <SheetHeader className="mb-6">
           <SheetTitle>Renew Subscription</SheetTitle>
           <SheetDescription>
