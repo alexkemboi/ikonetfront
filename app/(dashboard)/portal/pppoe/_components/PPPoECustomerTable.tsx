@@ -14,8 +14,6 @@ import {
   resolveExpiryDateColorClass,
   formatCustomerDate,
 } from "@/lib/utils/customerFormatters";
-import { RenewSubscriptionSheet } from "../../_components/RenewSubscriptionSheet";
-import { ChangePasswordSheet } from "../../_components/ChangePasswordSheet";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -29,6 +27,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { RenewSubscriptionSheet } from "@/app/(dashboard)/customers/_components/RenewSubscriptionSheet";
+import { ChangePasswordSheet } from "@/app/(dashboard)/customers/_components/ChangePasswordSheet";
 
 interface PPPoECustomerTableProps {
   customers: Customer[];
