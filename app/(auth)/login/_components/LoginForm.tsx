@@ -81,7 +81,7 @@ export default function LoginForm({ error }: { error?: string }) {
         username: formik.values.username,
         password: formik.values.password,
         redirect: true,
-        callbackUrl: "/system/access",
+        callbackUrl: "/dashboard/customers",
       });
     },
   });
