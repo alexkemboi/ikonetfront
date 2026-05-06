@@ -23,7 +23,14 @@ export const staffNavGroups: NavGroup[] = [
   {
     label: "Network",
     items: [
-      { href: "/network/mikrotik", label: "MikroTik Devices", icon: "router" },
+      {
+        href: "/network",
+        label: "Network",
+        icon: "network",
+        children: [
+          { href: "/network/mikrotik", label: "MikroTik Devices", icon: "router" },
+        ],
+      },
     ],
   },
 ];

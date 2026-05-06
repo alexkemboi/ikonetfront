@@ -2,25 +2,26 @@ import { type ReactNode } from "react";
 import Sidebar from "./_components/Sidebar";
 import TopBar from "./_components/TopBar";
 import { auth } from "@/lib/auth";
-import { fetchRoleMenusRaw, apiMenusToNavGroups, getStaticNavForRole } from "@/lib/data/nav";
+import { getStaticNavForRole } from "@/lib/data/nav";
+// import { fetchRoleMenusRaw, apiMenusToNavGroups } from "@/lib/data/nav";
 
 /**
  * Dashboard shell — server component.
  *
- * Nav is fetched from the API using the logged-in user's role code.
- * Cached with `next: { tags: ["nav-menus"] }` — call revalidateTag("nav-menus")
- * to refresh after permission changes.
+ * Nav is driven by static configs in config/nav-*.ts, keyed on role code:
+ *   01 → adminNavGroups       (Dashboard, Customers, Network, Finance, System, Settings)
+ *   02 → managementNavGroups  (Dashboard, Customers, Finance, System)
+ *   03 → staffNavGroups       (Dashboard, Customers, Network)
+ *   04 → customerNavGroups    (Dashboard)
  *
- * To build a different portal (e.g. customer portal) with a different sidebar:
- *   1. Create a new layout:  app/(customer)/layout.tsx
- *   2. Fetch menus for the customer role and pass to <Sidebar>
- *   The Sidebar component itself never needs to change.
+ * To re-enable server-driven menus, uncomment the fetchRoleMenusRaw block below
+ * and replace `navGroups = getStaticNavForRole(roleCode)` with the API path.
  */
 export default async function DashboardLayout({ children }: { children: ReactNode }) {
   const session = await auth();
 
   const roleCode = session?.user?.role    ?? "";
-  const apiToken = session?.user?.apiToken ?? "";
+  // const apiToken = session?.user?.apiToken ?? "";
 
   const sidebarUser = session?.user
     ? {
@@ -33,11 +34,14 @@ export default async function DashboardLayout({ children }: { children: ReactNod
       }
     : undefined;
 
-  // Fetch nav from API — fall back to static config when API returns nothing
-  const rawMenus  = await fetchRoleMenusRaw(roleCode, apiToken);
-  const navGroups = rawMenus.length > 0
-    ? apiMenusToNavGroups(rawMenus)
-    : getStaticNavForRole(roleCode);
+  // ── Static nav (active) ───────────────────────────────────────────────
+  const navGroups = getStaticNavForRole(roleCode);
+
+  // ── Server-driven nav (commented out — re-enable when API is ready) ───
+  // const rawMenus  = await fetchRoleMenusRaw(roleCode, apiToken);
+  // const navGroups = rawMenus.length > 0
+  //   ? apiMenusToNavGroups(rawMenus)
+  //   : getStaticNavForRole(roleCode);
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">

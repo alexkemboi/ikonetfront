@@ -58,6 +58,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
   "support_agent":         Headphones,
   "attach_money":          DollarSign,
   "inventory":             Package,
+  "package":               Package,
   "receipt_long":          Receipt,
   "confirmation_number":   FileText,
   "description":           FileText,

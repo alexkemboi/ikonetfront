@@ -21,9 +21,15 @@ export const managementNavGroups: NavGroup[] = [
     ],
   },
   {
+    label: "Finance",
+    items: [
+      { href: "/finance", label: "Revenue Overview", icon: "bar-chart-3" },
+    ],
+  },
+  {
     label: "System",
     items: [
-      { href: "/system/packages", label: "Packages", icon: "wifi" },
+      { href: "/system/packages", label: "Packages", icon: "package" },
     ],
   },
 ];
