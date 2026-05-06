@@ -2,7 +2,7 @@ import { type ReactNode } from "react";
 import Sidebar from "./_components/Sidebar";
 import TopBar from "./_components/TopBar";
 import { auth } from "@/lib/auth";
-import { fetchRoleMenusRaw, apiMenusToNavGroups } from "@/lib/data/nav";
+import { fetchRoleMenusRaw, apiMenusToNavGroups, getStaticNavForRole } from "@/lib/data/nav";
 
 /**
  * Dashboard shell — server component.
@@ -33,9 +33,11 @@ export default async function DashboardLayout({ children }: { children: ReactNod
       }
     : undefined;
 
-  // Fetch nav from API — cached by Next.js with tag "nav-menus"
-  const rawMenus   = await fetchRoleMenusRaw(roleCode, apiToken);
-  const navGroups  = apiMenusToNavGroups(rawMenus);
+  // Fetch nav from API — fall back to static config when API returns nothing
+  const rawMenus  = await fetchRoleMenusRaw(roleCode, apiToken);
+  const navGroups = rawMenus.length > 0
+    ? apiMenusToNavGroups(rawMenus)
+    : getStaticNavForRole(roleCode);
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">

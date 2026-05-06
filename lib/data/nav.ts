@@ -10,6 +10,18 @@
 
 import type { ApiMenuItem } from "@/lib/types/roles";
 import type { NavGroup, NavItem, MenuNode } from "@/lib/nav";
+import { adminNavGroups }      from "@/config/nav-admin";
+import { managementNavGroups } from "@/config/nav-management";
+import { staffNavGroups }      from "@/config/nav-staff";
+import { customerNavGroups }   from "@/config/nav-customer";
+
+// Old role-specific dashboard routes that no longer exist — normalize to /dashboard
+const OLD_DASHBOARD_ROUTES = new Set([
+  "/dashboard/admin",
+  "/dashboard/management",
+  "/dashboard/staff",
+  "/dashboard/customer",
+]);
 
 export const NAV_MENUS_TAG = "nav-menus";
 
@@ -61,7 +73,7 @@ export function apiMenusToNavGroups(menus: ApiMenuItem[]): NavGroup[] {
     .slice()
     .sort((a, b) => a.sortOrder - b.sortOrder)
     .map((menu) => ({
-      href:  menu.route,
+      href:  OLD_DASHBOARD_ROUTES.has(menu.route) ? "/dashboard" : menu.route,
       label: menu.label,
       icon:  menu.icon,
       children: menu.children?.length
@@ -69,7 +81,7 @@ export function apiMenusToNavGroups(menus: ApiMenuItem[]): NavGroup[] {
             .slice()
             .sort((a, b) => a.sortOrder - b.sortOrder)
             .map((child) => ({
-              href:  child.route,
+              href:  OLD_DASHBOARD_ROUTES.has(child.route) ? "/dashboard" : child.route,
               label: child.label,
               icon:  child.icon,
             }))
@@ -77,6 +89,20 @@ export function apiMenusToNavGroups(menus: ApiMenuItem[]): NavGroup[] {
     }));
 
   return [{ items }];
+}
+
+/**
+ * Returns the static nav config for a role.
+ * Used as a fallback when the API returns no menus (e.g. permissions not yet configured).
+ */
+export function getStaticNavForRole(roleCode: string): NavGroup[] {
+  switch (roleCode) {
+    case "01": return adminNavGroups;
+    case "02": return managementNavGroups;
+    case "03": return staffNavGroups;
+    case "04": return customerNavGroups;
+    default:   return staffNavGroups;
+  }
 }
 
 /**

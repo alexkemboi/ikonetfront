@@ -78,6 +78,10 @@ export function CustomerSubscriptionPanel({
               mono
             />
             <SubscriptionField
+              label="Start Date"
+              value={formatCustomerDate(customer.startDate)}
+            />
+            <SubscriptionField
               label="Expiry Date"
               value={formatCustomerDate(customer.expiryDate)}
               valueClassName={resolveExpiryDateColorClass(customer.expiryDate)}

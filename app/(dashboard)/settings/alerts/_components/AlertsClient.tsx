@@ -6,7 +6,7 @@ import * as Yup from "yup";
 import { toast } from "sonner";
 import {
   Plus, Mail, MessageSquare, Bell, Smartphone, Pencil,
-  Trash2, Loader2, Power,
+  Trash2, Loader2, Power, AlertTriangle, CreditCard, Megaphone, Info,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -48,6 +48,118 @@ const CHANNELS: ChannelDef[] = [
 const CHANNEL_LABELS: Record<string, string> = {
   EMAIL: "Email", SMS: "SMS", WHATSAPP: "WhatsApp", PUSH: "Push",
 };
+
+// ── Notification message categories ────────────────────────────────────────
+type NotifCategory = {
+  id:          string;
+  label:       string;
+  description: string;
+  icon:        LucideIcon;
+  color:       string;
+  bg:          string;
+  border:      string;
+  optIn:       boolean;
+};
+
+const NOTIF_CATEGORIES: NotifCategory[] = [
+  {
+    id:          "alerts",
+    label:       "Service Alerts",
+    description: "Outages, expiry warnings, suspension notices, and service status changes. Always sent.",
+    icon:        AlertTriangle,
+    color:       "text-destructive",
+    bg:          "bg-destructive/10",
+    border:      "border-destructive/30",
+    optIn:       false,
+  },
+  {
+    id:          "transactions",
+    label:       "Transaction Notifications",
+    description: "Payment receipts, M-Pesa confirmations, and renewal confirmations. Always sent.",
+    icon:        CreditCard,
+    color:       "text-success",
+    bg:          "bg-success/10",
+    border:      "border-success/30",
+    optIn:       false,
+  },
+  {
+    id:          "promotions",
+    label:       "Promotions & Offers",
+    description: "New packages, discounts, referral bonuses, and seasonal offers. Customers can opt out.",
+    icon:        Megaphone,
+    color:       "text-warning",
+    bg:          "bg-warning/10",
+    border:      "border-warning/30",
+    optIn:       true,
+  },
+  {
+    id:          "system",
+    label:       "System Updates",
+    description: "Scheduled maintenance, network upgrades, and platform announcements. Always sent.",
+    icon:        Info,
+    color:       "text-primary",
+    bg:          "bg-primary/10",
+    border:      "border-primary/30",
+    optIn:       false,
+  },
+];
+
+// ── Notification category toggle card ──────────────────────────────────────
+function NotifCategoryCard({
+  cat,
+  enabled,
+  onToggle,
+}: {
+  cat:      NotifCategory;
+  enabled:  boolean;
+  onToggle: (id: string) => void;
+}) {
+  const Icon = cat.icon;
+  return (
+    <div
+      className={cn(
+        "relative rounded-xl border-2 p-4 transition-all duration-200",
+        enabled ? `${cat.border} bg-card` : "border-border bg-card opacity-70"
+      )}
+    >
+      {cat.optIn && (
+        <span className="absolute top-3 right-3 text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-warning/15 text-warning border border-warning/20">
+          Opt-in
+        </span>
+      )}
+      <div className="flex items-start gap-3">
+        <div className={cn("w-9 h-9 rounded-lg flex items-center justify-center shrink-0 mt-0.5", cat.bg)}>
+          <Icon className={cn("w-4 h-4", cat.color)} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold text-foreground leading-tight">{cat.label}</p>
+          <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{cat.description}</p>
+          {!cat.optIn && (
+            <p className="text-[10px] text-muted-foreground mt-2 italic">Cannot be disabled</p>
+          )}
+        </div>
+        <button
+          type="button"
+          onClick={() => cat.optIn && onToggle(cat.id)}
+          disabled={!cat.optIn}
+          aria-label={enabled ? "Disable" : "Enable"}
+          className={cn(
+            "relative w-10 h-5 rounded-full transition-colors shrink-0 mt-1",
+            !cat.optIn && "cursor-not-allowed opacity-60",
+            enabled ? "bg-success" : "bg-muted-foreground/30"
+          )}
+        >
+          <span
+            className={cn(
+              "absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform",
+              enabled && "translate-x-5"
+            )}
+          />
+        </button>
+      </div>
+    </div>
+  );
+}
 
 // ── Validation schema ───────────────────────────────────────────────────
 const providerSchema = Yup.object({
@@ -254,6 +366,15 @@ export default function AlertsClient({
   const [editing, setEditing]               = useState<AlertProvider | null>(null);
   const [deletingId, setDeletingId]         = useState<number | null>(null);
   const [togglingId, setTogglingId]         = useState<number | null>(null);
+  const [enabledCategories, setEnabledCategories] = useState<string[]>(
+    NOTIF_CATEGORIES.map((c) => c.id)
+  );
+
+  function toggleCategory(id: string) {
+    setEnabledCategories((prev) =>
+      prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id]
+    );
+  }
 
   function toggleChannel(id: string) {
     setActiveChannels((prev) =>
@@ -336,6 +457,29 @@ export default function AlertsClient({
           Add Provider
         </Button>
       </div>
+
+      {/* Notification categories */}
+      <section className="mb-8">
+        <div className="mb-4">
+          <h2 className="text-sm font-semibold text-foreground">Message Categories</h2>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Control which types of messages are sent. Service alerts and transactions are always on.
+            Mark promotions as opt-in to reduce spam and improve customer satisfaction.
+          </p>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {NOTIF_CATEGORIES.map((cat) => (
+            <NotifCategoryCard
+              key={cat.id}
+              cat={cat}
+              enabled={enabledCategories.includes(cat.id)}
+              onToggle={toggleCategory}
+            />
+          ))}
+        </div>
+      </section>
+
+      <Separator className="mb-8" />
 
       {/* Channel selection */}
       <section className="mb-8">

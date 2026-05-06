@@ -1,9 +1,5 @@
 import type { NavGroup } from "@/lib/nav";
 
-/**
- * Admin / Staff navigation config.
- * Swap this out (e.g. nav-customer.ts) to get a completely different sidebar.
- */
 export const adminNavGroups: NavGroup[] = [
   {
     items: [
@@ -11,45 +7,54 @@ export const adminNavGroups: NavGroup[] = [
     ],
   },
   {
-    label: "Manage",
+    label: "Customers",
     items: [
-      { href: "/billing",   label: "Billing",   icon: "receipt"  },
-      { href: "/customers", label: "Customers", icon: "users"    },
+      { href: "/customers/all", label: "All Customers", icon: "users" },
       {
-        href: "/network",
-        label: "Network",
-        icon: "network",
+        href: "/portal",
+        label: "Portal",
+        icon: "globe",
         children: [
-          { href: "/network/microtick", label: "MikroTik Devices", icon: "router" },
+          { href: "/portal/pppoe", label: "PPPoE Clients", icon: "wifi" },
         ],
       },
     ],
   },
   {
-    label: "Operate",
+    label: "Network",
     items: [
-      { href: "/support", label: "Support", icon: "headphones", badge: 5 },
-      { href: "/reports", label: "Reports", icon: "bar-chart-3"           },
+      {
+        href: "/network",
+        label: "Network",
+        icon: "network",
+        children: [
+          { href: "/network/mikrotik", label: "MikroTik Devices", icon: "router" },
+        ],
+      },
+    ],
+  },
+  {
+    label: "Finance",
+    items: [
+      { href: "/finance", label: "Revenue Overview", icon: "bar-chart-3" },
     ],
   },
   {
     label: "System",
     items: [
-      { href: "/system/internet-packages", label: "Internet Packages", icon: "wifi"          },
-      { href: "/system/access",            label: "Access Control",    icon: "shield-check"  },
+      { href: "/system/packages", label: "Packages", icon: "wifi" },
+      { href: "/system/access", label: "Access Control", icon: "shield-check" },
     ],
   },
   {
-    label: "Admin",
+    label: "Settings",
     items: [
       {
         href: "/settings",
         label: "Settings",
         icon: "settings",
         children: [
-          { href: "/settings/roles",  label: "Roles & Permissions", icon: "shield"   },
-          { href: "/settings/users",  label: "Staff Users",         icon: "user-cog" },
-          { href: "/settings/system", label: "System",              icon: "server"   },
+          { href: "/settings/alerts", label: "Alert Channels", icon: "bell" },
         ],
       },
     ],

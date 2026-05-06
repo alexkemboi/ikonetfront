@@ -15,6 +15,7 @@ export interface Customer {
   packageName: string | null;
   custtype: string | null;
   isSubActive: boolean | null;
+  startDate: string | null;
   expiryDate: string | null;
   lastActiveDate: string | null;
 }
