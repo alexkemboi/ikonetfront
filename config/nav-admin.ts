@@ -28,9 +28,17 @@ export const adminNavGroups: NavGroup[] = [
         label: "Network",
         icon: "network",
         children: [
-          { href: "/network/mikrotik", label: "MikroTik Devices", icon: "router" },
+          { href: "/network/mikrotik",   label: "MikroTik Devices", icon: "router"  },
+          { href: "/network/routers",    label: "Router Devices",   icon: "server"  },
+          { href: "/network/ip-mapping", label: "IP Mapping",       icon: "map-pin" },
         ],
       },
+    ],
+  },
+  {
+    label: "Communications",
+    items: [
+      { href: "/communications/bulk-email", label: "Bulk Email", icon: "mail" },
     ],
   },
   {
@@ -43,6 +51,7 @@ export const adminNavGroups: NavGroup[] = [
     label: "System",
     items: [
       { href: "/system/packages", label: "Packages", icon: "package" },
+      { href: "/system/staff-users", label: "Staff Users", icon: "user-cog" },
       { href: "/system/access", label: "Access Control", icon: "shield-check" },
     ],
   },

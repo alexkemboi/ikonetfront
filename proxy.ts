@@ -47,6 +47,9 @@ export const config = {
         "/reset-password",
         "/signout",
         "/hotspot",
-        "/settings/:path*"
+        "/settings/:path*",
+        "/system/:path*",
+        "/:path*",
+
     ],
 };

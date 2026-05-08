@@ -64,6 +64,8 @@ export async function addMikrotikDevice(
       body: JSON.stringify(payload),
     });
 
+    
+
     if (!response.ok) {
       const errorData: unknown = await response.json();
       return {

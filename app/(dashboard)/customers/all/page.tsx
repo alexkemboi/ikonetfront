@@ -6,7 +6,7 @@ export default async function AllCustomersPage() {
   const customers = response.success ? response.data.content : [];
 
   return (
-    <div className="flex-1 p-8 pt-6">
+    <div className="p-8 pt-6">
       <CustomerClient initialCustomers={customers} />
     </div>
   );

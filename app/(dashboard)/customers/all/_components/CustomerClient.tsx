@@ -1,30 +1,18 @@
 "use client";
 
-import { ColumnDef } from "@tanstack/react-table";
-import { deleteCustomer, toggleCustomerActiveStatus } from "@/actions/customer";
+import { useMemo } from "react";
 import { useRouter } from "next/navigation";
+import { Plus, Users } from "lucide-react";
+import { toast } from "sonner";
 import { Customer } from "@/lib/types/customer";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { deleteCustomer, toggleCustomerActiveStatus } from "@/actions/customer";
+import { useAppDispatch } from "@/store/hooks";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
-import { DataTable } from "@/components/ui/data-table";
-import { ArrowUpDown, MoreHorizontal } from "lucide-react";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { toast } from "sonner";
-import { motion } from "framer-motion";
-import { useAppDispatch } from "@/store/hooks";
-import { openRenewSheet, openPasswordSheet } from "@/store/slices/customerslice";
+import { DataTable } from "@/components/shared/data-table";
 import { RenewSubscriptionSheet } from "../../_components/RenewSubscriptionSheet";
 import { ChangePasswordSheet } from "../../_components/ChangePasswordSheet";
-import { resolveExpiryDateColorClass, formatCustomerDate } from "@/lib/utils/customerFormatters";
+import { createCustomerColumns } from "./columns";
 
 interface CustomerClientProps {
   initialCustomers: Customer[];
@@ -32,219 +20,85 @@ interface CustomerClientProps {
 
 export function CustomerClient({ initialCustomers }: CustomerClientProps) {
   const dispatch = useAppDispatch();
-  const router = useRouter();
+  const router   = useRouter();
 
-  function navigateToCustomerDetail(customer: Customer) {
-    router.push(`/customers/${customer.userIdxno}`);
-  }
-
-  async function handleToggleCustomerActiveStatus(customer: Customer) {
-    toast.loading(`Updating status for ${customer.fullName}...`);
+  async function handleToggleActive(customer: Customer) {
+    toast.loading(`Updating ${customer.fullName}…`);
     try {
       const result = await toggleCustomerActiveStatus(customer.userIdxno);
       toast.dismiss();
-      if (result.success) {
-        toast.success(result.message || "Status updated.");
-      } else {
-        toast.error(result.message || "Failed to update status.");
-      }
+      result.success
+        ? toast.success(result.message || "Status updated.")
+        : toast.error(result.message || "Failed to update status.");
     } catch {
       toast.dismiss();
       toast.error("Failed to update status.");
     }
   }
 
-  async function handleDeleteCustomer(customer: Customer) {
-    toast.loading(`Deleting ${customer.fullName}...`);
+  async function handleDelete(customer: Customer) {
+    toast.loading(`Deleting ${customer.fullName}…`);
     try {
       const result = await deleteCustomer(customer.userIdxno);
       toast.dismiss();
-      if (result.success) {
-        toast.success(result.message || "Customer deleted.");
-      } else {
-        toast.error(result.message || "Failed to delete customer.");
-      }
+      result.success
+        ? toast.success(result.message || "Customer deleted.")
+        : toast.error(result.message || "Failed to delete.");
     } catch {
       toast.dismiss();
       toast.error("Failed to delete customer.");
     }
   }
 
-  const columns: ColumnDef<Customer>[] = [
-    {
-      id: "select",
-      header: ({ table }) => (
-        <Checkbox
-          checked={
-            table.getIsAllPageRowsSelected() ||
-            (table.getIsSomePageRowsSelected() && "indeterminate")
-          }
-          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-          aria-label="Select all"
-        />
-      ),
-      cell: ({ row }) => (
-        <Checkbox
-          checked={row.getIsSelected()}
-          onCheckedChange={(value) => row.toggleSelected(!!value)}
-          aria-label="Select row"
-        />
-      ),
-      enableSorting: false,
-      enableHiding: false,
-    },
-    {
-      accessorKey: "username",
-      header: ({ column }) => (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
-          Username
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      ),
-      cell: ({ row }) => (
-        <span className="font-mono text-sm">{row.getValue("username")}</span>
-      ),
-    },
-    {
-      accessorKey: "fullName",
-      header: ({ column }) => (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
-          Full Name
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      ),
-    },
-    {
-      accessorKey: "email",
-      header: "Email",
-    },
-    {
-      accessorKey: "phoneNumber",
-      header: "Phone",
-    },
-    {
-      accessorKey: "custtype",
-      header: "Type",
-      cell: ({ row }) => (
-        <Badge variant="outline" className="capitalize">
-          {row.getValue("custtype") || "N/A"}
-        </Badge>
-      ),
-    },
-    {
-      accessorKey: "packageName",
-      header: "Package",
-      cell: ({ row }) => (
-        <span className="text-sm">{row.getValue("packageName") || "N/A"}</span>
-      ),
-    },
-    {
-      accessorKey: "expiryDate",
-      header: "Expiry",
-      cell: ({ row }) => {
-        const expiryDate = row.getValue("expiryDate") as string | null;
-        return (
-          <span className={`text-sm font-medium ${resolveExpiryDateColorClass(expiryDate)}`}>
-            {formatCustomerDate(expiryDate)}
-          </span>
-        );
-      },
-    },
-    {
-      accessorKey: "isActive",
-      header: "Status",
-      cell: ({ row }) => {
-        const isActive = row.getValue("isActive") as boolean;
-        return (
-          <Badge
-            className={isActive ? "bg-primary text-white" : ""}
-            variant={isActive ? "default" : "destructive"}
-          >
-            {isActive ? "Active" : "Inactive"}
-          </Badge>
-        );
-      },
-    },
-    {
-      id: "actions",
-      enableHiding: false,
-      cell: ({ row }) => {
-        const customer = row.original;
-        return (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="h-8 w-8 p-0">
-                <span className="sr-only">Open menu</span>
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel>Actions</DropdownMenuLabel>
-              <DropdownMenuItem onClick={() => navigateToCustomerDetail(customer)}>
-                View Details
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => handleToggleCustomerActiveStatus(customer)}
-              >
-                {customer.isActive ? "Deactivate" : "Activate"}
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                className="text-destructive"
-                onClick={() => handleDeleteCustomer(customer)}
-              >
-                Delete Customer
-              </DropdownMenuItem>
-              {customer.custtype === "pppoe" && (
-                <>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    onClick={() => dispatch(openRenewSheet(customer.userIdxno))}
-                  >
-                    Renew Subscription
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => dispatch(openPasswordSheet(customer.userIdxno))}
-                  >
-                    Change Password
-                  </DropdownMenuItem>
-                </>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        );
-      },
-    },
-  ];
+  const columns = useMemo(
+    () => createCustomerColumns(router, dispatch, handleToggleActive, handleDelete),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [router, dispatch]
+  );
+
+  const activeCount  = initialCustomers.filter((c) => c.isActive).length;
+  const pppoeCount   = initialCustomers.filter((c) => c.custtype === "pppoe").length;
+  const hotspotCount = initialCustomers.filter((c) => c.custtype === "hotspot").length;
 
   return (
     <>
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.35, ease: "easeOut" }}
-      >
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-2xl font-bold">All Customers</CardTitle>
-            <Button onClick={() => router.push("/customers/new")}>
-              Add Customer
-            </Button>
-          </CardHeader>
-          <CardContent>
-            <DataTable
-              columns={columns}
-              data={initialCustomers}
-              filterColumnId="username"
-            />
-          </CardContent>
-        </Card>
-      </motion.div>
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
+                <Users className="w-4 h-4 text-primary" />
+              </div>
+              <h1 className="text-2xl font-bold tracking-tight">All Customers</h1>
+            </div>
+            <div className="flex items-center gap-3 mt-1 flex-wrap">
+              <p className="text-sm text-muted-foreground">
+                {initialCustomers.length} total
+              </p>
+              <Badge variant="outline" className="text-[11px] bg-success/10 text-success border-success/20">
+                {activeCount} active
+              </Badge>
+              <Badge variant="outline" className="text-[11px] bg-primary/10 text-primary border-primary/20">
+                {pppoeCount} PPPoE
+              </Badge>
+              <Badge variant="outline" className="text-[11px] bg-warning/10 text-warning border-warning/20">
+                {hotspotCount} Hotspot
+              </Badge>
+            </div>
+          </div>
+          <Button onClick={() => router.push("/customers/new")} className="gap-2 shrink-0">
+            <Plus className="h-4 w-4" /> Add Customer
+          </Button>
+        </div>
+
+        {/* Table */}
+        <DataTable
+          columns={columns}
+          data={initialCustomers}
+          searchPlaceholder="Search by name, email, username, package…"
+        />
+      </div>
 
       <RenewSubscriptionSheet customers={initialCustomers} />
       <ChangePasswordSheet customers={initialCustomers} />

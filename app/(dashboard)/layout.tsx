@@ -62,7 +62,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
           brandName="Beesmart"
           sidebarUser={sidebarUser}
         />
-        <main className="flex-1 overflow-y-auto">
+        <main className="flex-1 overflow-y-auto py-4">
           {children}
         </main>
       </div>

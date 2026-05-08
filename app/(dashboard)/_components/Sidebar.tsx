@@ -13,7 +13,7 @@ import {
   CheckCircle2, Package, Bell, MessageSquare, Mail,
   Router, DollarSign, Database, TrendingUp, Landmark,
   Clock, Lock, History, Smartphone, ShoppingCart,
-  RotateCcw, Gauge, Megaphone, Search,
+  RotateCcw, Gauge, Megaphone, Search, MapPin,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -43,6 +43,8 @@ const ICON_MAP: Record<string, LucideIcon> = {
   "pie-chart":        PieChart,
   "wifi":             Wifi,
   "shield-check":     ShieldCheck,
+  "map-pin":          MapPin,
+  "mail":             Mail,
 
   // ── Material Design names (API menus endpoint) ──────────────────────
   "dashboard":             LayoutDashboard,

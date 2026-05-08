@@ -34,7 +34,7 @@ import {
   stopEditingRole,
 } from "@/store/slices/rolesSlice";
 import type { MenuNode } from "@/lib/nav";
-import type { Role, RoleUser } from "../page";
+import type { Role, RoleUser, ApiRoleUser } from "../page";
 
 // ── Role color accent map ──────────────────────────────────────────────
 const ROLE_COLORS: Record<string, string> = {
@@ -262,23 +262,21 @@ function AssignUserSheet({
   open,
   onClose,
   roleName,
+  availableUsers,
 }: {
-  open: boolean;
-  onClose: () => void;
-  roleName: string;
+  open:           boolean;
+  onClose:        () => void;
+  roleName:       string;
+  availableUsers: ApiRoleUser[];
 }) {
   const [query, setQuery] = useState("");
 
-  // Dummy available users (not yet in this role)
-  const available = [
-    { id: "av1", name: "Kevin Onyango",  email: "kevin@beesmart.co.ke",  initials: "KO" },
-    { id: "av2", name: "Mercy Achieng",  email: "mercy@beesmart.co.ke",  initials: "MA" },
-    { id: "av3", name: "Ian Gitonga",    email: "ian@beesmart.co.ke",    initials: "IG" },
-  ].filter(
+  const filtered = availableUsers.filter(
     (u) =>
       !query ||
-      u.name.toLowerCase().includes(query.toLowerCase()) ||
-      u.email.toLowerCase().includes(query.toLowerCase())
+      u.fullName.toLowerCase().includes(query.toLowerCase()) ||
+      u.email.toLowerCase().includes(query.toLowerCase()) ||
+      u.username.toLowerCase().includes(query.toLowerCase())
   );
 
   return (
@@ -294,7 +292,7 @@ function AssignUserSheet({
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
-              placeholder="Search by name or email…"
+              placeholder="Search by name, email or username…"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               className="pl-9"
@@ -303,28 +301,35 @@ function AssignUserSheet({
         </div>
         <ScrollArea className="flex-1">
           <div className="px-6 py-3 space-y-1">
-            {available.length === 0 && (
-              <p className="text-sm text-muted-foreground text-center py-8">No users found.</p>
+            {filtered.length === 0 && (
+              <p className="text-sm text-muted-foreground text-center py-8">
+                {availableUsers.length === 0 ? "All system users are already in this role." : "No users match your search."}
+              </p>
             )}
-            {available.map((u) => (
-              <div
-                key={u.id}
-                className="flex items-center gap-3 p-3 rounded-lg hover:bg-muted transition-colors"
-              >
-                <Avatar className="h-8 w-8 shrink-0">
-                  <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
-                    {u.initials}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-foreground truncate">{u.name}</p>
-                  <p className="text-xs text-muted-foreground truncate">{u.email}</p>
+            {filtered.map((u) => {
+              const initials =
+                (u.fname?.[0] ?? "U").toUpperCase() +
+                (u.middleName?.[0] ?? "").toUpperCase();
+              return (
+                <div
+                  key={u.idxno}
+                  className="flex items-center gap-3 p-3 rounded-lg hover:bg-muted transition-colors"
+                >
+                  <Avatar className="h-8 w-8 shrink-0">
+                    <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
+                      {initials}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-foreground truncate">{u.fullName}</p>
+                    <p className="text-xs text-muted-foreground truncate">{u.email}</p>
+                  </div>
+                  <Button size="sm" variant="outline" className="shrink-0 h-7 text-xs">
+                    Assign
+                  </Button>
                 </div>
-                <Button size="sm" variant="outline" className="shrink-0 h-7 text-xs">
-                  Assign
-                </Button>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </ScrollArea>
       </SheetContent>
@@ -337,12 +342,18 @@ function UsersTab({
   users,
   roleName,
   roleId,
+  allSystemUsers,
 }: {
-  users: RoleUser[];
-  roleName: string;
-  roleId: string;
+  users:          RoleUser[];
+  roleName:       string;
+  roleId:         string;
+  allSystemUsers: ApiRoleUser[];
 }) {
   const [assignOpen, setAssignOpen] = useState(false);
+
+  // Only show users not already assigned to this role
+  const assignedIds    = new Set(users.map((u) => u.id));
+  const availableUsers = allSystemUsers.filter((u) => !assignedIds.has(u.userId));
 
   return (
     <>
@@ -414,6 +425,7 @@ function UsersTab({
         open={assignOpen}
         onClose={() => setAssignOpen(false)}
         roleName={roleName}
+        availableUsers={availableUsers}
       />
     </>
   );
@@ -601,9 +613,11 @@ function RoleCard({
 export default function RolesClient({
   roles,
   menuTree,
+  allSystemUsers,
 }: {
-  roles: Role[];
-  menuTree: MenuNode[];
+  roles:          Role[];
+  menuTree:       MenuNode[];
+  allSystemUsers: ApiRoleUser[];
 }) {
   const dispatch     = useAppDispatch();
   const editingId    = useAppSelector((s) => s.roles.editingRoleId);
@@ -793,6 +807,7 @@ export default function RolesClient({
                   users={selectedRole.users}
                   roleName={selectedRole.name}
                   roleId={selectedRole.id}
+                  allSystemUsers={allSystemUsers}
                 />
               </TabsContent>
 

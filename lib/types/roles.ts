@@ -29,8 +29,9 @@ export type ApiRoleUser = {
   username: string;
   userId: string;
   role: string;
+  roleName: string;
   createdAt: string;
-  isActive: boolean;
+  isactive: boolean;
   fname: string;
   middleName: string;
   otherName: string;
