@@ -41,6 +41,7 @@ export async function initiateHotspotPayment(
   requestBody: InitiatePaymentRequest
 ): Promise<InitiatePaymentResponse> {
   try {
+    console.log('Initiate Payment Request:', requestBody);
     const response = await fetch(`${BASE_URL}/initiate`, {
       method: 'POST',
       headers: {
@@ -48,6 +49,9 @@ export async function initiateHotspotPayment(
       },
       body: JSON.stringify(requestBody),
     });
+
+    console.log('Initiate Payment Request:', requestBody);
+    console.log('Initiate Payment Response Status:', response.status);
 
     if (!response.ok) {
       const errorData = await response.json();

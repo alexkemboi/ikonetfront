@@ -13,6 +13,12 @@ import {
   Smartphone,
   XCircle,
   RefreshCw,
+  Flame,
+  Coffee,
+  Sun,
+  Compass,
+  Crown,
+  type LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -60,71 +66,137 @@ const STEP_ORDER: Step[] = [
   "success",
 ];
 
-// ── Helpers ────────────────────────────────────────────────────────────
+// ── Card themes — split hero/body design ──────────────────────────────
 
-function getTagline(pkg: HotspotPackage): string {
-  const type = pkg.validityType?.toLowerCase();
-  const val = pkg.validityValue;
+type CardTheme = {
+  badge:         string;
+  tagline:       string;
+  bestFor:       string;
+  Icon:          LucideIcon;
+  // Hero gradient section (top ~45%)
+  heroGradient:  string;
+  heroText:      string;
+  heroSubtext:   string;
+  heroBadgeBg:   string;
+  heroBadgeText: string;
+  heroIconBg:    string;
+  heroIconColor: string;
+  heroOrb1:      string;
+  heroOrb2:      string;
+  // Body section (bottom ~55%)
+  bodyBg:        string;
+  bodyBorder:    string;
+  cardShadow:    string;
+  pillBg:        string;
+  pillText:      string;
+  pillBorder:    string;
+  bestForColor:  string;
+  priceColor:    string;
+  mutedColor:    string;
+  btnBg:         string;
+  btnText:       string;
+};
 
-  if (type === "minutes") return "Quick hit — no commitment";
-  if (type === "hours") {
-    if (val === 1) return "Perfect for a one-hour catch-up";
-    if (val <= 3) return "Power through your session";
-    if (val <= 6) return "Half-day of solid browsing";
-    if (val <= 12) return "Your productive half-day";
-  }
-  if (type === "days") {
-    if (val === 1) return "Full day, always connected";
-    if (val >= 7) return "Stay connected all week";
-  }
-  return "Reliable internet access";
+function getCardTheme(pkg: HotspotPackage): CardTheme {
+  const type = pkg.validityType?.toLowerCase() ?? "";
+  const val  = pkg.validityValue;
+
+  // FLASH (minutes) — electric lime: urgent, instant energy
+  if (type === "minutes") return {
+    badge: "FLASH", tagline: "Need it now — zero overthinking", bestFor: "Quick search · email check · map lookup",
+    Icon: Zap,
+    heroGradient: "linear-gradient(135deg, #3D6B00 0%, #7DC200 100%)",
+    heroText: "#FFFFFF", heroSubtext: "rgba(255,255,255,0.82)",
+    heroBadgeBg: "rgba(0,0,0,0.28)", heroBadgeText: "#D8FF70",
+    heroIconBg: "rgba(255,255,255,0.22)", heroIconColor: "#FFFFFF",
+    heroOrb1: "rgba(255,255,255,0.12)", heroOrb2: "rgba(0,0,0,0.18)",
+    bodyBg: "#FFFFFF", bodyBorder: "#AEDF50",
+    cardShadow: "0 4px 28px rgba(61,107,0,0.25)",
+    pillBg: "#F0FFD0", pillText: "#2D5200", pillBorder: "#AEDF50",
+    bestForColor: "#2D5200", priceColor: "#1A3000", mutedColor: "#4A7200",
+    btnBg: "linear-gradient(135deg, #3D6B00, #6AAA00)", btnText: "#FFFFFF",
+  };
+
+  // QUICK (1–3 h) — combustion red-orange: heat, momentum, now
+  if (type === "hours" && val <= 3) return {
+    badge: "QUICK", tagline: "Power through your moment", bestFor: "Café work · one meeting · catching up",
+    Icon: Flame,
+    heroGradient: "linear-gradient(135deg, #B82000 0%, #FF4E00 100%)",
+    heroText: "#FFFFFF", heroSubtext: "rgba(255,255,255,0.82)",
+    heroBadgeBg: "rgba(0,0,0,0.28)", heroBadgeText: "#FFB090",
+    heroIconBg: "rgba(255,255,255,0.22)", heroIconColor: "#FFFFFF",
+    heroOrb1: "rgba(255,255,255,0.1)", heroOrb2: "rgba(0,0,0,0.18)",
+    bodyBg: "#FFFFFF", bodyBorder: "#FF9060",
+    cardShadow: "0 4px 28px rgba(184,32,0,0.25)",
+    pillBg: "#FFF0E8", pillText: "#8A1800", pillBorder: "#FFAA70",
+    bestForColor: "#8A1800", priceColor: "#4A0E00", mutedColor: "#A84020",
+    btnBg: "linear-gradient(135deg, #B82000, #EE3C00)", btnText: "#FFFFFF",
+  };
+
+  // SESSION (4–12 h) — deep ocean blue: calm, focused, sustained
+  if (type === "hours" && val <= 12) return {
+    badge: "SESSION", tagline: "Built for deep, uninterrupted work", bestFor: "Study session · long commute · half-day work",
+    Icon: Coffee,
+    heroGradient: "linear-gradient(135deg, #082AA8 0%, #1868E0 100%)",
+    heroText: "#FFFFFF", heroSubtext: "rgba(255,255,255,0.82)",
+    heroBadgeBg: "rgba(0,0,0,0.28)", heroBadgeText: "#90C8FF",
+    heroIconBg: "rgba(255,255,255,0.22)", heroIconColor: "#FFFFFF",
+    heroOrb1: "rgba(255,255,255,0.1)", heroOrb2: "rgba(0,0,0,0.18)",
+    bodyBg: "#FFFFFF", bodyBorder: "#80B4FF",
+    cardShadow: "0 4px 28px rgba(8,42,168,0.25)",
+    pillBg: "#EBF3FF", pillText: "#082AA8", pillBorder: "#90C0FF",
+    bestForColor: "#082AA8", priceColor: "#040E50", mutedColor: "#2A52A8",
+    btnBg: "linear-gradient(135deg, #082AA8, #1460CC)", btnText: "#FFFFFF",
+  };
+
+  // DAILY (1 day) — amber-gold sunrise: warm, full, abundant
+  if (type === "days" && val === 1) return {
+    badge: "DAILY", tagline: "From sunrise to midnight — all yours", bestFor: "Full workday · travel day · event coverage",
+    Icon: Sun,
+    heroGradient: "linear-gradient(135deg, #A85800 0%, #F09800 100%)",
+    heroText: "#FFFFFF", heroSubtext: "rgba(255,255,255,0.85)",
+    heroBadgeBg: "rgba(0,0,0,0.25)", heroBadgeText: "#FFE0A0",
+    heroIconBg: "rgba(255,255,255,0.22)", heroIconColor: "#FFFFFF",
+    heroOrb1: "rgba(255,255,255,0.1)", heroOrb2: "rgba(0,0,0,0.18)",
+    bodyBg: "#FFFFFF", bodyBorder: "#FFD060",
+    cardShadow: "0 4px 28px rgba(168,88,0,0.25)",
+    pillBg: "#FFF8E8", pillText: "#7A4800", pillBorder: "#FFD060",
+    bestForColor: "#7A4800", priceColor: "#3C2000", mutedColor: "#966200",
+    btnBg: "linear-gradient(135deg, #A85800, #E08800)", btnText: "#FFFFFF",
+  };
+
+  // EXPLORER (2–6 days) — forest green: movement, nature, adventure
+  if (type === "days" && val < 7) return {
+    badge: "EXPLORER", tagline: "Keep moving. Stay connected.", bestFor: "Weekend trip · short stay · multi-day project",
+    Icon: Compass,
+    heroGradient: "linear-gradient(135deg, #004220 0%, #008844 100%)",
+    heroText: "#FFFFFF", heroSubtext: "rgba(255,255,255,0.82)",
+    heroBadgeBg: "rgba(0,0,0,0.28)", heroBadgeText: "#80FFBA",
+    heroIconBg: "rgba(255,255,255,0.22)", heroIconColor: "#FFFFFF",
+    heroOrb1: "rgba(255,255,255,0.1)", heroOrb2: "rgba(0,0,0,0.18)",
+    bodyBg: "#FFFFFF", bodyBorder: "#60CC90",
+    cardShadow: "0 4px 28px rgba(0,66,32,0.25)",
+    pillBg: "#E8FFF2", pillText: "#004220", pillBorder: "#80DDAA",
+    bestForColor: "#004220", priceColor: "#001A0C", mutedColor: "#1A6A48",
+    btnBg: "linear-gradient(135deg, #004220, #007A3C)", btnText: "#FFFFFF",
+  };
+
+  // PREMIUM (7+ days) — midnight navy × gold: luxury, commitment, elite
+  return {
+    badge: "PREMIUM", tagline: "Your permanent connection — always on", bestFor: "Weekly commuter · remote worker · digital nomad",
+    Icon: Crown,
+    heroGradient: "linear-gradient(135deg, #050C1C 0%, #0E1E3A 100%)",
+    heroText: "#F0DCA0", heroSubtext: "rgba(195,158,72,0.9)",
+    heroBadgeBg: "rgba(212,168,75,0.22)", heroBadgeText: "#D4A84B",
+    heroIconBg: "rgba(212,168,75,0.18)", heroIconColor: "#D4A84B",
+    heroOrb1: "rgba(212,168,75,0.1)", heroOrb2: "rgba(212,168,75,0.06)",
+    bodyBg: "#FFFFFF", bodyBorder: "rgba(212,168,75,0.45)",
+    cardShadow: "0 6px 36px rgba(0,0,0,0.28), 0 2px 10px rgba(212,168,75,0.15)",
+    pillBg: "#FBF6ED", pillText: "#6A4410", pillBorder: "#E8C870",
+    bestForColor: "#6A4410", priceColor: "#150E00", mutedColor: "#6A5020",
+    btnBg: "linear-gradient(135deg, #B87C20, #7A5010)", btnText: "#FFFFFF",
+  };
 }
-
-function getTier(price: number): string {
-  if (price < 20) return "Budget";
-  if (price < 100) return "Standard";
-  return "Premium";
-}
-
-// Each entry: [cardBg, borderColor, pillBg, pillText, taglineColor, badgeBg, badgeText, btnBg, btnHover]
-const CARD_PALETTES = [
-  // Slate Navy
-  {
-    cardBg: "#EEF2F8", border: "#2B4C7E40", pillBg: "#2B4C7E14",
-    pillText: "#2B4C7E", tagline: "#2B4C7EA0", badgeBg: "#2B4C7E18",
-    badgeText: "#2B4C7E", btnBg: "#2B4C7E", btnHover: "#1E3A6A",
-  },
-  // Sage Forest
-  {
-    cardBg: "#EEF5F1", border: "#3D6B5C40", pillBg: "#3D6B5C14",
-    pillText: "#3D6B5C", tagline: "#3D6B5CA0", badgeBg: "#3D6B5C18",
-    badgeText: "#3D6B5C", btnBg: "#3D6B5C", btnHover: "#2F5448",
-  },
-  // Terracotta
-  {
-    cardBg: "#F7EFED", border: "#9C4A2E40", pillBg: "#9C4A2E14",
-    pillText: "#9C4A2E", tagline: "#9C4A2EA0", badgeBg: "#9C4A2E18",
-    badgeText: "#9C4A2E", btnBg: "#9C4A2E", btnHover: "#7E3A23",
-  },
-  // Mauve Plum
-  {
-    cardBg: "#F3EEF7", border: "#6A4C7E40", pillBg: "#6A4C7E14",
-    pillText: "#6A4C7E", tagline: "#6A4C7EA0", badgeBg: "#6A4C7E18",
-    badgeText: "#6A4C7E", btnBg: "#6A4C7E", btnHover: "#563D68",
-  },
-  // Warm Amber
-  {
-    cardBg: "#F7F2E8", border: "#8A680E40", pillBg: "#8A680E14",
-    pillText: "#8A680E", tagline: "#8A680EA0", badgeBg: "#8A680E18",
-    badgeText: "#8A680E", btnBg: "#8A680E", btnHover: "#70530B",
-  },
-  // Teal Slate
-  {
-    cardBg: "#EBF4F5", border: "#2A6E7E40", pillBg: "#2A6E7E14",
-    pillText: "#2A6E7E", tagline: "#2A6E7EA0", badgeBg: "#2A6E7E18",
-    badgeText: "#2A6E7E", btnBg: "#2A6E7E", btnHover: "#1F5762",
-  },
-] as const;
 
 // ── Step indicator ─────────────────────────────────────────────────────
 
@@ -164,86 +236,150 @@ function StepIndicator({ current }: { current: Step }) {
   );
 }
 
-// ── Package card ───────────────────────────────────────────────────────
+// ── Package card — split hero / body design ────────────────────────────
 
 function PackageCard({
   pkg,
   onSelect,
-  colorIndex,
 }: {
   pkg: HotspotPackage;
   onSelect: (pkg: HotspotPackage) => void;
-  colorIndex: number;
 }) {
-  const tagline = getTagline(pkg);
-  const tier = getTier(pkg.price);
-  const palette = CARD_PALETTES[colorIndex % CARD_PALETTES.length];
+  const theme = getCardTheme(pkg);
+  const { Icon } = theme;
   const speedLabel =
     pkg.speedDownload >= 1000 ? "Unlimited" : `${pkg.speedDownload} Mbps`;
 
   return (
     <div
-      style={{ backgroundColor: palette.cardBg, borderColor: palette.border }}
-      className="border rounded-xl p-5 cursor-pointer h-full flex flex-col transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5"
+      style={{
+        border: `1px solid ${theme.bodyBorder}`,
+        boxShadow: theme.cardShadow,
+      }}
+      className="rounded-2xl overflow-hidden cursor-pointer h-full flex flex-col transition-all duration-200 hover:shadow-2xl hover:-translate-y-1.5"
       onClick={() => onSelect(pkg)}
       role="button"
       tabIndex={0}
       onKeyDown={(e) => e.key === "Enter" && onSelect(pkg)}
       aria-label={`Select ${pkg.packageName} package`}
     >
-      {/* Name + tier badge */}
-      <div className="flex items-start justify-between gap-2 mb-2">
-        <h3 className="font-semibold text-foreground text-sm leading-snug">
+      {/* ── HERO ── bold gradient, full colour identity */}
+      <div
+        style={{ background: theme.heroGradient }}
+        className="relative px-5 pt-5 pb-6 overflow-hidden"
+      >
+        {/* Decorative orbs — depth without noise */}
+        <div
+          style={{ background: theme.heroOrb1 }}
+          className="absolute -top-5 -right-5 w-32 h-32 rounded-full pointer-events-none"
+        />
+        <div
+          style={{ background: theme.heroOrb2 }}
+          className="absolute -bottom-8 -left-8 w-24 h-24 rounded-full pointer-events-none"
+        />
+
+        {/* Badge row */}
+        <div className="relative z-10 flex items-center justify-between mb-4">
+          <span
+            style={{ background: theme.heroBadgeBg, color: theme.heroBadgeText }}
+            className="text-[10px] font-bold px-2.5 py-1 rounded-full tracking-widest uppercase"
+          >
+            {theme.badge}
+          </span>
+          {pkg.speedDownload >= 1000 && (
+            <span
+              style={{ background: theme.heroBadgeBg, color: theme.heroBadgeText }}
+              className="text-[10px] font-bold px-2.5 py-1 rounded-full tracking-wider"
+            >
+              ∞ Unlimited
+            </span>
+          )}
+        </div>
+
+        {/* Icon bubble */}
+        <div
+          style={{ background: theme.heroIconBg }}
+          className="relative z-10 w-11 h-11 rounded-xl flex items-center justify-center mb-3"
+        >
+          <Icon className="w-5 h-5" style={{ color: theme.heroIconColor }} />
+        </div>
+
+        {/* Package name + tagline */}
+        <h3
+          style={{ color: theme.heroText }}
+          className="relative z-10 font-bold text-base leading-tight mb-1"
+        >
           {pkg.packageName}
         </h3>
-        <span
-          style={{ backgroundColor: palette.badgeBg, color: palette.badgeText }}
-          className="shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full"
+        <p
+          style={{ color: theme.heroSubtext }}
+          className="relative z-10 text-[11px] leading-relaxed"
         >
-          {tier}
-        </span>
+          {theme.tagline}
+        </p>
       </div>
 
-      {/* Tagline */}
-      <p
-        style={{ color: palette.tagline }}
-        className="text-xs italic leading-snug mb-3"
+      {/* ── BODY ── clean white, specs and CTA */}
+      <div
+        style={{ background: theme.bodyBg }}
+        className="px-5 pt-4 pb-5 flex flex-col gap-3 flex-1"
       >
-        {tagline}
-      </p>
+        {/* Spec pills */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <span
+            style={{
+              background: theme.pillBg,
+              color: theme.pillText,
+              border: `1px solid ${theme.pillBorder}`,
+            }}
+            className="inline-flex items-center gap-1.5 text-[11px] font-semibold rounded-lg px-2.5 py-1"
+          >
+            <Zap className="w-3 h-3" />
+            {speedLabel}
+          </span>
+          <span
+            style={{
+              background: theme.pillBg,
+              color: theme.pillText,
+              border: `1px solid ${theme.pillBorder}`,
+            }}
+            className="inline-flex items-center gap-1.5 text-[11px] font-semibold rounded-lg px-2.5 py-1"
+          >
+            <Clock className="w-3 h-3" />
+            {pkg.validityValue} {pkg.validityType}
+          </span>
+        </div>
 
-      <Separator className="mb-3" />
+        {/* Best for */}
+        <p style={{ color: theme.mutedColor }} className="text-[11px] leading-relaxed">
+          <span style={{ color: theme.bestForColor }} className="font-semibold">
+            Best for:
+          </span>{" "}
+          {theme.bestFor}
+        </p>
 
-      {/* Speed + validity pills */}
-      <div className="flex items-center gap-2 flex-wrap">
-        <span
-          style={{ backgroundColor: palette.pillBg, color: palette.pillText }}
-          className="inline-flex items-center gap-1 text-xs font-medium rounded-full px-2.5 py-1"
-        >
-          <Zap className="w-3 h-3" />
-          {speedLabel}
-        </span>
-        <span
-          style={{ backgroundColor: palette.pillBg, color: palette.pillText }}
-          className="inline-flex items-center gap-1 text-xs font-medium rounded-full px-2.5 py-1"
-        >
-          <Clock className="w-3 h-3" />
-          {pkg.validityValue} {pkg.validityType}
-        </span>
-      </div>
+        {/* Price + CTA pushed to bottom */}
+        <div className="mt-auto space-y-3 pt-2">
+          <div>
+            <span
+              style={{ color: theme.priceColor }}
+              className="text-[30px] font-extrabold tabular-nums leading-none tracking-tight"
+            >
+              KES {pkg.price.toLocaleString()}
+            </span>
+            <p style={{ color: theme.mutedColor }} className="text-[11px] mt-0.5">
+              for {pkg.validityValue} {pkg.validityType}
+            </p>
+          </div>
 
-      {/* Price + CTA pushed to bottom */}
-      <div className="mt-auto pt-4 flex flex-col gap-2">
-        <span className="text-2xl font-bold text-foreground tabular-nums">
-          KES {pkg.price.toLocaleString()}
-        </span>
-        <button
-          type="button"
-          style={{ backgroundColor: palette.btnBg }}
-          className="w-full h-9 text-xs text-white font-semibold rounded-lg transition-opacity hover:opacity-85 active:opacity-70"
-        >
-          Buy Now
-        </button>
+          <button
+            type="button"
+            style={{ background: theme.btnBg, color: theme.btnText }}
+            className="w-full h-10 rounded-xl text-xs font-bold tracking-wide transition-opacity hover:opacity-90 active:opacity-75"
+          >
+            Connect Now →
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -338,10 +474,10 @@ export default function HotspotFlow({
         const response = await initiateHotspotPayment({
           packageId: selectedPackage.idxno,
           phone: values.phone,
-          paymentMode: paymentMethod,
-          macAddress,
-          clientMac: macAddress,
-          clientIp: ipAddress,
+          paymentMode: paymentMethod.toLocaleUpperCase(),
+          macAddress: '',
+          clientMac: '',
+          clientIp: '',
         });
 
         if (response.success) {
@@ -482,7 +618,6 @@ export default function HotspotFlow({
                     key={pkg.idxno}
                     pkg={pkg}
                     onSelect={handleSelectPackage}
-                    colorIndex={i}
                   />
                 ))
               ) : (

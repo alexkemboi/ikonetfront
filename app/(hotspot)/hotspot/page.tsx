@@ -39,9 +39,9 @@ export default async function HotspotPage({
     : sessionResponse.message;
 
   return (
-    <div className="min-h-screen flex flex-col px-8 sm:px-8 py-8">
+    <div className="min-h-screen flex flex-col px-5 sm:px-8 py-8">
       {/* Header */}
-      <div className="mb-6 text-center space-y-2">
+      <div className="mb-8 text-center space-y-2">
         <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-primary mb-1">
           <Wifi className="w-7 h-7 text-primary-foreground" />
         </div>
@@ -49,21 +49,21 @@ export default async function HotspotPage({
           <h1 className="text-2xl font-bold tracking-tight text-foreground">
             IKONEX Hotspot
           </h1>
-          <a
-            href="tel:0700000000"
-            className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary mt-1 hover:underline"
-          >
-            <Phone className="w-3.5 h-3.5" />
-            Customer Care: 0700 000 000
-          </a>
+          <p className="text-xs text-muted-foreground mt-1">
+            Premium High-Speed Internet Access
+          </p>
         </div>
-        <p className="text-xs text-muted-foreground">
-          Premium High-Speed Internet Access
-        </p>
+        <a
+          href="tel:0700000000"
+          className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline"
+        >
+          <Phone className="w-3.5 h-3.5" />
+          Customer Care: 0700 000 000
+        </a>
       </div>
 
-      {/* Main card — full width, fills remaining height */}
-      <div className="flex-1 max-w-8xl w-full">
+      {/* Main flow */}
+      <div className="flex-1 w-full">
         <HotspotFlow
           initialPackages={packages}
           initialHasActiveSession={hasActiveSession}
