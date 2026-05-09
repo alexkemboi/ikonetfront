@@ -49,7 +49,16 @@ export const config = {
         "/hotspot",
         "/settings/:path*",
         "/system/:path*",
-        "/:path*",
+        "/communication",
+        "/communication/:path*",
+        "/network/:path*",
+        "/finance",
+        "/finance/:path*",
+        "/portal/:path*",
+        "/customers",
+        "/customers/:path*",
+        "/dashboard",
+        "/dashboard/:path*"
 
     ],
 };
