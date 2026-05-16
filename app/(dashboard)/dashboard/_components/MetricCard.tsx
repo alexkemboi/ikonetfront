@@ -1,118 +1,214 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { LucideIcon } from "lucide-react";
-import { cn } from "@/lib/utils";
 
 interface MetricCardProps {
   title: string;
-  value: number;
+  value?: number;
   subtitle?: string;
   icon: LucideIcon;
-  colorScheme: "navy" | "green" | "orange" | "red" | "purple";
+  colorScheme?:
+    | "navy"
+    | "green"
+    | "purple"
+    | "orange"
+    | "red"
+    | "cyan";
   delay?: number;
-  href?: string;
 }
 
-const colorMap: Record<
-  MetricCardProps["colorScheme"],
-  { bg: string; iconBg: string; iconColor: string; ring: string }
-> = {
+const colorVariants = {
   navy: {
-    bg: "from-[#103766] to-[#1a4f8a]",
-    iconBg: "bg-white/20",
-    iconColor: "text-white",
-    ring: "ring-[#103766]/20",
+    card: "bg-[#EAF2FF]",
+    icon: "bg-[#D7E7FF]",
+    iconColor: "text-[#1D4ED8]",
+    title: "text-[#0F172A]",
+    subtitle: "text-[#64748B]",
   },
+
   green: {
-    bg: "from-[#2E865F] to-[#38a374]",
-    iconBg: "bg-white/20",
-    iconColor: "text-white",
-    ring: "ring-[#2E865F]/20",
+    card: "bg-[#ECFDF3]",
+    icon: "bg-[#D1FAE5]",
+    iconColor: "text-[#059669]",
+    title: "text-[#0F172A]",
+    subtitle: "text-[#64748B]",
   },
-  orange: {
-    bg: "from-[#FF9800] to-[#ffac33]",
-    iconBg: "bg-white/20",
-    iconColor: "text-white",
-    ring: "ring-[#FF9800]/20",
-  },
-  red: {
-    bg: "from-[#e53935] to-[#ef5350]",
-    iconBg: "bg-white/20",
-    iconColor: "text-white",
-    ring: "ring-red-500/20",
-  },
+
   purple: {
-    bg: "from-[#6d28d9] to-[#7c3aed]",
-    iconBg: "bg-white/20",
-    iconColor: "text-white",
-    ring: "ring-purple-500/20",
+    card: "bg-[#F5F0FF]",
+    icon: "bg-[#E9D8FD]",
+    iconColor: "text-[#7C3AED]",
+    title: "text-[#0F172A]",
+    subtitle: "text-[#64748B]",
+  },
+
+  orange: {
+    card: "bg-[#FFF4E6]",
+    icon: "bg-[#FFE4C7]",
+    iconColor: "text-[#EA580C]",
+    title: "text-[#0F172A]",
+    subtitle: "text-[#64748B]",
+  },
+
+  red: {
+    card: "bg-[#FEF2F2]",
+    icon: "bg-[#FEE2E2]",
+    iconColor: "text-[#DC2626]",
+    title: "text-[#0F172A]",
+    subtitle: "text-[#64748B]",
+  },
+
+  cyan: {
+    card: "bg-[#ECFEFF]",
+    icon: "bg-[#CFFAFE]",
+    iconColor: "text-[#0891B2]",
+    title: "text-[#0F172A]",
+    subtitle: "text-[#64748B]",
   },
 };
 
-/** Animates a number from 0 to `target` over ~800ms */
-function useCountUp(target: number, duration = 800) {
-  const [display, setDisplay] = useState(0);
-  const frameRef = useRef<number | null>(null);
+const safeNumber = (
+  value?: number
+): number => {
+  const parsed = Number(value);
 
-  useEffect(() => {
-    const start = performance.now();
-    function tick(now: number) {
-      const elapsed = Math.min((now - start) / duration, 1);
-      const eased = 1 - Math.pow(1 - elapsed, 3); // easeOutCubic
-      setDisplay(Math.round(eased * target));
-      if (elapsed < 1) {
-        frameRef.current = requestAnimationFrame(tick);
-      }
-    }
-    frameRef.current = requestAnimationFrame(tick);
-    return () => {
-      if (frameRef.current) cancelAnimationFrame(frameRef.current);
-    };
-  }, [target, duration]);
+  return Number.isFinite(parsed)
+    ? parsed
+    : 0;
+};
 
-  return display;
-}
+const formatValue = (
+  title: string,
+  value?: number
+) => {
+  const safe = safeNumber(value);
+
+  if (
+    title.toLowerCase().includes("revenue") ||
+    title.toLowerCase().includes("balance") ||
+    title === "ARPU"
+  ) {
+    return new Intl.NumberFormat("en-KE", {
+      style: "currency",
+      currency: "KES",
+      notation: "compact",
+      maximumFractionDigits: 1,
+    }).format(safe);
+  }
+
+  if (
+    title.toLowerCase().includes("uptime")
+  ) {
+    return `${safe}%`;
+  }
+
+  if (
+    title.toLowerCase().includes("bandwidth")
+  ) {
+    return `${safe}M`;
+  }
+
+  return new Intl.NumberFormat("en-US", {
+    notation: "compact",
+    maximumFractionDigits: 1,
+  }).format(safe);
+};
 
 export function MetricCard({
   title,
-  value,
-  subtitle,
+  value = 0,
+  subtitle = "",
   icon: Icon,
-  colorScheme,
+  colorScheme = "navy",
   delay = 0,
 }: MetricCardProps) {
-  const colors = colorMap[colorScheme];
-  const displayValue = useCountUp(value);
+  const colors =
+    colorVariants[colorScheme];
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 24, scale: 0.96 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      transition={{ duration: 0.4, delay, ease: "easeOut" }}
-      className={cn(
-        "relative overflow-hidden rounded-2xl bg-gradient-to-br p-6 text-white ring-4",
-        colors.bg,
-        colors.ring
-      )}
+      initial={{
+        opacity: 0,
+        y: 8,
+      }}
+      animate={{
+        opacity: 1,
+        y: 0,
+      }}
+      whileHover={{
+        y: -1,
+      }}
+      transition={{
+        duration: 0.2,
+        delay,
+      }}
+      className={`
+        relative overflow-hidden rounded-lg
+        ${colors.card}
+        border border-black/[0.04]
+        px-3 py-2.5
+        shadow-[0_1px_2px_rgba(0,0,0,0.04)]
+        transition-all duration-200
+        hover:shadow-[0_4px_10px_rgba(0,0,0,0.06)]
+      `}
     >
-      {/* Decorative background circle */}
-      <div className="pointer-events-none absolute -right-6 -top-6 h-28 w-28 rounded-full bg-white/10" />
-      <div className="pointer-events-none absolute -bottom-8 -right-4 h-20 w-20 rounded-full bg-white/5" />
-
-      <div className="relative flex items-start justify-between">
-        <div>
-          <p className="text-sm font-medium text-white/80">{title}</p>
-          <p className="mt-1 text-4xl font-bold tracking-tight">
-            {displayValue.toLocaleString()}
+      <div className="flex items-start justify-between gap-2">
+        {/* Content */}
+        <div className="min-w-0 flex-1">
+          <p
+            className={`
+              text-[9px]
+              font-semibold
+              uppercase
+              tracking-[0.08em]
+              leading-none
+              ${colors.subtitle}
+            `}
+          >
+            {title}
           </p>
-          {subtitle && (
-            <p className="mt-1 text-xs text-white/70">{subtitle}</p>
+
+          <h3
+            className={`
+              mt-1.5
+              text-lg lg:text-xl
+              font-bold
+              tracking-tight
+              leading-none
+              ${colors.title}
+            `}
+          >
+            {formatValue(title, value)}
+          </h3>
+
+          {!!subtitle && (
+            <p
+              className={`
+                mt-1
+                truncate
+                text-[10px]
+                leading-tight
+                ${colors.subtitle}
+              `}
+            >
+              {subtitle}
+            </p>
           )}
         </div>
-        <div className={cn("rounded-xl p-3", colors.iconBg)}>
-          <Icon className={cn("h-6 w-6", colors.iconColor)} />
+
+        {/* Icon */}
+        <div
+          className={`
+            flex h-8 w-8 shrink-0
+            items-center justify-center
+            rounded-lg
+            ${colors.icon}
+          `}
+        >
+          <Icon
+            className={`h-4 w-4 ${colors.iconColor}`}
+          />
         </div>
       </div>
     </motion.div>

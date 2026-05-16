@@ -38,7 +38,23 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import type { IPMapping, IPPool, CustomerOption, PackageOption } from "../page";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
+import {
+  MoreHorizontal,
+  Pencil,
+  Trash2,
+  Eye,
+  Copy,
+  Ban,
+  RotateCcw,
+} from "lucide-react";
 interface Props {
   mappings: IPMapping[];
   pools: IPPool[];
@@ -172,7 +188,66 @@ function MappingRow({ m }: { m: IPMapping }) {
         <p className="text-[11px] text-muted-foreground mt-0.5 truncate">{m.package}</p>
       </div>
       <div className="flex justify-end">
-        <StatusBadge status={m.status} />
+       <div className="flex items-center justify-end gap-2">
+  <StatusBadge status={m.status} />
+
+  <DropdownMenu>
+    <DropdownMenuTrigger asChild>
+      <Button
+        variant="ghost"
+        size="icon"
+      className="
+  h-8 w-8 rounded-lg
+  text-muted-foreground
+  hover:bg-muted
+  hover:text-foreground
+  transition-colors
+"
+      >
+        <MoreHorizontal className="h-4 w-4" />
+      </Button>
+    </DropdownMenuTrigger>
+
+    <DropdownMenuContent
+      align="end"
+      className="w-48"
+    >
+      <DropdownMenuItem className="gap-2">
+        <Eye className="h-4 w-4" />
+        View Mapping
+      </DropdownMenuItem>
+
+      <DropdownMenuItem className="gap-2">
+        <Pencil className="h-4 w-4" />
+        Edit Mapping
+      </DropdownMenuItem>
+
+      <DropdownMenuItem className="gap-2">
+        <Copy className="h-4 w-4" />
+        Copy IP Address
+      </DropdownMenuItem>
+
+      <DropdownMenuSeparator />
+
+      {m.status === "active" ? (
+        <DropdownMenuItem className="gap-2 text-amber-600">
+          <Ban className="h-4 w-4" />
+          Suspend Lease
+        </DropdownMenuItem>
+      ) : (
+        <DropdownMenuItem className="gap-2 text-emerald-600">
+          <RotateCcw className="h-4 w-4" />
+          Restore Lease
+        </DropdownMenuItem>
+      )}
+
+      <DropdownMenuItem className="gap-2 text-red-600">
+        <Trash2 className="h-4 w-4" />
+        Delete Mapping
+      </DropdownMenuItem>
+    </DropdownMenuContent>
+  </DropdownMenu>
+</div>
       </div>
     </div>
   );
@@ -579,7 +654,19 @@ export default function CustomerIPMappingView({ mappings, pools, customers, pack
               <Router className="w-3 h-3" /> Router
             </span>
             <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground text-center">Package</span>
-            <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground text-right">Status</span>
+            <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground text-right">
+
+
+              <div className="flex items-center justify-between">
+  <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+    Status
+  </span>
+
+  <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground text-right pr-2">
+    Actions
+  </span>
+</div>
+            </span>
           </div>
 
           {/* Rows */}
