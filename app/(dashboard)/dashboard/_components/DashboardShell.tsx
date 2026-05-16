@@ -501,7 +501,7 @@ export function DashboardShell({
           />
 
           <Tooltip
-            formatter={(value: number) =>
+            formatter={(value: any) =>
               formatKES(value)
             }
           />

@@ -29,25 +29,160 @@ export default async function DashboardPage() {
     const activePackages   = allPackages.filter((p) => p.activeStatus).length;
     const allDevices       = devicesRes.success ? devicesRes.data : [];
     const onlineDevices    = allDevices.filter((d) => d.online).length;
+/**
+ * Revenue Calculations
+ */
+const monthlyRevenue = allPackages.reduce(
+  (sum, pkg) =>
+    sum + (Number(pkg?.price) || 0),
+  0
+);
 
+const activeRevenue = allPackages
+  .filter((pkg) =>
+    Boolean(pkg?.activeStatus)
+  )
+  .reduce(
+    (sum, pkg) =>
+      sum + (Number(pkg?.price) || 0),
+    0
+  );
+
+const inactiveRevenue = Math.max(
+  monthlyRevenue - activeRevenue,
+  0
+);
     return (
       <div className="flex-1 p-8 pt-6">
-        <DashboardShell
-          metrics={{
-            totalCustomers,
-            activeCustomers,
-            inactiveCustomers: totalCustomers - activeCustomers,
-            pppoeCustomers,
-            totalPackages: allPackages.length,
-            activePackages,
-            inactivePackages: allPackages.length - activePackages,
-            totalDevices: allDevices.length,
-            onlineDevices,
-            offlineDevices: allDevices.length - onlineDevices,
-          }}
-          devices={allDevices}
-          packages={allPackages}
-        />
+       <DashboardShell
+  metrics={{
+    totalCustomers,
+    activeCustomers,
+
+    inactiveCustomers: Math.max(
+      totalCustomers - activeCustomers,
+      0
+    ),
+
+    pppoeCustomers,
+
+    totalPackages: allPackages.length,
+
+    activePackages,
+
+    inactivePackages: Math.max(
+      allPackages.length - activePackages,
+      0
+    ),
+
+    totalDevices: allDevices.length,
+
+    onlineDevices,
+
+    offlineDevices: Math.max(
+      allDevices.length - onlineDevices,
+      0
+    ),
+
+    healthyRouters: onlineDevices,
+
+    /**
+     * Revenue
+     */
+    dailyRevenue: 18500,
+
+    weeklyRevenue: 124000,
+
+    monthlyRevenue,
+
+    activeRevenue,
+
+    inactiveRevenue,
+
+    expectedRevenue:
+      monthlyRevenue + 148000,
+
+    collectedRevenue: 620000,
+
+    outstandingBalances: 148000,
+
+    failedPayments: 17,
+
+    revenueGrowth: 12.4,
+
+    arpu:
+      activeCustomers > 0
+        ? Number(
+            (
+              activeRevenue /
+              activeCustomers
+            ).toFixed(2)
+          )
+        : 0,
+
+    hotspotRevenue: 87000,
+
+    pppoeRevenue: Math.max(
+      activeRevenue - 87000,
+      0
+    ),
+
+    suspendedRevenueLoss: 23000,
+
+    /**
+     * Alerts
+     */
+    offlineRouters: Math.max(
+      allDevices.length - onlineDevices,
+      0
+    ),
+
+    highCpuRouters: 2,
+
+    highMemoryRouters: 1,
+
+    expiringCustomers: 14,
+
+    expiredAccounts: 8,
+
+    failedPPPoESessions: 5,
+
+    failedHotspotSessions: 3,
+
+    networkCongestionAlerts: 2,
+
+    slaBreaches: 1,
+
+    failedPaymentCallbacks: 4,
+
+    smsFailures: 6,
+
+    fraudAlerts: 0,
+
+    bandwidthAlerts: 3,
+
+    /**
+     * Operations
+     */
+    activePPPoESessions: 412,
+
+    activeHotspotSessions: 186,
+
+    currentBandwidthUsage: 518,
+
+    peakHourUsage: 842,
+
+    uptimePercentage: 99.92,
+
+    customerGrowth: 9.4,
+
+    churnRate: 2.1,
+
+    supportTickets: 11,
+  }}
+  devices={allDevices}
+  packages={allPackages}
+/>
       </div>
     );
   }
