@@ -29,7 +29,7 @@ export const adminNavGroups: NavGroup[] = [
         icon: "network",
         children: [
           { href: "/network/mikrotik",   label: "MikroTik Devices", icon: "router"  },
-          { href: "/network/routers",    label: "Router Devices",   icon: "server"  },
+          { href: "/network/routers",    label: "Network Routers",  icon: "server"  },
           { href: "/network/ip-mapping", label: "IP Mapping",       icon: "map-pin" },
         ],
       },

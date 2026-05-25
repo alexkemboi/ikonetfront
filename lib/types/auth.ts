@@ -8,8 +8,8 @@ export type ApiResponse<T = unknown> = {
   status: number;
   success: boolean;
   message: string;
-  data: T;
-  timestamp: string;
+  data: T | null | undefined | [];
+  timestamp?: string;
 };
 
 /** Login endpoint response data */
