@@ -156,7 +156,7 @@ function MappingRow({ m }: { m: IPMapping }) {
   return (
     <div className="group grid grid-cols-[1fr_auto_1fr_auto_1fr_120px_100px] items-center gap-2 px-4 py-3 rounded-lg border border-border bg-card hover:border-primary/30 hover:shadow-sm transition-all">
       <div className="flex items-center gap-2.5 min-w-0">
-        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
           <User className="w-4 h-4 text-primary" />
         </div>
         <div className="min-w-0">
@@ -164,16 +164,16 @@ function MappingRow({ m }: { m: IPMapping }) {
           <p className="text-[11px] text-muted-foreground truncate">{m.customerEmail || "—"}</p>
         </div>
       </div>
-      <ChevronRight className="w-4 h-4 text-muted-foreground/40 flex-shrink-0" />
+      <ChevronRight className="w-4 h-4 text-muted-foreground/40 shrink-0" />
       <div className="min-w-0">
         <p className="font-mono text-sm font-semibold text-foreground tracking-tight">{m.ipAddress}</p>
         <p className="font-mono text-[11px] text-muted-foreground tracking-wide">
           {m.macAddress !== "00:00:00:00:00:00" ? m.macAddress : "—"}
         </p>
       </div>
-      <ChevronRight className="w-4 h-4 text-muted-foreground/40 flex-shrink-0" />
+      <ChevronRight className="w-4 h-4 text-muted-foreground/40 shrink-0" />
       <div className="flex items-center gap-2 min-w-0">
-        <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
+        <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center shrink-0">
           <Router className="w-4 h-4 text-muted-foreground" />
         </div>
         <div className="min-w-0">

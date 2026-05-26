@@ -20,7 +20,7 @@ interface ManagementDashboardShellProps {
   totalCustomers: number;
   activeCustomers: number;
   pppoeCustomers: number;
-  packages: InternetPackage[];
+  packages: InternetPackage[] | [];
   expiringCustomers: Customer[];
   revenuePotential: number;
   greeting: string;
@@ -50,7 +50,7 @@ export function ManagementDashboardShell({
         transition={{ duration: 0.35 }}
       >
         <div className="flex items-center gap-2">
-          <Badge className="bg-[var(--warning)] text-white text-xs">Management</Badge>
+          <Badge className="bg-warning text-white text-xs">Management</Badge>
         </div>
         <h1 className="text-2xl font-bold tracking-tight mt-1">{greeting}</h1>
         <p className="text-sm text-muted-foreground">Business overview &amp; subscription health</p>
@@ -117,7 +117,7 @@ export function ManagementDashboardShell({
             <CardContent>
               {expiringCustomers.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
-                  <TrendingUp className="h-8 w-8 mb-2 text-[var(--success)]" />
+                  <TrendingUp className="h-8 w-8 mb-2 text-success" />
                   <p className="text-sm font-medium">All subscriptions are healthy</p>
                   <p className="text-xs">No renewals needed in the next 30 days</p>
                 </div>
@@ -160,7 +160,7 @@ export function ManagementDashboardShell({
             <CardHeader className="pb-3">
               <div className="flex items-center gap-2">
                 <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-green-100">
-                  <TrendingUp className="h-4 w-4 text-[var(--success)]" />
+                  <TrendingUp className="h-4 w-4 text-success" />
                 </div>
                 <CardTitle className="text-base">Package Portfolio</CardTitle>
               </div>
@@ -185,7 +185,7 @@ export function ManagementDashboardShell({
                         </p>
                       </div>
                       <div className="shrink-0 ml-2 text-right space-y-1">
-                        <p className="text-sm font-bold text-[var(--success)]">
+                        <p className="text-sm font-bold text-success">
                           KES {pkg.price.toLocaleString()}
                         </p>
                         <Badge

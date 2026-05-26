@@ -65,8 +65,8 @@ export function CustomerMetricsPanel({
       label: "Active Accounts",
       value: active,
       total,
-      color: "bg-[var(--success)]",
-      icon: <UserCheck className="h-4 w-4 text-[var(--success)]" />,
+      color: "bg-success",
+      icon: <UserCheck className="h-4 w-4 text-success" />,
     },
     {
       label: "Inactive Accounts",

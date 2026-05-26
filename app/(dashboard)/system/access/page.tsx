@@ -39,10 +39,10 @@ export default async function RolesPage() {
     getSystemUsers(),
   ]);
 
-  const catalogMenus = catalogResult.success ? catalogResult.data : [];
+  const catalogMenus = catalogResult.success ? (catalogResult.data ?? []) : [];
   const menuTree: MenuNode[] = apiMenusToMenuTree(catalogMenus);
 
-  const apiRoles = rolesResult.success ? rolesResult.data : [];
+  const apiRoles = rolesResult.success ? (rolesResult.data ?? []) : [];
 
   // Fetch per-role menus and users in parallel
   const [menusResults, usersResults] = await Promise.all([

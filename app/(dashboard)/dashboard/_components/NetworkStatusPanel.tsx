@@ -24,9 +24,9 @@ export function NetworkStatusPanel({
 
   const healthColor =
     healthPercent === 100
-      ? "bg-[var(--success)]"
+      ? "bg-success"
       : healthPercent >= 60
-      ? "bg-[var(--warning)]"
+      ? "bg-warning"
       : "bg-destructive";
 
   return (
@@ -52,9 +52,9 @@ export function NetworkStatusPanel({
             <Badge
               className={
                 healthPercent === 100
-                  ? "bg-[var(--success)] text-white"
+                  ? "bg-success text-white"
                   : healthPercent >= 60
-                  ? "bg-[var(--warning)] text-white"
+                  ? "bg-warning text-white"
                   : ""
               }
               variant={healthPercent < 60 ? "destructive" : "default"}
@@ -99,7 +99,7 @@ export function NetworkStatusPanel({
                   <div className="flex items-center gap-2 min-w-0">
                     <span
                       className={`h-2 w-2 shrink-0 rounded-full ${
-                        device.online ? "bg-[var(--success)]" : "bg-muted-foreground"
+                        device.online ? "bg-success" : "bg-muted-foreground"
                       }`}
                     />
                     <div className="min-w-0">

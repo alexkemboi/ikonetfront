@@ -25,9 +25,9 @@ export default async function DashboardPage() {
     const totalCustomers   = allRes.data?.totalElements ?? 0;
     const activeCustomers  = activeRes.data?.totalElements ?? 0;
     const pppoeCustomers   = pppoeRes.data?.totalElements ?? 0;
-    const allPackages      = packagesRes.success ? packagesRes.data : [];
+    const allPackages      = packagesRes.success ? (packagesRes.data ?? []) : [];
     const activePackages   = allPackages.filter((p) => p.activeStatus).length;
-    const allDevices       = devicesRes.success ? devicesRes.data : [];
+    const allDevices       = devicesRes.success ? (devicesRes.data ?? []) : [];
     const onlineDevices    = allDevices.filter((d) => d.online).length;
 /**
  * Revenue Calculations
@@ -202,7 +202,7 @@ const inactiveRevenue = Math.max(
     const totalCustomers  = allRes.data?.totalElements ?? 0;
     const activeCustomers = activeRes.data?.totalElements ?? 0;
     const allPPPoE        = pppoeRes.success ? pppoeRes.data.content : [];
-    const packages        = packagesRes.success ? packagesRes.data : [];
+    const packages        = packagesRes.success ? (packagesRes.data ?? []) : [];
 
     const expiringCustomers = allPPPoE.filter((c: any) => {
       if (!c.expiryDate) return false;

@@ -59,7 +59,7 @@ export function CustomerSubscriptionPanel({
           <CardTitle className="text-lg">Subscription</CardTitle>
           {customer.isSubActive !== null && (
             <Badge
-              className={customer.isSubActive ? "bg-[var(--success)] text-white" : ""}
+              className={customer.isSubActive ? "bg-success text-white" : ""}
               variant={customer.isSubActive ? "default" : "destructive"}
             >
               {customer.isSubActive ? "Active" : "Inactive"}

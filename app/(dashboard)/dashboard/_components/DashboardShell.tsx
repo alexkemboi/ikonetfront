@@ -369,7 +369,7 @@ export function DashboardShell({
         className="rounded-xl border bg-card p-5"
       >
         <div className="flex items-center gap-2 mb-4">
-          <ShieldAlert className="h-4 w-4 text-[var(--warning)]" />
+          <ShieldAlert className="h-4 w-4 text-warning" />
 
           <h2 className="text-sm font-semibold">
             Critical Alerts
@@ -448,7 +448,7 @@ export function DashboardShell({
       <TrendingUp className="h-4 w-4 text-muted-foreground" />
     </div>
 
-    <div className="h-[240px]">
+    <div className="h-60">
       <ResponsiveContainer
         width="100%"
         height="100%"
@@ -550,7 +550,7 @@ export function DashboardShell({
       <Users className="h-4 w-4 text-muted-foreground" />
     </div>
 
-    <div className="h-[240px]">
+    <div className="h-60">
       <ResponsiveContainer
         width="100%"
         height="100%"
@@ -715,7 +715,7 @@ function AlertBadge({
     <div
       className={`rounded-lg border px-3 py-2 text-xs transition-colors ${
         critical
-          ? "border-[var(--warning)]/30 bg-[var(--warning)]/10"
+          ? "border-warning/30 bg-warning/10"
           : "border-border"
       }`}
     >
@@ -766,8 +766,8 @@ function StatusPill({
       <span
         className={`h-2 w-2 rounded-full ${
           ok
-            ? "bg-[var(--success)]"
-            : "bg-[var(--warning)]"
+            ? "bg-success"
+            : "bg-warning"
         }`}
       />
 

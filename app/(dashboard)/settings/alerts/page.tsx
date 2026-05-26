@@ -5,7 +5,7 @@ export const metadata = { title: "Alert Channels — Beesmart" };
 
 export default async function AlertsPage() {
   const result   = await getProvidersAction();
-  const providers = result.success ? result.data : [];
+  const providers = result.success ? (result.data ?? []) : [];
 
   return (
     <div className="p-6">

@@ -27,7 +27,7 @@ export default async function ManagementDashboardPage() {
   const totalCustomers = allCustomersRes.data?.totalElements ?? 0;
   const activeCustomers = activeCustomersRes.data?.totalElements ?? 0;
   const allPPPoE = pppoeCustomersRes.success ? pppoeCustomersRes.data.content : [];
-  const packages = packagesRes.success ? packagesRes.data : [];
+  const packages = packagesRes.success ? (packagesRes.data ?? []) : [];
 
   // Customers whose subscription expires within 30 days
   const expiringCustomers = allPPPoE.filter((c:any) => {
@@ -39,8 +39,8 @@ export default async function ManagementDashboardPage() {
 
   // Revenue potential: active packages total price (representative metric)
   const revenuePotential = packages
-    .filter((p) => p.activeStatus)
-    .reduce((sum, p) => sum + p.price, 0);
+    ?.filter((p) => p.activeStatus)
+    ?.reduce((sum, p) => sum + p.price, 0) ?? 0;
 
   const greeting = `Welcome, ${session?.user?.fname ?? "Manager"}`;
 

@@ -144,7 +144,7 @@ function PackageSheet({
 
       if (result.success && result.data) {
         toast.success(editing ? "Package updated" : "Package created");
-        onSaved(result.data, !!editing);
+        onSaved(result.data as InternetPackage, !!editing);
         onClose();
       } else {
         // Map API field errors (e.g. { price: "Price must be greater than 0" })
@@ -559,7 +559,7 @@ export default function PackagesClient({
     }
     setTogglingId(null);
     if (result.success && result.data) {
-      setPackages((prev) => prev.map((p) => p.idxno === pkg.idxno ? result.data! : p));
+      setPackages((prev) => prev.map((p) => p.idxno === pkg.idxno ? result.data as InternetPackage : p));
       toast.success(pkg.activeStatus ? "Package deactivated" : "Package activated");
     } else {
       toast.error(result.message ?? "Failed to update package");

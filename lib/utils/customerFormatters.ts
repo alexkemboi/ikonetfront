@@ -29,7 +29,7 @@ export function resolveExpiryDateColorClass(expiryDate: string | null): string {
   const days = calculateDaysUntilExpiry(expiryDate);
   if (days < 0) return "text-[var(--danger)]";
   if (days <= 7) return "text-[var(--warning)]";
-  return "text-[var(--success)]";
+  return "text-success";
 }
 
 /**

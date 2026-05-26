@@ -121,7 +121,7 @@ function SegmentCard({
     >
       <div className="flex items-start gap-3">
         <div
-          className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${
+          className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
             selected ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
           }`}
         >
@@ -199,7 +199,7 @@ function EmailPreview({
       </div>
 
       <div className="flex items-start gap-2 p-3 rounded-lg bg-[oklch(0.97_0.04_65)] border border-[oklch(0.86_0.1_65)]">
-        <AlertCircle className="w-4 h-4 text-[oklch(0.65_0.18_65)] flex-shrink-0 mt-0.5" />
+        <AlertCircle className="w-4 h-4 text-[oklch(0.65_0.18_65)] shrink-0 mt-0.5" />
         <p className="text-xs text-[oklch(0.5_0.18_65)]">
           Variables like <code className="font-mono bg-[oklch(0.93_0.04_65)] px-1 rounded">{"{{customer_name}}"}</code> will be replaced with each recipient's actual details before sending.
         </p>
@@ -316,7 +316,7 @@ export default function BulkEmailWizard({ segments, templates }: Props) {
 
               {/* Template picker */}
               <div className="flex items-center gap-3">
-                <Sparkles className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                <Sparkles className="w-4 h-4 text-muted-foreground shrink-0" />
                 <div className="flex-1">
                   <Select value={selectedTemplateId} onValueChange={handleTemplateChange}>
                     <SelectTrigger className="h-9">
@@ -404,14 +404,14 @@ export default function BulkEmailWizard({ segments, templates }: Props) {
                   { label: "Template",    value: templates.find((t) => t.id === selectedTemplateId)?.name ?? "Custom" },
                 ].map(({ label, value }) => (
                   <div key={label} className="flex items-start justify-between gap-4 py-2.5 border-b border-border last:border-0">
-                    <span className="text-xs text-muted-foreground w-28 flex-shrink-0">{label}</span>
+                    <span className="text-xs text-muted-foreground w-28 shrink-0">{label}</span>
                     <span className="text-sm text-foreground font-medium text-right">{value}</span>
                   </div>
                 ))}
               </div>
 
               <div className="flex items-start gap-2 p-3 rounded-lg bg-[oklch(0.97_0.02_25)] border border-[oklch(0.88_0.06_25)]">
-                <AlertCircle className="w-4 h-4 text-[oklch(0.55_0.18_25)] flex-shrink-0 mt-0.5" />
+                <AlertCircle className="w-4 h-4 text-[oklch(0.55_0.18_25)] shrink-0 mt-0.5" />
                 <p className="text-xs text-[oklch(0.48_0.14_25)]">
                   Sending to <strong>{selectedSegment?.count.toLocaleString()}</strong> customers is irreversible. Ensure your message is accurate and professional before proceeding.
                 </p>

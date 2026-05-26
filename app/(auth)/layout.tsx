@@ -60,7 +60,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
               "Mikrotik-native PPPoE support",
             ].map((item) => (
               <div key={item} className="flex items-center gap-2.5 text-sm text-white/75">
-                <div className="w-1.5 h-1.5 rounded-full bg-white/50 flex-shrink-0" />
+                <div className="w-1.5 h-1.5 rounded-full bg-white/50 shrink-0" />
                 {item}
               </div>
             ))}
@@ -95,7 +95,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
           <span className="text-lg font-semibold text-foreground">Beesmart</span>
         </div>
 
-        <div className="w-full max-w-[420px]">{children}</div>
+        <div className="w-full max-w-105">{children}</div>
       </main>
     </div>
   );

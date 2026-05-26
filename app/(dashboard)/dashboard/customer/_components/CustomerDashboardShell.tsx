@@ -26,7 +26,7 @@ interface CustomerDashboardShellProps {
 
 function AccountStatusIcon({ isActive }: { isActive: boolean }) {
   return isActive ? (
-    <CheckCircle2 className="h-5 w-5 text-[var(--success)]" />
+    <CheckCircle2 className="h-5 w-5 text-success" />
   ) : (
     <XCircle className="h-5 w-5 text-destructive" />
   );
@@ -37,9 +37,9 @@ export function CustomerDashboardShell({ customer }: CustomerDashboardShellProps
 
   const expiryBadgeStyle =
     expiryVariant === "complete"
-      ? "bg-[var(--success)] text-white"
+      ? "bg-success text-white"
       : expiryVariant === "warning"
-      ? "bg-[var(--warning)] text-white"
+      ? "bg-warning text-white"
       : expiryVariant === "danger"
       ? ""
       : "bg-muted text-muted-foreground";
@@ -89,7 +89,7 @@ export function CustomerDashboardShell({ customer }: CustomerDashboardShellProps
               {customer.isSubActive !== null && (
                 <Badge
                   variant={customer.isSubActive ? "default" : "destructive"}
-                  className={customer.isSubActive ? "bg-[var(--success)] text-white" : ""}
+                  className={customer.isSubActive ? "bg-success text-white" : ""}
                 >
                   {customer.isSubActive ? "Active" : "Inactive"}
                 </Badge>

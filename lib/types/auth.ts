@@ -8,7 +8,7 @@ export type ApiResponse<T = unknown> = {
   status: number;
   success: boolean;
   message: string;
-  data: T | null | undefined | [];
+  data: T | null | undefined;
   timestamp?: string;
 };
 

@@ -56,14 +56,14 @@ function buildPPPoELifecycleSteps(customer: Customer): LifecycleStep[] {
 
 const variantStyles: Record<StepVariant, { circle: string; text: string; connector: string }> = {
   complete: {
-    circle: "bg-[var(--success)] border-[var(--success)] text-white",
-    text: "text-[var(--success)]",
-    connector: "bg-[var(--success)]",
+    circle: "bg-success border-[var(--success)] text-white",
+    text: "text-success",
+    connector: "bg-success",
   },
   warning: {
-    circle: "bg-[var(--warning)] border-[var(--warning)] text-white",
+    circle: "bg-warning border-[var(--warning)] text-white",
     text: "text-[var(--warning)]",
-    connector: "bg-[var(--warning)]",
+    connector: "bg-warning",
   },
   danger: {
     circle: "bg-[var(--danger)] border-[var(--danger)] text-white",

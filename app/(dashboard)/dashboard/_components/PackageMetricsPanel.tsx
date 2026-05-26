@@ -57,7 +57,7 @@ export function PackageMetricsPanel({
           {/* Active / Inactive split */}
           <div className="grid grid-cols-2 gap-3">
             <div className="flex items-center gap-2 rounded-lg border bg-card p-3">
-              <CheckCircle className="h-5 w-5 text-[var(--success)] shrink-0" />
+              <CheckCircle className="h-5 w-5 text-success shrink-0" />
               <div>
                 <p className="text-xl font-bold">{active}</p>
                 <p className="text-xs text-muted-foreground">Active</p>

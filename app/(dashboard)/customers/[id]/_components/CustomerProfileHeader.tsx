@@ -20,9 +20,9 @@ function resolveSubscriptionBadge(isSubActive: boolean | null) {
     return <Badge variant="outline">No Subscription</Badge>;
   }
   return isSubActive ? (
-    <Badge className="bg-[var(--success)] text-white">Subscribed</Badge>
+    <Badge className="bg-success text-white">Subscribed</Badge>
   ) : (
-    <Badge className="bg-[var(--warning)] text-white">Unsubscribed</Badge>
+    <Badge className="bg-warning text-white">Unsubscribed</Badge>
   );
 }
 

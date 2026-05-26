@@ -63,8 +63,8 @@ export function CustomerActionButtons({
             variant="outline"
             className={
               isActive
-                ? "border-[var(--warning)] text-[var(--warning)] hover:bg-[var(--warning)] hover:text-white"
-                : "border-[var(--success)] text-[var(--success)] hover:bg-[var(--success)] hover:text-white"
+                ? "border-[var(--warning)] text-[var(--warning)] hover:bg-warning hover:text-white"
+                : "border-[var(--success)] text-success hover:bg-success hover:text-white"
             }
           >
             {isActive ? "Deactivate" : "Activate"}

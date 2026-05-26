@@ -36,7 +36,7 @@ const QUICK_ACTIONS: QuickAction[] = [
     icon: RefreshCw,
     href: "/customers/pppoe",
     color: "bg-green-50 hover:bg-green-100",
-    iconColor: "text-[var(--success)]",
+    iconColor: "text-success",
   },
   {
     label: "Network Devices",

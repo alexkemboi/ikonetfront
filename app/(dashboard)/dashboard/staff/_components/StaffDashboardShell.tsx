@@ -47,7 +47,7 @@ export function StaffDashboardShell({
         transition={{ duration: 0.35 }}
       >
         <div className="flex items-center gap-2">
-          <Badge className="bg-[var(--success)] text-white text-xs">Staff</Badge>
+          <Badge className="bg-success text-white text-xs">Staff</Badge>
         </div>
         <h1 className="text-2xl font-bold tracking-tight mt-1">{greeting}</h1>
         <p className="text-sm text-muted-foreground">Your daily work overview</p>
@@ -111,7 +111,7 @@ export function StaffDashboardShell({
             <CardContent>
               {urgentRenewals.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
-                  <CheckCircle2 className="h-8 w-8 mb-2 text-[var(--success)]" />
+                  <CheckCircle2 className="h-8 w-8 mb-2 text-success" />
                   <p className="text-sm font-medium">No urgent renewals</p>
                   <p className="text-xs">All subscriptions are current</p>
                 </div>

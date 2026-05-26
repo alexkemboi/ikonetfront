@@ -217,7 +217,7 @@ function ProviderSheet({
         toast.success(editing ? "Provider updated" : "Provider added", {
           description: `${values.providerName} (${values.channel}) saved successfully.`,
         });
-        onSaved(result.data, !editing);
+        onSaved(result.data as AlertProvider, !editing);
         helpers.resetForm();
         onClose();
       } else {
@@ -430,8 +430,9 @@ export default function AlertsClient({
         isActive:     !provider.isActive,
       });
       if (result.success) {
-        setProviders((prev) => prev.map((p) => p.idxno === provider.idxno ? result.data : p));
-        toast.success(result.data.isActive ? "Provider activated" : "Provider deactivated");
+        const updated = result.data as AlertProvider;
+        setProviders((prev) => prev.map((p) => p.idxno === provider.idxno ? updated : p));
+        toast.success(updated.isActive ? "Provider activated" : "Provider deactivated");
       } else {
         toast.error("Failed to update provider", { description: result.message });
       }
