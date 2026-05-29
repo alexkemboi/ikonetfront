@@ -282,7 +282,7 @@ export function SidebarInner({
       </div>
 
       {/* ── Nav items ── */}
-      <ScrollArea className="flex-1 px-3 py-3">
+      <ScrollArea className="flex-1 min-h-0 px-3 py-3">
         <nav className="space-y-1">
           {navGroups.map((group, i) => (
             <NavGroupSection key={group.label ?? i} group={group} />
