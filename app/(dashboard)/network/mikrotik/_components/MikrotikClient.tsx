@@ -561,7 +561,9 @@ export function MikrotikClient({ initialDevices }: MikrotikClientProps) {
                   </div>
                   <div>
                     <p className="text-sm font-medium">Online:</p>
-                    <Badge variant={selectedDeviceStatus.online ? "default" : "destructive"}>
+                    <Badge variant={selectedDeviceStatus.online ? "default" : "destructive"}
+                    className={selectedDeviceStatus.online ? "bg-green-600 text-white" : "bg-red-600 text-white"}>
+                    
                       {selectedDeviceStatus.online ? "Yes" : "No"}
                     </Badge>
                   </div>
