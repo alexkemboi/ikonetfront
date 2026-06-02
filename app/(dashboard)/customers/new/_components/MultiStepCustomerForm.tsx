@@ -14,6 +14,8 @@ import BasicInfoStep from "./BasicInfoStep";
 import AccountDetailsStep from "./AccountDetailsStep";
 import SubscriptionDetailsStep from "./SubscriptionDetailsStep";
 import { cn } from "@/lib/utils";
+import { InternetPackage } from "@/actions/packages";
+import { useRouter } from "next/navigation";
 
 const STEP_LABELS = ["Basic Info", "Account", "Subscription"];
 
@@ -54,9 +56,11 @@ const slideVariants = {
   }),
 };
 
-export default function MultiStepCustomerForm() {
+export default function MultiStepCustomerForm({ packages }: { packages: InternetPackage[] }) {
   const [currentStep, setCurrentStep] = useState(0);
   const [direction, setDirection] = useState<"forward" | "backward">("forward");
+
+  const router = useRouter();
 
   const formik = useFormik<AddCustomerPayload>({
     initialValues: {
@@ -83,6 +87,7 @@ export default function MultiStepCustomerForm() {
           toast.success("Customer created successfully!");
           resetForm();
           setCurrentStep(0);
+          router.push("/customers/all");
         } else {
           toast.error(result.message || "Failed to create customer.");
         }
@@ -125,12 +130,12 @@ export default function MultiStepCustomerForm() {
 
   const steps = [
     <BasicInfoStep key="basic" formik={formik} />,
-    <AccountDetailsStep key="account" formik={formik} />,
+    <AccountDetailsStep key="account" formik={formik} packages={packages} />,
     <SubscriptionDetailsStep key="subscription" formik={formik} />,
   ];
 
   return (
-    <Card className="w-full max-w-4xl mx-auto">
+    <Card className="w-full max-w-6xl mx-auto">
       <CardHeader className="pb-6">
         <CardTitle className="text-xl font-bold">Create New Customer</CardTitle>
 
