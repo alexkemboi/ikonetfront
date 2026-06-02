@@ -35,7 +35,7 @@ const AccountDetailsStep: React.FC<AccountDetailsStepProps> = ({ formik, package
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="acno">Account Number (ACNO)</Label>
+        <Label htmlFor="acno">House Number</Label>
         <Input
           id="acno"
           type="text"
