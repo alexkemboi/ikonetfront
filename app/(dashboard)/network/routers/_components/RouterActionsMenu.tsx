@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { executeRouterAction } from "@/actions/network";
 import { RouterAction } from "@/lib/types/network-router";
 import { Button } from "@/components/ui/button";
+import { usePermissions } from "@/providers/PermissionsProvider";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -104,6 +105,14 @@ interface Props {
 export default function RouterActionsMenu({ routerId, routerName }: Props) {
   const [pending, setPending] = useState<RouterAction | null>(null);
   const [confirmAction, setConfirmAction] = useState<ActionMeta | null>(null);
+  const perms = usePermissions("/network/routers");
+
+  // Only show actions the user is allowed to perform
+  const visibleActions = ACTIONS.filter((a) =>
+    a.destructive ? perms.canDelete : perms.canEdit
+  );
+
+  if (!perms.canEdit && !perms.canDelete) return null;
 
   async function runAction(meta: ActionMeta) {
     setPending(meta.action);
@@ -165,9 +174,9 @@ export default function RouterActionsMenu({ routerId, routerName }: Props) {
         </DropdownMenuTrigger>
 
         <DropdownMenuContent align="end" className="w-48">
-          {ACTIONS.map((meta, i) => {
+          {visibleActions.map((meta, i) => {
             const showSeparator =
-              i > 0 && meta.destructive && !ACTIONS[i - 1].destructive;
+              i > 0 && meta.destructive && !visibleActions[i - 1].destructive;
             return (
               <span key={meta.action}>
                 {showSeparator && <DropdownMenuSeparator />}

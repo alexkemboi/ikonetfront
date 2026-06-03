@@ -1,7 +1,25 @@
+/**
+ * The four access flags stored per menu item.
+ * Used both in the Roles admin UI and at the page level to guard actions.
+ */
+export type PermissionFlags = {
+  canView:   boolean;
+  canCreate: boolean;
+  canEdit:   boolean;
+  canDelete: boolean;
+};
+
+/**
+ * A flat map from route → flags.
+ * e.g. { "/system/roles": { canView: true, canCreate: false, ... } }
+ * This is the shape we pass to client components for page-level checks.
+ */
+export type PermissionMap = Record<string, PermissionFlags>;
+
 /** Menu/permission item returned by the /{roleCode}/menus endpoint */
 export type ApiMenuItem = {
   /** Database primary key — required for POST /menus assignment calls */
-  menuItemId: number;
+  idxno: number;
   label: string;
   route: string;
   /** Material Design icon name — mapped to Lucide in the Sidebar's ICON_MAP */

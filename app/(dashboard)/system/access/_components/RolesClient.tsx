@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import {
   Shield, Users, Plus, Search, ChevronDown,
   Check, Pencil, UserPlus, X, Save, RotateCcw,
-  MoreHorizontal, CheckCircle2, Loader2,
+  MoreHorizontal, Loader2,
 } from "lucide-react";
 import { addRoleAction, saveRoleMenusAction } from "@/actions/roles";
 import { cn } from "@/lib/utils";
@@ -26,14 +26,16 @@ import {
 } from "@/store/hooks";
 import {
   initPendingPermissions,
-  togglePermission,
+  toggleFlag,
   setGroupPermissions,
   markSaved,
   discardChanges,
   startEditingRole,
   stopEditingRole,
 } from "@/store/slices/rolesSlice";
+import { NO_PERMISSIONS } from "@/lib/data/nav";
 import type { MenuNode } from "@/lib/nav";
+import type { PermissionFlags, PermissionMap } from "@/lib/types/roles";
 import type { Role, RoleUser, ApiRoleUser } from "../page";
 
 // ── Role color accent map ──────────────────────────────────────────────
@@ -45,10 +47,19 @@ const ROLE_COLORS: Record<string, string> = {
   "cs-agent": "bg-muted text-muted-foreground border-border",
 };
 
-// ── Permission tree helpers ────────────────────────────────────────────
-function getAllIds(node: MenuNode): string[] {
-  return [node.id, ...(node.children?.map((c) => c.id) ?? [])];
-}
+// ── Flag column config ─────────────────────────────────────────────────
+// Defines the four permission flags in display order, with labels and colors.
+// Keeping this outside the component means the array is created once, not on every render.
+const FLAG_COLS: {
+  key:   keyof PermissionFlags;
+  label: string;
+  checkedClass: string;
+}[] = [
+  { key: "canView",   label: "View",   checkedClass: "data-[state=checked]:bg-primary data-[state=checked]:border-primary" },
+  { key: "canCreate", label: "Create", checkedClass: "data-[state=checked]:bg-success data-[state=checked]:border-success" },
+  { key: "canEdit",   label: "Edit",   checkedClass: "data-[state=checked]:bg-warning data-[state=checked]:border-warning" },
+  { key: "canDelete", label: "Delete", checkedClass: "data-[state=checked]:bg-danger  data-[state=checked]:border-danger"  },
+];
 
 // ── Permission tree node ───────────────────────────────────────────────
 function PermissionNode({
@@ -56,100 +67,130 @@ function PermissionNode({
   roleId,
   permissions,
 }: {
-  node: MenuNode;
-  roleId: string;
-  permissions: string[];
+  node:        MenuNode;
+  roleId:      string;
+  permissions: PermissionMap;
 }) {
-  const dispatch = useAppDispatch();
+  const dispatch    = useAppDispatch();
   const [expanded, setExpanded] = useState(true);
+  const hasChildren = !!(node.children?.length);
 
-  const childIds     = node.children?.map((c) => c.id) ?? [];
-  const checkedCount = childIds.filter((id) => permissions.includes(id)).length;
-  const parentChecked   = permissions.includes(node.id);
-  const allChecked      = node.children ? checkedCount === childIds.length && parentChecked : parentChecked;
-  const isIndeterminate = node.children ? (checkedCount > 0 || parentChecked) && !allChecked : false;
+  // All routes in this group: the parent's own route plus every child's route.
+  // The master checkbox controls all of them together.
+  const allRoutes = [node.route, ...(node.children?.map((c) => c.route) ?? [])];
+
+  // allGranted = every route in the group has all four flags true
+  const allGranted = allRoutes.every((r) => {
+    const f = permissions[r];
+    return f?.canView && f?.canCreate && f?.canEdit && f?.canDelete;
+  });
+
+  // anyGranted = at least one route can be viewed — drives the indeterminate state
+  const anyGranted      = allRoutes.some((r) => permissions[r]?.canView);
+  const isIndeterminate = !allGranted && anyGranted;
+
+  // Badge: how many children have canView (used for "2/4 visible" counter)
+  const viewableChildCount = node.children?.filter((c) => permissions[c.route]?.canView).length ?? 0;
 
   function handleParentToggle(checked: boolean) {
-    const ids = getAllIds(node);
-    dispatch(setGroupPermissions({ roleId, permissionIds: ids, checked }));
+    // Sets ALL four flags on ALL routes in the group to the same value
+    dispatch(setGroupPermissions({ roleId, routes: allRoutes, checked }));
   }
 
-  function handleChildToggle(id: string, checked: boolean) {
-    dispatch(togglePermission({ roleId, permissionId: id, checked }));
-    // If unchecking a child, also uncheck the parent group header
-    if (!checked) {
-      dispatch(togglePermission({ roleId, permissionId: node.id, checked: false }));
-    }
+  function handleFlagToggle(route: string, flag: keyof PermissionFlags, checked: boolean) {
+    // Dispatches a single flag change; the Redux reducer handles the canView-off cascade
+    dispatch(toggleFlag({ roleId, route, flag, checked }));
   }
 
   return (
     <div className="border border-border rounded-xl overflow-hidden">
-      {/* Parent row */}
-      <div
-        className={cn(
-          "flex items-center gap-3 px-4 py-3 bg-card",
-          allChecked && "bg-primary/5"
-        )}
-      >
+
+      {/* ── Parent / group header row ─────────────────────────────────── */}
+      <div className={cn("flex items-center gap-3 px-4 py-3 bg-card", allGranted && "bg-primary/5")}>
         <Checkbox
-          id={`perm-${node.id}`}
-          checked={isIndeterminate ? "indeterminate" : allChecked}
+          id={`perm-${node.route}`}
+          checked={isIndeterminate ? "indeterminate" : allGranted}
           onCheckedChange={(v) => handleParentToggle(v === true)}
-          className="data-[state=checked]:bg-primary data-[state=checked]:border-primary data-[state=indeterminate]:bg-primary/40 data-[state=indeterminate]:border-primary"
+          className="data-[state=checked]:bg-primary data-[state=checked]:border-primary
+                     data-[state=indeterminate]:bg-primary/40 data-[state=indeterminate]:border-primary"
+          title={hasChildren ? "Select / deselect all in this group" : node.label}
         />
         <label
-          htmlFor={`perm-${node.id}`}
+          htmlFor={`perm-${node.route}`}
           className="flex-1 text-sm font-semibold text-foreground cursor-pointer select-none"
         >
           {node.label}
         </label>
-        {node.children && (
+
+        {hasChildren && (
           <div className="flex items-center gap-2">
             <span className="text-xs text-muted-foreground">
-              {checkedCount}/{childIds.length}
+              {viewableChildCount}/{node.children!.length}
             </span>
             <button
               type="button"
               onClick={() => setExpanded((v) => !v)}
               className="text-muted-foreground hover:text-foreground transition-colors"
             >
-              <ChevronDown
-                className={cn("w-4 h-4 transition-transform duration-200", !expanded && "-rotate-90")}
-              />
+              <ChevronDown className={cn("w-4 h-4 transition-transform duration-200", !expanded && "-rotate-90")} />
             </button>
           </div>
         )}
       </div>
 
-      {/* Children */}
-      {expanded && node.children && (
-        <div className="border-t border-border divide-y divide-border bg-muted/30">
-          {node.children.map((child) => {
-            const isChecked = permissions.includes(child.id);
+      {/* ── Children: column header + one row per child ───────────────── */}
+      {hasChildren && expanded && (
+        <div className="border-t border-border bg-muted/30">
+
+          {/* Column header — aligns with the checkboxes below */}
+          <div className="flex items-center gap-3 px-4 py-1.5 border-b border-border/60">
+            <div className="w-4 shrink-0" />
+            <span className="flex-1" />
+            <div className="flex items-center">
+              {FLAG_COLS.map(({ key, label }) => (
+                <span
+                  key={key}
+                  className="w-13 text-center text-[10px] uppercase font-semibold tracking-wide text-muted-foreground"
+                >
+                  {label}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          {/* One row per child menu item */}
+          {node.children!.map((child) => {
+            const flags = permissions[child.route] ?? NO_PERMISSIONS;
             return (
               <div
-                key={child.id}
+                key={child.idxno}
                 className={cn(
-                  "flex items-center gap-3 px-4 py-2.5 transition-colors",
-                  isChecked && "bg-primary/5"
+                  "flex items-center gap-3 px-4 py-2.5 border-b border-border/40 last:border-0 transition-colors",
+                  flags.canView && "bg-primary/3"
                 )}
               >
-                <div className="w-4" /> {/* indent */}
-                <Checkbox
-                  id={`perm-${child.id}`}
-                  checked={isChecked}
-                  onCheckedChange={(v) => handleChildToggle(child.id, v === true)}
-                  className="data-[state=checked]:bg-primary data-[state=checked]:border-primary"
-                />
-                <label
-                  htmlFor={`perm-${child.id}`}
-                  className="flex-1 text-sm text-foreground cursor-pointer select-none"
-                >
-                  {child.label}
-                </label>
-                {isChecked && (
-                  <CheckCircle2 className="w-3.5 h-3.5 text-primary shrink-0" />
-                )}
+                <div className="w-4 shrink-0" />
+                <span className="flex-1 text-sm text-foreground">{child.label}</span>
+
+                {/* The four flag checkboxes */}
+                <div className="flex items-center">
+                  {FLAG_COLS.map(({ key, label, checkedClass }) => {
+                    // canCreate / canEdit / canDelete are disabled when canView is off —
+                    // you can't do anything with a page you can't see.
+                    const isDisabled = key !== "canView" && !flags.canView;
+                    return (
+                      <div key={key} className="w-13 flex justify-center">
+                        <Checkbox
+                          checked={flags[key]}
+                          disabled={isDisabled}
+                          onCheckedChange={(v) => handleFlagToggle(child.route, key, v === true)}
+                          className={cn(checkedClass, isDisabled && "opacity-30 cursor-not-allowed")}
+                          title={label}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             );
           })}
@@ -445,21 +486,27 @@ function PermissionsTab({
   const permissions = pending ?? role.permissions;
   const [isSaving, setIsSaving] = useState(false);
 
+  console.log("PermissionsTab render", { role, permissions, menuTree });
+
+  
+
   // Seed Redux when role changes
   useEffect(() => {
     dispatch(initPendingPermissions({ roleId: role.id, permissions: role.permissions }));
   }, [role.id, role.permissions, dispatch]);
 
-  const totalGranted  = permissions.length;
-  const totalPossible = menuTree.flatMap((m) => getAllIds(m)).length;
+  // Count routes where canView=true — the primary "accessible" signal
+  const totalGranted  = Object.values(permissions).filter((f) => f.canView).length;
+  // Count every route in the tree (parent node + each child)
+  const totalPossible = menuTree.reduce((acc, node) => acc + 1 + (node.children?.length ?? 0), 0);
 
-  // Flatten tree into a list of { id (route), menuItemId } pairs
+  // Flatten tree into { route, menuItemId } pairs for the save payload
   function flattenTree() {
-    const nodes: Array<{ id: string; menuItemId: number }> = [];
+    const nodes: Array<{ route: string; menuItemId: number }> = [];
     for (const node of menuTree) {
-      nodes.push({ id: node.id, menuItemId: node.menuItemId });
+      nodes.push({ route: node.route, menuItemId: node.menuItemId });
       for (const child of node.children ?? []) {
-        nodes.push({ id: child.id, menuItemId: child.menuItemId });
+        nodes.push({ route: child.route, menuItemId: child.menuItemId });
       }
     }
     return nodes;
@@ -468,16 +515,15 @@ function PermissionsTab({
   async function handleSave() {
     setIsSaving(true);
     try {
-      // Build complete assignment list — every menu item in the tree.
-      // Checked items get all flags true; unchecked get all flags false.
-      const assignments = flattenTree().map(({ id, menuItemId }) => {
-        const granted = permissions.includes(id);
+      // Send the actual per-flag values the admin set — no longer mirrors one boolean
+      const assignments = flattenTree().map(({ route, menuItemId }) => {
+        const flags = permissions[route] ?? NO_PERMISSIONS;
         return {
           menuItemId,
-          canView:   granted,
-          canCreate: granted,
-          canEdit:   granted,
-          canDelete: granted,
+          canView:   flags.canView,
+          canCreate: flags.canCreate,
+          canEdit:   flags.canEdit,
+          canDelete: flags.canDelete,
         };
       });
 
@@ -546,7 +592,7 @@ function PermissionsTab({
         <div className="space-y-3 pr-1">
           {menuTree.map((node) => (
             <PermissionNode
-              key={node.id}
+              key={node.idxno}
               node={node}
               roleId={role.id}
               permissions={permissions}

@@ -82,6 +82,8 @@ export async function saveRoleMenusAction(
   const headers = await getAuthHeaders();
   const url = `${process.env.BASE_API_URL}system-setup/${roleCode}/menus`;
 
+  console.log("Saving role menus:", { roleCode, assignments });
+
   try {
     const res = await fetch(url, {
       method: "POST",
@@ -94,7 +96,10 @@ export async function saveRoleMenusAction(
 
     if (data.success) {
       revalidateTag(NAV_MENUS_TAG, 'max');
+      revalidateTag(`${NAV_MENUS_TAG}-${roleCode}`, 'max');
       revalidatePath("/settings/roles");
+      revalidatePath("/settings/access");
+
       return { success: assignments.length, failed: 0 };
     }
 

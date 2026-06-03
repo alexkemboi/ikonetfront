@@ -12,8 +12,7 @@ async function StaffUsersPage() {
 
   const roles = rolesRes?.data ?? [];
 
-  console.log("Fetched staff users:", users);
-  console.log("Fetched roles:", roles);
+
 
   return <StaffUsersClient users={users} roles={roles} />;
 }

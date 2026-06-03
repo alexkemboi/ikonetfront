@@ -12,6 +12,7 @@ import {
   // TableRow, // Removed as it's not used
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
+import { usePermissions } from "@/providers/PermissionsProvider";
 import {
   Dialog,
   DialogContent,
@@ -77,6 +78,7 @@ const AddDeviceSchema = Yup.object().shape({
 export function MikrotikClient({ initialDevices }: MikrotikClientProps) {
   const [devices, setDevices] = useState<MikrotikDevice[]>(initialDevices);
   const [isAddDeviceDialogOpen, setIsAddDeviceDialogOpen] = useState(false);
+  const perms = usePermissions("/network/mikrotik");
   const [loadingStatus, setLoadingStatus] = useState<Record<number, boolean>>(
     {}
   );
@@ -284,9 +286,11 @@ export function MikrotikClient({ initialDevices }: MikrotikClientProps) {
           open={isAddDeviceDialogOpen}
           onOpenChange={setIsAddDeviceDialogOpen}
         >
-          <DialogTrigger asChild>
-            <Button>Add New Device</Button>
-          </DialogTrigger>
+          {perms.canCreate && (
+            <DialogTrigger asChild>
+              <Button>Add New Device</Button>
+            </DialogTrigger>
+          )}
           <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Add New MikroTik Device</DialogTitle>

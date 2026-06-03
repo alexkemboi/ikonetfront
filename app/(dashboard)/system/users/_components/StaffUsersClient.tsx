@@ -6,6 +6,7 @@ import * as Yup from "yup";
 import { toast } from "sonner";
 import { UserPlus, Loader2, Users, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { usePermissions } from "@/providers/PermissionsProvider";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
@@ -297,6 +298,7 @@ interface StaffUsersClientProps {
 
 export default function StaffUsersClient({ users, roles }: StaffUsersClientProps) {
   const [sheetOpen, setSheetOpen] = useState(false);
+  const perms = usePermissions("/system/users");
 
   
 
@@ -318,10 +320,12 @@ export default function StaffUsersClient({ users, roles }: StaffUsersClientProps
             <span className="text-success font-medium">{activeCount} active</span>
           </p>
         </div>
-        <Button onClick={() => setSheetOpen(true)} className="gap-2 shrink-0">
-          <UserPlus className="w-4 h-4" />
-          Add User
-        </Button>
+        {perms.canCreate && (
+          <Button onClick={() => setSheetOpen(true)} className="gap-2 shrink-0">
+            <UserPlus className="w-4 h-4" />
+            Add User
+          </Button>
+        )}
       </div>
 
       {/* Role summary pills */}

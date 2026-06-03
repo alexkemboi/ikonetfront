@@ -6,6 +6,7 @@ import * as Yup from "yup";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { usePermissions } from "@/providers/PermissionsProvider";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -153,6 +154,7 @@ function PoolBar({ pool }: { pool: IPPool }) {
 }
 
 function MappingRow({ m }: { m: IPMapping }) {
+  const perms = usePermissions("/network/ip-mapping");
   return (
     <div className="group grid grid-cols-[1fr_auto_1fr_auto_1fr_120px_100px] items-center gap-2 px-4 py-3 rounded-lg border border-border bg-card hover:border-primary/30 hover:shadow-sm transition-all">
       <div className="flex items-center gap-2.5 min-w-0">
@@ -217,34 +219,41 @@ function MappingRow({ m }: { m: IPMapping }) {
         View Mapping
       </DropdownMenuItem>
 
-      <DropdownMenuItem className="gap-2">
-        <Pencil className="h-4 w-4" />
-        Edit Mapping
-      </DropdownMenuItem>
+      {perms.canEdit && (
+        <DropdownMenuItem className="gap-2">
+          <Pencil className="h-4 w-4" />
+          Edit Mapping
+        </DropdownMenuItem>
+      )}
 
       <DropdownMenuItem className="gap-2">
         <Copy className="h-4 w-4" />
         Copy IP Address
       </DropdownMenuItem>
 
-      <DropdownMenuSeparator />
-
-      {m.status === "active" ? (
-        <DropdownMenuItem className="gap-2 text-amber-600">
-          <Ban className="h-4 w-4" />
-          Suspend Lease
-        </DropdownMenuItem>
-      ) : (
-        <DropdownMenuItem className="gap-2 text-emerald-600">
-          <RotateCcw className="h-4 w-4" />
-          Restore Lease
-        </DropdownMenuItem>
+      {perms.canEdit && (
+        <>
+          <DropdownMenuSeparator />
+          {m.status === "active" ? (
+            <DropdownMenuItem className="gap-2 text-amber-600">
+              <Ban className="h-4 w-4" />
+              Suspend Lease
+            </DropdownMenuItem>
+          ) : (
+            <DropdownMenuItem className="gap-2 text-emerald-600">
+              <RotateCcw className="h-4 w-4" />
+              Restore Lease
+            </DropdownMenuItem>
+          )}
+        </>
       )}
 
-      <DropdownMenuItem className="gap-2 text-red-600">
-        <Trash2 className="h-4 w-4" />
-        Delete Mapping
-      </DropdownMenuItem>
+      {perms.canDelete && (
+        <DropdownMenuItem className="gap-2 text-red-600">
+          <Trash2 className="h-4 w-4" />
+          Delete Mapping
+        </DropdownMenuItem>
+      )}
     </DropdownMenuContent>
   </DropdownMenu>
 </div>
@@ -314,7 +323,7 @@ function MapIPSheet({
 
   return (
     <Sheet open={open} onOpenChange={(o) => !o && handleClose()}>
-      <SheetContent className="w-[480px] sm:max-w-[480px] overflow-y-auto p-4">
+      <SheetContent className="w-120 sm:max-w-120 overflow-y-auto p-4">
         <SheetHeader className="pb-4">
           <SheetTitle className="flex items-center gap-2">
             <Network className="w-5 h-5 text-primary" />
@@ -524,6 +533,7 @@ export default function CustomerIPMappingView({ mappings, pools, customers, pack
   const [routerFilter, setRouterFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [sheetOpen, setSheetOpen] = useState(false);
+  const perms = usePermissions("/network/ip-mapping");
 
   const routers = useMemo(
     () => Array.from(new Set(mappings.map((m) => m.routerName))),
@@ -573,10 +583,12 @@ export default function CustomerIPMappingView({ mappings, pools, customers, pack
             <Layers className="w-4 h-4" />
             Export
           </Button>
-          <Button size="sm" className="gap-1.5" onClick={() => setSheetOpen(true)}>
-            <Plus className="w-4 h-4" />
-            Map IP
-          </Button>
+          {perms.canCreate && (
+            <Button size="sm" className="gap-1.5" onClick={() => setSheetOpen(true)}>
+              <Plus className="w-4 h-4" />
+              Map IP
+            </Button>
+          )}
         </div>
       </div>
 

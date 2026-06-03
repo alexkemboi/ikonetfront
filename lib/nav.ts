@@ -12,6 +12,11 @@
 
 export type NavItem = {
   href: string;
+  /** Permission flags — set by the API for dynamic nav, absent on static configs (treat as full access) */
+  canView?: boolean;
+  canEdit?: boolean;
+  canDelete?: boolean;
+  canCreate?: boolean;
   label: string;
   /** Key from the Sidebar's internal icon registry */
   icon: string;
@@ -35,8 +40,9 @@ export type NavGroup = {
  * `menuItemId` = DB primary key for POST /menus assignment calls.
  */
 export type MenuNode = {
-  id: string;
+  idxno: number;
   menuItemId: number;
+  route: string;
   label: string;
   icon: string;
   children?: Omit<MenuNode, "children">[];

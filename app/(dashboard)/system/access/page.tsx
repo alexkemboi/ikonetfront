@@ -3,7 +3,7 @@ import { getAllMenusAction, getRolesAction, getRoleMenusAction, getRoleUsersActi
 import { getSystemUsers } from "@/actions/system";
 import { apiMenusToMenuTree, extractPermissions } from "@/lib/data/nav";
 import type { MenuNode } from "@/lib/nav";
-import type { ApiRoleUser } from "@/lib/types/roles";
+import type { ApiRoleUser, PermissionMap } from "@/lib/types/roles";
 
 export const metadata = { title: "Roles & Permissions — Beesmart" };
 
@@ -23,12 +23,12 @@ export type Role = {
   name: string;
   description: string;
   userCount: number;
-  permissions: string[];
+  permissions: PermissionMap;
   users: RoleUser[];
   createdAt: string;
 };
 
-export type { MenuNode, ApiRoleUser };
+export type { MenuNode, ApiRoleUser, PermissionMap };
 
 // ── Page ────────────────────────────────────────────────────────────────
 export default async function RolesPage() {
@@ -71,6 +71,7 @@ export default async function RolesPage() {
       createdAt:   apiRole.createdAt ?? "",
     };
   });
+
 
   return (
     <div className="p-6 h-full">

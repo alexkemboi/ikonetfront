@@ -8,6 +8,7 @@ import { Customer } from "@/lib/types/customer";
 import { toggleCustomerActiveStatus } from "@/actions/customer";
 import { useAppDispatch } from "@/store/hooks";
 import { Button } from "@/components/ui/button";
+import { usePermissions } from "@/providers/PermissionsProvider";
 import { Badge } from "@/components/ui/badge";
 import { DataTable } from "@/components/shared/data-table";
 import { RenewSubscriptionSheet } from "@/app/(dashboard)/customers/_components/RenewSubscriptionSheet";
@@ -21,6 +22,7 @@ interface PPPoECustomerTableProps {
 export function PPPoECustomerTable({ customers }: PPPoECustomerTableProps) {
   const dispatch = useAppDispatch();
   const router   = useRouter();
+  const perms    = usePermissions("/portal/pppoe");
 
   async function handleToggleActive(customer: Customer) {
     toast.loading(`Updating ${customer.fullName}…`);
@@ -69,9 +71,11 @@ export function PPPoECustomerTable({ customers }: PPPoECustomerTableProps) {
               </Badge>
             </div>
           </div>
-          <Button onClick={() => router.push("/customers/new")} className="gap-2 shrink-0">
-            <Plus className="h-4 w-4" /> Add Client
-          </Button>
+          {perms.canCreate && (
+            <Button onClick={() => router.push("/customers/new")} className="gap-2 shrink-0">
+              <Plus className="h-4 w-4" /> Add Client
+            </Button>
+          )}
         </div>
 
         {/* Table */}

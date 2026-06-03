@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { usePermissions } from "@/providers/PermissionsProvider";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
@@ -366,6 +367,7 @@ export default function AlertsClient({
   const [editing, setEditing]               = useState<AlertProvider | null>(null);
   const [deletingId, setDeletingId]         = useState<number | null>(null);
   const [togglingId, setTogglingId]         = useState<number | null>(null);
+  const perms = usePermissions("/settings/alerts");
   const [enabledCategories, setEnabledCategories] = useState<string[]>(
     NOTIF_CATEGORIES.map((c) => c.id)
   );
@@ -453,10 +455,12 @@ export default function AlertsClient({
             Configure notification providers and select which channels to use for alerts.
           </p>
         </div>
-        <Button className="gap-2 h-9" onClick={handleAdd}>
-          <Plus className="w-4 h-4" />
-          Add Provider
-        </Button>
+        {perms.canCreate && (
+          <Button className="gap-2 h-9" onClick={handleAdd}>
+            <Plus className="w-4 h-4" />
+            Add Provider
+          </Button>
+        )}
       </div>
 
       {/* Notification categories */}
@@ -544,9 +548,11 @@ export default function AlertsClient({
             </div>
             <p className="text-sm font-medium text-foreground">No providers configured</p>
             <p className="text-xs text-muted-foreground mt-1">Add your first provider to start sending alerts.</p>
-            <Button className="mt-4 gap-2 h-8 text-xs" onClick={handleAdd}>
-              <Plus className="w-3.5 h-3.5" /> Add Provider
-            </Button>
+            {perms.canCreate && (
+              <Button className="mt-4 gap-2 h-8 text-xs" onClick={handleAdd}>
+                <Plus className="w-3.5 h-3.5" /> Add Provider
+              </Button>
+            )}
           </div>
         ) : (
           <div className="rounded-2xl border border-border bg-card overflow-hidden">
@@ -591,32 +597,38 @@ export default function AlertsClient({
                   </Badge>
 
                   <div className="flex items-center gap-1 shrink-0">
-                    <button
-                      type="button"
-                      onClick={() => handleToggleProvider(provider)}
-                      disabled={isToggling}
-                      aria-label={provider.isActive ? "Deactivate" : "Activate"}
-                      className={cn("w-7 h-7 flex items-center justify-center rounded-md transition-colors", provider.isActive ? "text-success hover:bg-success/10" : "text-muted-foreground hover:bg-muted")}
-                    >
-                      {isToggling ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Power className="w-3.5 h-3.5" />}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleEdit(provider)}
-                      aria-label="Edit provider"
-                      className="w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                    >
-                      <Pencil className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleDelete(provider.idxno, provider.providerName)}
-                      disabled={isDeleting}
-                      aria-label="Delete provider"
-                      className="w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-danger hover:bg-danger/10 transition-colors"
-                    >
-                      {isDeleting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
-                    </button>
+                    {perms.canEdit && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => handleToggleProvider(provider)}
+                          disabled={isToggling}
+                          aria-label={provider.isActive ? "Deactivate" : "Activate"}
+                          className={cn("w-7 h-7 flex items-center justify-center rounded-md transition-colors", provider.isActive ? "text-success hover:bg-success/10" : "text-muted-foreground hover:bg-muted")}
+                        >
+                          {isToggling ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Power className="w-3.5 h-3.5" />}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleEdit(provider)}
+                          aria-label="Edit provider"
+                          className="w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                      </>
+                    )}
+                    {perms.canDelete && (
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(provider.idxno, provider.providerName)}
+                        disabled={isDeleting}
+                        aria-label="Delete provider"
+                        className="w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-danger hover:bg-danger/10 transition-colors"
+                      >
+                        {isDeleting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                      </button>
+                    )}
                   </div>
                 </div>
               );

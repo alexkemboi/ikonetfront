@@ -53,6 +53,7 @@ export const adminNavGroups: NavGroup[] = [
       { href: "/system/packages", label: "Packages", icon: "package" },
       { href: "/system/staff-users", label: "Staff Users", icon: "user-cog" },
       { href: "/system/access", label: "Access Control", icon: "shield-check" },
+      { href: "/system/audit", label: "Audit Logs", icon: "scroll-text" },
     ],
   },
   {

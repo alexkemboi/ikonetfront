@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { toggleCustomerActiveStatus, deleteCustomer } from "@/actions/customer";
 import { Button } from "@/components/ui/button";
+import { usePermissions } from "@/providers/PermissionsProvider";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -26,6 +27,7 @@ export function CustomerActionButtons({
   isActive,
 }: CustomerActionButtonsProps) {
   const router = useRouter();
+  const perms  = usePermissions("/customers");
 
   async function handleToggleActiveStatus() {
     try {
@@ -57,41 +59,44 @@ export function CustomerActionButtons({
 
   return (
     <div className="flex gap-2">
-      <AlertDialog>
-        <AlertDialogTrigger asChild>
-          <Button
-            variant="outline"
-            className={
-              isActive
-                ? "border-[var(--warning)] text-[var(--warning)] hover:bg-warning hover:text-white"
-                : "border-[var(--success)] text-success hover:bg-success hover:text-white"
-            }
-          >
-            {isActive ? "Deactivate" : "Activate"}
-          </Button>
-        </AlertDialogTrigger>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Confirm Status Change</AlertDialogTitle>
-            <AlertDialogDescription>
-              {isActive
-                ? "This will deactivate the customer. They will lose access to services immediately."
-                : "This will activate the customer and restore their access to services."}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleToggleActiveStatus}>
+      {perms.canEdit && (
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button
+              variant="outline"
+              className={
+                isActive
+                  ? "border-warning text-warning hover:bg-warning hover:text-white"
+                  : "border-success text-success hover:bg-success hover:text-white"
+              }
+            >
               {isActive ? "Deactivate" : "Activate"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Confirm Status Change</AlertDialogTitle>
+              <AlertDialogDescription>
+                {isActive
+                  ? "This will deactivate the customer. They will lose access to services immediately."
+                  : "This will activate the customer and restore their access to services."}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={handleToggleActiveStatus}>
+                {isActive ? "Deactivate" : "Activate"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
 
-      <AlertDialog>
-        <AlertDialogTrigger asChild>
-          <Button variant="destructive">Delete Customer</Button>
-        </AlertDialogTrigger>
+      {perms.canDelete && (
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button variant="destructive">Delete Customer</Button>
+          </AlertDialogTrigger>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Customer?</AlertDialogTitle>
@@ -110,7 +115,8 @@ export function CustomerActionButtons({
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
-      </AlertDialog>
+        </AlertDialog>
+      )}
     </div>
   );
 }

@@ -13,7 +13,7 @@ import {
   CheckCircle2, Package, Bell, MessageSquare, Mail,
   Router, DollarSign, Database, TrendingUp, Landmark,
   Clock, Lock, History, Smartphone, ShoppingCart,
-  RotateCcw, Gauge, Megaphone, Search, MapPin,
+  RotateCcw, Gauge, Megaphone, Search, MapPin, ScrollText,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -45,6 +45,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
   "shield-check":     ShieldCheck,
   "map-pin":          MapPin,
   "mail":             Mail,
+  "scroll-text":      ScrollText,
 
   // ── Material Design names (API menus endpoint) ──────────────────────
   "dashboard":             LayoutDashboard,
@@ -231,11 +232,11 @@ function NavGroupSection({ group }: { group: NavGroup }) {
         </p>
       )}
       {group.items.map((item) =>
-        item.children ? (
+        item.children && item.canView ? (
           <NavParent key={item.href} item={item} />
-        ) : (
+        ) : item.canView ? (
           <NavLeaf key={item.href} item={item} />
-        )
+        ) : null
       )}
     </div>
   );
@@ -284,9 +285,15 @@ export function SidebarInner({
       {/* ── Nav items ── */}
       <ScrollArea className="flex-1 min-h-0 px-3 py-3">
         <nav className="space-y-1">
-          {navGroups.map((group, i) => (
-            <NavGroupSection key={group.label ?? i} group={group} />
-          ))}
+          {navGroups.length > 0 ? (
+            navGroups.map((group, i) => (
+              <NavGroupSection key={group.label ?? i} group={group} />
+            ))
+          ) : (
+            <p className="text-sm text-sidebar-foreground/50">
+              No navigation items available.
+            </p>
+          )}
         </nav>
       </ScrollArea>
 

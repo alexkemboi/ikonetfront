@@ -8,8 +8,9 @@
  * server components (layouts, pages). Server actions are for mutations only.
  */
 
-import type { ApiMenuItem } from "@/lib/types/roles";
+import type { ApiMenuItem, PermissionFlags, PermissionMap } from "@/lib/types/roles";
 import type { NavGroup, NavItem, MenuNode } from "@/lib/nav";
+import { auth } from "@/lib/auth";
 import { adminNavGroups }      from "@/config/nav-admin";
 import { managementNavGroups } from "@/config/nav-management";
 import { staffNavGroups }      from "@/config/nav-staff";
@@ -24,6 +25,11 @@ const OLD_DASHBOARD_ROUTES = new Set([
 ]);
 
 export const NAV_MENUS_TAG = "nav-menus";
+
+// All-false default used when a route is missing from the map
+export const NO_PERMISSIONS: PermissionFlags = {
+  canView: false, canCreate: false, canEdit: false, canDelete: false,
+};
 
 /**
  * Fetch the menu/permission tree for a given role code.
@@ -73,17 +79,25 @@ export function apiMenusToNavGroups(menus: ApiMenuItem[]): NavGroup[] {
     .slice()
     .sort((a, b) => a.sortOrder - b.sortOrder)
     .map((menu) => ({
-      href:  OLD_DASHBOARD_ROUTES.has(menu.route) ? "/dashboard" : menu.route,
-      label: menu.label,
-      icon:  menu.icon,
-      children: menu.children?.length
+      href:      OLD_DASHBOARD_ROUTES.has(menu.route) ? "/dashboard" : menu.route,
+      label:     menu.label,
+      icon:      menu.icon,
+      canView:   menu.canView,
+      canEdit:   menu.canEdit,
+      canDelete: menu.canDelete,
+      canCreate: menu.canCreate,
+      children:  menu.children?.length
         ? menu.children
             .slice()
             .sort((a, b) => a.sortOrder - b.sortOrder)
             .map((child) => ({
-              href:  OLD_DASHBOARD_ROUTES.has(child.route) ? "/dashboard" : child.route,
-              label: child.label,
-              icon:  child.icon,
+              href:      OLD_DASHBOARD_ROUTES.has(child.route) ? "/dashboard" : child.route,
+              label:     child.label,
+              icon:      child.icon,
+              canView:   child.canView,
+              canEdit:   child.canEdit,
+              canDelete: child.canDelete,
+              canCreate: child.canCreate,
             }))
         : undefined,
     }));
@@ -116,8 +130,10 @@ export function apiMenusToMenuTree(menus: ApiMenuItem[]): MenuNode[] {
     .slice()
     .sort((a, b) => a.sortOrder - b.sortOrder)
     .map((menu) => ({
+      idxno:      parseInt(menu.idxno.toString()) || 0,
       id:         menu.route,
-      menuItemId: menu.menuItemId,
+      menuItemId: menu.idxno,
+      route:      menu.route,
       label:      menu.label,
       icon:       menu.icon,
       children: menu.children?.length
@@ -125,8 +141,10 @@ export function apiMenusToMenuTree(menus: ApiMenuItem[]): MenuNode[] {
             .slice()
             .sort((a, b) => a.sortOrder - b.sortOrder)
             .map((child) => ({
+              idxno:      parseInt(child.idxno.toString()),
               id:         child.route,
-              menuItemId: child.menuItemId,
+              menuItemId: child.idxno,
+              route:      child.route,
               label:      child.label,
               icon:       child.icon,
             }))
@@ -135,19 +153,45 @@ export function apiMenusToMenuTree(menus: ApiMenuItem[]): MenuNode[] {
 }
 
 /**
- * Flatten an ApiMenuItem[] into the set of route IDs this role can VIEW.
- * Used to populate `Role.permissions` on the Roles page.
+ * Flatten an ApiMenuItem[] into a PermissionMap (route → flags).
  *
- * If canView is universally false (new system, no permissions assigned),
- * all routes are included so the tree is fully visible but not "checked".
+ * Previously this returned string[] of only canView=true routes.
+ * Now we preserve all four flags so the UI and save logic can use real values.
  */
-export function extractPermissions(menus: ApiMenuItem[]): string[] {
-  const perms: string[] = [];
+export function extractPermissions(menus: ApiMenuItem[]): PermissionMap {
+  const map: PermissionMap = {};
   for (const menu of menus) {
-    if (menu.canView) perms.push(menu.route);
+    map[menu.route] = {
+      canView:   menu.canView,
+      canCreate: menu.canCreate,
+      canEdit:   menu.canEdit,
+      canDelete: menu.canDelete,
+    };
     for (const child of menu.children) {
-      if (child.canView) perms.push(child.route);
+      map[child.route] = {
+        canView:   child.canView,
+        canCreate: child.canCreate,
+        canEdit:   child.canEdit,
+        canDelete: child.canDelete,
+      };
     }
   }
-  return perms;
+  return map;
+}
+
+/**
+ * Fetch the current logged-in user's permissions as a PermissionMap.
+ *
+ * Call this in any server component/page that needs to guard UI actions.
+ * Returns an empty map if the session is missing — treat as no access.
+ *
+ * Usage in a server page:
+ *   const permissions = await getCurrentUserPermissions();
+ *   const pagePerms   = permissions["/system/roles"] ?? NO_PERMISSIONS;
+ */
+export async function getCurrentUserPermissions(): Promise<PermissionMap> {
+  const session = await auth();
+  if (!session?.user?.role || !session?.user?.apiToken) return {};
+  const menus = await fetchRoleMenusRaw(session.user.role, session.user.apiToken);
+  return extractPermissions(menus);
 }

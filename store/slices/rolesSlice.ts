@@ -1,28 +1,19 @@
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
+import type { PermissionFlags, PermissionMap } from "@/lib/types/roles";
 
-/**
- * Roles slice — tracks in-progress permission edits.
- *
- * Data fetching (roles, users, menus) is handled via server props + Next.js
- * revalidation — NOT stored here.
- *
- * Redux is used here specifically to track:
- *   - Which permissions have been toggled but not yet saved (dirty state)
- *   - Which role name is currently being inline-edited
- *
- * This lets child components (e.g. a Save button in a toolbar) react to
- * unsaved changes without prop-drilling.
- */
+const ALL_TRUE:  PermissionFlags = { canView: true,  canCreate: true,  canEdit: true,  canDelete: true  };
+const ALL_FALSE: PermissionFlags = { canView: false, canCreate: false, canEdit: false, canDelete: false };
 
 type RolesState = {
   /**
-   * Pending permission sets, keyed by roleId.
-   * Only populated when a role's permissions are being edited.
-   * Cleared after save or discard.
+   * In-progress permission edits keyed by roleId.
+   * Each value is a PermissionMap: route → { canView, canCreate, canEdit, canDelete }.
+   * Only present for roles that have been opened for editing.
+   * Cleared on discard; dirty flag cleared on save.
    */
-  pendingPermissions: Record<string, string[]>;
+  pendingPermissions: Record<string, PermissionMap>;
 
-  /** Tracks which roles have unsaved permission changes */
+  /** Which roles have unsaved permission changes */
   dirtyRoles: Record<string, boolean>;
 
   /** The roleId whose name is currently being inline-edited (null = none) */
@@ -39,64 +30,85 @@ const rolesSlice = createSlice({
   name: "roles",
   initialState,
   reducers: {
-    /** Called when a role's permission panel is opened — seeds the pending state */
+    /**
+     * Seed pending state when a role's permission panel is first opened.
+     * Skipped if pending state already exists (so unsaved edits survive tab switching).
+     */
     initPendingPermissions(
       state,
-      action: PayloadAction<{ roleId: string; permissions: string[] }>
+      action: PayloadAction<{ roleId: string; permissions: PermissionMap }>
     ) {
       const { roleId, permissions } = action.payload;
       if (!state.pendingPermissions[roleId]) {
-        state.pendingPermissions[roleId] = [...permissions];
+        state.pendingPermissions[roleId] = { ...permissions };
         state.dirtyRoles[roleId] = false;
       }
     },
 
-    /** Toggle a single permission on/off for a role */
-    togglePermission(
+    /**
+     * Toggle a single flag (canView / canCreate / canEdit / canDelete) on one route.
+     *
+     * When canView is turned OFF, the other three flags are also forced OFF —
+     * you can't create/edit/delete something you can't view.
+     */
+    toggleFlag(
       state,
-      action: PayloadAction<{ roleId: string; permissionId: string; checked: boolean }>
+      action: PayloadAction<{
+        roleId: string;
+        route:  string;
+        flag:   keyof PermissionFlags;
+        checked: boolean;
+      }>
     ) {
-      const { roleId, permissionId, checked } = action.payload;
-      const current = state.pendingPermissions[roleId] ?? [];
-      state.pendingPermissions[roleId] = checked
-        ? [...new Set([...current, permissionId])]
-        : current.filter((id) => id !== permissionId);
+      const { roleId, route, flag, checked } = action.payload;
+      const current = state.pendingPermissions[roleId] ?? {};
+      const existing = current[route] ?? { ...ALL_FALSE };
+
+      let updated = { ...existing, [flag]: checked };
+
+      // Turning off canView must revoke all other flags — nothing can be done without view access
+      if (flag === "canView" && !checked) {
+        updated = { ...ALL_FALSE };
+      }
+
+      state.pendingPermissions[roleId] = { ...current, [route]: updated };
       state.dirtyRoles[roleId] = true;
     },
 
-    /** Set an entire group of permissions at once (e.g. select-all for a menu group) */
+    /**
+     * Grant or revoke ALL four flags for a set of routes at once.
+     * Used by the parent group checkbox (select all / deselect all).
+     */
     setGroupPermissions(
       state,
-      action: PayloadAction<{ roleId: string; permissionIds: string[]; checked: boolean }>
+      action: PayloadAction<{ roleId: string; routes: string[]; checked: boolean }>
     ) {
-      const { roleId, permissionIds, checked } = action.payload;
-      const current = new Set(state.pendingPermissions[roleId] ?? []);
-      if (checked) {
-        permissionIds.forEach((id) => current.add(id));
-      } else {
-        permissionIds.forEach((id) => current.delete(id));
+      const { roleId, routes, checked } = action.payload;
+      const current = state.pendingPermissions[roleId] ?? {};
+      const flags = checked ? { ...ALL_TRUE } : { ...ALL_FALSE };
+      const updated = { ...current };
+      for (const route of routes) {
+        updated[route] = { ...flags };
       }
-      state.pendingPermissions[roleId] = Array.from(current);
+      state.pendingPermissions[roleId] = updated;
       state.dirtyRoles[roleId] = true;
     },
 
-    /** Mark a role's permissions as saved (clears dirty flag) */
+    /** Clear the dirty flag after a successful save (pending state stays for reference) */
     markSaved(state, action: PayloadAction<string>) {
       state.dirtyRoles[action.payload] = false;
     },
 
-    /** Discard pending changes for a role, reverting to the original props */
+    /** Discard all pending edits for a role — next render falls back to server props */
     discardChanges(state, action: PayloadAction<string>) {
       delete state.pendingPermissions[action.payload];
       state.dirtyRoles[action.payload] = false;
     },
 
-    /** Enter inline-edit mode for a role name */
     startEditingRole(state, action: PayloadAction<string>) {
       state.editingRoleId = action.payload;
     },
 
-    /** Exit inline-edit mode */
     stopEditingRole(state) {
       state.editingRoleId = null;
     },
@@ -105,7 +117,7 @@ const rolesSlice = createSlice({
 
 export const {
   initPendingPermissions,
-  togglePermission,
+  toggleFlag,
   setGroupPermissions,
   markSaved,
   discardChanges,

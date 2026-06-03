@@ -10,6 +10,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { usePermissions } from "@/providers/PermissionsProvider";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
@@ -370,6 +371,7 @@ function PackageCard({
 }) {
   const isDeleting  = deletingId  === pkg.idxno;
   const isToggling  = togglingId  === pkg.idxno;
+  const perms       = usePermissions("/system/packages");
 
   return (
     <div className={cn(
@@ -442,38 +444,46 @@ function PackageCard({
         </div>
       </div>
 
-      {/* Footer actions */}
-      <div className="flex items-center border-t border-border">
-        <button
-          onClick={() => onToggleActive(pkg)}
-          disabled={isToggling || isDeleting}
-          className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors disabled:opacity-50"
-        >
-          {isToggling
-            ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-            : pkg.activeStatus
-              ? <><XCircle className="w-3.5 h-3.5" /> Deactivate</>
-              : <><CheckCircle2 className="w-3.5 h-3.5" /> Activate</>}
-        </button>
-        <div className="w-px h-6 bg-border" />
-        <button
-          onClick={() => onEdit(pkg)}
-          disabled={isDeleting || isToggling}
-          className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors disabled:opacity-50"
-        >
-          <Pencil className="w-3.5 h-3.5" /> Edit
-        </button>
-        <div className="w-px h-6 bg-border" />
-        <button
-          onClick={() => onDelete(pkg.idxno)}
-          disabled={isDeleting || isToggling}
-          className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-medium text-muted-foreground hover:text-destructive hover:bg-destructive/5 transition-colors disabled:opacity-50"
-        >
-          {isDeleting
-            ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-            : <><Trash2 className="w-3.5 h-3.5" /> Delete</>}
-        </button>
-      </div>
+      {/* Footer actions — each button only renders when the flag allows it */}
+      {(perms.canEdit || perms.canDelete) && (
+        <div className="flex items-center border-t border-border">
+          {perms.canEdit && (
+            <>
+              <button
+                onClick={() => onToggleActive(pkg)}
+                disabled={isToggling || isDeleting}
+                className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors disabled:opacity-50"
+              >
+                {isToggling
+                  ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  : pkg.activeStatus
+                    ? <><XCircle className="w-3.5 h-3.5" /> Deactivate</>
+                    : <><CheckCircle2 className="w-3.5 h-3.5" /> Activate</>}
+              </button>
+              <div className="w-px h-6 bg-border" />
+              <button
+                onClick={() => onEdit(pkg)}
+                disabled={isDeleting || isToggling}
+                className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors disabled:opacity-50"
+              >
+                <Pencil className="w-3.5 h-3.5" /> Edit
+              </button>
+            </>
+          )}
+          {perms.canEdit && perms.canDelete && <div className="w-px h-6 bg-border" />}
+          {perms.canDelete && (
+            <button
+              onClick={() => onDelete(pkg.idxno)}
+              disabled={isDeleting || isToggling}
+              className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-medium text-muted-foreground hover:text-destructive hover:bg-destructive/5 transition-colors disabled:opacity-50"
+            >
+              {isDeleting
+                ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                : <><Trash2 className="w-3.5 h-3.5" /> Delete</>}
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -490,6 +500,7 @@ export default function PackagesClient({
   const [editing, setEditing]     = useState<InternetPackage | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [togglingId, setTogglingId] = useState<number | null>(null);
+  const perms = usePermissions("/system/packages");
 
   // Derive unique categories from data + fixed set
   const categories = useMemo(() => {
@@ -581,9 +592,11 @@ export default function PackagesClient({
             {packages.length} package{packages.length !== 1 ? "s" : ""} &middot; {activeCount} active
           </p>
         </div>
-        <Button onClick={openAdd} className="gap-2 shrink-0">
-          <Plus className="w-4 h-4" /> Add Package
-        </Button>
+        {perms.canCreate && (
+          <Button onClick={openAdd} className="gap-2 shrink-0">
+            <Plus className="w-4 h-4" /> Add Package
+          </Button>
+        )}
       </div>
 
       {/* ── Category filter ── */}
@@ -623,7 +636,7 @@ export default function PackagesClient({
                 : `No packages in the "${activeCategory}" category.`}
             </p>
           </div>
-          {activeCategory === "All" && (
+          {activeCategory === "All" && perms.canCreate && (
             <Button onClick={openAdd} variant="outline" className="gap-2">
               <Plus className="w-4 h-4" /> Create Package
             </Button>

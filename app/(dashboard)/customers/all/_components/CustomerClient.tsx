@@ -13,6 +13,7 @@ import { DataTable } from "@/components/shared/data-table";
 import { RenewSubscriptionSheet } from "../../_components/RenewSubscriptionSheet";
 import { ChangePasswordSheet } from "../../_components/ChangePasswordSheet";
 import { createCustomerColumns } from "./columns";
+import { usePermissions } from "@/providers/PermissionsProvider";
 
 interface CustomerClientProps {
   initialCustomers: Customer[];
@@ -21,6 +22,7 @@ interface CustomerClientProps {
 export function CustomerClient({ initialCustomers }: CustomerClientProps) {
   const dispatch = useAppDispatch();
   const router   = useRouter();
+  const perms    = usePermissions("/customers");
 
   async function handleToggleActive(customer: Customer) {
     toast.loading(`Updating ${customer.fullName}…`);
@@ -87,9 +89,11 @@ export function CustomerClient({ initialCustomers }: CustomerClientProps) {
               </Badge>
             </div>
           </div>
-          <Button onClick={() => router.push("/customers/new")} className="gap-2 shrink-0">
-            <Plus className="h-4 w-4" /> Add Customer
-          </Button>
+          {perms.canCreate && (
+            <Button onClick={() => router.push("/customers/new")} className="gap-2 shrink-0">
+              <Plus className="h-4 w-4" /> Add Customer
+            </Button>
+          )}
         </div>
 
         {/* Table */}
