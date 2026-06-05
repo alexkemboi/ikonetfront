@@ -2,12 +2,14 @@ import { configureStore } from "@reduxjs/toolkit";
 import rolesReducer from "./slices/rolesSlice";
 import hotspotReducer from "./slices/hotspotSlice";
 import { customerReducer } from "./slices/customerslice";
+import { ticketReducer } from "./slices/ticketSlice";
 
 export const store = configureStore({
   reducer: {
     roles: rolesReducer,
     hotspot: hotspotReducer,
     customer: customerReducer,
+    ticket: ticketReducer,
   },
 });
 

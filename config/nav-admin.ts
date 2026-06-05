@@ -42,6 +42,12 @@ export const adminNavGroups: NavGroup[] = [
     ],
   },
   {
+    label: "Support",
+    items: [
+      { href: "/customers/tickets", label: "Tickets", icon: "headphones" },
+    ],
+  },
+  {
     label: "Finance",
     items: [
       { href: "/finance", label: "Revenue Overview", icon: "bar-chart-3" },
