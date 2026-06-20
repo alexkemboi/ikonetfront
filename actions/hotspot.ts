@@ -7,8 +7,9 @@ import {
   InitiatePaymentResponse,
   ReconnectResponse,
 } from '@/lib/types/hotspot';
+import { BASE_URL } from '@/lib/constants';
 
-const BASE_URL = 'https://beesmartbedak.com/api/v1/hotspot';
+
 
 export async function getHotspotPackages(): Promise<HotspotPackagesResponse> {
   try {

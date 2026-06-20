@@ -9,8 +9,9 @@ import {
   AddMikrotikDevicePayload,
   ApiResponse,
 } from "@/lib/types/mikrotik";
+import { BASE_URL } from "@/lib/constants";
 
-const BASE_URL = "https://beesmartbedak.com/api/v1";
+
 
 export async function getMikrotikDevices(): Promise<
   ApiResponse<MikrotikDevice[]>
@@ -21,6 +22,7 @@ export async function getMikrotikDevices(): Promise<
         tags: ["mikrotik-devices"],
       },
     });
+    console.log("Fetching MikroTik devices from API...", response);
     if (!response.ok) {
       const contentType = response.headers.get('content-type');
       let errorData: unknown;

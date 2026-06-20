@@ -8,8 +8,9 @@ import {
   UpdateCustomerPayload,
   CustomerFilters,
 } from "@/lib/types/customer";
+import { BASE_URL } from "@/lib/constants";
 
-const BASE_URL = "https://beesmartbedak.com/api/v1";
+
 
 const handleApiResponse = async(
   response: Response,

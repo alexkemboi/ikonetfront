@@ -1,5 +1,6 @@
 "use server";
 
+import { BASE_URL } from "@/lib/constants";
 import {
   ApiResponse,
   NetworkRouter,
@@ -10,13 +11,9 @@ import {
 } from "@/lib/types/network-router";
 import { revalidatePath, revalidateTag } from "next/cache";
 
-const BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL ||
-  "https://beesmartbedak.com/api/v1/network-routers";
-
 export const getPendingRouters = async (): Promise<ApiResponse<NetworkRouter[]>> => {
   try {
-    const response = await fetch(BASE_URL + "/pending", {
+    const response = await fetch(BASE_URL + "network-routers/pending", {
       next: { tags: ["pending-routers"] },
     });
 
@@ -53,7 +50,7 @@ export const getPendingRouters = async (): Promise<ApiResponse<NetworkRouter[]>>
 
 export const getTopologyTree = async (): Promise<ApiResponse<TopologyNode[]>> => {
   try {
-    const response = await fetch(BASE_URL + "/topology", {
+    const response = await fetch(BASE_URL + "network-routers/topology", {
       next: { tags: ["router-topology"] },
     });
 
@@ -90,7 +87,7 @@ export const getTopologyTree = async (): Promise<ApiResponse<TopologyNode[]>> =>
 
 export const getRouterDetails = async (id: number): Promise<ApiResponse<NetworkRouter | null>> => {
   try {
-    const response = await fetch(BASE_URL + `/${id}`, {
+    const response = await fetch(BASE_URL + `network-routers/${id}`, {
       next: { tags: [`router-${id}`] },
     });
 
@@ -130,7 +127,7 @@ export const finalizeRouter = async (
   body: RouterConfigRequest
 ): Promise<ApiResponse<NetworkRouter | null>> => {
   try {
-    const response = await fetch(BASE_URL + `/${id}/finalize`, {
+    const response = await fetch(BASE_URL + `network-routers/${id}/finalize`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
@@ -175,7 +172,7 @@ export const updateRouter = async (
   body: RouterConfigRequest
 ): Promise<ApiResponse<NetworkRouter | null>> => {
   try {
-    const response = await fetch(BASE_URL + `/${id}`, {
+    const response = await fetch(BASE_URL + `network-routers/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
@@ -220,7 +217,7 @@ export const executeRouterAction = async (
   body: RouterActionRequest
 ): Promise<ApiResponse<RouterActionResponse | null>> => {
   try {
-    const response = await fetch(BASE_URL + `/${id}/action`, {
+    const response = await fetch(BASE_URL + `network-routers/${id}/action`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
