@@ -40,3 +40,38 @@ jobs:
           docker compose up -d
 
           docker system prune -af
+  
+  deploy-prod:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Deploy to VPS via SSH
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.VPS_HOST_PROD }}
+        username: ${{ secrets.VPS_USER_PROD }}
+        password: ${{ secrets.VPS_PASSWORD_PROD }}
+        script: |
+          cd internet-billing-systemf/
+          
+          # Pull latest code
+          git pull origin main
+
+          # Stop any running containers to avoid port conflicts
+          docker compose down --remove-orphans
+
+          # Optional: prune unused containers, networks, images, and volumes
+          docker system prune -af
+
+          # Build images
+          docker compose build
+
+          # Start containers in detached mode
+          docker compose up -d
+
+          docker system prune -af
+
+      
