@@ -12,7 +12,7 @@ import { revalidatePath, revalidateTag } from "next/cache";
 
 const BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ||
-  "http://184.168.21.114/api/v1/network-routers";
+  "https://beesmartbedak.com/api/v1/network-routers";
 
 export const getPendingRouters = async (): Promise<ApiResponse<NetworkRouter[]>> => {
   try {

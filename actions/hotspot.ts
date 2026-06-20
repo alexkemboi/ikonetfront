@@ -8,7 +8,7 @@ import {
   ReconnectResponse,
 } from '@/lib/types/hotspot';
 
-const BASE_URL = 'http://184.168.21.114/api/v1/hotspot';
+const BASE_URL = 'https://beesmartbedak.com/api/v1/hotspot';
 
 export async function getHotspotPackages(): Promise<HotspotPackagesResponse> {
   try {

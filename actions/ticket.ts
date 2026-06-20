@@ -10,7 +10,7 @@ import type {
 } from "@/lib/types/ticket"
 import type { ApiResponse } from "@/lib/types/auth"
 
-const BASE_URL = "http://184.168.21.114/api/v1"
+const BASE_URL = "https://beesmartbedak.com/api/v1"
 
 // ─── Read Actions ────────────────────────────────────────────────────────────
 // next: { tags: [...] } caches this fetch under the given tag.

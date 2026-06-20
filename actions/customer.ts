@@ -9,7 +9,7 @@ import {
   CustomerFilters,
 } from "@/lib/types/customer";
 
-const BASE_URL = "http://184.168.21.114/api/v1";
+const BASE_URL = "https://beesmartbedak.com/api/v1";
 
 const handleApiResponse = async(
   response: Response,
