@@ -19,7 +19,7 @@ export default async function HotspotPage({
   const headerList = await headers();
 
   const macAddress =
-    (searchParams.mac as string) ||
+    await (searchParams)?.mac as string ||
     headerList.get("x-mac-address") ||
     "00:00:00:00:00:00";
 
@@ -27,7 +27,7 @@ export default async function HotspotPage({
     headerList.get("x-forwarded-for")?.split(",")[0].trim() ||
     headerList.get("x-real-ip") ||
     headerList.get("x-client-ip") ||
-    (searchParams.ip as string) ||
+    await (searchParams)?.ip as string ||
     "127.0.0.1";
 
   const sessionResponse = await checkActiveSession(macAddress, ipAddress);

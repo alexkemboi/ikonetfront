@@ -1,5 +1,6 @@
 "use server";
 
+import { auth } from "@/lib/auth";
 import { BASE_URL } from "@/lib/constants";
 import {
   ApiResponse,
@@ -10,6 +11,18 @@ import {
   TopologyNode,
 } from "@/lib/types/network-router";
 import { revalidatePath, revalidateTag } from "next/cache";
+
+
+async function getAuthHeaders(): Promise<HeadersInit> {
+  const session = await auth();
+  const headers: HeadersInit = { "Content-Type": "application/json" };
+  if (session?.user?.apiToken) {
+    (headers as Record<string, string>)["Authorization"] =
+      `Bearer ${session.user.apiToken}`;
+  }
+  return headers;
+}
+  
 
 export const getPendingRouters = async (): Promise<ApiResponse<NetworkRouter[]>> => {
   try {
@@ -129,7 +142,7 @@ export const finalizeRouter = async (
   try {
     const response = await fetch(BASE_URL + `network-routers/${id}/finalize`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: await getAuthHeaders(),
       body: JSON.stringify(body),
     });
 
@@ -174,7 +187,7 @@ export const updateRouter = async (
   try {
     const response = await fetch(BASE_URL + `network-routers/${id}`, {
       method: "PATCH",
-      headers: { "Content-Type": "application/json" },
+      headers: await getAuthHeaders(),
       body: JSON.stringify(body),
     });
 
@@ -219,7 +232,7 @@ export const executeRouterAction = async (
   try {
     const response = await fetch(BASE_URL + `network-routers/${id}/action`, {
       method: "PATCH",
-      headers: { "Content-Type": "application/json" },
+      headers: await getAuthHeaders(),
       body: JSON.stringify(body),
     });
 

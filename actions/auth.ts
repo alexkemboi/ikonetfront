@@ -14,6 +14,8 @@ export async function loginAction(credentials: {
     body: JSON.stringify(credentials),
     cache: "no-store",
   });
+
+  console.log("Login response:", res);
   return res.json() as Promise<ApiResponse<LoginData>>;
 }
 

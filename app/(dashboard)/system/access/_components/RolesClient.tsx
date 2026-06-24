@@ -588,7 +588,7 @@ function PermissionsTab({
       </div>
 
       {/* Permission tree */}
-      <ScrollArea className="h-[calc(100vh-380px)]">
+      <ScrollArea className="max-h-[calc(100vh-400px)] border border-border rounded-xl overflow-y-auto  p-4 ">
         <div className="space-y-3 pr-1">
           {menuTree.map((node) => (
             <PermissionNode

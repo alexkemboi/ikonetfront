@@ -11,9 +11,9 @@ export const proxy = auth((req) => {
     const { nextUrl } = req;
     const isAuthenticated = !!req.auth;
 
-    const isApiAuthRoute = nextUrl.pathname.startsWith(apiAuthPrefix);
-    const isPublicRoute = publicRoutes.some((route) => nextUrl.pathname.startsWith(route));
-    const isAuthRoute = authRoutes.some((route) => nextUrl.pathname.startsWith(route));
+    const isApiAuthRoute = nextUrl.pathname.includes(apiAuthPrefix);
+    const isPublicRoute = publicRoutes.some((route) => nextUrl.pathname.includes(route));
+    const isAuthRoute = authRoutes.some((route) => nextUrl.pathname.includes(route));
 
     // Always let NextAuth's own API routes through
     if (isApiAuthRoute) return NextResponse.next();

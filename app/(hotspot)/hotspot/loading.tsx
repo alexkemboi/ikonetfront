@@ -1,35 +1,43 @@
+import { Phone, Wifi } from "lucide-react";
+
 export default function HotspotLoading() {
   return (
-    <div className="space-y-8 animate-pulse">
-      {/* Step indicator */}
-      <div className="flex items-center gap-2 justify-center">
-        {Array.from({ length: 5 }).map((_, i) => (
-          <div key={i} className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-full bg-muted" />
-            {i < 4 && <div className="w-8 h-px bg-muted" />}
+  
+      <div className="min-h-screen animate-pulse flex flex-col px-5 sm:px-8 py-8">
+        {/* Header */}
+        <div className="mb-8 text-center space-y-2">
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-primary mb-1">
+            <Wifi className="w-7 h-7 text-primary-foreground" />
           </div>
-        ))}
-      </div>
-
-      <div className="space-y-1.5">
-        <div className="h-6 w-40 rounded-lg bg-muted" />
-        <div className="h-4 w-64 rounded bg-muted mt-1" />
-      </div>
-
-      <div className="space-y-3">
-        {Array.from({ length: 3 }).map((_, i) => (
-          <div key={i} className="rounded-xl border border-border p-4 flex items-center gap-4">
-            <div className="w-10 h-10 rounded-lg bg-muted shrink-0" />
-            <div className="flex-1 space-y-2">
-              <div className="h-4 w-32 rounded bg-muted" />
-              <div className="h-3 w-48 rounded bg-muted" />
-            </div>
-            <div className="w-5 h-5 rounded-full border-2 border-muted" />
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">
+              IKONEX Hotspot
+            </h1>
+            <p className="text-xs text-muted-foreground mt-1">
+              Premium High-Speed Internet Access
+            </p>
           </div>
-        ))}
-      </div>
+          <a
+            href="tel:0700000000"
+            className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline"
+          >
+            <Phone className="w-3.5 h-3.5" />
+            Customer Care: 0700 000 000
+          </a>
+        </div>
 
-      <div className="h-10 rounded-lg bg-primary/20" />
-    </div>
+        {/* Main flow */}
+        <div className="flex-1 w-full">
+          <div className="space-y-6">
+            <div className="h-6 w-44 rounded bg-muted mx-auto" />
+            <div className="h-4 w-64 rounded bg-muted mx-auto" />
+            <div className="h-9 w-28 rounded-lg bg-muted mx-auto" />
+          </div>
+        </div>
+
+        <p className="mt-6 text-center text-xs text-muted-foreground">
+          Powered by <span className="font-medium text-foreground">Beesmart</span>
+        </p>
+      </div>
   );
 }

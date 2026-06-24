@@ -7,6 +7,7 @@ export const metadata = {
 // NextAuth appends ?error=<code> on failed sign-in — map codes to user-friendly copy
 const AUTH_ERRORS: Record<string, string> = {
   CredentialsSignin:    "Invalid username or password. Please try again.",
+  Configuration:        "Invalid username or password. Please try again.",
   AccessDenied:         "You do not have permission to access this system.",
   SessionRequired:      "Your session has expired. Please sign in again.",
   OAuthAccountNotLinked:"This account is linked to a different sign-in method.",

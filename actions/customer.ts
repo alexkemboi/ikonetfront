@@ -9,6 +9,19 @@ import {
   CustomerFilters,
 } from "@/lib/types/customer";
 import { BASE_URL } from "@/lib/constants";
+import { auth } from "@/lib/auth";
+
+
+
+async function getAuthHeaders(): Promise<HeadersInit> {
+  const session = await auth();
+  const headers: HeadersInit = { "Content-Type": "application/json" };
+  if (session?.user?.apiToken) {
+    (headers as Record<string, string>)["Authorization"] =
+      `Bearer ${session.user.apiToken}`;
+  }
+  return headers;
+}
 
 
 
@@ -78,6 +91,7 @@ export async function getCustomers(
     }
 
     const response = await fetch(`${BASE_URL}/customers?${params.toString()}`, {
+      headers: await getAuthHeaders(),
       next: {
         tags: ["customers"],
       },
@@ -125,6 +139,7 @@ export async function getCustomerById(
 ){
   try {
     const response = await fetch(`${BASE_URL}/customers/${id}`, {
+      headers: await getAuthHeaders(),
       next: {
         tags: [`customer-${id}`],
       },
@@ -154,9 +169,7 @@ export async function addCustomer(
   try {
     const response = await fetch(`${BASE_URL}/customers`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: await getAuthHeaders(),
       body: JSON.stringify(payload),
     });
 
@@ -186,9 +199,7 @@ export async function updateCustomer(
   try {
     const response = await fetch(`${BASE_URL}/customers/${id}`, {
       method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: await getAuthHeaders(),
       body: JSON.stringify(payload),
     });
 
@@ -220,6 +231,7 @@ export async function deleteCustomer(
   try {
     const response = await fetch(`${BASE_URL}/customers/${id}`, {
       method: "DELETE",
+      headers: await getAuthHeaders(),
     });
 
     if (!response.ok) {
@@ -249,6 +261,7 @@ export async function toggleCustomerActiveStatus(
   try {
     const response = await fetch(`${BASE_URL}/customers/${id}/toggle-active`, {
       method: "PATCH",
+      headers: await getAuthHeaders(),
     });
 
     if (!response.ok) {
@@ -286,6 +299,7 @@ export async function renewCustomerSubscription(
       `${BASE_URL}/customers/${id}/renew?duration=${duration}&unit=${unit}`,
       {
         method: "PATCH",
+        headers: await getAuthHeaders(),
       }
     );
 
@@ -320,6 +334,7 @@ export async function changeCustomerPassword(
       `${BASE_URL}/customers/${id}/change-password?newPassword=${newPassword}`,
       {
         method: "PATCH",
+        headers: await getAuthHeaders(),
       }
     );
 

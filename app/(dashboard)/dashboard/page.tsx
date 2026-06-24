@@ -15,9 +15,9 @@ export default async function DashboardPage() {
   // ── Admin (01) ────────────────────────────────────────────────────────
   if (role === "01") {
     const [allRes, activeRes, pppoeRes, packagesRes, devicesRes] = await Promise.all([
-      getCustomers(0, 1),
-      getCustomers(0, 1, { isActive: true }),
-      getCustomers(0, 1, { custtype: "pppoe" }),
+      getCustomers(0, 1) ?? { data: { totalElements: 0 } },
+      getCustomers(0, 1, { isActive: true }) ?? { data: { totalElements: 0 } },
+      getCustomers(0, 1, { custtype: "pppoe" }) ?? { data: { totalElements: 0 } },
       getPackagesAction(),
       getMikrotikDevices(),
     ]);

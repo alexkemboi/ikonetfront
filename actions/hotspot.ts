@@ -8,12 +8,23 @@ import {
   ReconnectResponse,
 } from '@/lib/types/hotspot';
 import { BASE_URL } from '@/lib/constants';
+import { auth } from '@/lib/auth';
 
+async function getAuthHeaders(): Promise<HeadersInit> {
+  const session = await auth();
+  const headers: HeadersInit = { "Content-Type": "application/json" };
+  if (session?.user?.apiToken) {
+    (headers as Record<string, string>)["Authorization"] =
+      `Bearer ${session.user.apiToken}`;
+  }
+  return headers;
+}
 
 
 export async function getHotspotPackages(): Promise<HotspotPackagesResponse> {
   try {
     const response = await fetch(`${BASE_URL}/packages`, {
+      headers: await getAuthHeaders(),
       next: {
         tags: ['hotspot-packages'],
         revalidate: 3600, // Revalidate every hour
@@ -45,9 +56,7 @@ export async function initiateHotspotPayment(
     console.log('Initiate Payment Request:', requestBody);
     const response = await fetch(`${BASE_URL}/initiate`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: await getAuthHeaders(),
       body: JSON.stringify(requestBody),
     });
 
@@ -87,6 +96,7 @@ export async function checkActiveSession(
           tags: ['hotspot-session'],
           revalidate: 60, // Revalidate every minute for session status
         },
+        headers: await getAuthHeaders(),
       }
     );
 

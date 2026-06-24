@@ -10,6 +10,19 @@ import {
   ApiResponse,
 } from "@/lib/types/mikrotik";
 import { BASE_URL } from "@/lib/constants";
+import { auth } from "@/lib/auth";
+
+
+
+async function getAuthHeaders(): Promise<HeadersInit> {
+  const session = await auth();
+  const headers: HeadersInit = { "Content-Type": "application/json" };
+  if (session?.user?.apiToken) {
+    (headers as Record<string, string>)["Authorization"] =
+      `Bearer ${session.user.apiToken}`;
+  }
+  return headers;
+}
 
 
 
@@ -18,6 +31,7 @@ export async function getMikrotikDevices(): Promise<
 > {
   try {
     const response = await fetch(`${BASE_URL}/network-devices`, {
+      headers: await getAuthHeaders(),
       next: {
         tags: ["mikrotik-devices"],
       },
@@ -60,9 +74,7 @@ export async function addMikrotikDevice(
   try {
     const response = await fetch(`${BASE_URL}/network-devices`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: await getAuthHeaders(),
       body: JSON.stringify(payload),
     });
 
@@ -102,6 +114,7 @@ export async function getMikrotikDeviceStatus(
       next: {
         tags: [`mikrotik-device-status-${id}`],
       },
+      headers: await getAuthHeaders(),
     });
     if (!response.ok) {
       const errorData: unknown = await response.json();
@@ -138,6 +151,7 @@ export async function getMikrotikDeviceInterfaces(
         next: {
           tags: [`mikrotik-device-interfaces-${id}`],
         },
+        headers: await getAuthHeaders(),
       }
     );
     if (!response.ok) {
