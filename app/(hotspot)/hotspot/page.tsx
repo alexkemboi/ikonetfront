@@ -16,27 +16,29 @@ export default async function HotspotPage({
   const packagesResponse = await getHotspotPackages();
   const packages: HotspotPackage[] = packagesResponse.success ? packagesResponse.data : [];
 
+  console.log(packages, "packages")
+
   const headerList = await headers();
 
-  const macAddress =
-    await (searchParams)?.mac as string ||
-    headerList.get("x-mac-address") ||
-    "00:00:00:00:00:00";
+  // const macAddress =
+  //   await (searchParams)?.mac as string ||
+  //   headerList.get("x-mac-address") ||
+  //   "00:00:00:00:00:00";
 
-  const ipAddress =
-    headerList.get("x-forwarded-for")?.split(",")[0].trim() ||
-    headerList.get("x-real-ip") ||
-    headerList.get("x-client-ip") ||
-    await (searchParams)?.ip as string ||
-    "127.0.0.1";
+  // const ipAddress =
+  //   headerList.get("x-forwarded-for")?.split(",")[0].trim() ||
+  //   headerList.get("x-real-ip") ||
+  //   headerList.get("x-client-ip") ||
+  //   await (searchParams)?.ip as string ||
+  //   "127.0.0.1";
 
-  const sessionResponse = await checkActiveSession(macAddress, ipAddress);
-  const hasActiveSession = sessionResponse.success
-    ? sessionResponse.data.hasActiveSession
-    : false;
-  const sessionMessage = sessionResponse.success
-    ? sessionResponse.data.message
-    : sessionResponse.message;
+  // const sessionResponse = await checkActiveSession(macAddress, ipAddress);
+  // const hasActiveSession = sessionResponse.success
+  //   ? sessionResponse.data.hasActiveSession
+  //   : false;
+  // const sessionMessage = sessionResponse.success
+  //   ? sessionResponse.data.message
+  //   : sessionResponse.message;
 
   return (
     <div className="min-h-screen flex flex-col px-5 sm:px-8 py-8">
@@ -65,11 +67,9 @@ export default async function HotspotPage({
       {/* Main flow */}
       <div className="flex-1 w-full">
         <HotspotFlow
-          initialPackages={packages}
-          initialHasActiveSession={hasActiveSession}
-          initialSessionMessage={sessionMessage}
-          macAddress={macAddress}
-          ipAddress={ipAddress}
+          packages={packages}
+          // macAddress={macAddress}
+          // ipAddress={ipAddress}
         />
       </div>
 

@@ -23,20 +23,27 @@ async function getAuthHeaders(): Promise<HeadersInit> {
 
 export async function getHotspotPackages(): Promise<HotspotPackagesResponse> {
   try {
-    const response = await fetch(`${BASE_URL}/packages`, {
-      headers: await getAuthHeaders(),
+    console.log(`${BASE_URL}system/packages`)
+    const response = await fetch(`${BASE_URL}system/packages`, {
+      // headers: await getAuthHeaders(),
       next: {
         tags: ['hotspot-packages'],
         revalidate: 3600, // Revalidate every hour
       },
     });
 
+    
+
     if (!response.ok) {
       const errorData = await response.json();
       throw new Error(errorData.message || 'Failed to fetch hotspot packages');
     }
 
-    return response.json();
+    const data = await response.json()
+
+    console.log(data)
+
+    return data;
   } catch (error) {
     console.error('Error fetching hotspot packages:', error);
     return {
@@ -53,8 +60,8 @@ export async function initiateHotspotPayment(
   requestBody: InitiatePaymentRequest
 ): Promise<InitiatePaymentResponse> {
   try {
-    console.log('Initiate Payment Request:', requestBody);
-    const response = await fetch(`${BASE_URL}/initiate`, {
+    console.log(`${BASE_URL}hotspot/initiate` );
+    const response = await fetch(`${BASE_URL}hotspot/initiate`, {
       method: 'POST',
       headers: await getAuthHeaders(),
       body: JSON.stringify(requestBody),

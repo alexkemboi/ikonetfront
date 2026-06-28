@@ -77,12 +77,18 @@ export default function LoginForm({ error }: { error?: string }) {
     initialValues: { username: "", password: "" },
     validationSchema,
     onSubmit: async () => {
-      await signIn("credentials", {
-        username: formik.values.username,
-        password: formik.values.password,
-        redirect: true,
-        callbackUrl: "/dashboard",
-      });
+
+      try {
+        await signIn("credentials", {
+          username: formik.values.username,
+          password: formik.values.password,
+          redirect: true,
+          callbackUrl: "/dashboard",
+        });
+      }catch(e:any){
+        // console.error(e?.message)
+      }
+      
     },
   });
 
