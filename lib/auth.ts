@@ -1,7 +1,8 @@
 import NextAuth from "next-auth"
 import Credentials from "next-auth/providers/credentials"
-import { loginAction } from "@/actions/auth"
+import { loginAction, refreshAccessToken } from "@/actions/auth"
 import type { JwtPayload } from "@/lib/types/auth"
+import { decodeToken } from "./utils/decoder"
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
     providers: [
@@ -55,18 +56,31 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         error: "/login", // Error code passed in query string as ?error=
     },
     callbacks: {
-        jwt({ token, user }) {
-            if (user) {
-                token.id          = user.id
-                token.role        = user.role
-                token.fname       = user.fname
-                token.middleName  = user.middleName
-                token.otherName   = user.otherName
-                token.phoneNumber = user.phoneNumber
-                token.username    = user.username
-                token.apiToken    = user.apiToken
+        async jwt({ token, user, account }) {
+            if (account && user) {
+                token.apiToken = user.apiToken; // Ensure you grab this from user/account
+                const decoded = decodeToken(token.apiToken as string);
+                token.expiresAt = (decoded?.exp as number) * 1000;
             }
-            return token
+
+            console.log(Date.now() < (token.expiresAt as number))
+            // 2. Check if the backend token has expired
+            if (Date.now() < (token.expiresAt as number)) {
+                if (user) {
+                    token.id = user.id
+                    token.role = user.role
+                    token.fname = user.fname
+                    token.middleName = user.middleName
+                    token.otherName = user.otherName
+                    token.phoneNumber = user.phoneNumber
+                    token.username = user.username
+                    token.apiToken = user.apiToken
+                }
+                return token
+            }
+
+            // 3. Token expired: attempt to refresh it
+            return await refreshAccessToken(token);
         },
         session({ session, token }) {
             session.user.id          = token.id as string
@@ -77,6 +91,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             session.user.phoneNumber = token.phoneNumber as string | undefined
             session.user.username    = token.username    as string
             session.user.apiToken    = token.apiToken    as string
+           
+            if(token.error){
+                session.error = token.error as "RefreshAccessTokenError" | undefined;
+            }
             return session
         },
     },

@@ -13,6 +13,7 @@ declare module "next-auth" {
   }
 
   interface Session {
+    error?: "RefreshAccessTokenError";
     user: {
       role: string;
       /** Bearer token for downstream API calls */

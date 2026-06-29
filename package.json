@@ -17,6 +17,8 @@
     "clsx": "^2.1.1",
     "formik": "^2.4.9",
     "framer-motion": "^12.35.0",
+    "jose": "^6.2.3",
+    "jwt": "^0.2.0",
     "lucide-react": "^0.576.0",
     "next": "16.1.6",
     "next-auth": "5.0.0-beta.30",

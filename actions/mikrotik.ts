@@ -30,7 +30,7 @@ export async function getMikrotikDevices(): Promise<
   ApiResponse<MikrotikDevice[]>
 > {
   try {
-    const response = await fetch(`${BASE_URL}/network-devices`, {
+    const response = await fetch(`${BASE_URL}network-devices`, {
       headers: await getAuthHeaders(),
       next: {
         tags: ["mikrotik-devices"],
@@ -72,7 +72,7 @@ export async function addMikrotikDevice(
   payload: AddMikrotikDevicePayload
 ): Promise<ApiResponse<MikrotikDevice | null>> {
   try {
-    const response = await fetch(`${BASE_URL}/network-devices`, {
+    const response = await fetch(`${BASE_URL}network-devices`, {
       method: "POST",
       headers: await getAuthHeaders(),
       body: JSON.stringify(payload),
@@ -110,7 +110,7 @@ export async function getMikrotikDeviceStatus(
   id: number
 ): Promise<ApiResponse<MikrotikDeviceStatus | null>> {
   try {
-    const response = await fetch(`${BASE_URL}/network-devices/${id}/status`, {
+    const response = await fetch(`${BASE_URL}network-devices/${id}/status`, {
       next: {
         tags: [`mikrotik-device-status-${id}`],
       },
@@ -146,7 +146,7 @@ export async function getMikrotikDeviceInterfaces(
   try {
     console.log(`Fetching interfaces for device ${ BASE_URL } / network - devices / ${ id } / interfaces...`);
     const response = await fetch(
-      `${BASE_URL}/network-devices/${id}/interfaces`,
+      `${BASE_URL}network-devices/${id}/interfaces`,
       {
         next: {
           tags: [`mikrotik-device-interfaces-${id}`],

@@ -23,6 +23,7 @@ import { staffUserColumns } from "./columns";
 import { addSystemUser, type UserData } from "@/actions/system";
 import type { ApiRole, ApiRoleUser } from "@/lib/types/roles";
 import { cn } from "@/lib/utils";
+import { EditUserSheet } from "./editusersheet";
 
 // ── Validation ─────────────────────────────────────────────────────────────────
 
@@ -366,6 +367,12 @@ export default function StaffUsersClient({ users, roles }: StaffUsersClientProps
         onClose={() => setSheetOpen(false)}
         roles={roles}
       />
+
+      {/* <EditUserSheet
+        open={false}
+        onClose={() => setSheetOpen(!sheetOpen) }
+        roles={roles}
+      /> */}
     </div>
   );
 }
