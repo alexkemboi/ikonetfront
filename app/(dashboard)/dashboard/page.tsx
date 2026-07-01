@@ -32,26 +32,11 @@ export default async function DashboardPage() {
 /**
  * Revenue Calculations
  */
-const monthlyRevenue = allPackages.reduce(
-  (sum, pkg) =>
-    sum + (Number(pkg?.price) || 0),
-  0
-);
+const monthlyRevenue = 0
 
-const activeRevenue = allPackages
-  .filter((pkg) =>
-    Boolean(pkg?.activeStatus)
-  )
-  .reduce(
-    (sum, pkg) =>
-      sum + (Number(pkg?.price) || 0),
-    0
-  );
+const activeRevenue = 0
 
-const inactiveRevenue = Math.max(
-  monthlyRevenue - activeRevenue,
-  0
-);
+const inactiveRevenue = 0
     return (
       <div className="flex-1 p-8 pt-6">
        <DashboardShell
@@ -89,9 +74,9 @@ const inactiveRevenue = Math.max(
     /**
      * Revenue
      */
-    dailyRevenue: 18500,
+    dailyRevenue: 0,
 
-    weeklyRevenue: 124000,
+    weeklyRevenue: 0,
 
     monthlyRevenue,
 
@@ -99,16 +84,15 @@ const inactiveRevenue = Math.max(
 
     inactiveRevenue,
 
-    expectedRevenue:
-      monthlyRevenue + 148000,
+    expectedRevenue:0,
 
-    collectedRevenue: 620000,
+    collectedRevenue: 0,
 
-    outstandingBalances: 148000,
+    outstandingBalances: 0,
 
-    failedPayments: 17,
+    failedPayments: 0,
 
-    revenueGrowth: 12.4,
+    revenueGrowth: 0,
 
     arpu:
       activeCustomers > 0
@@ -120,14 +104,14 @@ const inactiveRevenue = Math.max(
           )
         : 0,
 
-    hotspotRevenue: 87000,
+    hotspotRevenue: 0,
 
     pppoeRevenue: Math.max(
-      activeRevenue - 87000,
+      activeRevenue - 0,
       0
     ),
 
-    suspendedRevenueLoss: 23000,
+    suspendedRevenueLoss: 0,
 
     /**
      * Alerts
@@ -137,48 +121,48 @@ const inactiveRevenue = Math.max(
       0
     ),
 
-    highCpuRouters: 2,
+    highCpuRouters: 0,
 
-    highMemoryRouters: 1,
+    highMemoryRouters: 0,
 
-    expiringCustomers: 14,
+    expiringCustomers: 0,
 
-    expiredAccounts: 8,
+    expiredAccounts: 0,
 
-    failedPPPoESessions: 5,
+    failedPPPoESessions: 0,
 
-    failedHotspotSessions: 3,
+    failedHotspotSessions: 0,
 
-    networkCongestionAlerts: 2,
+    networkCongestionAlerts: 0,
 
-    slaBreaches: 1,
+    slaBreaches: 0,
 
-    failedPaymentCallbacks: 4,
+    failedPaymentCallbacks: 0,
 
-    smsFailures: 6,
+    smsFailures: 0 ,
 
     fraudAlerts: 0,
 
-    bandwidthAlerts: 3,
+    bandwidthAlerts: 0,
 
     /**
      * Operations
      */
-    activePPPoESessions: 412,
+    activePPPoESessions: 0,
 
-    activeHotspotSessions: 186,
+    activeHotspotSessions: 0,
 
-    currentBandwidthUsage: 518,
+    currentBandwidthUsage: 0,
 
-    peakHourUsage: 842,
+    peakHourUsage: 0,
 
-    uptimePercentage: 99.92,
+    uptimePercentage: 0,
 
-    customerGrowth: 9.4,
+    customerGrowth: 0,
 
-    churnRate: 2.1,
+    churnRate: 0,
 
-    supportTickets: 11,
+    supportTickets: 0,
   }}
   devices={allDevices}
   packages={allPackages}
