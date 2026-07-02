@@ -499,7 +499,7 @@ export default function BuyTab({ packages, onBack }: BuyTabProps) {
 
     // Packages selection step
     return (
-        <div className="w-full max-w-md mx-auto space-y-4">
+        <div className="w-full max-w-2xl mx-auto space-y-4">
             <button
                 onClick={onBack}
                 className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors mb-4"
@@ -512,7 +512,7 @@ export default function BuyTab({ packages, onBack }: BuyTabProps) {
                 Choose a package and pay with M-Pesa
             </p>
 
-            <div className="grid gap-3">
+            <div className="grid md:grid-cols-2 gap-3">
                 {packages.map((pkg) => (
                     <PackageCard
                         key={pkg.idxno}
