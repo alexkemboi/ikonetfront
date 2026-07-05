@@ -49,18 +49,18 @@ export default async function HotspotPage({
         </div>
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground">
-            IKONEX Hotspot
+            IKONEX HOTSPOT
           </h1>
           <p className="text-xs text-muted-foreground mt-1">
             Premium High-Speed Internet Access
           </p>
         </div>
         <a
-          href="tel:0700000000"
+          href="tel:0726837210"
           className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline"
         >
           <Phone className="w-3.5 h-3.5" />
-          Customer Care: 0700 000 000
+          Customer Care: 0726837210
         </a>
       </div>
 
