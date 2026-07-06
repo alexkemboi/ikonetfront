@@ -149,6 +149,8 @@ export default function MultiStepCustomerForm({ packages }: { packages: Internet
             return (
               <div key={label} className="flex items-center flex-1 min-w-0">
                 <div className="flex flex-col items-center shrink-0">
+                  {currentStep}
+                  {steps.length - 1}
                   <div
                     className={cn(
                       "flex h-8 w-8 items-center justify-center rounded-full border-2 text-xs font-bold transition-all duration-200",
@@ -218,18 +220,24 @@ export default function MultiStepCustomerForm({ packages }: { packages: Internet
               Previous
             </Button>
 
+            <div className="flex gap-2">
             {currentStep < steps.length - 1 ? (
               <Button type="button" onClick={handleNextStep}>
                 Next
               </Button>
-            ) : (
-              <Button type="submit" disabled={formik.isSubmitting}>
-                {formik.isSubmitting ? "Creating..." : "Create Customer"}
-              </Button>
-            )}
+            ) : null}
+
+              {currentStep === steps.length - 1 ? (
+                <Button type="submit" disabled={formik.isSubmitting}>
+                  {formik.isSubmitting ? "Submitting..." : "Submit"}
+                </Button>
+              ) : null}
+           
+            </div>
           </div>
         </form>
       </CardContent>
     </Card>
   );
 }
+         

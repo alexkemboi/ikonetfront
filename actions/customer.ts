@@ -90,7 +90,7 @@ export async function getCustomers(
       params.append("search", filters.search);
     }
 
-    const response = await fetch(`${BASE_URL}/customers?${params.toString()}`, {
+    const response = await fetch(`${BASE_URL}customers?${params.toString()}`, {
       headers: await getAuthHeaders(),
       next: {
         tags: ["customers"],
@@ -138,7 +138,7 @@ export async function getCustomerById(
   id: number
 ){
   try {
-    const response = await fetch(`${BASE_URL}/customers/${id}`, {
+    const response = await fetch(`${BASE_URL}customers/${id}`, {
       headers: await getAuthHeaders(),
       next: {
         tags: [`customer-${id}`],
@@ -167,15 +167,19 @@ export async function addCustomer(
   payload: AddCustomerPayload
 ){
   try {
-    const response = await fetch(`${BASE_URL}/customers`, {
+    console.log("Adding customer with payload:", payload);
+    const response = await fetch(`${BASE_URL}customers`, {
       method: "POST",
       headers: await getAuthHeaders(),
       body: JSON.stringify(payload),
     });
 
+    console.log("Customer added successfully:", response);
     if (!response.ok) {
       return handleApiResponse(response, "Failed to add customer");
     }
+
+    
 
     const data= await response.json();
     revalidatePath("/customers/all");
@@ -197,7 +201,7 @@ export async function updateCustomer(
   payload: UpdateCustomerPayload
 ){
   try {
-    const response = await fetch(`${BASE_URL}/customers/${id}`, {
+    const response = await fetch(`${BASE_URL}customers/${id}`, {
       method: "PUT",
       headers: await getAuthHeaders(),
       body: JSON.stringify(payload),
@@ -229,7 +233,7 @@ export async function deleteCustomer(
   id: number
 ){
   try {
-    const response = await fetch(`${BASE_URL}/customers/${id}`, {
+    const response = await fetch(`${BASE_URL}customers/${id}`, {
       method: "DELETE",
       headers: await getAuthHeaders(),
     });
@@ -259,7 +263,7 @@ export async function toggleCustomerActiveStatus(
   id: number
 ){
   try {
-    const response = await fetch(`${BASE_URL}/customers/${id}/toggle-active`, {
+    const response = await fetch(`${BASE_URL}customers/${id}/toggle-active`, {
       method: "PATCH",
       headers: await getAuthHeaders(),
     });
@@ -296,7 +300,7 @@ export async function renewCustomerSubscription(
 ){
   try {
     const response = await fetch(
-      `${BASE_URL}/customers/${id}/renew?duration=${duration}&unit=${unit}`,
+      `${BASE_URL}customers/${id}/renew?duration=${duration}&unit=${unit}`,
       {
         method: "PATCH",
         headers: await getAuthHeaders(),
@@ -331,7 +335,7 @@ export async function changeCustomerPassword(
 ) {
   try {
     const response = await fetch(
-      `${BASE_URL}/customers/${id}/change-password?newPassword=${newPassword}`,
+      `${BASE_URL}customers/${id}/change-password?newPassword=${newPassword}`,
       {
         method: "PATCH",
         headers: await getAuthHeaders(),

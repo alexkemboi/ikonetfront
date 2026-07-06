@@ -63,7 +63,7 @@ const AccountDetailsStep: React.FC<AccountDetailsStepProps> = ({ formik, package
           >
             <SelectValue placeholder="Select package" />
           </SelectTrigger>
-          <SelectContent className="max-h-60 overflow-auto">
+          <SelectContent className="max-h-60 w-60 overflow-auto">
             {packages?.map((pkg) => {
               return <SelectItem key={pkg.idxno} value={pkg.packageName}>{pkg.packageName}</SelectItem>
             })}
