@@ -13,61 +13,45 @@ interface HotspotFlowProps {
 
 export default function HotspotFlow({ packages }: HotspotFlowProps) {
   const [activeTab, setActiveTab] = useState<Tab>("activate");
-  const [showTabs, setShowTabs] = useState(true);
-
-  const handleStartPurchase = () => {
-    setShowTabs(false);
-  };
-
-  const handleBackToTabs = () => {
-    setShowTabs(true);
-  };
-
-  if (!showTabs) {
-    return <BuyTab packages={packages} onBack={handleBackToTabs} />;
-  }
 
   return (
-    <div className="w-full max-w-md mx-auto">
+    <div className="w-full">
       {/* Tab navigation */}
-      <div className="flex gap-3 mb-6 border-b border-border">
+      <div className="flex gap-1 mb-6 border-b border-border">
         <button
           onClick={() => setActiveTab("activate")}
-          className={`pb-3 px-4 font-medium text-sm transition-colors ${activeTab === "activate"
-              ? "text-primary border-b-2 border-primary -mb-[2px]"
+          className={`pb-3 px-4 font-medium text-sm transition-colors relative ${activeTab === "activate"
+              ? "text-primary"
               : "text-muted-foreground hover:text-foreground"
             }`}
         >
           Activate Voucher
+          {activeTab === "activate" && (
+            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />
+          )}
         </button>
         <button
           onClick={() => setActiveTab("buy")}
-          className={`pb-3 px-4 font-medium text-sm transition-colors ${activeTab === "buy"
-              ? "text-primary border-b-2 border-primary -mb-[2px]"
+          className={`pb-3 px-4 font-medium text-sm transition-colors relative ${activeTab === "buy"
+              ? "text-primary"
               : "text-muted-foreground hover:text-foreground"
             }`}
         >
-          Buy Voucher
+          Buy Packages
+          {activeTab === "buy" && (
+            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />
+          )}
         </button>
       </div>
 
       {/* Tab content */}
       <div>
-        {activeTab === "activate" && (
-          <ActivateTab />
-        )}
+        {activeTab === "activate" && <ActivateTab />}
         {activeTab === "buy" && (
-          <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              Select a package and purchase using M-Pesa
-            </p>
-            <button
-              onClick={handleStartPurchase}
-              className="w-full px-4 py-3 bg-primary text-primary-foreground rounded-lg font-medium hover:opacity-90 transition-opacity"
-            >
-              Start Purchase
-            </button>
-          </div>
+          <BuyTab
+            packages={packages}
+            onBack={() => setActiveTab("activate")}
+          />
         )}
       </div>
     </div>

@@ -84,10 +84,10 @@ export default function ActivateTab() {
                         onChange={handleVoucherChange}
                         disabled={isSubmitting}
                         className={`w-full h-9 px-3 py-1 rounded-md border bg-transparent text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 disabled:cursor-not-allowed disabled:opacity-50 pr-10 ${validationState === "valid"
-                                ? "border-green-500 focus-visible:ring-green-500"
-                                : validationState === "invalid"
-                                    ? "border-red-500 focus-visible:ring-red-500"
-                                    : "border-input focus-visible:ring-ring"
+                            ? "border-green-500 focus-visible:ring-green-500"
+                            : validationState === "invalid"
+                                ? "border-red-500 focus-visible:ring-red-500"
+                                : "border-input focus-visible:ring-ring"
                             }`}
                     />
                     {validationState === "valid" && (
@@ -103,10 +103,10 @@ export default function ActivateTab() {
             {message && (
                 <div
                     className={`flex items-center gap-2 text-sm p-3 rounded-lg ${validationState === "valid"
-                            ? "bg-green-50 text-green-800 border border-green-200"
-                            : validationState === "validating"
-                                ? "bg-blue-50 text-blue-800 border border-blue-200"
-                                : "bg-red-50 text-red-800 border border-red-200"
+                        ? "bg-green-50 text-green-800 border border-green-200"
+                        : validationState === "validating"
+                            ? "bg-blue-50 text-blue-800 border border-blue-200"
+                            : "bg-red-50 text-red-800 border border-red-200"
                         }`}
                 >
                     {validationState === "validating" && (

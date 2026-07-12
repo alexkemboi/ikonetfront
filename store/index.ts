@@ -3,6 +3,7 @@ import rolesReducer from "./slices/rolesSlice";
 import hotspotReducer from "./slices/hotspotSlice";
 import { customerReducer } from "./slices/customerslice";
 import { ticketReducer } from "./slices/ticketSlice";
+import { systemReducer } from "./slices/systemslice";
 
 export const store = configureStore({
   reducer: {
@@ -10,6 +11,7 @@ export const store = configureStore({
     hotspot: hotspotReducer,
     customer: customerReducer,
     ticket: ticketReducer,
+    system: systemReducer,
   },
 });
 
