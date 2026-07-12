@@ -29,12 +29,12 @@ export default function PackageCard({ pkg, onSelect }: PackageCardProps) {
             {/* Main row - always visible */}
             <div className="px-4 py-3 flex items-center justify-between gap-4">
                 {/* Left: Package info (compact) */}
-                <div className="flex-1 min-w-0">
+                <div className="flex-1 min-w-0  ">
                     <h3 className="text-sm font-semibold text-foreground truncate">
                         {pkg.packageName}
                     </h3>
-                    <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-2">
-                        <div className="flex items-center gap-1">
+                    <p className="text-xs text-muted-foreground mt-4.5 md:mt-0.5 flex items-center gap-2 ">
+                        <div className="flex  items-center gap-1">
                             <ArrowUp className="w-4 h-4 text-primary" />
                             {pkg.speedUpload} Mbps 
                         </div>
@@ -45,17 +45,17 @@ export default function PackageCard({ pkg, onSelect }: PackageCardProps) {
                         </div>
 
 
-                        <div className="flex items-center gap-1">
+                        {/* <div className="flex items-center gap-1">
                             <Clock className="w-4 h-4 text-primary" />
                             { pkg.validityValue } {pkg.validityType}
-                        </div>
+                        </div> */}
                       
                    
                     </p>
                 </div>
 
                 {/* Center: Price */}
-                <div className="text-right shrink-0">
+                <div className="text-right shrink-0 flex items-center justify-between sm:justify-end">
                     <span className="text-lg font-bold text-primary">
                         KES {pkg.price.toLocaleString()}
                     </span>
