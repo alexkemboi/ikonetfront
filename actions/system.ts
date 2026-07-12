@@ -57,11 +57,12 @@ export async function addSystemUser(
 
 export async function getSystemUsers(): Promise<ApiRoleUser[]> {
   try {
-    const response = await fetch(
-      `http://184.168.21.114/api/system/users/staff`,
+    const response = await fetch(`https://api.beesmartbedak.com/api/system/users/staff`,
       { headers: await getAuthHeaders(), cache: "no-store" }
     );
+    
     const result = await response.json();
+    console.log("Fetched system users:", result); // Debugging log
     return Array.isArray(result?.data) ? result.data : [];
   } catch {
     return [];

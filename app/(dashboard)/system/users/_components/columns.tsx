@@ -5,7 +5,11 @@ import { ApiRoleUser } from "@/lib/types/roles";
 import { DataTableColumnHeader } from "@/components/shared/column-header";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { CheckCircle2, XCircle } from "lucide-react";
+import { CheckCircle2, MoreHorizontal, XCircle } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Button } from "@/components/ui/button";
+import { useAppDispatch } from "@/store/hooks";
+import { setEditUserSheetOpen } from "@/store/slices/systemslice";
 
 export const staffUserColumns: ColumnDef<ApiRoleUser>[] = [
   {
@@ -123,6 +127,35 @@ export const staffUserColumns: ColumnDef<ApiRoleUser>[] = [
           })
         : "—";
       return <span className="text-xs text-muted-foreground tabular-nums">{date}</span>;
+    },
+  },
+
+  {
+    id: "actions",
+    cell: ({ row }) => {
+      const payment = row.original
+      const dispatch = useAppDispatch();
+
+      return (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" className="h-8 w-8 p-0">
+              <span className="sr-only">Open menu</span>
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+            <DropdownMenuItem
+              // onClick={() => navigator.clipboard.writeText(payment.id)}
+              onClick={() => dispatch(setEditUserSheetOpen(true))}
+            >
+              Edit user
+            </DropdownMenuItem>
+          
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )
     },
   },
 ];

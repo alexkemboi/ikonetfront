@@ -131,9 +131,9 @@ export function EditUserSheet({
         <Sheet open={open} onOpenChange={(v) => !v && handleClose()}>
             <SheetContent className="w-full sm:max-w-lg flex flex-col gap-0 p-0">
                 <SheetHeader className="px-6 py-5 border-b border-border shrink-0">
-                    <SheetTitle>Create System User</SheetTitle>
+                    <SheetTitle>Edit System User</SheetTitle>
                     <SheetDescription>
-                        Add a new staff account. The user will receive login credentials for their assigned role.
+                        Edit the details of an existing system user.
                     </SheetDescription>
                 </SheetHeader>
 

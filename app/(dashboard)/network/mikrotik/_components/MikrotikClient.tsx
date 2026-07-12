@@ -133,6 +133,7 @@ export function MikrotikClient({ initialDevices }: MikrotikClientProps) {
     setLoadingStatus((prev) => ({ ...prev, [deviceId]: true }));
     try {
       const result = await getMikrotikDeviceStatus(deviceId);
+      console.log("Fetched device status:", result); // Debugging log
       if (result.success && result.data) {
         setSelectedDeviceStatus(result.data);
         setIsStatusDialogOpen(true);
@@ -150,11 +151,10 @@ export function MikrotikClient({ initialDevices }: MikrotikClientProps) {
     setLoadingInterfaces((prev) => ({ ...prev, [deviceId]: true }));
     try {
       const result = await getMikrotikDeviceInterfaces(deviceId);
-      if (result.success && result.data) {
+      console.log("Fetched device interfaces:", result); // Debugging log
+      if (result.success) {
         setSelectedDeviceInterfaces(result.data);
         setIsInterfacesDialogOpen(true);
-      } else {
-        toast.error(result.message);
       }
     } catch (error: unknown) {
       toast.error(`Failed to fetch interfaces: ${(error instanceof Error ? error.message : String(error))}`);
@@ -574,9 +574,9 @@ export function MikrotikClient({ initialDevices }: MikrotikClientProps) {
                 </div>
                 <Separator className="my-4" />
                 <h3 className="text-lg font-semibold">Neighbors</h3>
-                {selectedDeviceStatus.neighbors.length > 0 ? (
+                {selectedDeviceStatus?.neighbors?.length > 0 ? (
                   <ScrollArea className="h-[200px] w-full rounded-md border p-4">
-                    {selectedDeviceStatus.neighbors.map((neighbor, index) => (
+                    {selectedDeviceStatus?.neighbors.map((neighbor, index) => (
                       <div key={index} className="mb-4 last:mb-0">
                         <p><strong>Identity:</strong> {neighbor.identity}</p>
                         <p><strong>Address:</strong> {neighbor.address}</p>
@@ -609,9 +609,9 @@ export function MikrotikClient({ initialDevices }: MikrotikClientProps) {
                 List of network interfaces for the selected MikroTik device.
               </DialogDescription>
             </DialogHeader>
-            {selectedDeviceInterfaces.length > 0 ? (
+            {selectedDeviceInterfaces?.length > 0 ? (
               <ScrollArea className="h-[500px] w-full rounded-md border p-4">
-                {selectedDeviceInterfaces.map((iface, index) => (
+                {selectedDeviceInterfaces?.map((iface, index) => (
                   <div key={iface[".id"] || `${iface.name}-${iface["mac-address"]}-${index}`} className="mb-4 last:mb-0">
                     <h4 className="font-semibold">{iface.name} ({iface.type})</h4>
                     <p><strong>MAC Address:</strong> {iface["mac-address"]}</p>

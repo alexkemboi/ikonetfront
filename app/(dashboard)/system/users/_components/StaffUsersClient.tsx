@@ -24,6 +24,8 @@ import { addSystemUser, type UserData } from "@/actions/system";
 import type { ApiRole, ApiRoleUser } from "@/lib/types/roles";
 import { cn } from "@/lib/utils";
 import { EditUserSheet } from "./editusersheet";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { setEditUserSheetOpen } from "@/store/slices/systemslice";
 
 // ── Validation ─────────────────────────────────────────────────────────────────
 
@@ -300,6 +302,8 @@ interface StaffUsersClientProps {
 export default function StaffUsersClient({ users, roles }: StaffUsersClientProps) {
   const [sheetOpen, setSheetOpen] = useState(false);
   const perms = usePermissions("/system/users");
+  const editUser = useAppSelector((state) => state.system.editUserSheetOpen);
+  const dispatch = useAppDispatch();
 
   
 
@@ -368,11 +372,11 @@ export default function StaffUsersClient({ users, roles }: StaffUsersClientProps
         roles={roles}
       />
 
-      {/* <EditUserSheet
-        open={false}
-        onClose={() => setSheetOpen(!sheetOpen) }
+      <EditUserSheet
+        open={editUser}
+        onClose={() => dispatch(setEditUserSheetOpen(false))}
         roles={roles}
-      /> */}
+      />
     </div>
   );
 }

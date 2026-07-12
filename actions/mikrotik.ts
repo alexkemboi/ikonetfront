@@ -127,6 +127,7 @@ export async function getMikrotikDeviceStatus(
       };
     }
     const data: ApiResponse<MikrotikDeviceStatus> = await response.json();
+    console.log(`Fetched status for device ${id}:`, data);
     return data;
   } catch (error: unknown) {
     console.error(`Error fetching status for device ${id}:`, error);
