@@ -22,7 +22,7 @@ jobs:
           script: |
             set -e
 
-            cd /opt/internet-billing-systemf/
+            cd opt/internet-billing-systemf/
 
             echo "Pulling latest code..."
             git fetch origin
