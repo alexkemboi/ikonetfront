@@ -7,6 +7,7 @@ export const metadata = {
   title: "Connect to Wi-Fi — Ikonex Hotspot",
   description: "Buy and activate hotspot packages with instant access",
 };
+export const dynamic = "force-dynamic"; // Ensure the page is always rendered on the server
 
 export default async function HotspotPage() {
   const packagesResponse = await getHotspotPackages();
