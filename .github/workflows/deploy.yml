@@ -59,7 +59,7 @@ jobs:
           script: |
             set -e
 
-            cd /internet-billing-systemf/
+            cd internet-billing-systemf/
 
             echo "Pulling latest code..."
             git fetch origin
