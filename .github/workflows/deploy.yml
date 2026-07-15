@@ -1,5 +1,3 @@
-# .github/workflows/deploy.yml
-
 name: Deploy to VPS
 
 on:
@@ -12,66 +10,72 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Deploy to VPS via SSH
-      uses: appleboy/ssh-action@v1.0.3
-      with:
-        host: ${{ secrets.VPS_HOST }}
-        username: ${{ secrets.VPS_USER }}
-        password: ${{ secrets.VPS_PASSWORD }}
-        script: |
-          cd opt/internet-billing-systemf/
-          
-          # Pull latest code
-          git pull origin main
+      - name: Deploy to VPS via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          password: ${{ secrets.VPS_PASSWORD }}
+          script: |
+            set -e
 
-          # Stop any running containers to avoid port conflicts
-          docker compose down --remove-orphans
+            cd /opt/internet-billing-systemf/
 
-          # Optional: prune unused containers, networks, images, and volumes
-          docker system prune -af
+            echo "Pulling latest code..."
+            git fetch origin
+            git reset --hard origin/main
 
-          # Build images
-          docker compose build
+            echo "Current commit:"
+            git rev-parse HEAD
 
-          # Start containers in detached mode
-          docker compose up -d
+            echo "Stopping existing containers..."
+            docker compose down --remove-orphans
 
-          docker system prune -af
-  
+            echo "Building fresh images..."
+            docker compose build --pull --no-cache
+
+            echo "Starting containers..."
+            docker compose up -d --force-recreate
+
+            echo "Cleaning up unused Docker resources..."
+            docker image prune -af
+
   deploy-prod:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Deploy to VPS via SSH
-      uses: appleboy/ssh-action@v1.0.3
-      with:
-        host: ${{ secrets.VPS_HOST_PROD }}
-        username: ${{ secrets.VPS_USER_PROD }}
-        password: ${{ secrets.VPS_PASSWORD_PROD }}
-        script: |
-          cd internet-billing-systemf/
-          
-          # Pull latest code
-          git pull origin main
+      - name: Deploy to Production VPS via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST_PROD }}
+          username: ${{ secrets.VPS_USER_PROD }}
+          password: ${{ secrets.VPS_PASSWORD_PROD }}
+          script: |
+            set -e
 
-          # Stop any running containers to avoid port conflicts
-          docker compose down --remove-orphans
+            cd /opt/internet-billing-systemf/
 
-          # Optional: prune unused containers, networks, images, and volumes
-          docker system prune -af
+            echo "Pulling latest code..."
+            git fetch origin
+            git reset --hard origin/main
 
-          # Build images
-          docker compose build
+            echo "Current commit:"
+            git rev-parse HEAD
 
-          # Start containers in detached mode
-          docker compose up -d
+            echo "Stopping existing containers..."
+            docker compose down --remove-orphans
 
-          docker system prune -af
+            echo "Building fresh images..."
+            docker compose build --pull --no-cache
 
-      
+            echo "Starting containers..."
+            docker compose up -d --force-recreate
+
+            echo "Cleaning up unused Docker resources..."
+            docker image prune -af

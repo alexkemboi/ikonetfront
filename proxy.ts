@@ -11,7 +11,7 @@ export const proxy = auth((req) => {
     const { nextUrl } = req;
     const isAuthenticated = !!req.auth;
 
-    const isApiAuthRoute = nextUrl.pathname.includes(apiAuthPrefix);
+    const isApiAuthRoute = nextUrl.pathname.startsWith(apiAuthPrefix);
     const isPublicRoute = publicRoutes.some((route) => nextUrl.pathname.includes(route));
     const isAuthRoute = authRoutes.some((route) => nextUrl.pathname.includes(route));
 
@@ -25,6 +25,9 @@ export const proxy = auth((req) => {
         }
         return NextResponse.next();
     }
+
+    console.log("ispublic:", isPublicRoute, nextUrl.pathname);
+    console.log("isauthenticated:", isAuthenticated);
 
     // Public pages: always allow
     if (isPublicRoute) return NextResponse.next();
