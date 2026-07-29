@@ -12,6 +12,9 @@ services:
       - NODE_ENV=production
       - HOSTNAME=0.0.0.0
       - PORT=3456
+      - BASE_API_URL=${BASE_API_URL}
+      - AUTH_SECRET=${AUTH_SECRET}
+      - AUTH_JWT_SECRET=${AUTH_JWT_SECRET}
     networks:
       - default
     logging:
