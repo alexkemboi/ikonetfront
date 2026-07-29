@@ -1,9 +1,10 @@
 import RolesClient from "./_components/RolesClient";
 import { getAllMenusAction, getRolesAction, getRoleMenusAction, getRoleUsersAction } from "@/actions/roles";
 import { getSystemUsers } from "@/actions/system";
-import { apiMenusToMenuTree, extractPermissions } from "@/lib/data/nav";
+import { apiMenusToMenuTree, extractPermissions, getCurrentUserPermissions, NO_PERMISSIONS } from "@/lib/data/nav";
 import type { MenuNode } from "@/lib/nav";
 import type { ApiRoleUser, PermissionMap } from "@/lib/types/roles";
+import { redirect } from "next/navigation";
 
 export const metadata = { title: "Roles & Permissions — Beesmart" };
 
@@ -32,6 +33,10 @@ export type { MenuNode, ApiRoleUser, PermissionMap };
 
 // ── Page ────────────────────────────────────────────────────────────────
 export default async function RolesPage() {
+  const permissions = await getCurrentUserPermissions();
+  const pagePerms = permissions["/system/access"] ?? NO_PERMISSIONS;
+  if (!pagePerms.canView) redirect("/dashboard");
+
   // Fetch menu catalog, roles, and all system users in parallel
   const [catalogResult, rolesResult, allSystemUsers] = await Promise.all([
     getAllMenusAction(),

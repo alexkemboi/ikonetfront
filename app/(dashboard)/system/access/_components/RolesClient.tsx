@@ -7,7 +7,7 @@ import {
   Check, Pencil, UserPlus, X, Save, RotateCcw,
   MoreHorizontal, Loader2,
 } from "lucide-react";
-import { addRoleAction, saveRoleMenusAction } from "@/actions/roles";
+import { addRoleAction, saveRoleMenusAction, renameRoleAction, assignUserToRoleAction, removeUserFromRoleAction } from "@/actions/roles";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -303,11 +303,13 @@ function AssignUserSheet({
   open,
   onClose,
   roleName,
+  roleCode,
   availableUsers,
 }: {
   open:           boolean;
   onClose:        () => void;
   roleName:       string;
+  roleCode:       string;
   availableUsers: ApiRoleUser[];
 }) {
   const [query, setQuery] = useState("");
@@ -368,7 +370,17 @@ function AssignUserSheet({
                     <p className="text-sm font-medium text-foreground truncate">{u.fullName}</p>
                     <p className="text-xs text-muted-foreground truncate">{u.email}</p>
                   </div>
-                  <Button size="sm" variant="outline" className="shrink-0 h-7 text-xs">
+                  <Button size="sm" variant="outline" className="shrink-0 h-7 text-xs"
+                    onClick={async () => {
+                      const result = await assignUserToRoleAction(roleCode, u.idxno.toString());
+                      if (result.success) {
+                        toast.success("User assigned to role");
+                        onClose();
+                      } else {
+                        toast.error(result.message || "Failed to assign user");
+                      }
+                    }}
+                  >
                     Assign
                   </Button>
                 </div>
@@ -458,6 +470,14 @@ function UsersTab({
               type="button"
               aria-label={`Remove ${user.name}`}
               className="w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-danger hover:bg-danger/10 transition-colors"
+              onClick={async () => {
+                const result = await removeUserFromRoleAction(roleId, user.id);
+                if (result.success) {
+                  toast.success("User removed from role");
+                } else {
+                  toast.error(result.message || "Failed to remove user");
+                }
+              }}
             >
               <X className="w-3.5 h-3.5" />
             </button>
@@ -469,6 +489,7 @@ function UsersTab({
         open={assignOpen}
         onClose={() => setAssignOpen(false)}
         roleName={roleName}
+        roleCode={roleId}
         availableUsers={availableUsers}
       />
     </>
@@ -693,9 +714,18 @@ export default function RolesClient({
   }
 
   function handleSaveEdit(roleId: string) {
-
-    // Wire up API call here — editName is the new role name
-    dispatch(stopEditingRole());
+    const result = renameRoleAction(roleId, editName, selectedRole?.description ?? "");
+    result.then((res) => {
+      if (res.success) {
+        toast.success("Role renamed successfully");
+        dispatch(stopEditingRole());
+      } else {
+        toast.error(res.message || "Failed to rename role");
+      }
+    }).catch(() => {
+      toast.error("Failed to rename role");
+      dispatch(stopEditingRole());
+    });
   }
 
   return (
