@@ -10,27 +10,13 @@ export const staffNavGroups: NavGroup[] = [
     label: "Customers",
     items: [
       { href: "/customers/all", label: "All Customers", icon: "users" },
-      {
-        href: "/portal",
-        label: "Portal",
-        icon: "globe",
-        children: [
-          { href: "/portal/pppoe", label: "PPPoE Clients", icon: "wifi" },
-        ],
-      },
+      { href: "/portal/pppoe", label: "PPPoE Clients", icon: "wifi" },
     ],
   },
   {
     label: "Network",
     items: [
-      {
-        href: "/network",
-        label: "Network",
-        icon: "network",
-        children: [
-          { href: "/network/mikrotik", label: "MikroTik Devices", icon: "router" },
-        ],
-      },
+      { href: "/network/mikrotik", label: "MikroTik Devices", icon: "router" },
     ],
   },
 ];
