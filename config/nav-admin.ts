@@ -23,16 +23,12 @@ export const adminNavGroups: NavGroup[] = [
   {
     label: "Network",
     items: [
-      {
-        href: "/network",
-        label: "Network",
-        icon: "network",
-        children: [
-          { href: "/network/mikrotik",   label: "MikroTik Devices", icon: "router"  },
-          { href: "/network/routers",    label: "Network Routers",  icon: "server"  },
-          { href: "/network/ip-mapping", label: "IP Mapping",       icon: "map-pin" },
-        ],
-      },
+      { href: "/network/dashboard", label: "NOC Dashboard", icon: "activity" },
+      { href: "/network/regions",   label: "Regions",       icon: "globe"    },
+      { href: "/network/locations", label: "Locations",     icon: "map-pin"  },
+      { href: "/network/stations",  label: "Stations/POPs", icon: "database" },
+      { href: "/network/routers",  label: "Routers (Edge)", icon: "server" },
+      { href: "/network/topology",  label: "Network Topology", icon: "network" },
     ],
   },
   {
