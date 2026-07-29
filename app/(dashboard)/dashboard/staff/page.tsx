@@ -4,6 +4,8 @@ import { resolveDashboardPathForRole } from "@/lib/utils/dashboardRouting";
 import { getCustomers } from "@/actions/customer";
 import { StaffDashboardShell } from "./_components/StaffDashboardShell";
 
+export const metadata = { title: "Staff Dashboard — Beesmart Billing" };
+
 export default async function StaffDashboardPage() {
   const session = await auth();
   const correctPath = resolveDashboardPathForRole(session?.user?.role);
