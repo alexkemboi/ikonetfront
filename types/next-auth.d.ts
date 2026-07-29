@@ -10,10 +10,16 @@ declare module "next-auth" {
     otherName?: string;
     phoneNumber?: string;
     username: string;
+    userId?: string;
+    refreshToken?: string;
+    expiresAt?: number;
+    regionId?: number;
+    stationId?: number;
+    locationId?: number;
   }
 
   interface Session {
-    error?: "RefreshAccessTokenError";
+    error?: string;
     user: {
       role: string;
       /** Bearer token for downstream API calls */
@@ -23,6 +29,11 @@ declare module "next-auth" {
       otherName?: string;
       phoneNumber?: string;
       username: string;
+      userId?: string;
+      expiresAt?: number;
+      regionId?: number;
+      stationId?: number;
+      locationId?: number;
     } & DefaultSession["user"];
   }
 }
@@ -36,5 +47,12 @@ declare module "next-auth/jwt" {
     otherName?: string;
     phoneNumber?: string;
     username: string;
+    userId?: string;
+    refreshToken?: string;
+    expiresAt?: number;
+    error?: string;
+    regionId?: number;
+    stationId?: number;
+    locationId?: number;
   }
 }
