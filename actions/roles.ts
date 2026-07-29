@@ -18,40 +18,55 @@ async function getAuthHeaders(): Promise<HeadersInit> {
 }
 
 export async function getRolesAction(): Promise<ApiResponse<ApiRole[]>> {
-  const res = await fetch(
-    `${process.env.BASE_API_URL}system-setup/all-roles`,
-    { headers: await getAuthHeaders(), cache: "no-store" }
-  );
-  return res.json();
+  try {
+    const res = await fetch(
+      `${process.env.BASE_API_URL}system-setup/all-roles`,
+      { headers: await getAuthHeaders(), cache: "no-store" }
+    );
+    return await res.json();
+  } catch {
+    return { status: 500, success: false, message: "Failed to fetch roles", data: null as unknown as ApiRole[], timestamp: "" };
+  }
 }
 
 export async function getAllMenusAction(): Promise<ApiResponse<ApiMenuItem[]>> {
-  const res = await fetch(
-    `${process.env.BASE_API_URL}system-setup/all-menus`,
-    { headers: await getAuthHeaders(), cache: "no-store" }
-  );
-  console.log("Fetched all menus:", res);
-  return res.json();
+  try {
+    const res = await fetch(
+      `${process.env.BASE_API_URL}system-setup/all-menus`,
+      { headers: await getAuthHeaders(), cache: "no-store" }
+    );
+    return await res.json();
+  } catch {
+    return { status: 500, success: false, message: "Failed to fetch menus", data: null as unknown as ApiMenuItem[], timestamp: "" };
+  }
 }
 
 export async function getRoleMenusAction(
   roleCode: string
 ): Promise<ApiResponse<ApiMenuItem[]>> {
-  const res = await fetch(
-    `${process.env.BASE_API_URL}system-setup/${roleCode}/menus`,
-    { headers: await getAuthHeaders(), cache: "no-store" }
-  );
-  return res.json();
+  try {
+    const res = await fetch(
+      `${process.env.BASE_API_URL}system-setup/${roleCode}/menus`,
+      { headers: await getAuthHeaders(), cache: "no-store" }
+    );
+    return await res.json();
+  } catch {
+    return { status: 500, success: false, message: "Failed to fetch role menus", data: null as unknown as ApiMenuItem[], timestamp: "" };
+  }
 }
 
 export async function getRoleUsersAction(
   roleCode: string
 ): Promise<ApiResponse<ApiRoleUser[]>> {
-  const res = await fetch(
-    `${process.env.BASE_API_URL}system-setup/${roleCode}/users`,
-    { headers: await getAuthHeaders(), cache: "no-store" }
-  );
-  return res.json();
+  try {
+    const res = await fetch(
+      `${process.env.BASE_API_URL}system-setup/${roleCode}/users`,
+      { headers: await getAuthHeaders(), cache: "no-store" }
+    );
+    return await res.json();
+  } catch {
+    return { status: 500, success: false, message: "Failed to fetch role users", data: null as unknown as ApiRoleUser[], timestamp: "" };
+  }
 }
 
 export async function addRoleAction(

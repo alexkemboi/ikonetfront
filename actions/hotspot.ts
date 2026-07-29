@@ -75,12 +75,10 @@ export async function initiateHotspotPayment(
       throw new Error(errorData.message || 'Failed to initiate payment');
     }
 
-    revalidateTag('hotspot-packages', 
-      "max"
-    ); // Revalidate packages after payment
-    return response.json();
+    revalidateTag('hotspot-packages', 'page'); // Revalidate packages after payment
+    const paymentData = await response.json();
+    return paymentData;
   } catch (error) {
-    console.error('Error initiating hotspot payment:', error);
     return {
       status: 500,
       success: false,
@@ -112,9 +110,9 @@ export async function checkActiveSession(
       throw new Error(errorData.message || 'Failed to check active session');
     }
 
-    return response.json();
+    const sessionData = await response.json();
+    return sessionData;
   } catch (error) {
-    console.error('Error checking active session:', error);
     return {
       status: 500,
       success: false,

@@ -16,7 +16,8 @@ export async function loginAction(credentials: {
   });
 
   console.log("Login response:", res);
-  return res.json() as Promise<ApiResponse<LoginData>>;
+  const data = await res.json();
+  return data as Promise<ApiResponse<LoginData>>;
 }
 
 export async function forgotPasswordAction(
@@ -29,7 +30,8 @@ export async function forgotPasswordAction(
       body:    JSON.stringify({ email }),
       cache:   "no-store",
     });
-    return res.json();
+    const data = await res.json();
+    return data;
   } catch {
     return { status: 500, success: false, message: "Network error. Please try again.", data: null, timestamp: "" };
   }
@@ -47,7 +49,8 @@ export async function resetPasswordAction(payload: {
       body:    JSON.stringify(payload),
       cache:   "no-store",
     });
-    return res.json();
+    const data = await res.json();
+    return data;
   } catch {
     return { status: 500, success: false, message: "Network error. Please try again.", data: null, timestamp: "" };
   }

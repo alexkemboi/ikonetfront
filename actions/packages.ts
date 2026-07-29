@@ -71,7 +71,8 @@ export async function getPackagesAction(): Promise<ApiResponse<InternetPackage[]
       headers: await getAuthHeaders(),
       cache: "no-store",
     });
-    return res.json();
+    const data = await res.json();
+    return data;
   } catch {
     return { status: 500, success: false, message: "Failed to fetch packages", data: [], timestamp: "" };
   }

@@ -31,7 +31,8 @@ export async function getAuditLogsAction(): Promise<ApiResponse<AuditLog[]>> {
       `${process.env.BASE_API_URL}systemsetup/audit-logs`,
       { headers: await getAuthHeaders(), cache: "no-store" }
     );
-    return res.json();
+    const data = await res.json();
+    return data;
   } catch {
     return {
       status:  500,
