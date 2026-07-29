@@ -16,7 +16,15 @@ beforeEach(() => {
 it("renders heading and prompt text", async () => {
   const { useSession } = await import("next-auth/react");
   vi.mocked(useSession).mockReturnValue({
-    data: { user: { apiToken: "mock-valid-bearer-token" } },
+    data: {
+      expires: "2099-01-01T00:00:00.000Z",
+      user: {
+        role: "admin",
+        apiToken: "mock-valid-bearer-token",
+        fname: "Test",
+        username: "testuser",
+      },
+    },
     status: "authenticated",
     update: vi.fn(),
   });
@@ -34,7 +42,15 @@ it("renders heading and prompt text", async () => {
 it("calls logoutAction and signOut on Yes, sign out click", async () => {
   const { useSession, signOut } = await import("next-auth/react");
   vi.mocked(useSession).mockReturnValue({
-    data: { user: { apiToken: "mock-valid-bearer-token" } },
+    data: {
+      expires: "2099-01-01T00:00:00.000Z",
+      user: {
+        role: "admin",
+        apiToken: "mock-valid-bearer-token",
+        fname: "Test",
+        username: "testuser",
+      },
+    },
     status: "authenticated",
     update: vi.fn(),
   });

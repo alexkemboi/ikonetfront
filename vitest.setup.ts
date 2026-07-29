@@ -1,3 +1,4 @@
+/// <reference types="vitest/globals" />
 import "@testing-library/jest-dom/vitest";
 
 process.env.BASE_API_URL = "http://localhost:8381/api/v1/";
