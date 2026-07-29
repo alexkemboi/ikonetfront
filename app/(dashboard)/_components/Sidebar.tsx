@@ -173,9 +173,9 @@ function NavParent({ item }: { item: NavItem }) {
   const [open, setOpen] = useState(isAnyChildActive);
 
   // Auto-open when navigating to a child route
-  // useEffect(() => {
-  //   if (isAnyChildActive) setOpen(true);
-  // }, [isAnyChildActive]);
+  useEffect(() => {
+    if (isAnyChildActive) setOpen(true);
+  }, [isAnyChildActive]);
 
   return (
     <div>
