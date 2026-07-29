@@ -31,6 +31,13 @@ jobs:
             echo "Current commit:"
             git rev-parse HEAD
 
+            echo "==> Writing .env from GitHub Secrets..."
+            cat > .env << 'EOF'
+BASE_API_URL=${{ secrets.BASE_API_URL }}
+AUTH_SECRET=${{ secrets.AUTH_SECRET }}
+AUTH_JWT_SECRET=${{ secrets.AUTH_JWT_SECRET }}
+EOF
+
             echo "Stopping existing containers..."
             docker compose down --remove-orphans
 
@@ -67,6 +74,13 @@ jobs:
 
             echo "Current commit:"
             git rev-parse HEAD
+
+            echo "==> Writing .env from GitHub Secrets..."
+            cat > .env << 'EOF'
+BASE_API_URL=${{ secrets.BASE_API_URL_PROD }}
+AUTH_SECRET=${{ secrets.AUTH_SECRET_PROD }}
+AUTH_JWT_SECRET=${{ secrets.AUTH_JWT_SECRET_PROD }}
+EOF
 
             echo "Stopping existing containers..."
             docker compose down --remove-orphans
