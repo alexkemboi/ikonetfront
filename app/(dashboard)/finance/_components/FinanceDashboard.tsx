@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import {
   DollarSign,
@@ -14,16 +14,17 @@ import {
   Calendar,
   Filter,
   Download,
+  Loader2,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
+import { getRevenueOverview, getRecentTransactions } from "@/actions/finance";
 
-// ── Dummy data ─────────────────────────────────────────────────────────────────
+// ── Fallback data ────────────────────────────────────────────────────────────────
 
-const MONTHLY_REVENUE = [
+const FALLBACK_MONTHLY_REVENUE = [
   { month: "Dec", hotspot: 38400, pppoe: 124000, total: 162400 },
   { month: "Jan", hotspot: 42100, pppoe: 131500, total: 173600 },
   { month: "Feb", hotspot: 39800, pppoe: 128000, total: 167800 },
@@ -32,7 +33,7 @@ const MONTHLY_REVENUE = [
   { month: "May", hotspot: 55300, pppoe: 156000, total: 211300 },
 ];
 
-const RECENT_TRANSACTIONS = [
+const FALLBACK_TRANSACTIONS = [
   { id: "TXN-0042", customer: "John Mwangi", type: "pppoe", package: "Home 10 Mbps", amount: 2500, status: "completed", date: "2026-05-06", method: "M-Pesa" },
   { id: "TXN-0041", customer: "Mary Akinyi", type: "hotspot", package: "KES 50 – 1 Hour", amount: 50, status: "completed", date: "2026-05-06", method: "M-Pesa" },
   { id: "TXN-0040", customer: "Peter Otieno", type: "pppoe", package: "Business 20 Mbps", amount: 4500, status: "completed", date: "2026-05-05", method: "M-Pesa" },
@@ -61,7 +62,7 @@ function MiniBarChart({
   data,
   filter,
 }: {
-  data: typeof MONTHLY_REVENUE;
+  data: typeof FALLBACK_MONTHLY_REVENUE;
   filter: "all" | "hotspot" | "pppoe";
 }) {
   const values = data.map((d) =>
@@ -163,21 +164,57 @@ function StatusBadge({ status }: { status: string }) {
 export default function FinanceDashboard() {
   const [revenueFilter, setRevenueFilter] = useState<"all" | "hotspot" | "pppoe">("all");
   const [txFilter, setTxFilter] = useState<"all" | "hotspot" | "pppoe">("all");
+  const [revenueData, setRevenueData] = useState<any>(null);
+  const [transactions, setTransactions] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const current = MONTHLY_REVENUE[MONTHLY_REVENUE.length - 1];
-  const prev    = MONTHLY_REVENUE[MONTHLY_REVENUE.length - 2];
+  useEffect(() => {
+    let cancelled = false;
+    async function fetchData() {
+      try {
+        const [revResult, txResult] = await Promise.all([
+          getRevenueOverview(),
+          getRecentTransactions(10),
+        ]);
+        if (cancelled) return;
+        if (revResult?.success) setRevenueData(revResult.data);
+        if (txResult?.success) setTransactions(txResult.data || []);
+      } catch {
+        // fallback to hardcoded data
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+    fetchData();
+    return () => { cancelled = true; };
+  }, []);
+
+  const hasData = revenueData?.monthlyRevenue?.length > 0;
+  const monthlyRevenue = hasData ? revenueData.monthlyRevenue : FALLBACK_MONTHLY_REVENUE;
+  const recentTransactions = transactions.length > 0 ? transactions : FALLBACK_TRANSACTIONS;
+
+  const current = monthlyRevenue[monthlyRevenue.length - 1];
+  const prev    = monthlyRevenue[monthlyRevenue.length - 2];
 
   const totalDelta   = Math.round(((current.total   - prev.total)   / prev.total)   * 100 * 10) / 10;
   const hotspotDelta = Math.round(((current.hotspot - prev.hotspot) / prev.hotspot) * 100 * 10) / 10;
   const pppoDelta    = Math.round(((current.pppoe   - prev.pppoe)   / prev.pppoe)   * 100 * 10) / 10;
 
   const filteredTx = txFilter === "all"
-    ? RECENT_TRANSACTIONS
-    : RECENT_TRANSACTIONS.filter((t) => t.type === txFilter);
+    ? recentTransactions
+    : recentTransactions.filter((t) => t.type === txFilter);
 
   const filteredPkgs = revenueFilter === "all"
     ? PACKAGE_BREAKDOWN
     : PACKAGE_BREAKDOWN.filter((p) => p.type === revenueFilter);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 p-8 pt-6">
@@ -191,7 +228,7 @@ export default function FinanceDashboard() {
         <div>
           <Badge className="bg-primary/10 text-primary border-primary/20 text-xs mb-1" variant="outline">Finance</Badge>
           <h1 className="text-2xl font-bold tracking-tight">Revenue Overview</h1>
-          <p className="text-sm text-muted-foreground">May 2026 · Dummy data for demonstration</p>
+          <p className="text-sm text-muted-foreground">{hasData ? "Live data from backend" : "May 2026 · Dummy data for demonstration"}</p>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" className="gap-1.5 h-8 text-xs">
@@ -275,7 +312,7 @@ export default function FinanceDashboard() {
               </div>
             </CardHeader>
             <CardContent>
-              <MiniBarChart data={MONTHLY_REVENUE} filter={revenueFilter} />
+              <MiniBarChart data={monthlyRevenue} filter={revenueFilter} />
               <div className="mt-4 flex items-center gap-6">
                 {revenueFilter !== "hotspot" && (
                   <div className="flex items-center gap-2">
