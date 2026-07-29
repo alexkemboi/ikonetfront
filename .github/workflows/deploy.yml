@@ -33,10 +33,10 @@ jobs:
 
             echo "==> Writing .env from GitHub Secrets..."
             cat > .env << 'EOF'
-BASE_API_URL=${{ secrets.BASE_API_URL }}
-AUTH_SECRET=${{ secrets.AUTH_SECRET }}
-AUTH_JWT_SECRET=${{ secrets.AUTH_JWT_SECRET }}
-EOF
+            BASE_API_URL=${{ secrets.BASE_API_URL }}
+            AUTH_SECRET=${{ secrets.AUTH_SECRET }}
+            AUTH_JWT_SECRET=${{ secrets.AUTH_JWT_SECRET }}
+            EOF
 
             echo "Stopping existing containers..."
             docker compose down --remove-orphans
@@ -77,10 +77,10 @@ EOF
 
             echo "==> Writing .env from GitHub Secrets..."
             cat > .env << 'EOF'
-BASE_API_URL=${{ secrets.BASE_API_URL_PROD }}
-AUTH_SECRET=${{ secrets.AUTH_SECRET_PROD }}
-AUTH_JWT_SECRET=${{ secrets.AUTH_JWT_SECRET_PROD }}
-EOF
+            BASE_API_URL=${{ secrets.BASE_API_URL_PROD }}
+            AUTH_SECRET=${{ secrets.AUTH_SECRET_PROD }}
+            AUTH_JWT_SECRET=${{ secrets.AUTH_JWT_SECRET_PROD }}
+            EOF
 
             echo "Stopping existing containers..."
             docker compose down --remove-orphans
