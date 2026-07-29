@@ -2,16 +2,25 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { signOut } from "next-auth/react";
+import { signOut, useSession } from "next-auth/react";
 import { LogOut, ArrowLeft, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { logoutAction } from "@/actions/auth";
 
 export default function SignOutCard() {
   const router  = useRouter();
+  const { data: session } = useSession();
   const [loading, setLoading] = useState(false);
 
   async function handleSignOut() {
     setLoading(true);
+    try {
+      if (session?.user?.apiToken) {
+        await logoutAction(session.user.apiToken);
+      }
+    } catch {
+      // Silently fail — session will be cleaned up client-side
+    }
     await signOut({ callbackUrl: "/login" });
   }
 
