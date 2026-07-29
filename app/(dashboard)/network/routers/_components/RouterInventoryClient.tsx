@@ -4,10 +4,11 @@ import { useState } from "react";
 import { DataTable } from "@/components/shared/data-table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Activity, Settings2 } from "lucide-react";
+import { Activity, Settings2, Plus } from "lucide-react";
 import { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
 import type { RouterResponse } from "@/lib/types/network";
+import { usePermissions } from "@/providers/PermissionsProvider";
 
 interface RouterInventoryClientProps {
   initialRouters: RouterResponse[];
@@ -15,6 +16,7 @@ interface RouterInventoryClientProps {
 
 export function RouterInventoryClient({ initialRouters }: RouterInventoryClientProps) {
   const [routers] = useState(initialRouters);
+  const perms = usePermissions("/network/routers");
 
   const columns: ColumnDef<RouterResponse>[] = [
     {
@@ -45,18 +47,35 @@ export function RouterInventoryClient({ initialRouters }: RouterInventoryClientP
       header: "Actions",
       cell: ({ row }) => (
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" asChild>
-            <Link href={`/network/routers/${row.original.id}/monitoring`} className="flex gap-1">
-              <Activity className="h-3 w-3 text-primary" /> Live NOC
-            </Link>
-          </Button>
-          <Button variant="ghost" size="icon">
-            <Settings2 className="h-4 w-4 text-muted-foreground" />
-          </Button>
+          {perms.canView && (
+            <Button variant="outline" size="sm" asChild>
+              <Link href={`/network/routers/${row.original.id}/monitoring`} className="flex gap-1">
+                <Activity className="h-3 w-3 text-primary" /> Live NOC
+              </Link>
+            </Button>
+          )}
+          {perms.canEdit && (
+            <Button variant="ghost" size="icon">
+              <Settings2 className="h-4 w-4 text-muted-foreground" />
+            </Button>
+          )}
         </div>
       ),
     },
   ];
 
-  return <DataTable columns={columns} data={routers} />;
+  return (
+    <div className="space-y-4">
+      {perms.canCreate && (
+        <div className="flex justify-end">
+          <Button asChild className="flex items-center gap-2">
+            <Link href="/network/routers/onboard">
+              <Plus className="h-4 w-4" /> Onboard Edge Device
+            </Link>
+          </Button>
+        </div>
+      )}
+      <DataTable columns={columns} data={routers} />
+    </div>
+  );
 }

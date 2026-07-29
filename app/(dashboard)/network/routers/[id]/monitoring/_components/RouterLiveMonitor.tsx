@@ -20,10 +20,7 @@ export function RouterLiveMonitor({ routerId, initialHistory }: RouterLiveMonito
   const [latest, setLatest] = useState<RouterHealthSnapshot | null>(initialHistory[initialHistory.length - 1] || null);
 
   useEffect(() => {
-    const rawBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8381/api/v1";
-    const cleanBase = rawBase.endsWith("/") ? rawBase.slice(0, -1) : rawBase;
-    
-    const eventSource = new EventSource(`${cleanBase}/network/monitoring/router/${routerId}/live`);
+    const eventSource = new EventSource(`/api/monitoring/router/${routerId}/live`);
 
     eventSource.addEventListener("TELEMETRY", (event: MessageEvent) => {
       try {

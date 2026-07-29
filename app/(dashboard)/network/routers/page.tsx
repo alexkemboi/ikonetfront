@@ -1,14 +1,17 @@
 import { getRouters } from "@/actions/network";
 import { RouterInventoryClient } from "./_components/RouterInventoryClient";
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { getCurrentUserPermissions, NO_PERMISSIONS } from "@/lib/data/nav";
+import { redirect } from "next/navigation";
 
 export const metadata = {
   title: "Router Fleet Inventory - IBS",
 };
 
 export default async function RoutersPage() {
+  const permissions = await getCurrentUserPermissions();
+  const pagePerms = permissions["/network/routers"] ?? NO_PERMISSIONS;
+  if (!pagePerms.canView) redirect("/dashboard");
+
   const routers = await getRouters();
 
   return (
@@ -20,12 +23,6 @@ export default async function RoutersPage() {
             Manage deployed edge hardware, monitor active sessions, and provision new gateways.
           </p>
         </div>
-
-        <Button asChild className="flex items-center gap-2">
-          <Link href="/network/routers/onboard">
-            <Plus className="h-4 w-4" /> Onboard Edge Device
-          </Link>
-        </Button>
       </div>
 
       <RouterInventoryClient initialRouters={routers} />
