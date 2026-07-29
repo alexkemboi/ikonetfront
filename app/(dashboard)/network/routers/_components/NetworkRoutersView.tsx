@@ -11,6 +11,7 @@ import TopologyTree from "./TopologyTree";
 import PendingRoutersList from "./PendingRoutersList";
 import FinalizeRouterSheet from "./FinalizeRouterSheet";
 import RouterDetailSheet from "./RouterDetailSheet";
+import { usePermissions } from "@/providers/PermissionsProvider";
 
 interface Props {
   initialTopology: TopologyNode[];
@@ -74,6 +75,15 @@ function StatCard({
 
 export default function NetworkRoutersView({ initialTopology, initialPending }: Props) {
   const router = useRouter();
+  const perms = usePermissions("/network/routers");
+
+  if (!perms.canView) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <p className="text-muted-foreground">You do not have permission to view this page.</p>
+      </div>
+    );
+  }
 
   // UI state only — no fetched data stored in state
   const [finalizeTarget, setFinalizeTarget] = useState<NetworkRouter | null>(null);

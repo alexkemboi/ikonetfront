@@ -7,13 +7,14 @@ import { DashboardShell } from "./_components/DashboardShell";
 import { ManagementDashboardShell } from "./_components/ManagementDashboardShell";
 import { StaffDashboardShell } from "./_components/StaffDashboardShell";
 import { CustomerDashboardShell } from "./_components/CustomerDashboardShell";
+import { ROLE_NAME } from "@/lib/types/roles";
 
 export default async function DashboardPage() {
   const session = await auth();
   const role = session?.user?.role ?? "";
 
-  // ── Admin (01) ────────────────────────────────────────────────────────
-  if (role === "01") {
+  // ── Admin ─────────────────────────────────────────────────────────────
+  if (role === ROLE_NAME.ADMIN) {
     const [allRes, activeRes, pppoeRes, packagesRes, devicesRes] = await Promise.all([
       getCustomers(0, 1) ?? { data: { totalElements: 0 } },
       getCustomers(0, 1, { isActive: true }) ?? { data: { totalElements: 0 } },
@@ -171,8 +172,8 @@ const inactiveRevenue = 0
     );
   }
 
-  // ── Management (02) ───────────────────────────────────────────────────
-  if (role === "02") {
+  // ── Management ───────────────────────────────────────────────────────
+  if (role === ROLE_NAME.MANAGEMENT) {
     const thirtyDaysFromNow = new Date();
     thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
 
@@ -214,8 +215,8 @@ const inactiveRevenue = 0
     );
   }
 
-  // ── Staff (03) ────────────────────────────────────────────────────────
-  if (role === "03") {
+  // ── Staff ────────────────────────────────────────────────────────────
+  if (role === ROLE_NAME.STAFF) {
     const sevenDaysFromNow = new Date();
     sevenDaysFromNow.setDate(sevenDaysFromNow.getDate() + 7);
 
@@ -251,8 +252,8 @@ const inactiveRevenue = 0
     );
   }
 
-  // ── Customer (04) ─────────────────────────────────────────────────────
-  if (role === "04") {
+  // ── Customer ─────────────────────────────────────────────────────────
+  if (role === ROLE_NAME.CUSTOMER) {
     const customerId = parseInt(session?.user?.id ?? "");
     if (isNaN(customerId)) notFound();
 

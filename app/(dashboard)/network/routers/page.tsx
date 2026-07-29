@@ -1,48 +1,31 @@
-import { Suspense } from "react";
-import { getTopologyTree, getPendingRouters } from "@/actions/network";
-import { TopologyNode, NetworkRouter } from "@/lib/types/network-router";
-import NetworkRoutersView from "./_components/NetworkRoutersView";
-import { Skeleton } from "@/components/ui/skeleton";
+import { getRouters } from "@/actions/network";
+import { RouterInventoryClient } from "./_components/RouterInventoryClient";
+import { getCurrentUserPermissions, NO_PERMISSIONS } from "@/lib/data/nav";
+import { redirect } from "next/navigation";
 
-export const metadata = { title: "Network Routers — Beesmart" };
+export const metadata = {
+  title: "Router Fleet Inventory - IBS",
+};
 
-// Fetches data on the server and streams it down wrapped in Suspense
-async function RouterContent() {
-  const [topologyRes, pendingRes] = await Promise.all([
-    getTopologyTree(),
-    getPendingRouters(),
-  ]);
+export default async function RoutersPage() {
+  const permissions = await getCurrentUserPermissions();
+  const pagePerms = permissions["/network/routers"] ?? NO_PERMISSIONS;
+  if (!pagePerms.canView) redirect("/dashboard");
 
-  const topology: TopologyNode[] = topologyRes.success ? topologyRes.data : [];
-  const pending: NetworkRouter[] = pendingRes.success ? pendingRes.data : [];
+  const routers = await getRouters();
 
-  return <NetworkRoutersView initialTopology={topology} initialPending={pending} />;
-}
-
-function RouterSkeleton() {
   return (
-    <div className="space-y-6">
-      <div className="space-y-1">
-        <Skeleton className="h-7 w-48" />
-        <Skeleton className="h-4 w-72" />
+    <div className="space-y-6 p-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div className="flex flex-col gap-2">
+          <h1 className="text-3xl font-bold tracking-tight">Router Fleet</h1>
+          <p className="text-muted-foreground">
+            Manage deployed edge hardware, monitor active sessions, and provision new gateways.
+          </p>
+        </div>
       </div>
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <Skeleton key={i} className="h-24 rounded-xl" />
-        ))}
-      </div>
-      <Skeleton className="h-10 w-64 rounded-lg" />
-      <Skeleton className="h-80 rounded-xl" />
-    </div>
-  );
-}
 
-export default function NetworkRoutersPage() {
-  return (
-    <div className="p-6 h-full">
-      <Suspense fallback={<RouterSkeleton />}>
-        <RouterContent />
-      </Suspense>
+      <RouterInventoryClient initialRouters={routers} />
     </div>
   );
 }

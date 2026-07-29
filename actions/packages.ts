@@ -62,7 +62,7 @@ async function getAuthHeaders(): Promise<HeadersInit> {
 }
 
 const BASE = () => `${process.env.BASE_API_URL}system/packages`;
-const REVALIDATE = () => revalidatePath("/system/internet-packages");
+const REVALIDATE = () => revalidatePath("/system/packages");
 
 // ── GET all packages ──────────────────────────────────────────────────────────
 export async function getPackagesAction(): Promise<ApiResponse<InternetPackage[]>> {
@@ -71,7 +71,8 @@ export async function getPackagesAction(): Promise<ApiResponse<InternetPackage[]
       headers: await getAuthHeaders(),
       cache: "no-store",
     });
-    return res.json();
+    const data = await res.json();
+    return data;
   } catch {
     return { status: 500, success: false, message: "Failed to fetch packages", data: [], timestamp: "" };
   }

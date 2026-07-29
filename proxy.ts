@@ -4,7 +4,7 @@ import { auth } from "./lib/auth";
 const publicRoutes = ["/hotspot"];
 const apiAuthPrefix = "/api/auth";
 const authRoutes = ["/login", "/forgot-password", "/reset-password", "/signout"];
-const DEFAULT_LOGIN_REDIRECT = "/system/access";
+const DEFAULT_LOGIN_REDIRECT = "/dashboard";
 
 // Assign the auth-wrapped function to a variable named `proxy`
 export const proxy = auth((req) => {
@@ -52,8 +52,8 @@ export const config = {
         "/hotspot",
         "/settings/:path*",
         "/system/:path*",
-        "/communication",
-        "/communication/:path*",
+        "/communications",
+        "/communications/:path*",
         "/network/:path*",
         "/finance",
         "/finance/:path*",

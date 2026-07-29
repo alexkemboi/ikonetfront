@@ -14,6 +14,7 @@ import {
   Router, DollarSign, Database, TrendingUp, Landmark,
   Clock, Lock, History, Smartphone, ShoppingCart,
   RotateCcw, Gauge, Megaphone, Search, MapPin, ScrollText,
+  Activity, Globe,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -46,6 +47,9 @@ const ICON_MAP: Record<string, LucideIcon> = {
   "map-pin":          MapPin,
   "mail":             Mail,
   "scroll-text":      ScrollText,
+  "database":         Database,
+  "activity":         Activity,
+  "globe":            Globe,
 
   // ── Material Design names (API menus endpoint) ──────────────────────
   "dashboard":             LayoutDashboard,
@@ -169,9 +173,9 @@ function NavParent({ item }: { item: NavItem }) {
   const [open, setOpen] = useState(isAnyChildActive);
 
   // Auto-open when navigating to a child route
-  // useEffect(() => {
-  //   if (isAnyChildActive) setOpen(true);
-  // }, [isAnyChildActive]);
+  useEffect(() => {
+    if (isAnyChildActive) setOpen(true);
+  }, [isAnyChildActive]);
 
   return (
     <div>
@@ -232,9 +236,9 @@ function NavGroupSection({ group }: { group: NavGroup }) {
         </p>
       )}
       {group.items.map((item) =>
-        item.children && item.canView ? (
+        item.children && (item.canView ?? true) ? (
           <NavParent key={item.href} item={item} />
-        ) : item.canView ? (
+        ) : (item.canView ?? true) ? (
           <NavLeaf key={item.href} item={item} />
         ) : null
       )}

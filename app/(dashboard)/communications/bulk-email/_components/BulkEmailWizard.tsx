@@ -31,6 +31,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import type { AudienceSegment, EmailTemplate } from "../page";
+import { sendBulkEmailAction } from "@/actions/communications";
 
 interface Props {
   segments: AudienceSegment[];
@@ -230,8 +231,19 @@ export default function BulkEmailWizard({ segments, templates }: Props) {
     }
   }
 
-  function handleSend() {
-    setSent(true);
+  async function handleSend() {
+    const result = await sendBulkEmailAction({
+      segmentId: selectedSegmentId || "",
+      templateId: selectedTemplateId,
+      subject,
+      body: body,
+    });
+    if (result.success) {
+      setSent(true);
+    } else {
+      // TODO: show error toast when toast system is available
+      console.error("[BulkEmail] send failed:", result.message);
+    }
   }
 
   if (sent) {

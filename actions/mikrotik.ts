@@ -12,6 +12,14 @@ import {
 import { BASE_URL } from "@/lib/constants";
 import { auth } from "@/lib/auth";
 
+async function getRlsScopeParams(): Promise<URLSearchParams> {
+  const session = await auth();
+  const params = new URLSearchParams();
+  if (session?.user?.regionId)  params.append("regionId",  session.user.regionId.toString());
+  if (session?.user?.stationId) params.append("stationId", session.user.stationId.toString());
+  if (session?.user?.locationId) params.append("locationId", session.user.locationId.toString());
+  return params;
+}
 
 
 async function getAuthHeaders(): Promise<HeadersInit> {
@@ -30,7 +38,8 @@ export async function getMikrotikDevices(): Promise<
   ApiResponse<MikrotikDevice[]>
 > {
   try {
-    const response = await fetch(`${BASE_URL}network-devices`, {
+    const params = await getRlsScopeParams();
+    const response = await fetch(`${BASE_URL}network-devices?${params.toString()}`, {
       headers: await getAuthHeaders(),
       next: {
         tags: ["mikrotik-devices"],
@@ -92,7 +101,7 @@ export async function addMikrotikDevice(
     }
 
     const data: ApiResponse<MikrotikDevice> = await response.json();
-    revalidatePath("/network/microtick"); // Revalidate the page to show the new device
+    revalidatePath("/network/mikrotik"); // Revalidate the page to show the new device
     return data;
   } catch (error: unknown) {
     console.error("Error adding MikroTik device:", error);

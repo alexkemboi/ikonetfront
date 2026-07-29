@@ -9,6 +9,7 @@
  */
 
 import type { ApiMenuItem, PermissionFlags, PermissionMap } from "@/lib/types/roles";
+import { ROLE_CODE, ROLE_NAME, roleNameToCode } from "@/lib/types/roles";
 import type { NavGroup, NavItem, MenuNode } from "@/lib/nav";
 import { auth } from "@/lib/auth";
 import { adminNavGroups }      from "@/config/nav-admin";
@@ -32,17 +33,25 @@ export const NO_PERMISSIONS: PermissionFlags = {
 };
 
 /**
- * Fetch the menu/permission tree for a given role code.
+ * Fetch the menu/permission tree for a given role.
  * Returns the raw `ApiMenuItem[]` so callers can shape it as needed.
  *
- * @param roleCode  - e.g. "01", "02" — from session.user.role
+ * Accepts either a role name (e.g. "ADMIN") or a code (e.g. "01").
+ * The backend URL requires the code, so the value is normalized via
+ * `roleNameToCode` before being placed in the path.
+ *
+ * @param role  - role name (preferred) or code — from session.user.role
  * @param apiToken  - Bearer token from session.user.apiToken
  */
 export async function fetchRoleMenusRaw(
-  roleCode: string,
+  role: string,
   apiToken: string
 ): Promise<ApiMenuItem[]> {
-  if (!roleCode || !apiToken) return [];
+  if (!role || !apiToken) return [];
+
+  // If the caller already passed a code, keep it; otherwise convert name → code.
+  const looksLikeCode = /^\d{1,3}$/.test(role);
+  const roleCode = looksLikeCode ? role : roleNameToCode(role);
 
   try {
     const res = await fetch(
@@ -108,14 +117,20 @@ export function apiMenusToNavGroups(menus: ApiMenuItem[]): NavGroup[] {
 /**
  * Returns the static nav config for a role.
  * Used as a fallback when the API returns no menus (e.g. permissions not yet configured).
+ *
+ * Accepts either a role name (preferred) or a code.
  */
-export function getStaticNavForRole(roleCode: string): NavGroup[] {
-  switch (roleCode) {
-    case "01": return adminNavGroups;
-    case "02": return managementNavGroups;
-    case "03": return staffNavGroups;
-    case "04": return customerNavGroups;
-    default:   return staffNavGroups;
+export function getStaticNavForRole(role: string): NavGroup[] {
+  switch (role) {
+    case ROLE_NAME.ADMIN:
+    case ROLE_CODE[ROLE_NAME.ADMIN]:      return adminNavGroups;
+    case ROLE_NAME.MANAGEMENT:
+    case ROLE_CODE[ROLE_NAME.MANAGEMENT]: return managementNavGroups;
+    case ROLE_NAME.STAFF:
+    case ROLE_CODE[ROLE_NAME.STAFF]:      return staffNavGroups;
+    case ROLE_NAME.CUSTOMER:
+    case ROLE_CODE[ROLE_NAME.CUSTOMER]:   return customerNavGroups;
+    default:                              return staffNavGroups;
   }
 }
 

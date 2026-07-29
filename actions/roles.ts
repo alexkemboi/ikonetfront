@@ -18,40 +18,55 @@ async function getAuthHeaders(): Promise<HeadersInit> {
 }
 
 export async function getRolesAction(): Promise<ApiResponse<ApiRole[]>> {
-  const res = await fetch(
-    `${process.env.BASE_API_URL}system-setup/all-roles`,
-    { headers: await getAuthHeaders(), cache: "no-store" }
-  );
-  return res.json();
+  try {
+    const res = await fetch(
+      `${process.env.BASE_API_URL}system-setup/all-roles`,
+      { headers: await getAuthHeaders(), cache: "no-store" }
+    );
+    return await res.json();
+  } catch {
+    return { status: 500, success: false, message: "Failed to fetch roles", data: null as unknown as ApiRole[], timestamp: "" };
+  }
 }
 
 export async function getAllMenusAction(): Promise<ApiResponse<ApiMenuItem[]>> {
-  const res = await fetch(
-    `${process.env.BASE_API_URL}system-setup/all-menus`,
-    { headers: await getAuthHeaders(), cache: "no-store" }
-  );
-  console.log("Fetched all menus:", res);
-  return res.json();
+  try {
+    const res = await fetch(
+      `${process.env.BASE_API_URL}system-setup/all-menus`,
+      { headers: await getAuthHeaders(), cache: "no-store" }
+    );
+    return await res.json();
+  } catch {
+    return { status: 500, success: false, message: "Failed to fetch menus", data: null as unknown as ApiMenuItem[], timestamp: "" };
+  }
 }
 
 export async function getRoleMenusAction(
   roleCode: string
 ): Promise<ApiResponse<ApiMenuItem[]>> {
-  const res = await fetch(
-    `${process.env.BASE_API_URL}system-setup/${roleCode}/menus`,
-    { headers: await getAuthHeaders(), cache: "no-store" }
-  );
-  return res.json();
+  try {
+    const res = await fetch(
+      `${process.env.BASE_API_URL}system-setup/${roleCode}/menus`,
+      { headers: await getAuthHeaders(), cache: "no-store" }
+    );
+    return await res.json();
+  } catch {
+    return { status: 500, success: false, message: "Failed to fetch role menus", data: null as unknown as ApiMenuItem[], timestamp: "" };
+  }
 }
 
 export async function getRoleUsersAction(
   roleCode: string
 ): Promise<ApiResponse<ApiRoleUser[]>> {
-  const res = await fetch(
-    `${process.env.BASE_API_URL}system-setup/${roleCode}/users`,
-    { headers: await getAuthHeaders(), cache: "no-store" }
-  );
-  return res.json();
+  try {
+    const res = await fetch(
+      `${process.env.BASE_API_URL}system-setup/${roleCode}/users`,
+      { headers: await getAuthHeaders(), cache: "no-store" }
+    );
+    return await res.json();
+  } catch {
+    return { status: 500, success: false, message: "Failed to fetch role users", data: null as unknown as ApiRoleUser[], timestamp: "" };
+  }
 }
 
 export async function addRoleAction(
@@ -68,7 +83,7 @@ export async function addRoleAction(
   );
   const data: ApiResponse<ApiRole> = await res.json();
   if (data.success) {
-    revalidatePath("/settings/roles");
+    revalidatePath("/system/access");
   }
   return data;
 }
@@ -99,8 +114,7 @@ export async function saveRoleMenusAction(
     if (data.success) {
       revalidateTag(NAV_MENUS_TAG, 'max');
       revalidateTag(`${NAV_MENUS_TAG}-${roleCode}`, 'max');
-      revalidatePath("/settings/roles");
-      revalidatePath("/settings/access");
+      revalidatePath("/system/access");
 
       return { success: assignments.length, failed: 0 };
     }
@@ -108,5 +122,77 @@ export async function saveRoleMenusAction(
     return { success: 0, failed: assignments.length };
   } catch {
     return { success: 0, failed: assignments.length };
+  }
+}
+
+export async function renameRoleAction(
+  roleCode: string,
+  name: string,
+  description: string
+): Promise<ApiResponse<ApiRole>> {
+  try {
+    const res = await fetch(
+      `${process.env.BASE_API_URL}system-setup/update-role/${roleCode}`,
+      {
+        method: "PUT",
+        headers: await getAuthHeaders(),
+        body: JSON.stringify({ roleCode, name, description }),
+        cache: "no-store",
+      }
+    );
+    const data: ApiResponse<ApiRole> = await res.json();
+    if (data.success) {
+      revalidatePath("/system/access");
+    }
+    return data;
+  } catch {
+    return { status: 500, success: false, message: "Failed to rename role", data: null as unknown as ApiRole, timestamp: "" };
+  }
+}
+
+export async function assignUserToRoleAction(
+  roleCode: string,
+  userId: string
+): Promise<ApiResponse<null>> {
+  try {
+    const res = await fetch(
+      `${process.env.BASE_API_URL}system-setup/${roleCode}/users`,
+      {
+        method: "POST",
+        headers: await getAuthHeaders(),
+        body: JSON.stringify({ userId }),
+        cache: "no-store",
+      }
+    );
+    const data: ApiResponse<null> = await res.json();
+    if (data.success) {
+      revalidatePath("/system/access");
+    }
+    return data;
+  } catch {
+    return { status: 500, success: false, message: "Failed to assign user", data: null, timestamp: "" };
+  }
+}
+
+export async function removeUserFromRoleAction(
+  roleCode: string,
+  userId: string
+): Promise<ApiResponse<null>> {
+  try {
+    const res = await fetch(
+      `${process.env.BASE_API_URL}system-setup/${roleCode}/users/${userId}`,
+      {
+        method: "DELETE",
+        headers: await getAuthHeaders(),
+        cache: "no-store",
+      }
+    );
+    const data: ApiResponse<null> = await res.json();
+    if (data.success) {
+      revalidatePath("/system/access");
+    }
+    return data;
+  } catch {
+    return { status: 500, success: false, message: "Failed to remove user", data: null, timestamp: "" };
   }
 }

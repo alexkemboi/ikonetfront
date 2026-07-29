@@ -9,6 +9,8 @@ import { getMikrotikDevices } from "@/actions/mikrotik";
 
 import { DashboardShell } from "../_components/DashboardShell";
 
+export const metadata = { title: "Admin Dashboard — Beesmart Billing" };
+
 const safeNumber = (value: unknown): number => {
   const parsed = Number(value);
 

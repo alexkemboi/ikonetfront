@@ -1,6 +1,7 @@
 "use server"
 
 import { revalidatePath, revalidateTag } from "next/cache"
+import { auth } from "@/lib/auth"
 import type {
   Ticket,
   TicketComment,
@@ -10,7 +11,13 @@ import type {
 } from "@/lib/types/ticket"
 import type { ApiResponse } from "@/lib/types/auth"
 
-const BASE_URL = "https://beesmartbedak.com/api/v1"
+const BASE_URL = process.env.BASE_API_URL
+
+async function getAuthHeaders(): Promise<Record<string, string>> {
+  const session = await auth()
+  if (!session?.user?.apiToken) return {}
+  return { Authorization: `Bearer ${session.user.apiToken}` }
+}
 
 // ─── Read Actions ────────────────────────────────────────────────────────────
 // next: { tags: [...] } caches this fetch under the given tag.
@@ -18,7 +25,9 @@ const BASE_URL = "https://beesmartbedak.com/api/v1"
 
 export async function getTickets(): Promise<ApiResponse<Ticket[]>> {
   try {
-    const res = await fetch(`${BASE_URL}/tickets`, {
+    const headers = await getAuthHeaders()
+    const res = await fetch(`${BASE_URL}tickets`, {
+      headers,
       next: { tags: ["tickets"] },
     })
     const data: ApiResponse<Ticket[]> = await res.json()
@@ -36,7 +45,9 @@ export async function getTickets(): Promise<ApiResponse<Ticket[]>> {
 
 export async function getTicketById(id: number): Promise<ApiResponse<Ticket>> {
   try {
-    const res = await fetch(`${BASE_URL}/tickets/${id}`, {
+    const headers = await getAuthHeaders()
+    const res = await fetch(`${BASE_URL}tickets/${id}`, {
+      headers,
       next: { tags: [`ticket-${id}`] },
     })
     return await res.json()
@@ -53,7 +64,9 @@ export async function getTicketById(id: number): Promise<ApiResponse<Ticket>> {
 
 export async function getTicketComments(id: number): Promise<ApiResponse<TicketComment[]>> {
   try {
-    const res = await fetch(`${BASE_URL}/tickets/${id}/comments`, {
+    const headers = await getAuthHeaders()
+    const res = await fetch(`${BASE_URL}tickets/${id}/comments`, {
+      headers,
       next: { tags: [`ticket-comments-${id}`] },
     })
     return await res.json()
@@ -74,9 +87,10 @@ export async function getTicketComments(id: number): Promise<ApiResponse<TicketC
 
 export async function createTicket(payload: CreateTicketPayload): Promise<ApiResponse<Ticket>> {
   try {
-    const res = await fetch(`${BASE_URL}/tickets`, {
+    const headers = await getAuthHeaders()
+    const res = await fetch(`${BASE_URL}tickets`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { ...headers, "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     })
     const data: ApiResponse<Ticket> = await res.json()
@@ -96,8 +110,10 @@ export async function createTicket(payload: CreateTicketPayload): Promise<ApiRes
 // Status goes in the query string — no body, no Content-Type header.
 export async function updateTicketStatus(id: number, status: TicketStatus): Promise<ApiResponse<Ticket>> {
   try {
-    const res = await fetch(`${BASE_URL}/tickets/${id}/status?status=${status}`, {
+    const headers = await getAuthHeaders()
+    const res = await fetch(`${BASE_URL}tickets/${id}/status?status=${status}`, {
       method: "PATCH",
+      headers,
     })
     const data: ApiResponse<Ticket> = await res.json()
     if (data.success) {
@@ -119,8 +135,10 @@ export async function updateTicketStatus(id: number, status: TicketStatus): Prom
 // Staff ID goes in the URL path — no body, no Content-Type header.
 export async function assignTicket(id: number, staffId: number): Promise<ApiResponse<Ticket>> {
   try {
-    const res = await fetch(`${BASE_URL}/tickets/${id}/assign/${staffId}`, {
+    const headers = await getAuthHeaders()
+    const res = await fetch(`${BASE_URL}tickets/${id}/assign/${staffId}`, {
       method: "PATCH",
+      headers,
     })
     const data: ApiResponse<Ticket> = await res.json()
     if (data.success) {
@@ -144,9 +162,10 @@ export async function addTicketComment(
   payload: AddCommentPayload
 ): Promise<ApiResponse<TicketComment>> {
   try {
-    const res = await fetch(`${BASE_URL}/tickets/${id}/comments`, {
+    const headers = await getAuthHeaders()
+    const res = await fetch(`${BASE_URL}tickets/${id}/comments`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { ...headers, "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     })
     const data: ApiResponse<TicketComment> = await res.json()

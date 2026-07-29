@@ -51,9 +51,10 @@ export async function getProvidersAction(): Promise<ApiResponse<AlertProvider[]>
       headers: await getAuthHeaders(),
       cache: "no-store",
     });
-    return res.json();
+    const data = await res.json();
+    return data;
   } catch {
-    return { status: 500, success: false, message: "Failed to fetch providers", data: [], timestamp: "" };
+    return { status: 500, success: false, message: "Network error. Please try again.", data: [] as AlertProvider[], timestamp: "" };
   }
 }
 

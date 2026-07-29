@@ -3,8 +3,16 @@ import { getSystemUsers } from "@/actions/system";
 import { Suspense } from "react";
 import StaffUsersClient from "./_components/StaffUsersClient";
 import { Skeleton } from "@/components/ui/skeleton";
+import { getCurrentUserPermissions, NO_PERMISSIONS } from "@/lib/data/nav";
+import { redirect } from "next/navigation";
+
+export const metadata = { title: "User Administration — Beesmart Billing" };
 
 async function StaffUsersPage() {
+  const permissions = await getCurrentUserPermissions();
+  const pagePerms = permissions["/system/users"] ?? NO_PERMISSIONS;
+  if (!pagePerms.canView) redirect("/dashboard");
+
   const [users, rolesRes] = await Promise.all([
     getSystemUsers(),
     getRolesAction(),

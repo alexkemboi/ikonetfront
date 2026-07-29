@@ -75,16 +75,42 @@ export async function initiateHotspotPayment(
       throw new Error(errorData.message || 'Failed to initiate payment');
     }
 
-    revalidateTag('hotspot-packages', 
-      "max"
-    ); // Revalidate packages after payment
-    return response.json();
+    revalidateTag('hotspot-packages', 'page'); // Revalidate packages after payment
+    const paymentData = await response.json();
+    return paymentData;
   } catch (error) {
-    console.error('Error initiating hotspot payment:', error);
     return {
       status: 500,
       success: false,
       message: (error as Error).message || 'Internal server error',
+      data: null,
+      timestamp: new Date().toISOString(),
+    };
+  }
+}
+
+export async function activateVoucherAction(code: string) {
+  try {
+    const headers = await getAuthHeaders();
+    const res = await fetch(`${BASE_URL}hotspot/activate`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ voucherCode: code }),
+    });
+
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => null);
+      throw new Error(errorData?.message || `Voucher activation failed with status ${res.status}`);
+    }
+
+    revalidateTag("hotspot", "page");
+    return await res.json();
+  } catch (error) {
+    console.error("[Hotspot Action] activateVoucherAction error:", error);
+    return {
+      status: 500,
+      success: false,
+      message: (error as Error).message,
       data: null,
       timestamp: new Date().toISOString(),
     };
@@ -112,9 +138,9 @@ export async function checkActiveSession(
       throw new Error(errorData.message || 'Failed to check active session');
     }
 
-    return response.json();
+    const sessionData = await response.json();
+    return sessionData;
   } catch (error) {
-    console.error('Error checking active session:', error);
     return {
       status: 500,
       success: false,

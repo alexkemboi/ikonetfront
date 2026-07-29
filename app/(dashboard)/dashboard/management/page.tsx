@@ -5,6 +5,8 @@ import { getCustomers } from "@/actions/customer";
 import { getPackagesAction } from "@/actions/packages";
 import { ManagementDashboardShell } from "./_components/ManagementDashboardShell";
 
+export const metadata = { title: "Management Dashboard — Beesmart Billing" };
+
 export default async function ManagementDashboardPage() {
   const session = await auth();
   const correctPath = resolveDashboardPathForRole(session?.user?.role);

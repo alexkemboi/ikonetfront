@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { CheckCircle2, XCircle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { activateVoucherAction } from "@/actions/hotspot";
 
 type ValidationState = "idle" | "validating" | "valid" | "invalid";
 
@@ -48,19 +49,20 @@ export default function ActivateTab() {
         setValidationState("validating");
 
         try {
-            // Simulate API call - replace with actual endpoint
-            await new Promise((resolve) => setTimeout(resolve, 2000));
+            const result = await activateVoucherAction(voucher);
 
-            // Mock success response
-            setValidationState("valid");
-            setMessage("Voucher activated successfully! You now have internet access.");
-            setVoucher("");
-
-            // Reset after a few seconds
-            setTimeout(() => {
-                setValidationState("idle");
-                setMessage("");
-            }, 3000);
+            if (result.success) {
+                setValidationState("valid");
+                setMessage(result.data?.message || "Voucher activated successfully! You now have internet access.");
+                setVoucher("");
+                setTimeout(() => {
+                    setValidationState("idle");
+                    setMessage("");
+                }, 3000);
+            } else {
+                setValidationState("invalid");
+                setMessage(result.message || "Failed to activate voucher. Please try again.");
+            }
         } catch (error) {
             setValidationState("invalid");
             setMessage("Failed to activate voucher. Please try again.");
