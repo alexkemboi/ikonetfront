@@ -10,6 +10,7 @@ import { StationForm } from "./StationForm";
 import { toast } from "sonner";
 import { Database, Plus, Trash2 } from "lucide-react";
 import { ColumnDef } from "@tanstack/react-table";
+import { usePermissions } from "@/providers/PermissionsProvider";
 
 interface StationClientProps {
   regionsTree: RegionResponse[];
@@ -28,6 +29,7 @@ export function StationClient({ regionsTree }: StationClientProps) {
 
   const [stations, setStations] = useState<StationResponse[]>(getFlatStations(regionsTree));
   const [isDialogOpen, setIsOpen] = useState(false);
+  const perms = usePermissions("/network/stations");
 
   const handleDelete = async (id: number, locationIdxno: number) => {
     if (!confirm("Are you sure you want to delete this Station (POP)?")) return;
@@ -90,13 +92,15 @@ export function StationClient({ regionsTree }: StationClientProps) {
       id: "actions",
       header: "Actions",
       cell: ({ row }) => (
-        <Button
-          variant="destructive"
-          size="icon"
-          onClick={() => handleDelete(row.original.idxno, row.original.locationIdxno)}
-        >
-          <Trash2 className="h-4 w-4" />
-        </Button>
+        perms.canDelete ? (
+          <Button
+            variant="destructive"
+            size="icon"
+            onClick={() => handleDelete(row.original.idxno, row.original.locationIdxno)}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        ) : null
       ),
     },
   ];
@@ -104,7 +108,8 @@ export function StationClient({ regionsTree }: StationClientProps) {
   return (
     <div className="space-y-4">
       <div className="flex justify-end">
-        <Dialog open={isDialogOpen} onOpenChange={setIsOpen}>
+        {perms.canCreate && (
+          <Dialog open={isDialogOpen} onOpenChange={setIsOpen}>
           <DialogTrigger asChild>
             <Button className="flex items-center gap-2">
               <Plus className="h-4 w-4" /> Onboard Station
@@ -125,6 +130,7 @@ export function StationClient({ regionsTree }: StationClientProps) {
             />
           </DialogContent>
         </Dialog>
+        )}
       </div>
 
       <DataTable columns={columns} data={stations} />
