@@ -29,6 +29,23 @@ export type JwtPayload = {
   middleName?: string;
   otherName?: string;
   phoneNumber?: string;
+  regionId?: number;
+  stationId?: number;
+  locationId?: number;
   iat?: number;
   exp?: number;
+};
+
+export type LoginResponse = ApiResponse<{
+  username: string;
+  role: string;
+  token: string;
+  refreshToken?: string;
+  expiresIn?: number;
+}>;
+
+export type RefreshTokenResponse = {
+  access_token: string;
+  refresh_token?: string;
+  expires_in: number;
 };
