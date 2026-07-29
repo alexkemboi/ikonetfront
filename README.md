@@ -1,5 +1,26 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## Local Development
+
+For full local setup instructions (pnpm + Docker Compose, backend connection, port management), see **[LOCAL_SETUP.md](./LOCAL_SETUP.md)**.
+
+### Quick Start (pnpm)
+
+```bash
+pnpm install
+cp .env.local.example .env.local   # then set AUTH_SECRET + backend URL
+pnpm dev                           # http://localhost:3456
+```
+
+Run the complementary Spring Boot backend (separate repo) on port `8381` so the frontend can reach `http://localhost:8381/api/v1/`.
+
+### Quick Start (Docker Compose)
+
+```bash
+cp .env.local.example .env.local
+docker-compose up -d --build       # http://localhost:3456
+```
+
 ## Getting Started
 
 First, run the development server:
@@ -23,7 +44,6 @@ This project uses [`next/font`](https://nextjs.org/docs/app/building-your-applic
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:
-
 - [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
 - [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
 
