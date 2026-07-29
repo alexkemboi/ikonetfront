@@ -62,7 +62,7 @@ async function getAuthHeaders(): Promise<HeadersInit> {
 }
 
 const BASE = () => `${process.env.BASE_API_URL}system/packages`;
-const REVALIDATE = () => revalidatePath("/system/internet-packages");
+const REVALIDATE = () => revalidatePath("/system/packages");
 
 // ── GET all packages ──────────────────────────────────────────────────────────
 export async function getPackagesAction(): Promise<ApiResponse<InternetPackage[]>> {

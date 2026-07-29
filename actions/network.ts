@@ -29,6 +29,15 @@ import {
 import { revalidatePath, revalidateTag } from "next/cache";
 import { auth } from "@/lib/auth";
 
+async function getRlsScopeParams(): Promise<URLSearchParams> {
+  const session = await auth();
+  const params = new URLSearchParams();
+  if (session?.user?.regionId)  params.append("regionId",  session.user.regionId.toString());
+  if (session?.user?.stationId) params.append("stationId", session.user.stationId.toString());
+  if (session?.user?.locationId) params.append("locationId", session.user.locationId.toString());
+  return params;
+}
+
 
 async function getAuthHeaders(): Promise<HeadersInit> {
   const headers: HeadersInit = { "Content-Type": "application/json" };
@@ -44,7 +53,8 @@ async function getAuthHeaders(): Promise<HeadersInit> {
 
 export const getPendingRouters = async (): Promise<ApiResponse<NetworkRouter[]>> => {
   try {
-    const response = await fetch(BASE_URL + "network-routers/pending", {
+    const params = await getRlsScopeParams();
+    const response = await fetch(BASE_URL + "network-routers/pending?" + params.toString(), {
       headers: await getAuthHeaders(),
       next: { tags: ["pending-routers"] },
     });
@@ -302,8 +312,9 @@ function resolveDataArray<T>(parsed: unknown): T[] {
 
 export const getRegions = async (tree?: boolean): Promise<RegionResponse[]> => {
   try {
-    const params = tree ? "?tree=true" : "";
-    const url = BASE_URL + `network/regions${params}`;
+    const params = await getRlsScopeParams();
+    if (tree) params.append("tree", "true");
+    const url = BASE_URL + "network/regions?" + params.toString();
     console.log("[getRegions] fetching:", url);
     const response = await fetch(url, {
       cache: "no-store",
@@ -428,7 +439,8 @@ export const deleteRegion = async (
 
 export const getLocationsByRegion = async (regionIdxno: number): Promise<LocationResponse[]> => {
   try {
-    const url = BASE_URL + `network/locations/region/${regionIdxno}`;
+    const params = await getRlsScopeParams();
+    const url = BASE_URL + `network/locations/region/${regionIdxno}?${params.toString()}`;
     console.log("[getLocationsByRegion] fetching:", url);
     const response = await fetch(url, {
       cache: "no-store",
@@ -545,7 +557,8 @@ export const deleteLocation = async (
 
 export const getStationsByLocation = async (locationIdxno: number): Promise<StationResponse[]> => {
   try {
-    const url = BASE_URL + `network/stations/location/${locationIdxno}`;
+    const params = await getRlsScopeParams();
+    const url = BASE_URL + `network/stations/location/${locationIdxno}?${params.toString()}`;
     console.log("[getStationsByLocation] fetching:", url);
     const response = await fetch(url, {
       cache: "no-store",
@@ -778,7 +791,8 @@ export const provisionSubscriber = async (
 
 export const getRouters = async (): Promise<RouterResponse[]> => {
   try {
-    const res = await fetch(`${BASE_URL}network/routers`, {
+    const params = await getRlsScopeParams();
+    const res = await fetch(`${BASE_URL}network/routers?${params.toString()}`, {
       method: "GET",
       headers: await getAuthHeaders(),
       next: { tags: ["network:routers"] },
@@ -796,3 +810,35 @@ export const getRouters = async (): Promise<RouterResponse[]> => {
     return [];
   }
 };
+
+export async function getIpPools() {
+  try {
+    const headers = await getAuthHeaders();
+    const res = await fetch(`${BASE_URL}network/ip-pools`, {
+      headers,
+      next: { tags: ["network"] },
+    });
+    if (!res.ok) throw new Error(`Failed to fetch IP pools: ${res.statusText}`);
+    const body = await res.json();
+    return body.data || [];
+  } catch (error) {
+    console.error("[Network Action] getIpPools error:", error);
+    return [];
+  }
+}
+
+export async function getIpMappings() {
+  try {
+    const headers = await getAuthHeaders();
+    const res = await fetch(`${BASE_URL}network/ip-mappings`, {
+      headers,
+      next: { tags: ["network"] },
+    });
+    if (!res.ok) throw new Error(`Failed to fetch IP mappings: ${res.statusText}`);
+    const body = await res.json();
+    return body.data || [];
+  } catch (error) {
+    console.error("[Network Action] getIpMappings error:", error);
+    return [];
+  }
+}

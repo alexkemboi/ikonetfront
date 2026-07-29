@@ -89,6 +89,34 @@ export async function initiateHotspotPayment(
   }
 }
 
+export async function activateVoucherAction(code: string) {
+  try {
+    const headers = await getAuthHeaders();
+    const res = await fetch(`${BASE_URL}hotspot/activate`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ voucherCode: code }),
+    });
+
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => null);
+      throw new Error(errorData?.message || `Voucher activation failed with status ${res.status}`);
+    }
+
+    revalidateTag("hotspot", "page");
+    return await res.json();
+  } catch (error) {
+    console.error("[Hotspot Action] activateVoucherAction error:", error);
+    return {
+      status: 500,
+      success: false,
+      message: (error as Error).message,
+      data: null,
+      timestamp: new Date().toISOString(),
+    };
+  }
+}
+
 export async function checkActiveSession(
   macAddress: string,
   ipAddress: string

@@ -1,7 +1,7 @@
 "use server";
 
-import type { ApiResponse, LoginData } from "@/lib/types/auth";
-import { JWT } from "next-auth/jwt";
+import type { ApiResponse, LoginData, RefreshTokenResponse } from "@/lib/types/auth";
+
 const JSON_HEADERS = { "Content-Type": "application/json" };
 
 export async function loginAction(credentials: {
@@ -56,29 +56,32 @@ export async function resetPasswordAction(payload: {
   }
 }
 
-
-export async function refreshAccessToken(token: JWT) {
+export async function refreshAccessToken(refreshToken: string): Promise<RefreshTokenResponse | null> {
   try {
-    const response = await fetch("YOUR_BACKEND_REFRESH_URL", {
+    const response = await fetch(`${process.env.BASE_API_URL}auth/refresh-token`, {
       method: "POST",
-      body: JSON.stringify({ refresh_token: token.refreshToken }),
+      headers: JSON_HEADERS,
+      body: JSON.stringify({ refresh_token: refreshToken }),
     });
 
-    const refreshedTokens = await response.json();
+    if (!response.ok) return null;
 
-    if (!response.ok) throw refreshedTokens;
+    return await response.json();
+  } catch {
+    return null;
+  }
+}
 
-    return {
-      ...token,
-      accessToken: refreshedTokens.access_token,
-      expiresAt: Date.now() + (refreshedTokens.expires_in * 1000),
-      refreshToken: refreshedTokens.refresh_token ?? token.refreshToken,
-    };
-  } catch (error) {
-    // Return the error so the token becomes "invalid"
-    return {
-      ...token,
-      error: "RefreshAccessTokenError",
-    };
+export async function logoutAction(token: string): Promise<void> {
+  try {
+    await fetch(`${process.env.BASE_API_URL}auth/logout`, {
+      method: "POST",
+      headers: {
+        ...JSON_HEADERS,
+        Authorization: `Bearer ${token}`,
+      },
+    });
+  } catch {
+    // Silently fail — the session will be cleaned up client-side
   }
 }

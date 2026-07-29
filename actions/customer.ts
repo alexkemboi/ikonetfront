@@ -11,6 +11,14 @@ import {
 import { BASE_URL } from "@/lib/constants";
 import { auth } from "@/lib/auth";
 
+async function getRlsScopeParams(): Promise<URLSearchParams> {
+  const session = await auth();
+  const params = new URLSearchParams();
+  if (session?.user?.regionId)  params.append("regionId",  session.user.regionId.toString());
+  if (session?.user?.stationId) params.append("stationId", session.user.stationId.toString());
+  if (session?.user?.locationId) params.append("locationId", session.user.locationId.toString());
+  return params;
+}
 
 
 async function getAuthHeaders(): Promise<HeadersInit> {
@@ -89,6 +97,9 @@ export async function getCustomers(
     if (filters?.search) {
       params.append("search", filters.search);
     }
+
+    const scopeParams = await getRlsScopeParams();
+    scopeParams.forEach((value, key) => params.append(key, value));
 
     const response = await fetch(`${BASE_URL}customers?${params.toString()}`, {
       headers: await getAuthHeaders(),
@@ -213,8 +224,6 @@ export async function updateCustomer(
 
     const data= await response.json();
     revalidatePath("/customers/all");
-    revalidatePath("/customers/active");
-    revalidatePath("/customers/pppoe");
     revalidatePath(`/customers/${id}`);
     return data;
   } catch (error: unknown) {
@@ -244,8 +253,6 @@ export async function deleteCustomer(
 
     const data = await response.json();
     revalidatePath("/customers/all");
-    revalidatePath("/customers/active");
-    revalidatePath("/customers/pppoe");
     return data;
   } catch (error: unknown) {
     console.error(`Error deleting customer ${id}:`, error);
@@ -277,8 +284,6 @@ export async function toggleCustomerActiveStatus(
 
     const data = await response.json();
     revalidatePath("/customers/all");
-    revalidatePath("/customers/active");
-    revalidatePath("/customers/pppoe");
     revalidatePath(`/customers/${id}`);
     return data;
   } catch (error: unknown) {
@@ -313,8 +318,6 @@ export async function renewCustomerSubscription(
 
     const data = await response.json();
     revalidatePath("/customers/all");
-    revalidatePath("/customers/active");
-    revalidatePath("/customers/pppoe");
     revalidatePath(`/customers/${id}`);
     return data;
   } catch (error: unknown) {
@@ -348,7 +351,6 @@ export async function changeCustomerPassword(
 
     const data: CustomerApiResponse<null> = await response.json();
     revalidatePath("/customers/all");
-    revalidatePath("/customers/pppoe");
     revalidatePath(`/customers/${id}`);
     return data;
   } catch (error: unknown) {
