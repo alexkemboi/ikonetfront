@@ -2,6 +2,8 @@ import { getCustomerById } from "@/actions/customer";
 import { notFound } from "next/navigation";
 import { PPPoECustomerProfile } from "./_components/PPPoECustomerProfile";
 
+export const metadata = { title: "Customer Profile — Beesmart Billing" };
+
 interface CustomerDetailsPageProps {
   params: Promise<{ id: string }>;
 }
