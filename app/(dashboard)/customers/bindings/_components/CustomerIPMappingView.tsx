@@ -292,8 +292,8 @@ function MapIPSheet({
     },
     validationSchema: MappingSchema,
     onSubmit: async (_values, { resetForm, setSubmitting }) => {
-      // Simulate API call
-      await new Promise((r) => setTimeout(r, 800));
+      // TODO: Replace with createIpMappingAction server action (POST /network/ip-mappings)
+      // when the backend endpoint is available.
       setSubmitting(false);
       setSuccess(true);
       setTimeout(() => {
