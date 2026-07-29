@@ -34,6 +34,13 @@ interface DataTableProps<TData, TValue> {
     searchPlaceholder?: string
     /** Slot for action buttons rendered to the right of the search bar */
     toolbar?: React.ReactNode
+    /** Server-side pagination props (when manualPagination = true): */
+    manualPagination?: boolean
+    pageCount?: number
+    pageIndex?: number
+    pageSize?: number
+    onPaginationChange?: (pageIndex: number, pageSize: number) => void
+    loading?: boolean
 }
 
 export function DataTable<TData, TValue>({
@@ -41,6 +48,12 @@ export function DataTable<TData, TValue>({
     data,
     searchPlaceholder = "Search…",
     toolbar,
+    manualPagination,
+    pageCount: externalPageCount,
+    pageIndex: externalPageIndex,
+    pageSize: externalPageSize,
+    onPaginationChange,
+    loading,
 }: DataTableProps<TData, TValue>) {
     const [sorting, setSorting]               = useState<SortingState>([])
     const [columnFilters, setColumnFilters]   = useState<ColumnFiltersState>([])
@@ -51,20 +64,29 @@ export function DataTable<TData, TValue>({
         data,
         columns,
         getCoreRowModel:       getCoreRowModel(),
-        getPaginationRowModel: getPaginationRowModel(),
+        ...(manualPagination ? {} : { getPaginationRowModel: getPaginationRowModel() }),
         getSortedRowModel:     getSortedRowModel(),
         getFilteredRowModel:   getFilteredRowModel(),
         onSortingChange:       setSorting,
         onColumnFiltersChange: setColumnFilters,
         onColumnVisibilityChange: setColumnVisibility,
         onGlobalFilterChange:  setGlobalFilter,
-        state: { sorting, columnFilters, columnVisibility, globalFilter },
+        manualPagination,
+        pageCount: manualPagination ? externalPageCount : undefined,
+        state: { sorting, columnFilters, columnVisibility, globalFilter, pagination: manualPagination ? { pageIndex: externalPageIndex ?? 0, pageSize: externalPageSize ?? 10 } : undefined },
+        ...(manualPagination && onPaginationChange ? {
+            onPaginationChange: (updater) => {
+                const current = { pageIndex: externalPageIndex ?? 0, pageSize: externalPageSize ?? 10 };
+                const next = typeof updater === 'function' ? updater(current) : updater;
+                onPaginationChange(next.pageIndex, next.pageSize);
+            },
+        } : {}),
     })
 
     const rowCount = table.getFilteredRowModel().rows.length
 
     return (
-        <div className="flex flex-col gap-0 rounded-xl border border-border bg-card shadow-sm overflow-hidden">
+        <div className="flex flex-col gap-0 rounded-xl border border-border bg-card shadow-sm overflow-hidden relative">
             {/* Toolbar */}
             <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-border bg-muted/30">
                 <div className="relative flex-1 max-w-xs">
@@ -136,8 +158,22 @@ export function DataTable<TData, TValue>({
                 <span className="text-xs text-muted-foreground">
                     {rowCount} {rowCount === 1 ? "record" : "records"}
                 </span>
-                <DataTablePagination table={table} />
+                <DataTablePagination
+                    table={table}
+                    manualPagination={manualPagination}
+                    pageCount={externalPageCount}
+                    pageIndex={externalPageIndex}
+                    pageSize={externalPageSize ?? 10}
+                    onPaginationChange={onPaginationChange}
+                />
             </div>
+
+            {/* Loading overlay */}
+            {loading && (
+                <div className="absolute inset-0 bg-background/50 flex items-center justify-center z-10">
+                    <div className="animate-spin h-6 w-6 border-2 border-primary border-t-transparent rounded-full" />
+                </div>
+            )}
         </div>
     )
 }
