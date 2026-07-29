@@ -84,6 +84,8 @@ const formatValue = (
 ) => {
   const safe = safeNumber(value);
 
+  if (safe === 0) return "Ksh 0";
+
   if (
     title.toLowerCase().includes("revenue") ||
     title.toLowerCase().includes("balance") ||
