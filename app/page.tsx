@@ -1,7 +1,12 @@
-import Image from "next/image";
+import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 
-export default function Home() {
-  return redirect("/dashboard/customer");
+export default async function Home() {
+  const session = await auth();
 
+  if (session?.user) {
+    redirect("/dashboard");
+  }
+
+  redirect("/login");
 }
