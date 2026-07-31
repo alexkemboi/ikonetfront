@@ -7,32 +7,11 @@ import {
   extractPermissions,
   fetchRoleMenusRaw,
   getStaticNavForRole,
+  staticNavToPermissions,
 } from "@/lib/data/nav";
 import type { NavGroup } from "@/lib/nav";
 import { PermissionsProvider } from "@/providers/PermissionsProvider";
 import type { PermissionMap } from "@/lib/types/roles";
-
-/**
- * Build a permission map from static nav groups (all flags true for routes
- * that the static config exposes). Used as a fallback when the API-driven
- * menu returns nothing (e.g. roles table empty, or backend misconfigured).
- */
-function staticNavToPermissions(groups: NavGroup[]): PermissionMap {
-  const map: PermissionMap = {};
-  const visit = (items: NavGroup["items"]) => {
-    for (const item of items) {
-      // NavItem uses `href` for the route
-      if (item.href) {
-        map[item.href] = {
-          canView: true, canCreate: true, canEdit: true, canDelete: true,
-        };
-      }
-      if (item.children) visit(item.children);
-    }
-  };
-  for (const g of groups) visit(g.items);
-  return map;
-}
 
 /**
  * Dashboard shell — server component.
