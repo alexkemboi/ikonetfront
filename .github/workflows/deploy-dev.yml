@@ -17,9 +17,9 @@ jobs:
       - name: Deploy to Dev VPS via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: ${{ secrets.VPS_HOST_DEV }}
-          username: ${{ secrets.VPS_USER_DEV }}
-          password: ${{ secrets.VPS_PASSWORD_DEV }}
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          password: ${{ secrets.VPS_PASSWORD }}
           script: |
             set -e
 
@@ -34,17 +34,17 @@ jobs:
 
             echo "==> Writing .env from GitHub Secrets..."
             cat > .env << 'EOF'
-            BASE_API_URL=${{ secrets.BASE_API_URL_DEV }}
-            NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL_DEV }}
-            AUTH_SECRET=${{ secrets.AUTH_SECRET_DEV }}
-            AUTH_JWT_SECRET=${{ secrets.AUTH_JWT_SECRET_DEV }}
+            BASE_API_URL=${{ secrets.BASE_API_URL }}
+            NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }}
+            AUTH_SECRET=${{ secrets.AUTH_SECRET }}
+            AUTH_JWT_SECRET=${{ secrets.AUTH_JWT_SECRET }}
             EOF
 
             echo "Stopping existing containers..."
             docker compose down --remove-orphans
 
             echo "Building fresh images..."
-            docker compose build --pull --no-cache --build-arg NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL_DEV }}
+            docker compose build --pull --no-cache --build-arg NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }}
 
             echo "Starting containers..."
             docker compose up -d --force-recreate
