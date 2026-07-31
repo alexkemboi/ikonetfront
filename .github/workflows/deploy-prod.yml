@@ -1,4 +1,4 @@
-name: Deploy to Production VPS
+name: Deploy Production Frontend
 
 on:
   push:
@@ -6,11 +6,11 @@ on:
       - main
 
 jobs:
-  deploy:
+  deploy-prod:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
+      - name: Checkout repository code
         uses: actions/checkout@v4
 
       - name: Deploy to Production VPS via SSH
@@ -24,29 +24,32 @@ jobs:
 
             cd ~/internet-billing-systemf/
 
-            echo "Pulling latest code..."
-            git fetch origin
+            echo "==> Fetching latest production code..."
+            git fetch origin main
             git reset --hard origin/main
 
-            echo "Current commit:"
-            git rev-parse HEAD
-
-            echo "==> Writing .env from GitHub Secrets..."
-            cat > .env << 'EOF'
+            echo "==> Generating production .env from GitHub Secrets..."
+            cat << 'EOF' > .env
+            NEXTAUTH_URL=${{ secrets.NEXTAUTH_URL_PROD }}
+            NEXT_PUBLIC_BASE_API_URL=${{ secrets.NEXT_PUBLIC_BASE_API_URL_PROD }}
             BASE_API_URL=${{ secrets.BASE_API_URL_PROD }}
-            NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL_PROD }}
+            AUTH_TRUST_HOST=true
+            NEXTAUTH_SECRET=${{ secrets.AUTH_SECRET_PROD }}
             AUTH_SECRET=${{ secrets.AUTH_SECRET_PROD }}
             AUTH_JWT_SECRET=${{ secrets.AUTH_JWT_SECRET_PROD }}
             EOF
 
-            echo "Stopping existing containers..."
+            echo "==> Stopping active production containers..."
             docker compose down --remove-orphans
 
-            echo "Building fresh images..."
-            docker compose build --pull --no-cache --build-arg NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL_PROD }}
+            echo "==> Building fresh Next.js Docker image..."
+            docker compose build --pull --no-cache \
+              --build-arg NEXT_PUBLIC_BASE_API_URL=${{ secrets.NEXT_PUBLIC_BASE_API_URL_PROD }}
 
-            echo "Starting containers..."
+            echo "==> Starting production containers..."
             docker compose up -d --force-recreate
 
-            echo "Cleaning up unused Docker resources..."
+            echo "==> Pruning dangling Docker image caches..."
             docker image prune -af
+
+            echo "==> Deployment Complete!"
