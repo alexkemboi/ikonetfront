@@ -33,8 +33,8 @@ export default async function DashboardLayout({ children }: { children: ReactNod
         name:     session.user.fname ?? session.user.name ?? "User",
         email:    session.user.email ?? "",
         role:     session.user.role  ?? "",
-        initials: (session.user.fname?.[0] ?? "U").toUpperCase() +
-                  (session.user.name?.split(" ")[1]?.[0] ?? ""),
+        initials: ((session.user.fname?.[0] ?? "U") +
+                  (session.user.middleName?.[0] ?? "")).toUpperCase(),
         username: session.user.username ?? session.user.name ?? "user",
       }
     : undefined;
@@ -65,7 +65,14 @@ export default async function DashboardLayout({ children }: { children: ReactNod
           <TopBar
             notificationCount={0}
             user={sidebarUser
-              ? { username: sidebarUser.username, initials: sidebarUser.initials, role: sidebarUser.role }
+              ? {
+                  username: sidebarUser.username,
+                  initials: sidebarUser.initials,
+                  role: sidebarUser.role,
+                  fname: sidebarUser.name,
+                  middleName: "",
+                  email: sidebarUser.email,
+                }
               : undefined
             }
             navGroups={navGroups}

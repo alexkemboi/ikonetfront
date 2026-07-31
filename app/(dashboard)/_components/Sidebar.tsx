@@ -303,7 +303,7 @@ export function SidebarInner({
 
       {/* ── User profile ── */}
       {user && (
-        <div className="shrink-0 border-t border-sidebar-border px-3 py-3">
+        <div className="sticky bottom-0 mt-auto shrink-0 border-t border-sidebar-border px-3 py-3 bg-sidebar">
           <div className="flex items-center gap-3 rounded-lg px-2 py-2">
             <Avatar className="h-8 w-8 shrink-0">
               <AvatarFallback className="bg-white/20 text-sidebar-foreground text-xs font-semibold">
