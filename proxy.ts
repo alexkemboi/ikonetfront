@@ -10,6 +10,7 @@ const DEFAULT_LOGIN_REDIRECT = "/dashboard";
 export const proxy = auth((req) => {
     const { nextUrl } = req;
     const isAuthenticated = !!req.auth;
+    const hasTokenError = req.auth?.error === "RefreshAccessTokenError";
 
     const isApiAuthRoute = nextUrl.pathname.startsWith(apiAuthPrefix);
     const isPublicRoute = publicRoutes.some((route) => nextUrl.pathname.includes(route));
@@ -20,7 +21,7 @@ export const proxy = auth((req) => {
 
     // On login/reset pages: send already-authed users to dashboard
     if (isAuthRoute) {
-        if (isAuthenticated && nextUrl.pathname !== "/signout") {
+        if (isAuthenticated && !hasTokenError && nextUrl.pathname !== "/signout") {
             return NextResponse.redirect(new URL(DEFAULT_LOGIN_REDIRECT, req.url));
         }
         return NextResponse.next();
@@ -33,8 +34,8 @@ export const proxy = auth((req) => {
     if (isPublicRoute) return NextResponse.next();
 
     // Everything else is protected — redirect unauthenticated users to login
-    if (!isAuthenticated) {
-        return NextResponse.redirect(new URL("/login", req.url));
+    if (!isAuthenticated || hasTokenError) {
+        return NextResponse.redirect(new URL("/login?error=RefreshAccessTokenError", req.url));
     }
 
     return NextResponse.next();
