@@ -2,6 +2,7 @@ import { type ReactNode } from "react";
 import Sidebar from "./_components/Sidebar";
 import TopBar from "./_components/TopBar";
 import { auth } from "@/lib/auth";
+import { redirect } from "next/navigation";
 import {
   apiMenusToNavGroups,
   extractPermissions,
@@ -23,6 +24,10 @@ import { normalizeRole } from "@/lib/types/roles";
  */
 export default async function DashboardLayout({ children }: { children: ReactNode }) {
   const session = await auth();
+
+  if (!session?.user) {
+    redirect("/login");
+  }
 
   const rawRole  = session?.user?.role    ?? "";
   const role     = normalizeRole(rawRole);
