@@ -15,13 +15,12 @@ export default function SignOutCard() {
   async function handleSignOut() {
     setLoading(true);
     try {
-      if (session?.user?.apiToken) {
-        await logoutAction(session.user.apiToken);
-      }
-    } catch {
-      // Silently fail — session will be cleaned up client-side
+      await logoutAction(session?.user?.apiToken ?? "").catch((err) =>
+        console.warn("Backend logout notification failed:", err)
+      );
+    } finally {
+      await signOut({ callbackUrl: "/login" });
     }
-    await signOut({ callbackUrl: "/login" });
   }
 
   return (

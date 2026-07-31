@@ -11,6 +11,7 @@ vi.mock("@/actions/auth", () => ({
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockLogoutAction.mockResolvedValue(undefined);
 });
 
 it("renders heading and prompt text", async () => {
