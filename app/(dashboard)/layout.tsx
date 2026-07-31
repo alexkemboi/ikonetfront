@@ -7,32 +7,12 @@ import {
   extractPermissions,
   fetchRoleMenusRaw,
   getStaticNavForRole,
+  staticNavToPermissions,
 } from "@/lib/data/nav";
 import type { NavGroup } from "@/lib/nav";
 import { PermissionsProvider } from "@/providers/PermissionsProvider";
 import type { PermissionMap } from "@/lib/types/roles";
-
-/**
- * Build a permission map from static nav groups (all flags true for routes
- * that the static config exposes). Used as a fallback when the API-driven
- * menu returns nothing (e.g. roles table empty, or backend misconfigured).
- */
-function staticNavToPermissions(groups: NavGroup[]): PermissionMap {
-  const map: PermissionMap = {};
-  const visit = (items: NavGroup["items"]) => {
-    for (const item of items) {
-      // NavItem uses `href` for the route
-      if (item.href) {
-        map[item.href] = {
-          canView: true, canCreate: true, canEdit: true, canDelete: true,
-        };
-      }
-      if (item.children) visit(item.children);
-    }
-  };
-  for (const g of groups) visit(g.items);
-  return map;
-}
+import { normalizeRole } from "@/lib/types/roles";
 
 /**
  * Dashboard shell — server component.
@@ -44,7 +24,8 @@ function staticNavToPermissions(groups: NavGroup[]): PermissionMap {
 export default async function DashboardLayout({ children }: { children: ReactNode }) {
   const session = await auth();
 
-  const role     = session?.user?.role    ?? "";
+  const rawRole  = session?.user?.role    ?? "";
+  const role     = normalizeRole(rawRole);
   const apiToken = session?.user?.apiToken ?? "";
 
   const sidebarUser = session?.user

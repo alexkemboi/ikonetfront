@@ -73,7 +73,7 @@ export function DataTable<TData, TValue>({
         onGlobalFilterChange:  setGlobalFilter,
         manualPagination,
         pageCount: manualPagination ? externalPageCount : undefined,
-        state: { sorting, columnFilters, columnVisibility, globalFilter, pagination: manualPagination ? { pageIndex: externalPageIndex ?? 0, pageSize: externalPageSize ?? 10 } : undefined },
+        state: { sorting, columnFilters, columnVisibility, globalFilter, ...(manualPagination ? { pagination: { pageIndex: externalPageIndex ?? 0, pageSize: externalPageSize ?? 10 } } : {}) },
         ...(manualPagination && onPaginationChange ? {
             onPaginationChange: (updater) => {
                 const current = { pageIndex: externalPageIndex ?? 0, pageSize: externalPageSize ?? 10 };

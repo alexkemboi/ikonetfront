@@ -9,7 +9,7 @@
  */
 
 import type { ApiMenuItem, PermissionFlags, PermissionMap } from "@/lib/types/roles";
-import { ROLE_CODE, ROLE_NAME, roleNameToCode } from "@/lib/types/roles";
+import { ROLE_NAME, roleNameToCode, normalizeRole } from "@/lib/types/roles";
 import type { NavGroup, NavItem, MenuNode } from "@/lib/nav";
 import { auth } from "@/lib/auth";
 import { adminNavGroups }      from "@/config/nav-admin";
@@ -121,16 +121,12 @@ export function apiMenusToNavGroups(menus: ApiMenuItem[]): NavGroup[] {
  * Accepts either a role name (preferred) or a code.
  */
 export function getStaticNavForRole(role: string): NavGroup[] {
-  switch (role) {
-    case ROLE_NAME.ADMIN:
-    case ROLE_CODE[ROLE_NAME.ADMIN]:      return adminNavGroups;
-    case ROLE_NAME.MANAGEMENT:
-    case ROLE_CODE[ROLE_NAME.MANAGEMENT]: return managementNavGroups;
-    case ROLE_NAME.STAFF:
-    case ROLE_CODE[ROLE_NAME.STAFF]:      return staffNavGroups;
-    case ROLE_NAME.CUSTOMER:
-    case ROLE_CODE[ROLE_NAME.CUSTOMER]:   return customerNavGroups;
-    default:                              return staffNavGroups;
+  switch (normalizeRole(role)) {
+    case ROLE_NAME.ADMIN:      return adminNavGroups;
+    case ROLE_NAME.MANAGEMENT: return managementNavGroups;
+    case ROLE_NAME.STAFF:      return staffNavGroups;
+    case ROLE_NAME.CUSTOMER:   return customerNavGroups;
+    default:                   return staffNavGroups;
   }
 }
 
@@ -195,10 +191,32 @@ export function extractPermissions(menus: ApiMenuItem[]): PermissionMap {
 }
 
 /**
+ * Build a permission map from static nav groups (all flags true for routes
+ * that the static config exposes). Used as a fallback when the API-driven
+ * menu returns nothing (e.g. roles table empty, or backend misconfigured).
+ */
+export function staticNavToPermissions(groups: NavGroup[]): PermissionMap {
+  const map: PermissionMap = {};
+  const visit = (items: NavGroup["items"]) => {
+    for (const item of items) {
+      if (item.href) {
+        map[item.href] = {
+          canView: true, canCreate: true, canEdit: true, canDelete: true,
+        };
+      }
+      if (item.children) visit(item.children);
+    }
+  };
+  for (const g of groups) visit(g.items);
+  return map;
+}
+
+/**
  * Fetch the current logged-in user's permissions as a PermissionMap.
  *
  * Call this in any server component/page that needs to guard UI actions.
- * Returns an empty map if the session is missing — treat as no access.
+ * Falls back to static nav permissions when the API returns no menus —
+ * matching the layout's own fallback so pages aren't needlessly blocked.
  *
  * Usage in a server page:
  *   const permissions = await getCurrentUserPermissions();
@@ -208,5 +226,7 @@ export async function getCurrentUserPermissions(): Promise<PermissionMap> {
   const session = await auth();
   if (!session?.user?.role || !session?.user?.apiToken) return {};
   const menus = await fetchRoleMenusRaw(session.user.role, session.user.apiToken);
-  return extractPermissions(menus);
+  if (menus.length > 0) return extractPermissions(menus);
+  // Fallback: derive permissions from static nav config
+  return staticNavToPermissions(getStaticNavForRole(session.user.role));
 }

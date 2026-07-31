@@ -7,11 +7,11 @@ import { DashboardShell } from "./_components/DashboardShell";
 import { ManagementDashboardShell } from "./_components/ManagementDashboardShell";
 import { StaffDashboardShell } from "./_components/StaffDashboardShell";
 import { CustomerDashboardShell } from "./_components/CustomerDashboardShell";
-import { ROLE_NAME } from "@/lib/types/roles";
+import { ROLE_NAME, normalizeRole } from "@/lib/types/roles";
 
 export default async function DashboardPage() {
   const session = await auth();
-  const role = session?.user?.role ?? "";
+  const role = normalizeRole(session?.user?.role);
 
   // ── Admin ─────────────────────────────────────────────────────────────
   if (role === ROLE_NAME.ADMIN) {
