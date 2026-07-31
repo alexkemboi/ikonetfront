@@ -5,6 +5,7 @@ import { jwtVerify } from "jose"
 import type { JwtPayload, LoginResponse } from "@/lib/types/auth"
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
+    trustHost: true,
     providers: [
         Credentials({
             credentials: {
