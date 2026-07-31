@@ -55,10 +55,37 @@ export const ROLE_CODE = {
   [ROLE_NAME.ADMIN]:      "01",
   [ROLE_NAME.MANAGEMENT]: "02",
   [ROLE_NAME.STAFF]:      "03",
-  [ROLE_NAME.CUSTOMER]:   "04",
+  [ROLE_NAME.CUSTOMER]:   "05",
 } as const;
 
 export type RoleCode = (typeof ROLE_CODE)[RoleName];
+
+/**
+ * Normalize a role value (numeric code, name, or legacy value) to a canonical
+ * ROLE_NAME. Handles:
+ *   - Numeric codes: "01" → ADMIN, "02" → MANAGEMENT, "03" → STAFF, "04" → CUSTOMER, "05" → CUSTOMER
+ *   - Names: "ADMIN" → ADMIN, "SYSADMIN" → ADMIN, "MANAGEMENT" → MANAGEMENT, "STAFF" → STAFF, "CUSTOMER" → CUSTOMER
+ *   - Falsy/unknown → STAFF (safe default)
+ */
+export function normalizeRole(role?: string | null): RoleName {
+  if (!role) return ROLE_NAME.STAFF;
+
+  const upper = role.toUpperCase().trim();
+
+  // Numeric codes
+  if (upper === "01") return ROLE_NAME.ADMIN;
+  if (upper === "02") return ROLE_NAME.MANAGEMENT;
+  if (upper === "03") return ROLE_NAME.STAFF;
+  if (upper === "04" || upper === "05") return ROLE_NAME.CUSTOMER;
+
+  // String names — match exact or alias
+  if (upper === ROLE_NAME.ADMIN || upper === "SYSADMIN") return ROLE_NAME.ADMIN;
+  if (upper === ROLE_NAME.MANAGEMENT) return ROLE_NAME.MANAGEMENT;
+  if (upper === ROLE_NAME.STAFF) return ROLE_NAME.STAFF;
+  if (upper === ROLE_NAME.CUSTOMER) return ROLE_NAME.CUSTOMER;
+
+  return ROLE_NAME.STAFF;
+}
 
 /**
  * Convert a role name (as it appears in the JWT / session.user.role)
@@ -69,13 +96,8 @@ export type RoleCode = (typeof ROLE_CODE)[RoleName];
  * to the lowest-privilege menu rather than failing entirely.
  */
 export function roleNameToCode(name: string | null | undefined): string {
-  switch (name) {
-    case ROLE_NAME.ADMIN:      return ROLE_CODE.ADMIN;
-    case ROLE_NAME.MANAGEMENT: return ROLE_CODE.MANAGEMENT;
-    case ROLE_NAME.STAFF:      return ROLE_CODE.STAFF;
-    case ROLE_NAME.CUSTOMER:   return ROLE_CODE.CUSTOMER;
-    default:                   return ROLE_CODE.STAFF;
-  }
+  const normalized = normalizeRole(name);
+  return ROLE_CODE[normalized] ?? ROLE_CODE.STAFF;
 }
 
 /** Payload sent to POST /{roleCode}/menus for each menu item */

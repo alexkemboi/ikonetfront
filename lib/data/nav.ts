@@ -9,7 +9,7 @@
  */
 
 import type { ApiMenuItem, PermissionFlags, PermissionMap } from "@/lib/types/roles";
-import { ROLE_CODE, ROLE_NAME, roleNameToCode } from "@/lib/types/roles";
+import { ROLE_NAME, roleNameToCode, normalizeRole } from "@/lib/types/roles";
 import type { NavGroup, NavItem, MenuNode } from "@/lib/nav";
 import { auth } from "@/lib/auth";
 import { adminNavGroups }      from "@/config/nav-admin";
@@ -121,16 +121,12 @@ export function apiMenusToNavGroups(menus: ApiMenuItem[]): NavGroup[] {
  * Accepts either a role name (preferred) or a code.
  */
 export function getStaticNavForRole(role: string): NavGroup[] {
-  switch (role) {
-    case ROLE_NAME.ADMIN:
-    case ROLE_CODE[ROLE_NAME.ADMIN]:      return adminNavGroups;
-    case ROLE_NAME.MANAGEMENT:
-    case ROLE_CODE[ROLE_NAME.MANAGEMENT]: return managementNavGroups;
-    case ROLE_NAME.STAFF:
-    case ROLE_CODE[ROLE_NAME.STAFF]:      return staffNavGroups;
-    case ROLE_NAME.CUSTOMER:
-    case ROLE_CODE[ROLE_NAME.CUSTOMER]:   return customerNavGroups;
-    default:                              return staffNavGroups;
+  switch (normalizeRole(role)) {
+    case ROLE_NAME.ADMIN:      return adminNavGroups;
+    case ROLE_NAME.MANAGEMENT: return managementNavGroups;
+    case ROLE_NAME.STAFF:      return staffNavGroups;
+    case ROLE_NAME.CUSTOMER:   return customerNavGroups;
+    default:                   return staffNavGroups;
   }
 }
 
