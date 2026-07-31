@@ -2,11 +2,19 @@
 
 import { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
-import { Bell, Menu } from "lucide-react";
+import Link from "next/link";
+import { Bell, LogOut, Menu, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { SidebarInner, type SidebarUser } from "./Sidebar";
 import type { NavGroup } from "@/lib/nav";
@@ -28,7 +36,7 @@ function useBreadcrumb() {
 
 type TopBarProps = {
   notificationCount?: number;
-  user?: { username: string; initials: string; role: string };
+  user?: { username: string; initials: string; role: string; fname?: string; middleName?: string; email?: string };
   navGroups?: NavGroup[];
   brandName?: string;
   sidebarUser?: SidebarUser;
@@ -113,21 +121,51 @@ export default function TopBar({
             )}
           </div>
 
-          <Separator orientation="vertical" className="h-5" />
-
           {/* User chip */}
           {user && (
-            <div className="flex items-center gap-2">
-              <div className="hidden sm:block text-right">
-                <p className="text-xs font-medium text-foreground leading-none">{user.username}</p>
-                <p className="text-[10px] text-muted-foreground mt-0.5 leading-none">{user.role}</p>
-              </div>
-              <Avatar className="h-7 w-7">
-                <AvatarFallback className="bg-primary text-primary-foreground text-[10px] font-semibold">
-                  {user.initials}
-                </AvatarFallback>
-              </Avatar>
-            </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="flex items-center gap-2 px-2 py-1 h-8 hover:bg-accent">
+                  <Avatar className="h-7 w-7">
+                    <AvatarFallback className="bg-primary text-primary-foreground text-[10px] font-semibold">
+                      {user.initials}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="hidden sm:block text-left leading-none">
+                    <p className="text-xs font-medium text-foreground leading-none">
+                      {user.fname || user.username}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5 leading-none font-mono">
+                      {user.role}
+                    </p>
+                  </div>
+                </Button>
+              </DropdownMenuTrigger>
+
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel className="font-normal">
+                  <div className="flex flex-col space-y-1">
+                    <p className="text-sm font-semibold leading-none">
+                      {user.fname || user.username}
+                    </p>
+                    <p className="text-xs text-muted-foreground font-mono">
+                      {user.email || user.username}
+                    </p>
+                    <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 mt-1">
+                      <Shield className="h-3 w-3" />
+                      Role: {user.role}
+                    </span>
+                  </div>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild className="cursor-pointer text-destructive focus:bg-destructive/10 focus:text-destructive">
+                  <Link href="/signout">
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Sign Out / Switch Account
+                  </Link>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           )}
         </div>
       </header>
