@@ -3,16 +3,17 @@ services:
     build:
       context: .
       dockerfile: DockerFile
+      args:
+        - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
     restart: unless-stopped
     ports:
       - "${FRONTEND_PORT:-3456}:3456"
-    env_file:
-      - .env.production
     environment:
       - NODE_ENV=production
       - HOSTNAME=0.0.0.0
       - PORT=3456
       - BASE_API_URL=${BASE_API_URL}
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
       - AUTH_SECRET=${AUTH_SECRET}
       - AUTH_JWT_SECRET=${AUTH_JWT_SECRET}
     networks:
