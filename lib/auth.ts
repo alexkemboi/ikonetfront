@@ -90,11 +90,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                 return token
             }
 
-            if (!token.refreshToken) {
-                return token;
-            }
-
-            const refreshedTokens = await refreshAccessToken(token.refreshToken as string);
+            // Token is expired — attempt refresh if we have a refresh token
+            if (token.refreshToken) {
+                const refreshedTokens = await refreshAccessToken(token.refreshToken as string);
                 if (refreshedTokens) {
                     const secret = process.env.AUTH_JWT_SECRET;
                     if (secret) {
@@ -111,12 +109,16 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                                 refreshToken: refreshedTokens.refresh_token ?? token.refreshToken,
                             };
                         } catch {
-                            // New token failed verification
+                            // New token failed verification — clear expired apiToken
                         }
                     }
                 }
+            }
 
-            return { ...token, error: "RefreshAccessTokenError" };
+            // Refresh failed or no refresh token available.
+            // Clear apiToken so server actions don't send an expired token to the backend.
+            // The SessionGuard client component will detect the error and sign the user out.
+            return { ...token, apiToken: undefined, error: "RefreshAccessTokenError" };
         },
         session({ session, token }) {
             session.user.id          = token.id as string
