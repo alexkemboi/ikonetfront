@@ -1,0 +1,52 @@
+name: Deploy to Production VPS
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to Production VPS via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST_PROD }}
+          username: ${{ secrets.VPS_USER_PROD }}
+          password: ${{ secrets.VPS_PASSWORD_PROD }}
+          script: |
+            set -e
+
+            cd ~/internet-billing-systemf/
+
+            echo "Pulling latest code..."
+            git fetch origin
+            git reset --hard origin/main
+
+            echo "Current commit:"
+            git rev-parse HEAD
+
+            echo "==> Writing .env from GitHub Secrets..."
+            cat > .env << 'EOF'
+            BASE_API_URL=${{ secrets.BASE_API_URL_PROD }}
+            NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL_PROD }}
+            AUTH_SECRET=${{ secrets.AUTH_SECRET_PROD }}
+            AUTH_JWT_SECRET=${{ secrets.AUTH_JWT_SECRET_PROD }}
+            EOF
+
+            echo "Stopping existing containers..."
+            docker compose down --remove-orphans
+
+            echo "Building fresh images..."
+            docker compose build --pull --no-cache --build-arg NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL_PROD }}
+
+            echo "Starting containers..."
+            docker compose up -d --force-recreate
+
+            echo "Cleaning up unused Docker resources..."
+            docker image prune -af
