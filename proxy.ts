@@ -21,7 +21,7 @@ export const proxy = auth((req) => {
 
     // On login/reset pages: send already-authed users to dashboard
     if (isAuthRoute) {
-        if (isAuthenticated && !hasTokenError && nextUrl.pathname !== "/signout") {
+        if (isAuthenticated && !hasTokenError && req.auth?.user?.apiToken && nextUrl.pathname !== "/signout") {
             return NextResponse.redirect(new URL(DEFAULT_LOGIN_REDIRECT, req.url));
         }
         return NextResponse.next();
@@ -35,7 +35,10 @@ export const proxy = auth((req) => {
 
     // Everything else is protected — redirect unauthenticated users to login
     if (!isAuthenticated || hasTokenError) {
-        return NextResponse.redirect(new URL("/login", req.url));
+        const loginUrl = new URL("/login", req.url);
+        const response = NextResponse.redirect(loginUrl);
+        response.cookies.delete("next-auth.session-token");
+        return response;
     }
 
     return NextResponse.next();
@@ -44,7 +47,7 @@ export const proxy = auth((req) => {
 // Export the matcher config as before
 export const config = {
     matcher: [
-        "/((?!_next/static|_next/image|favicon\\.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|css|js|woff|woff2|ttf|ico|map)).*)",
+        "/((?!api/auth|_next/static|_next/image|favicon\\.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|css|js|woff|woff2|ttf|ico|map)).*)",
         "/",
         "/login",
         "/forgot-password",
