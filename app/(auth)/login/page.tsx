@@ -12,6 +12,7 @@ const AUTH_ERRORS: Record<string, string> = {
   SessionRequired:      "Your session has expired. Please sign in again.",
   OAuthAccountNotLinked:"This account is linked to a different sign-in method.",
   CallbackRouteError:   "Something went wrong during sign-in. Please try again.",
+  RefreshAccessTokenError: "Your session has expired. Please sign in again.",
 };
 
 export default async function LoginPage({
