@@ -12,6 +12,7 @@ import {
 import type { NavGroup } from "@/lib/nav";
 import { PermissionsProvider } from "@/providers/PermissionsProvider";
 import type { PermissionMap } from "@/lib/types/roles";
+import { normalizeRole } from "@/lib/types/roles";
 
 /**
  * Dashboard shell — server component.
@@ -23,7 +24,8 @@ import type { PermissionMap } from "@/lib/types/roles";
 export default async function DashboardLayout({ children }: { children: ReactNode }) {
   const session = await auth();
 
-  const role     = session?.user?.role    ?? "";
+  const rawRole  = session?.user?.role    ?? "";
+  const role     = normalizeRole(rawRole);
   const apiToken = session?.user?.apiToken ?? "";
 
   const sidebarUser = session?.user
