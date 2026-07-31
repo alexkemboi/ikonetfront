@@ -35,7 +35,7 @@ export const proxy = auth((req) => {
 
     // Everything else is protected — redirect unauthenticated users to login
     if (!isAuthenticated || hasTokenError) {
-        return NextResponse.redirect(new URL("/login?error=RefreshAccessTokenError", req.url));
+        return NextResponse.redirect(new URL("/login", req.url));
     }
 
     return NextResponse.next();
