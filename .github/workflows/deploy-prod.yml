@@ -19,6 +19,7 @@ jobs:
           host: ${{ secrets.VPS_HOST_PROD }}
           username: ${{ secrets.VPS_USER_PROD }}
           password: ${{ secrets.VPS_PASSWORD_PROD }}
+          command_timeout: 30m
           script: |
             set -e
 
@@ -31,7 +32,7 @@ jobs:
             echo "==> Generating production .env from GitHub Secrets..."
             cat << 'EOF' > .env
             NEXTAUTH_URL=${{ secrets.NEXTAUTH_URL_PROD }}
-            NEXT_PUBLIC_BASE_API_URL=${{ secrets.NEXT_PUBLIC_BASE_API_URL_PROD }}
+            NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_BASE_API_URL_PROD }}
             BASE_API_URL=${{ secrets.BASE_API_URL_PROD }}
             AUTH_TRUST_HOST=true
             NEXTAUTH_SECRET=${{ secrets.AUTH_SECRET_PROD }}
@@ -44,7 +45,8 @@ jobs:
 
             echo "==> Building fresh Next.js Docker image..."
             docker compose build --pull --no-cache \
-              --build-arg NEXT_PUBLIC_BASE_API_URL=${{ secrets.NEXT_PUBLIC_BASE_API_URL_PROD }}
+              --build-arg NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_BASE_API_URL_PROD }} \
+              --build-arg BASE_API_URL=${{ secrets.BASE_API_URL_PROD }}
 
             echo "==> Starting production containers..."
             docker compose up -d --force-recreate
