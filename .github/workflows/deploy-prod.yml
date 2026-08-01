@@ -5,53 +5,70 @@ on:
     branches:
       - main
 
-jobs:
-  deploy-prod:
-    runs-on: ubuntu-latest
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
 
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     steps:
       - name: Checkout repository code
         uses: actions/checkout@v4
 
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GIT_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # Build happens on the GitHub runner, not on the VPS.
+      # Cached layers persist across runs via GHA cache, so this
+      # is fast even though it's a from-scratch multi-stage build.
+      - name: Build and push image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: DockerFile
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_BASE_API_URL_PROD }}
+            BASE_API_URL=${{ secrets.BASE_API_URL_PROD }}
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+    steps:
       - name: Deploy to Production VPS via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.VPS_HOST_PROD }}
           username: ${{ secrets.VPS_USER_PROD }}
           password: ${{ secrets.VPS_PASSWORD_PROD }}
-          command_timeout: 30m
+          command_timeout: 5m
+          request_pty: true
+          envs: IMAGE_TAG,REPO_NAME,GHCR_TOKEN,GHCR_ACTOR
           script: |
-            set -e
-
+            set -euo pipefail
             cd ~/internet-billing-systemf/
-
-            echo "==> Fetching latest production code..."
-            git fetch origin main
-            git reset --hard origin/main
-
-            echo "==> Generating production .env from GitHub Secrets..."
-            cat << 'EOF' > .env
-            NEXTAUTH_URL=${{ secrets.NEXTAUTH_URL_PROD }}
-            NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_BASE_API_URL_PROD }}
-            BASE_API_URL=${{ secrets.BASE_API_URL_PROD }}
-            AUTH_TRUST_HOST=true
-            NEXTAUTH_SECRET=${{ secrets.AUTH_SECRET_PROD }}
-            AUTH_SECRET=${{ secrets.AUTH_SECRET_PROD }}
-            AUTH_JWT_SECRET=${{ secrets.AUTH_JWT_SECRET_PROD }}
-            EOF
-
-            echo "==> Stopping active production containers..."
-            docker compose down --remove-orphans
-
-            echo "==> Building fresh Next.js Docker image..."
-            docker compose build --pull --no-cache \
-              --build-arg NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_BASE_API_URL_PROD }} \
-              --build-arg BASE_API_URL=${{ secrets.BASE_API_URL_PROD }}
-
-            echo "==> Starting production containers..."
-            docker compose up -d --force-recreate
-
-            echo "==> Pruning dangling Docker image caches..."
-            docker image prune -af
-
-            echo "==> Deployment Complete!"
+            bash deploy.sh "${{ github.sha }}"
+        env:
+          IMAGE_TAG: ${{ github.sha }}
+          REPO_NAME: ${{ github.repository }}
+          GHCR_ACTOR: ${{ github.actor }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
