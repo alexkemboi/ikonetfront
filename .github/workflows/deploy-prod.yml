@@ -66,6 +66,9 @@ jobs:
           script: |
             set -euo pipefail
             cd ~/internet-billing-systemf/
+            git fetch origin main
+            git reset --hard origin/main
+            chmod +x deploy.sh
             bash deploy.sh "${{ github.sha }}"
         env:
           IMAGE_TAG: ${{ github.sha }}
