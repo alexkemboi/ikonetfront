@@ -13,7 +13,7 @@ export type ApiResponse<T = unknown> = {
 };
 
 /** Login endpoint response data */
-export type LoginData = { token: string; username: string };
+export type LoginData = { token: string; username: string; role: string };
 
 /**
  * Claims embedded in the JWT returned by the login endpoint.
