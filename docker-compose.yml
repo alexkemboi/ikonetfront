@@ -1,9 +1,9 @@
 services:
   beesnet-app:
-    image: ghcr.io/${REPO_NAME:-nicanornicolas/internet-billing-systemf}:${IMAGE_TAG:-latest}
+    image: ghcr.io/alexkemboi/internet-billing-systemf:${IMAGE_TAG:-latest}
     restart: unless-stopped
     ports:
-      - "${FRONTEND_PORT:-3456}:3456"
+      - "127.0.0.1:${FRONTEND_PORT:-3456}:3456"
     environment:
       - NODE_ENV=production
       - HOSTNAME=0.0.0.0
