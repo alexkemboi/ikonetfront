@@ -3,15 +3,21 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import { jwtVerify, decodeJwt } from "jose";
 import { JwtPayload, LoginResponse } from "@/lib/types/auth";
 
-const BASE_URL = process.env.BASE_API_URL;
-if (!BASE_URL) throw new Error("BASE_API_URL environment variable is not set.");
+function getBaseUrl(): string {
+  const url = process.env.BASE_API_URL;
+  if (!url) throw new Error("BASE_API_URL environment variable is not set.");
+  return url;
+}
 
-const JWT_SECRET = process.env.AUTH_JWT_SECRET;
-if (!JWT_SECRET) throw new Error("AUTH_JWT_SECRET environment variable is not set.");
+function getJwtSecret(): string {
+  const secret = process.env.AUTH_JWT_SECRET;
+  if (!secret) throw new Error("AUTH_JWT_SECRET environment variable is not set.");
+  return secret;
+}
 
-async function parseBackendJwt(token: string): Promise<JwtPayload | null> {
+async function parseBackendJwt(token: string, secret: string): Promise<JwtPayload | null> {
   try {
-    const secretKey = new TextEncoder().encode(JWT_SECRET);
+    const secretKey = new TextEncoder().encode(secret);
     const { payload } = await jwtVerify(token, secretKey, { algorithms: ["HS256"] });
     return payload as unknown as JwtPayload;
   } catch (verifyError) {
@@ -40,7 +46,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         if (!credentials?.username || !credentials?.password) return null;
 
         try {
-          const res = await fetch(`${BASE_URL}/auth/userlogin`, {
+          const res = await fetch(`${getBaseUrl()}/auth/userlogin`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -59,7 +65,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           if (!loginRes.success || !loginRes.data?.token) return null;
 
           const token = loginRes.data.token;
-          const decoded = await parseBackendJwt(token);
+          const decoded = await parseBackendJwt(token, getJwtSecret());
           const rawRole = loginRes.data.role || decoded?.role;
           if (!rawRole) return null;
 
