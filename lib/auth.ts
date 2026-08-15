@@ -85,6 +85,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             regionId: decoded?.regionId,
             stationId: decoded?.stationId,
             locationId: decoded?.locationId,
+            investorScope: decoded?.investorScope,
           };
         } catch (error) {
           console.error("[Auth] Authorize exception:", error);
@@ -111,6 +112,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           regionId: user.regionId,
           stationId: user.stationId,
           locationId: user.locationId,
+          investorScope: user.investorScope,
         };
       }
       return token;
@@ -131,6 +133,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         regionId: token.regionId as number | undefined,
         stationId: token.stationId as number | undefined,
         locationId: token.locationId as number | undefined,
+        investorScope: token.investorScope as string | undefined,
       };
       return session;
     },
