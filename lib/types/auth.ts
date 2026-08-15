@@ -32,6 +32,7 @@ export type JwtPayload = {
   regionId?: number;
   stationId?: number;
   locationId?: number;
+  investorScope?: string;
   iat?: number;
   exp?: number;
 };
