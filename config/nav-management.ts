@@ -16,7 +16,10 @@ export const managementNavGroups: NavGroup[] = [
   {
     label: "Finance",
     items: [
-      { href: "/finance", label: "Revenue Overview", icon: "bar-chart-3" },
+      { href: "/finance", label: "Executive Dashboard", icon: "bar-chart-3" },
+      { href: "/finance/ledger", label: "Chart of Accounts", icon: "book-open" },
+      { href: "/finance/expenses", label: "Expenses", icon: "receipt" },
+      { href: "/finance/statements", label: "Statements", icon: "file-text" },
     ],
   },
   {
