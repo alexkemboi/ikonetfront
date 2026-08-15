@@ -230,3 +230,26 @@ export async function getCurrentUserPermissions(): Promise<PermissionMap> {
   // Fallback: derive permissions from static nav config
   return staticNavToPermissions(getStaticNavForRole(session.user.role));
 }
+
+/**
+ * Resolve a single route's permission flags for the current user.
+ *
+ * Unlike `getCurrentUserPermissions`, a route that is missing from the
+ * API-driven menu (e.g. a brand-new frontend route the backend menu tree
+ * doesn't know yet) falls back to the static nav config instead of being
+ * treated as fully denied. This keeps new pages reachable during a
+ * frontend-only deploy until the backend menu tree is seeded in tandem;
+ * once the backend serves the route with explicit flags, those win.
+ */
+export async function getPermissionForRoute(
+  route: string
+): Promise<PermissionFlags> {
+  const session = await auth();
+  if (!session?.user?.role || !session?.user?.apiToken) return NO_PERMISSIONS;
+  const menus = await fetchRoleMenusRaw(session.user.role, session.user.apiToken);
+  if (menus.length > 0) {
+    const map = extractPermissions(menus);
+    return map[route] ?? staticNavToPermissions(getStaticNavForRole(session.user.role))[route] ?? NO_PERMISSIONS;
+  }
+  return staticNavToPermissions(getStaticNavForRole(session.user.role))[route] ?? NO_PERMISSIONS;
+}
