@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { getCustomers, getCustomerById } from "@/actions/customer";
 import { getPackagesAction } from "@/actions/packages";
@@ -12,6 +12,9 @@ import { ROLE_NAME, normalizeRole } from "@/lib/types/roles";
 export default async function DashboardPage() {
   const session = await auth();
   const role = normalizeRole(session?.user?.role);
+
+  const accessRole = role;
+  if (accessRole === ROLE_NAME.ADMIN) redirect("/dashboard/overview");
 
   // ── Admin ─────────────────────────────────────────────────────────────
   if (role === ROLE_NAME.ADMIN) {
