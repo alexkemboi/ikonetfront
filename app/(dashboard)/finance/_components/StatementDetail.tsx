@@ -17,7 +17,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { getCustomerStatements, downloadStatementPdf } from "@/actions/finance";
+import { useSearchParams } from "next/navigation";
+import { getStatementById, downloadStatementPdf } from "@/actions/finance";
 import type { Statement, StatementLineItem } from "@/lib/types/finance";
 
 export default function StatementDetail({
@@ -26,6 +27,7 @@ export default function StatementDetail({
   paramsPromise: Promise<{ id: string }>;
 }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [id, setId] = useState<string | null>(null);
   const [statement, setStatement] = useState<Statement | null>(null);
   const [loading, setLoading] = useState(true);
@@ -44,23 +46,23 @@ export default function StatementDetail({
       const numericId = parseInt(id);
       if (isNaN(numericId)) { setError("Invalid statement ID"); setLoading(false); return; }
 
-      const res = await getCustomerStatements(0, 100);
+      const rawCustomerId = searchParams.get("customerId");
+      const customerId = rawCustomerId ? parseInt(rawCustomerId, 10) : undefined;
+      const res = await getStatementById(
+        numericId,
+        customerId && !isNaN(customerId) ? customerId : undefined
+      );
       if (res.success && res.data) {
-        const found = res.data.content.find((s) => s.id === numericId);
-        if (found) {
-          setStatement(found);
-        } else {
-          setError("Statement not found");
-        }
+        setStatement(res.data);
       } else {
-        setError(res.message || "Failed to load statement");
+        setError(res.message || "Statement not found");
       }
     } catch {
       setError("Failed to load statement details");
     } finally {
       setLoading(false);
     }
-  }, [id]);
+  }, [id, searchParams]);
 
   useEffect(() => {
     if (id) fetchData();
