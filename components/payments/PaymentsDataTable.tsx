@@ -63,11 +63,20 @@ export function PaymentsDataTable({ payments }: Props) {
     setActiveMenuId(null);
     setDownloadingId(p.id);
     try {
-      const ok = await downloadReceiptPdf(p.receiptNumber);
-      if (ok) {
-        toast.success(`Receipt ${p.receiptNumber} downloading…`);
+      const pdf = await downloadReceiptPdf(p.statementId);
+      if (pdf) {
+        const blob = new Blob([pdf], { type: "application/pdf" });
+        const url = URL.createObjectURL(blob);
+        const anchor = document.createElement("a");
+        anchor.href = url;
+        anchor.download = `receipt-${p.receiptNumber}.pdf`;
+        document.body.appendChild(anchor);
+        anchor.click();
+        document.body.removeChild(anchor);
+        URL.revokeObjectURL(url);
+        toast.success(`Receipt ${p.receiptNumber} downloaded.`);
       } else {
-        toast.error("Failed to generate PDF receipt.");
+        toast.error("No statement/receipt PDF is available for this payment.");
       }
     } finally {
       setDownloadingId(null);
@@ -82,7 +91,7 @@ export function PaymentsDataTable({ payments }: Props) {
     }
     setSending(true);
     try {
-      const res = await emailReceipt(emailTarget.receiptNumber, email);
+      const res = await emailReceipt(emailTarget.statementId, email);
       if (res.success) {
         toast.success(res.message);
         setEmailTarget(null);
@@ -210,8 +219,8 @@ export function PaymentsDataTable({ payments }: Props) {
                         </button>
                         <button
                           onClick={() => handleDownload(p)}
-                          disabled={downloadingId === p.id}
-                          className="flex w-full items-center gap-2 px-3 py-2 text-xs text-zinc-300 hover:bg-zinc-800 hover:text-white disabled:opacity-50"
+                          disabled={downloadingId === p.id || !p.statementId}
+                          className="flex w-full items-center gap-2 px-3 py-2 text-xs text-zinc-300 hover:bg-zinc-800 hover:text-white disabled:opacity-40 disabled:pointer-events-none"
                         >
                           {downloadingId === p.id ? (
                             <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -222,7 +231,8 @@ export function PaymentsDataTable({ payments }: Props) {
                         </button>
                         <button
                           onClick={() => openEmailDialog(p)}
-                          className="flex w-full items-center gap-2 px-3 py-2 text-xs text-zinc-300 hover:bg-zinc-800 hover:text-white"
+                          disabled={!p.statementId}
+                          className="flex w-full items-center gap-2 px-3 py-2 text-xs text-zinc-300 hover:bg-zinc-800 hover:text-white disabled:opacity-40 disabled:pointer-events-none"
                         >
                           <Mail className="h-3.5 w-3.5" /> Email receipt
                         </button>
