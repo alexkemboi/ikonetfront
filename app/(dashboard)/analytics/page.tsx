@@ -7,6 +7,7 @@ import { PaymentsVsExpensesChart } from "@/components/analytics/PaymentsVsExpens
 import { RevenueMixDonuts } from "@/components/analytics/RevenueMixDonuts";
 import { TopRankingsList } from "@/components/analytics/TopRankingsList";
 import { RouterPerformanceTable } from "@/components/analytics/RouterPerformanceTable";
+import { AnalyticsExportButton } from "@/components/analytics/AnalyticsExportButton";
 
 export const dynamic = "force-dynamic";
 
@@ -34,9 +35,7 @@ export default async function AnalyticsDashboardPage() {
             </p>
           </div>
 
-          <button className="rounded-xl border border-[#262626] bg-[#161616] px-4 py-2 text-xs font-mono font-semibold text-zinc-300 hover:bg-zinc-800 transition">
-            Export CSV
-          </button>
+          <AnalyticsExportButton data={data} />
         </div>
 
         <AnalyticsKpiCards kpis={data.kpis} />
