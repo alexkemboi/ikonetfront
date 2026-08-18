@@ -7,6 +7,7 @@ export interface PaymentLedgerItem {
   subscriberCode: string;
   subscriberPhone: string;
   receiptNumber: string;
+  statementId?: number;
   paymentMethod: PaymentMethod;
   serviceType: ServiceType;
   isReconciled: boolean;
