@@ -23,6 +23,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { Separator } from "@/components/ui/separator";
+import { createIpMappingAction } from "@/actions/network";
 import {
   Network,
   Router,
@@ -278,6 +279,7 @@ function MapIPSheet({
   pools: IPPool[];
 }) {
   const [success, setSuccess] = useState(false);
+  const [error, setError] = useState("");
 
   const formik = useFormik<FormValues>({
     initialValues: {
@@ -291,16 +293,25 @@ function MapIPSheet({
       status:      "active",
     },
     validationSchema: MappingSchema,
-    onSubmit: async (_values, { resetForm, setSubmitting }) => {
-      // TODO: Replace with createIpMappingAction server action (POST /network/ip-mappings)
-      // when the backend endpoint is available.
+    onSubmit: async (values, { resetForm, setSubmitting }) => {
+      setSubmitting(true);
+      setError("");
+      const res = await createIpMappingAction({
+        customerId: values.customerId,
+        macAddress: values.macAddress,
+        ipAddress: values.ipAddress,
+      });
       setSubmitting(false);
-      setSuccess(true);
-      setTimeout(() => {
-        setSuccess(false);
-        resetForm();
-        onClose();
-      }, 1500);
+      if (res.success) {
+        setSuccess(true);
+        setTimeout(() => {
+          setSuccess(false);
+          resetForm();
+          onClose();
+        }, 1500);
+      } else {
+        setError(res.message);
+      }
     },
   });
 
@@ -500,6 +511,10 @@ function MapIPSheet({
                 </SelectContent>
               </Select>
             </div>
+
+            {error && (
+              <p className="text-xs text-destructive">{error}</p>
+            )}
 
             <div className="flex gap-3 pt-2">
               <Button type="button" variant="outline" className="flex-1" onClick={handleClose}>
@@ -722,7 +737,7 @@ export default function CustomerIPMappingView({ mappings, pools, customers, pack
                 <span className="font-medium">How this works</span>
               </div>
               <p className="text-xs text-muted-foreground leading-relaxed">
-                Each IP lease binds a customer's device (by MAC address) to a specific router.
+                Each IP lease binds a customer&apos;s device (by MAC address) to a specific router.
                 PPPoE leases are long-lived; hotspot leases expire after the purchased session ends.
               </p>
             </CardContent>

@@ -261,11 +261,11 @@ export async function generateVouchers(
       count: quantity,
     };
   } catch (error: unknown) {
-    const message = `Minted ${quantity} vouchers (batch ready).`;
-    console.warn(
-      "Voucher mint fallback (backend unreachable):",
-      error instanceof Error ? error.message : "fetch failed"
-    );
-    return { success: true, message, count: quantity };
+    const detail = error instanceof Error ? error.message : "fetch failed";
+    console.warn("Voucher mint network error:", detail);
+    return {
+      success: false,
+      message: "Failed to reach voucher minting service. Please retry.",
+    };
   }
 }

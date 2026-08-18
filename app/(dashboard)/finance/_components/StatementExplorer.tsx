@@ -82,7 +82,7 @@ const columns: ColumnDef<Statement>[] = [
       return (
         <div className="flex items-center gap-1">
           <Button variant="ghost" size="sm" className="h-7 w-7 p-0" asChild>
-            <Link href={`/finance/statements/${stmt.id}`}>
+            <Link href={`/finance/statements/${stmt.id}?customerId=${stmt.customerId}`}>
               <Eye className="w-3.5 h-3.5" />
             </Link>
           </Button>

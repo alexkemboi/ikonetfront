@@ -69,8 +69,15 @@ export function LiveSessionDataTable({
   async function handleDisconnect(session: LiveSessionItem) {
     setDisconnectingId(session.id);
     try {
+      // RFC 5176 CoA keyed on RADIUS username: Hotspot rows record the client
+      // MAC in radacct.username, PPPoE rows the account username. Send the
+      // real MAC when present, else the subscriber code — never just a name.
+      const radUsername =
+        session.deviceMac && session.deviceMac !== "—"
+          ? session.deviceMac
+          : session.subscriberCode;
       const result = await disconnectLiveSession(
-        session.subscriberCode,
+        radUsername,
         session.routerManagementIp
       );
       if (result.success) {

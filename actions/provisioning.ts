@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
-import { BASE_URL } from "@/lib/constants";
+import { BASE_URL, buildApiUrl } from "@/lib/constants";
 import {
   NasRouterItem,
   NasRouterKpis,
@@ -169,21 +169,32 @@ export async function generateZtpScript(
 }
 
 /**
- * Step 2: Polls router connectivity status.
+ * Step 2 (real): authoritative router connection status used by the Step 2
+ * check-in poller. Numeric router ids are polled against the backend; sandbox
+ * ids ("rtr-<timestamp>", produced when the script generator was unavailable)
+ * keep the offline demo auto-advance so the wizard is usable without a live
+ * router.
  */
-export async function pollRouterConnection(routerId: string): Promise<boolean> {
+export async function getRouterConnectionStatus(routerId: string): Promise<{
+  isOnline: boolean;
+  apiAuthenticated: boolean;
+}> {
   const session = await auth();
-  if (session?.user?.apiToken && /^\d+$/.test(routerId)) {
+  if (!/^\d+$/.test(routerId)) {
+    // Sandbox / fallback id: preserve demo auto-advance with a simulated delay.
+    await new Promise((resolve) => setTimeout(resolve, 2500));
+    return { isOnline: true, apiAuthenticated: true };
+  }
+  if (session?.user?.apiToken) {
     try {
       const res = await getMikrotikDeviceStatus(Number(routerId));
-      return !!res.data?.online;
+      const online = !!res.data?.online;
+      return { isOnline: online, apiAuthenticated: online };
     } catch (error: unknown) {
-      console.warn(`Status poll failed for router ${routerId}.`, error);
+      console.warn(`Connection status poll failed for router ${routerId}.`, error);
     }
   }
-  // Fallback id ("rtr-<timestamp>") or unreachable backend: simulate device-online
-  await new Promise((resolve) => setTimeout(resolve, 2500));
-  return true;
+  return { isOnline: false, apiAuthenticated: false };
 }
 
 /**
@@ -243,5 +254,6 @@ function buildLocalToken(identity: string): string {
 }
 
 function buildFetchCommand(token: string): string {
-  return `/tool fetch mode=https url="https://adrinoldnetwork.centipidtechnologies.com/provision/${token}" dst-path=centipid.rsc;delay 2s;/import centipid.rsc;`;
+  const url = buildApiUrl(`/network/provisioning/${token}`);
+  return `/tool fetch mode=https url="${url}" dst-path=ibs-init.rsc check-certificate=no;:delay 2s;/import ibs-init.rsc;`;
 }

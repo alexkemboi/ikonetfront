@@ -7,7 +7,7 @@ import {
   InitiatePaymentResponse,
   ReconnectResponse,
 } from '@/lib/types/hotspot';
-import { BASE_URL } from '@/lib/constants';
+import { BASE_URL, buildApiUrl } from '@/lib/constants';
 import { auth } from '@/lib/auth';
 
 async function getAuthHeaders(): Promise<HeadersInit> {
@@ -25,7 +25,7 @@ export async function getHotspotPackages(): Promise<HotspotPackagesResponse> {
   try {
     console.log(`${BASE_URL}system/packages`)
     const response = await fetch(`${BASE_URL}system/packages`, {
-      // headers: await getAuthHeaders(),
+      headers: await getAuthHeaders(),
       next: {
         tags: ['hotspot-packages'],
         revalidate: 3600, // Revalidate every hour
@@ -123,7 +123,7 @@ export async function checkActiveSession(
 ): Promise<ReconnectResponse> {
   try {
     const response = await fetch(
-      `${BASE_URL}/reconnect?mac=${macAddress}&ip=${ipAddress}`,
+      `${buildApiUrl("/hotspot/reconnect")}?mac=${macAddress}&ip=${ipAddress}`,
       {
         next: {
           tags: ['hotspot-session'],

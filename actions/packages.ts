@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
+import { buildApiUrl } from "@/lib/constants";
 import type { ApiResponse } from "@/lib/types/auth";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -61,7 +62,7 @@ async function getAuthHeaders(): Promise<HeadersInit> {
   return headers;
 }
 
-const BASE = () => `${process.env.BASE_API_URL}system/packages`;
+const BASE = () => buildApiUrl("/system/packages");
 const REVALIDATE = () => revalidatePath("/system/packages");
 
 // ── GET all packages ──────────────────────────────────────────────────────────

@@ -1,7 +1,8 @@
 "use server";
 
 import { auth } from "@/lib/auth";
-import { BASE_URL } from "@/lib/constants";
+import { BASE_URL, buildApiUrl } from "@/lib/constants";
+import { getPermissionForRoute } from "@/lib/data/nav";
 import type {
   PaymentLedgerItem,
   PaymentLedgerKpis,
@@ -113,17 +114,31 @@ export async function getPaymentsLedgerData(): Promise<{
     }
 
     const data = await res.json();
-    const list = Array.isArray(data?.data)
+    const rawList = Array.isArray(data?.data)
       ? data.data
       : Array.isArray(data)
         ? data
         : FALLBACK_PAYMENTS;
 
+    const payments = (rawList as PaymentLedgerItem[]).map((row) => {
+      const r = (row ?? {}) as unknown as Record<string, unknown>;
+      const statement = r.statement as Record<string, unknown> | undefined;
+      const rawStatementId =
+        r.statementId ?? statement?.id ?? statement?.statementId ?? row.statementId;
+      const statementId =
+        typeof rawStatementId === "number"
+          ? rawStatementId
+          : typeof rawStatementId === "string" && /^\d+$/.test(rawStatementId)
+            ? Number(rawStatementId)
+            : undefined;
+      return { ...row, statementId };
+    });
+
     return {
       kpis: FALLBACK_PAYMENT_KPIS,
-      payments: list as PaymentLedgerItem[],
+      payments,
     };
-  } catch (e) {
+  } catch {
     return { kpis: FALLBACK_PAYMENT_KPIS, payments: FALLBACK_PAYMENTS };
   }
 }
@@ -135,21 +150,95 @@ export async function getInvoicesLedgerData(): Promise<{
   return { kpis: FALLBACK_INVOICE_KPIS, invoices: [] };
 }
 
-export async function downloadReceiptPdf(receiptNumber: string): Promise<boolean> {
-  // Stub: simulated server-side PDF generator trigger.
-  // Later, wire this to `${BASE_URL}statements/{id}/download`, mirroring
-  // `downloadStatementPdf` in `actions/finance.ts` (checks content-type
-  // application/pdf, returns ArrayBuffer | null) once the backend fields are confirmed.
-  void receiptNumber;
-  return true;
+export async function downloadReceiptPdf(
+  statementId?: number
+): Promise<ArrayBuffer | null> {
+  const session = await auth();
+  if (!session?.user?.apiToken) {
+    console.warn("[Payments] Unauthenticated receipt download rejected.");
+    return null;
+  }
+  const perms = await getPermissionForRoute("/finance/payments");
+  if (!perms.canView) {
+    console.warn("[Payments] User lacks permission to download receipts.");
+    return null;
+  }
+  if (!statementId || statementId <= 0) {
+    console.warn("[Payments] No statement id to download a receipt for.");
+    return null;
+  }
+  try {
+    const res = await fetch(buildApiUrl(`/statements/${statementId}/download`), {
+      headers: await getAuthHeaders(),
+    });
+    if (
+      !res.ok ||
+      !res.headers.get("content-type")?.includes("application/pdf")
+    ) {
+      console.warn(
+        "[Payments] Receipt PDF download failed",
+        res.status,
+        res.statusText
+      );
+      return null;
+    }
+    return res.arrayBuffer();
+  } catch (error) {
+    console.error("[Payments] downloadReceiptPdf error:", error);
+    return null;
+  }
 }
 
 export async function emailReceipt(
-  receiptNumber: string,
+  statementId: number | undefined,
   recipientEmail: string
 ): Promise<{ success: boolean; message: string }> {
-  return {
-    success: true,
-    message: `Receipt ${receiptNumber} emailed to ${recipientEmail}.`,
-  };
+  const session = await auth();
+  if (!session?.user?.apiToken) {
+    return { success: false, message: "You must be signed in to email receipts." };
+  }
+  const perms = await getPermissionForRoute("/finance/payments");
+  if (!perms.canEdit && !perms.canCreate) {
+    return { success: false, message: "You don't have permission to email receipts." };
+  }
+  if (!statementId || statementId <= 0) {
+    return {
+      success: false,
+      message: "This payment is not linked to a statement, so no receipt can be emailed.",
+    };
+  }
+  try {
+    const res = await fetch(buildApiUrl(`/statements/${statementId}/email`), {
+      method: "POST",
+      headers: { ...(await getAuthHeaders()), "Content-Type": "application/json" },
+      body: JSON.stringify({ recipientEmail }),
+    });
+    if (!res.ok) {
+      const body: { message?: string } | null = await res.json().catch(() => null);
+      return {
+        success: false,
+        message: body?.message || `Email failed (HTTP ${res.status}).`,
+      };
+    }
+    return {
+      success: true,
+      message: `Receipt emailed to ${recipientEmail}.`,
+    };
+  } catch (error) {
+    console.error("[Payments] emailReceipt error:", error);
+    return {
+      success: false,
+      message: "Failed to send receipt email.",
+    };
+  }
+}
+
+async function getAuthHeaders(): Promise<HeadersInit> {
+  const session = await auth();
+  const headers: HeadersInit = { "Content-Type": "application/json" };
+  if (session?.user?.apiToken) {
+    (headers as Record<string, string>)["Authorization"] =
+      `Bearer ${session.user.apiToken}`;
+  }
+  return headers;
 }

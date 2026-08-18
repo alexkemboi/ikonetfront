@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { Copy, Check, AlertTriangle, Clock, RefreshCw } from "lucide-react";
 import { ProvisioningScriptResponse } from "@/lib/types/provisioning";
-import { pollRouterConnection } from "@/actions/provisioning";
+import { getRouterConnectionStatus } from "@/actions/provisioning";
 
 interface Props {
   scriptData: ProvisioningScriptResponse;
@@ -16,6 +16,7 @@ const POLL_INTERVAL_MS = 3000;
 export function Step2Script({ scriptData, onConnected }: Props) {
   const [copied, setCopied] = useState(false);
   const [isChecking, setIsChecking] = useState(true);
+  const [pollCount, setPollCount] = useState(0);
   const [stopped, setStopped] = useState(false);
   const [restartToken, setRestartToken] = useState(0);
 
@@ -28,24 +29,25 @@ export function Step2Script({ scriptData, onConnected }: Props) {
   useEffect(() => {
     let mounted = true;
     let timer: ReturnType<typeof setTimeout>;
-    let pollCount = 0;
+    let count = 0;
 
     async function poll() {
       if (!mounted) return;
-      let isOnline = false;
       try {
-        isOnline = await pollRouterConnection(scriptData.routerId);
+        const status = await getRouterConnectionStatus(scriptData.routerId);
+        if (!mounted) return;
+        if (status.apiAuthenticated || status.isOnline) {
+          setPollCount(count);
+          setIsChecking(false);
+          onConnected();
+          return;
+        }
       } catch {
-        isOnline = false;
+        if (!mounted) return;
       }
-      if (!mounted) return;
-      if (isOnline) {
-        setIsChecking(false);
-        onConnected();
-        return;
-      }
-      pollCount += 1;
-      if (pollCount >= MAX_POLLS) {
+      count += 1;
+      setPollCount(count);
+      if (count >= MAX_POLLS) {
         setIsChecking(false);
         setStopped(true);
         return;
@@ -100,14 +102,25 @@ export function Step2Script({ scriptData, onConnected }: Props) {
         </div>
 
         {/* Live Status Listener */}
-        <div className="mt-6 flex items-center gap-2 text-xs font-mono text-amber-400">
-          {isChecking ? (
-            <>
-              <Clock className="h-4 w-4 animate-spin" />
-              <span>Checking connection...</span>
-            </>
-          ) : (
-            <span className="text-emerald-400">Router connected successfully!</span>
+        <div className="mt-6 flex items-center justify-between border-t border-[#262626] pt-4">
+          <div className="flex items-center gap-2 text-xs font-mono text-amber-400">
+            {isChecking ? (
+              <>
+                <Clock className="h-4 w-4 animate-spin" />
+                <span>Checking connection... (attempt {pollCount})</span>
+              </>
+            ) : (
+              <span className="text-emerald-400">Router connected successfully!</span>
+            )}
+          </div>
+
+          {isChecking && (
+            <button
+              onClick={onConnected}
+              className="text-xs font-mono text-zinc-400 underline hover:text-white"
+            >
+              Skip to Services →
+            </button>
           )}
         </div>
 
