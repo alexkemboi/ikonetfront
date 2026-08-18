@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { CheckCircle2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,6 +13,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { submitOutageCompensation } from "@/actions/subscribers";
+import { getRouters } from "@/actions/network";
+import type { RouterResponse } from "@/lib/types/network";
 import { cn } from "@/lib/utils";
 
 type Policy = "PAUSE" | "COMPENSATE";
@@ -31,6 +33,21 @@ function OutageCompensationModal({
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
+  const [routers, setRouters] = useState<RouterResponse[]>([]);
+  const [routerId, setRouterId] = useState<string>("");
+
+  useEffect(() => {
+    if (!isOpen || routers.length > 0) return;
+    let mounted = true;
+    getRouters().then((list) => {
+      if (!mounted) return;
+      setRouters(list);
+      setRouterId((prev) => prev || (list.length > 0 ? String(list[0].id) : ""));
+    });
+    return () => {
+      mounted = false;
+    };
+  }, [isOpen, routers.length]);
 
   function reset() {
     setPolicy("PAUSE");
@@ -42,6 +59,11 @@ function OutageCompensationModal({
 
   async function handleSubmit() {
     setError("");
+    const routerNo = Number(routerId);
+    if (!Number.isInteger(routerNo) || routerNo <= 0) {
+      setError("Select a router that experienced the outage.");
+      return;
+    }
     if (policy === "PAUSE") {
       const value = Number(minutes);
       if (!minutes || !isFinite(value) || value <= 0) {
@@ -60,7 +82,7 @@ function OutageCompensationModal({
     const base = {
       policy,
       reason: reason.trim() || "Scheduled outage compensation",
-      routerId: 1,
+      routerId: routerNo,
     };
     const result = await submitOutageCompensation(
       policy === "PAUSE"
@@ -104,7 +126,7 @@ function OutageCompensationModal({
           </DialogTitle>
           <DialogDescription>
             Apply a temporary pause or a billing credit to subscribers hit by
-            the outage on router 1.
+            an outage on the selected router.
           </DialogDescription>
         </DialogHeader>
 
@@ -118,6 +140,29 @@ function OutageCompensationModal({
           </div>
         ) : (
           <div className="space-y-5">
+            {/* Router selector */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-zinc-400">
+                Affected Router
+              </label>
+              <select
+                value={routerId}
+                onChange={(e) => setRouterId(e.target.value)}
+                className="w-full rounded-lg border border-[#262626] bg-[#121212] px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:ring-1 focus:ring-zinc-500"
+              >
+                {routers.length === 0 && (
+                  <option value="" disabled>
+                    Loading routers…
+                  </option>
+                )}
+                {routers.map((r) => (
+                  <option key={r.id} value={String(r.id)}>
+                    {r.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             {/* Policy selector */}
             <div className="grid grid-cols-2 gap-2">
               <button
