@@ -1,6 +1,7 @@
 "use server";
 
 import { auth } from "@/lib/auth";
+import { buildApiUrl } from "@/lib/constants";
 import type { ApiResponse } from "@/lib/types/auth";
 
 export type AuditLog = {
@@ -28,7 +29,7 @@ async function getAuthHeaders(): Promise<HeadersInit> {
 export async function getAuditLogsAction(): Promise<ApiResponse<AuditLog[]>> {
   try {
     const res = await fetch(
-      `${process.env.BASE_API_URL}systemsetup/audit-logs`,
+      buildApiUrl("/system-setup/audit-logs"),
       { headers: await getAuthHeaders(), cache: "no-store" }
     );
     const data = await res.json();

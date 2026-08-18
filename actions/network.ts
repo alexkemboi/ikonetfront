@@ -28,6 +28,7 @@ import {
 } from "@/lib/types/network";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { auth } from "@/lib/auth";
+import { getPermissionForRoute } from "@/lib/data/nav";
 
 async function getRlsScopeParams(): Promise<URLSearchParams> {
   const session = await auth();
@@ -683,12 +684,12 @@ export const validateRouterConnectivity = async (
     });
 
     return await res.json();
-  } catch (error: any) {
+  } catch (error: unknown) {
     return {
       status: 500,
       success: false,
-      message: error.message || "Failed to establish hardware API connection on port 8728",
-      data: null as any,
+      message: error instanceof Error ? error.message : "Failed to establish hardware API connection on port 8728",
+      data: null as unknown as RouterValidationResponse,
       timestamp: new Date().toISOString(),
     };
   }
@@ -696,7 +697,7 @@ export const validateRouterConnectivity = async (
 
 export const onboardRouter = async (
   request: RouterOnboardRequest
-): Promise<ApiResponse<any>> => {
+): Promise<ApiResponse<unknown>> => {
   try {
     const headers = await getAuthHeaders();
     const res = await fetch(`${BASE_URL}network/routers/onboard`, {
@@ -710,12 +711,12 @@ export const onboardRouter = async (
       revalidateTag("network:regions", "page");
     }
     return body;
-  } catch (error: any) {
+  } catch (error: unknown) {
     return {
       status: 500,
       success: false,
-      message: error.message || "Failed to finalize database onboarding registration",
-      data: null as any,
+      message: error instanceof Error ? error.message : "Failed to finalize database onboarding registration",
+      data: null,
       timestamp: new Date().toISOString(),
     };
   }
@@ -778,12 +779,12 @@ export const provisionSubscriber = async (
       revalidateTag("network:regions", "page");
     }
     return body;
-  } catch (error: any) {
+  } catch (error: unknown) {
     return {
       status: 500,
       success: false,
-      message: error.message || "Failed to submit customer parameters to active terminal",
-      data: null as any,
+      message: error instanceof Error ? error.message : "Failed to submit customer parameters to active terminal",
+      data: null as unknown as void,
       timestamp: new Date().toISOString(),
     };
   }
@@ -840,5 +841,55 @@ export async function getIpMappings() {
   } catch (error) {
     console.error("[Network Action] getIpMappings error:", error);
     return [];
+  }
+}
+
+/**
+ * Provision a static device (e.g. Smart TV) binding.
+ * Backend: CustomerDeviceController POST /api/v1/customer-devices — writes the
+ * reservation into `customer_devices` + FreeRADIUS radreply.
+ */
+export async function createIpMappingAction(input: {
+  customerId: string | number;
+  macAddress: string;
+  ipAddress: string;
+}): Promise<{ success: boolean; message: string }> {
+  const session = await auth();
+  if (!session?.user?.apiToken) {
+    return { success: false, message: "You must be signed in to create a mapping." };
+  }
+  const perms = await getPermissionForRoute("/network/equipment");
+  if (!perms.canCreate && !perms.canEdit) {
+    return {
+      success: false,
+      message: "You don't have permission to create device mappings.",
+    };
+  }
+  try {
+    const headers = await getAuthHeaders();
+    const res = await fetch(`${BASE_URL}customer-devices`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        customerIdxno: Number(input.customerId),
+        macAddress: input.macAddress.trim(),
+        ipAddress: input.ipAddress.trim(),
+        deviceType: "SMART_TV",
+      }),
+    });
+    const body = (await res.json().catch(() => null)) as {
+      message?: string;
+    } | null;
+    if (!res.ok) {
+      return {
+        success: false,
+        message: body?.message || `Failed to create mapping (HTTP ${res.status})`,
+      };
+    }
+    revalidateTag("network", "page");
+    return { success: true, message: "Mapping created successfully." };
+  } catch (error) {
+    console.error("[Network Action] createIpMappingAction error:", error);
+    return { success: false, message: "Failed to create mapping." };
   }
 }

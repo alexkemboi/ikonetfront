@@ -431,3 +431,66 @@ export async function downloadStatementPdf(
     return null;
   }
 }
+
+/**
+ * Resolve a single statement by id. Prefers the direct `GET /statements/{id}`,
+ * but never returns it without verifying ownership against the provided
+ * customerId (defense-in-depth on top of backend RLS). If the direct lookup
+ * 404s (only the customer-list endpoint is active), falls back to the
+ * customer's statement list + `.find()`. Never queries with customerId = 0.
+ */
+export async function getStatementById(
+  statementId: number,
+  customerId?: number
+): Promise<ApiResponse<Statement | null>> {
+  try {
+    const direct = await fetch(`${BASE_URL}statements/${statementId}`, {
+      headers: await getAuthHeaders(),
+      next: { tags: ["statements"], revalidate: 30 },
+    });
+    if (direct.ok) {
+      const body: ApiResponse<Statement> = await direct.json();
+      if (body.success && body.data) {
+        if (
+          customerId &&
+          customerId > 0 &&
+          body.data.customerId !== customerId
+        ) {
+          console.warn(
+            `[Finance] Statement ${statementId} does not belong to customer ${customerId}; refusing cross-customer read.`
+          );
+          return {
+            status: 403,
+            success: false,
+            message: "Statement access denied.",
+            data: null,
+            timestamp: new Date().toISOString(),
+          };
+        }
+        return { ...body, data: body.data };
+      }
+    }
+
+    if (customerId && customerId > 0) {
+      const listRes = await getCustomerStatements(customerId, 0, 100);
+      if (listRes.success && listRes.data) {
+        const found = listRes.data.content.find((s) => s.id === statementId);
+        if (found) {
+          return {
+            status: 200,
+            success: true,
+            message: "Statement loaded.",
+            data: found,
+            timestamp: new Date().toISOString(),
+          };
+        }
+      }
+      return { status: 404, success: false, message: "Statement not found for the given customer.", data: null, timestamp: new Date().toISOString() };
+    }
+
+    return { status: 404, success: false, message: "Statement not found.", data: null, timestamp: new Date().toISOString() };
+  } catch (error) {
+    console.error("[Finance] getStatementById error:", error);
+    return { status: 500, success: false, message: "Failed to load statement.", data: null, timestamp: new Date().toISOString() };
+  }
+}
