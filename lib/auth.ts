@@ -2,12 +2,7 @@ import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { jwtVerify, decodeJwt } from "jose";
 import { JwtPayload, LoginResponse } from "@/lib/types/auth";
-
-function getBaseUrl(): string {
-  const url = process.env.BASE_API_URL;
-  if (!url) throw new Error("BASE_API_URL environment variable is not set.");
-  return url;
-}
+import { buildApiUrl } from "@/lib/constants";
 
 function getJwtSecret(): string {
   const secret = process.env.AUTH_JWT_SECRET;
@@ -46,7 +41,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         if (!credentials?.username || !credentials?.password) return null;
 
         try {
-          const res = await fetch(`${getBaseUrl()}/auth/userlogin`, {
+          const res = await fetch(buildApiUrl("/auth/userlogin"), {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
