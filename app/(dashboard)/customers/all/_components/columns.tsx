@@ -25,6 +25,7 @@ import {
   resolveExpiryDateColorClass,
   formatCustomerDate,
 } from "@/lib/utils/customerFormatters";
+import { getEffectiveSubscriberStatus } from "@/lib/utils/subscriberStatus";
 import { cn } from "@/lib/utils";
 
 export function createCustomerColumns(
@@ -157,15 +158,17 @@ export function createCustomerColumns(
       ),
       cell: ({ row }) => {
         const active: boolean = row.getValue("isActive");
+        const expiry: string | null = row.getValue("expiryDate");
+        const effective = getEffectiveSubscriberStatus(
+          expiry,
+          active ? "Active" : "Inactive"
+        );
         return (
           <Badge
             variant="outline"
-            className={cn("text-[11px]", active
-              ? "bg-success/10 text-success border-success/20"
-              : "bg-muted text-muted-foreground border-border"
-            )}
+            className={cn("text-[11px]", effective.badgeClass)}
           >
-            {active ? "Active" : "Inactive"}
+            {effective.label}
           </Badge>
         );
       },
