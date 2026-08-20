@@ -103,7 +103,11 @@ export async function getNasRoutersData(): Promise<{
 }
 
 /**
- * Step 1: Submits Router Identity and receives a RouterOS /tool fetch command.
+ * Step 1: Creates/resolves the router in the backend (yielding a real numeric
+ * id) and returns the RouterOS `/tool fetch` one-liner pointed at the active
+ * backend host. The Step 2 poller only ever auto-advances on a REAL numeric
+ * router id that reports online — string placeholders never do, which is what
+ * previously caused the premature advance then "Invalid router id." error.
  */
 export async function generateZtpScript(
   identity: string
@@ -111,88 +115,61 @@ export async function generateZtpScript(
   const session = await auth();
   const token = session?.user?.apiToken;
 
+  let routerId = "";
   if (token) {
     try {
-      const response = await fetch(
-        `${BASE_URL}network/provisioning/generate-script`,
-        {
-          method: "POST",
-          headers: await getAuthHeaders(),
-          body: JSON.stringify({ identity }),
-        }
-      );
-      if (response.ok) {
-        const payload = (await response.json()) as {
-          data?: {
-            routerId?: string;
-            token?: string;
-            fetchCommand?: string;
-          } | null;
+      const createRes = await fetch(buildApiUrl("/network-devices"), {
+        method: "POST",
+        headers: await getAuthHeaders(),
+        body: JSON.stringify({
+          name: identity,
+          deviceType: "ROUTER",
+          active: true,
+        }),
+      });
+      if (createRes.ok) {
+        const created = (await createRes.json()) as {
+          data?: { id?: string | number } | null;
+          id?: string | number;
         };
-        const data =
-          payload?.data ??
-          (payload as { routerId?: string; token?: string; fetchCommand?: string });
-        const backendToken = data?.token;
-        const backendCommand = data?.fetchCommand;
-        if (backendToken || backendCommand) {
-          // Keep the returned token and the token embedded in the command in sync.
-          // When the backend only supplies one side, derive the other from it so
-          // the pasted script always authenticates with the token the wizard knows.
-          const effectiveToken =
-            backendToken ?? extractProvisionToken(backendCommand);
-          if (effectiveToken) {
-            return {
-              routerId: data?.routerId
-                ? String(data.routerId)
-                : `rtr-${Date.now()}`,
-              identity,
-              token: effectiveToken,
-              fetchCommand: backendCommand ?? buildFetchCommand(effectiveToken),
-              deviceModeRequired: true,
-            };
-          }
-        }
+        const createdId = String(created?.data?.id ?? created?.id ?? "");
+        if (/^\d+$/.test(createdId)) routerId = createdId;
       }
     } catch (error: unknown) {
-      console.warn("ZTP script generation failed; using local fallback.", error);
+      console.warn("Failed to create router record on backend:", error);
     }
   }
 
-  const tokenPayload = buildLocalToken(identity);
+  const rawToken = buildLocalToken(JSON.stringify({ routerId, identity }));
   return {
-    routerId: `rtr-${Date.now()}`,
+    routerId: routerId || "0",
     identity,
-    token: tokenPayload,
-    fetchCommand: buildFetchCommand(tokenPayload),
+    token: rawToken,
+    fetchCommand: buildFetchCommand(rawToken),
     deviceModeRequired: true,
   };
 }
 
 /**
- * Step 2 (real): authoritative router connection status used by the Step 2
- * check-in poller. Numeric router ids are polled against the backend; sandbox
- * ids ("rtr-<timestamp>", produced when the script generator was unavailable)
- * keep the offline demo auto-advance so the wizard is usable without a live
- * router.
+ * Step 2: authoritative router check-in status for the Step 2 poller.
+ * ONLY a numeric router id that the backend reports ONLINE is treated as
+ * connected. String/sandbox ids never auto-advance, so Step 3 never receives
+ * an invalid router id.
  */
 export async function getRouterConnectionStatus(routerId: string): Promise<{
   isOnline: boolean;
   apiAuthenticated: boolean;
 }> {
   const session = await auth();
-  if (!/^\d+$/.test(routerId)) {
-    // Sandbox / fallback id: preserve demo auto-advance with a simulated delay.
-    await new Promise((resolve) => setTimeout(resolve, 2500));
-    return { isOnline: true, apiAuthenticated: true };
+  if (!session?.user?.apiToken || !/^\d+$/.test(routerId)) {
+    return { isOnline: false, apiAuthenticated: false };
   }
-  if (session?.user?.apiToken) {
-    try {
-      const res = await getMikrotikDeviceStatus(Number(routerId));
-      const online = !!res.data?.online;
-      return { isOnline: online, apiAuthenticated: online };
-    } catch (error: unknown) {
-      console.warn(`Connection status poll failed for router ${routerId}.`, error);
-    }
+  try {
+    const res = await getMikrotikDeviceStatus(Number(routerId));
+    const online = !!res.data?.online;
+    return { isOnline: online, apiAuthenticated: online };
+  } catch (error: unknown) {
+    console.warn(`Connection status poll failed for router ${routerId}.`, error);
   }
   return { isOnline: false, apiAuthenticated: false };
 }
@@ -241,12 +218,6 @@ export async function finalizeZtpServices(
   }
   revalidatePath("/network/routers");
   return { success: true, message: "Router successfully provisioned and linked to IBS control plane." };
-}
-
-function extractProvisionToken(fetchCommand: string | undefined): string | null {
-  if (!fetchCommand) return null;
-  const match = fetchCommand.match(/\/provision\/([^"\s]+)/);
-  return match?.[1] ?? null;
 }
 
 function buildLocalToken(identity: string): string {
