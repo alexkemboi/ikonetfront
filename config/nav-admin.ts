@@ -4,7 +4,6 @@ export const adminNavGroups: NavGroup[] = [
   {
     items: [
       { href: "/dashboard/overview", label: "Overview", icon: "layout-dashboard", exact: true },
-      { href: "/dashboard", label: "Dashboard", icon: "layout-dashboard", exact: true },
     ],
   },
   {

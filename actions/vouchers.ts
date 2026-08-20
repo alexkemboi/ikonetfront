@@ -10,9 +10,6 @@ import type {
   VoucherStatus,
 } from "@/lib/types/vouchers";
 
-const AMBIGUOUS_CHARS_REGEX = /[ILO01]/gi;
-const SAFE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-
 const FALLBACK_KPIS: VoucherKpis = {
   totalGenerated: 5,
   usedCount: 2,
@@ -229,20 +226,21 @@ export async function generateVouchers(
     };
   }
 
-  const prefix = (request.prefix || "")
-    .replace(AMBIGUOUS_CHARS_REGEX, "")
-    .toUpperCase();
-
   try {
-    const res = await fetch(`${BASE_URL}hotspot/vouchers/generate`, {
+    // Backend ManualVoucherRequest: POST /hotspot/vouchers/create
+    // accepts { packageId, count, stationId, companyId }. stationId/companyId
+    // are optional (backend derives them from JWT/device); pass stationId when known.
+    const session = await auth();
+    const stationId = session?.user?.stationId
+      ? String(session.user.stationId)
+      : undefined;
+    const res = await fetch(`${BASE_URL}hotspot/vouchers/create`, {
       method: "POST",
       headers: await getAuthHeaders(),
       body: JSON.stringify({
         packageId: Number(request.packageId),
-        quantity,
-        codeLength,
-        prefix,
-        expiresAt: request.expiresAt,
+        count: quantity,
+        stationId,
       }),
     });
 
