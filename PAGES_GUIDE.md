@@ -58,7 +58,7 @@ Think of a paper address book for the ISP, but digital and searchable. Every per
 - **How it helps the business**
   - Prevents complaints from being forgotten or duplicated.
   - Shines a light on repeated problems (e.g. one area losing connection).
-  - Builds a paper trail that can expose recurring faults.
+  - Builds a paper trail that can expose recurring faults..
 
 ---
 
