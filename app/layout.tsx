@@ -6,37 +6,37 @@ import "./globals.css";
 import AuthProvider from "./authProvider";
 
 const inter = Inter({
-  variable: "--font-inter",
-  subsets: ["latin"],
-  display: "swap",
+ variable: "--font-inter",
+ subsets: ["latin"],
+ display: "swap",
 });
 
 const jetbrainsMono = JetBrains_Mono({
-  variable: "--font-jetbrains-mono",
-  subsets: ["latin"],
-  display: "swap",
+ variable: "--font-jetbrains-mono",
+ subsets: ["latin"],
+ display: "swap",
 });
 
 export const metadata: Metadata = {
-  title: "Beesmart Billing",
-  description: "Internet Billing & Network Management",
+ title: "Beesmart Billing",
+ description: "Internet Billing & Network Management",
 };
 
 export default function RootLayout({
-  children,
+ children,
 }: Readonly<{
-  children: React.ReactNode;
+ children: React.ReactNode;
 }>) {
-  return (
-    <html lang="en">
-      <body
-        className={`${inter.variable} ${jetbrainsMono.variable} antialiased`}
-      >
-        <AuthProvider>
-          <ReduxProvider>{children}</ReduxProvider>
-          <Toaster richColors position="top-right" />
-        </AuthProvider>
-      </body>
-    </html>
-  );
+ return (
+ <html lang="en">
+ <body
+ className={`${inter.variable} ${jetbrainsMono.variable} antialiased`}
+ >
+ <AuthProvider>
+ <ReduxProvider>{children}</ReduxProvider>
+ <Toaster richColors position="top-right" />
+ </AuthProvider>
+ </body>
+ </html>
+ );
 }
