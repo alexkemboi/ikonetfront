@@ -8,140 +8,140 @@ import CheckoutModal from "./CheckoutModal";
 
 
 interface BuyTabProps {
- packages: HotspotPackage[];
- onBack: () => void;
+    packages: HotspotPackage[];
+    onBack: () => void;
 }
 
 type SortBy = "price-asc" | "price-desc" | "data-asc" | "data-desc";
 
 export default function BuyTab({ packages, onBack }: BuyTabProps) {
- const [searchQuery, setSearchQuery] = useState("");
- const [sortBy, setSortBy] = useState<SortBy>("price-asc");
- const [selectedPackage, setSelectedPackage] = useState<HotspotPackage | null>(null);
- const [showCheckout, setShowCheckout] = useState(false);
+    const [searchQuery, setSearchQuery] = useState("");
+    const [sortBy, setSortBy] = useState<SortBy>("price-asc");
+    const [selectedPackage, setSelectedPackage] = useState<HotspotPackage | null>(null);
+    const [showCheckout, setShowCheckout] = useState(false);
 
- // Filter and sort packages
- const filteredAndSorted = useMemo(() => {
- let result = packages.filter((pkg) =>
- pkg.packageName.toLowerCase().includes(searchQuery.toLowerCase())
- );
+    // Filter and sort packages
+    const filteredAndSorted = useMemo(() => {
+        let result = packages.filter((pkg) =>
+            pkg.packageName.toLowerCase().includes(searchQuery.toLowerCase())
+        );
 
- // Sort
- result.sort((a, b) => {
- switch (sortBy) {
- case "price-asc":
- return a.price - b.price;
- case "price-desc":
- return b.price - a.price;
- case "data-asc":
- return a.speedDownload - b.speedDownload;
- case "data-desc":
- return b.speedDownload - a.speedDownload;
- default:
- return 0;
- }
- });
+        // Sort
+        result.sort((a, b) => {
+            switch (sortBy) {
+                case "price-asc":
+                    return a.price - b.price;
+                case "price-desc":
+                    return b.price - a.price;
+                case "data-asc":
+                    return a.speedDownload - b.speedDownload;
+                case "data-desc":
+                    return b.speedDownload - a.speedDownload;
+                default:
+                    return 0;
+            }
+        });
 
- return result;
- }, [packages, searchQuery, sortBy]);
+        return result;
+    }, [packages, searchQuery, sortBy]);
 
- const handleSelect = (pkg: HotspotPackage) => {
- setSelectedPackage(pkg);
- setShowCheckout(true);
- };
+    const handleSelect = (pkg: HotspotPackage) => {
+        setSelectedPackage(pkg);
+        setShowCheckout(true);
+    };
 
- return (
- <div className="w-full max-w-2xl mx-auto space-y-4">
- {/* Header with back button */}
- <div className="flex items-center justify-between">
- <div>
- <h2 className="text-lg font-semibold text-foreground">Available Packages</h2>
- <p className="text-xs text-muted-foreground mt-0.5">
- {filteredAndSorted.length} package{filteredAndSorted.length !== 1 ? "s" : ""} available
- </p>
- </div>
- <button
- onClick={onBack}
- className="text-sm font-medium text-primary hover:underline"
- >
- ← Back
- </button>
- </div>
+    return (
+        <div className="w-full max-w-2xl mx-auto space-y-4">
+            {/* Header with back button */}
+            <div className="flex items-center justify-between">
+                <div>
+                    <h2 className="text-lg font-semibold text-foreground">Available Packages</h2>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                        {filteredAndSorted.length} package{filteredAndSorted.length !== 1 ? "s" : ""} available
+                    </p>
+                </div>
+                <button
+                    onClick={onBack}
+                    className="text-sm font-medium text-primary hover:underline"
+                >
+                    ← Back
+                </button>
+            </div>
 
- {/* Search and filters */}
- <div className="space-y-3">
- {/* Search bar */}
- <div className="relative">
- <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
- <input
- type="text"
- placeholder="Search packages..."
- value={searchQuery}
- onChange={(e) => setSearchQuery(e.target.value)}
- className="w-full pl-9 pr-3 py-2 border border-border rounded-lg bg-card text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
- />
- </div>
+            {/* Search and filters */}
+            <div className="space-y-3">
+                {/* Search bar */}
+                <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <input
+                        type="text"
+                        placeholder="Search packages..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="w-full pl-9 pr-3 py-2 border border-border rounded-lg bg-card text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                    />
+                </div>
 
- {/* Sort controls */}
- <div className="flex gap-2 flex-wrap">
- <button
- onClick={() => setSortBy(sortBy === "price-asc" ? "price-desc" : "price-asc")}
- className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${sortBy.startsWith("price")
- ? "bg-primary text-primary-foreground"
- : "bg-secondary text-foreground border border-border hover:bg-secondary/80"
- }`}
- >
- <SortAsc className="w-3.5 h-3.5" />
- Price {sortBy === "price-asc" ? "↑" : "↓"}
- </button>
+                {/* Sort controls */}
+                <div className="flex gap-2 flex-wrap">
+                    <button
+                        onClick={() => setSortBy(sortBy === "price-asc" ? "price-desc" : "price-asc")}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${sortBy.startsWith("price")
+                                ? "bg-primary text-primary-foreground"
+                                : "bg-secondary text-foreground border border-border hover:bg-secondary/80"
+                            }`}
+                    >
+                        <SortAsc className="w-3.5 h-3.5" />
+                        Price {sortBy === "price-asc" ? "↑" : "↓"}
+                    </button>
 
- <button
- onClick={() => setSortBy(sortBy === "data-asc" ? "data-desc" : "data-asc")}
- className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${sortBy.startsWith("data")
- ? "bg-primary text-primary-foreground"
- : "bg-secondary text-foreground border border-border hover:bg-secondary/80"
- }`}
- >
- <Filter className="w-3.5 h-3.5" />
- Data {sortBy === "data-asc" ? "↑" : "↓"}
- </button>
- </div>
- </div>
+                    <button
+                        onClick={() => setSortBy(sortBy === "data-asc" ? "data-desc" : "data-asc")}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${sortBy.startsWith("data")
+                                ? "bg-primary text-primary-foreground"
+                                : "bg-secondary text-foreground border border-border hover:bg-secondary/80"
+                            }`}
+                    >
+                        <Filter className="w-3.5 h-3.5" />
+                        Data {sortBy === "data-asc" ? "↑" : "↓"}
+                    </button>
+                </div>
+            </div>
 
- {/* Package list */}
- <div className="space-y-2 max-h-[calc(100vh-400px)] overflow-y-auto pr-2">
- {filteredAndSorted.length > 0 ? (
- filteredAndSorted.map((pkg) => (
- <PackageCard
- key={pkg.idxno}
- pkg={pkg}
- onSelect={handleSelect}
- />
- ))
- ) : (
- <div className="text-center py-8">
- <p className="text-sm text-muted-foreground">
- No packages found matching your search.
- </p>
- </div>
- )}
- </div>
+            {/* Package list */}
+            <div className="space-y-2 max-h-[calc(100vh-400px)] overflow-y-auto pr-2">
+                {filteredAndSorted.length > 0 ? (
+                    filteredAndSorted.map((pkg) => (
+                        <PackageCard
+                            key={pkg.idxno}
+                            pkg={pkg}
+                            onSelect={handleSelect}
+                        />
+                    ))
+                ) : (
+                    <div className="text-center py-8">
+                        <p className="text-sm text-muted-foreground">
+                            No packages found matching your search.
+                        </p>
+                    </div>
+                )}
+            </div>
 
- {/* Checkout Modal */}
- {showCheckout && selectedPackage && (
- <CheckoutModal
- package={selectedPackage}
- onClose={() => {
- setShowCheckout(false);
- setSelectedPackage(null);
- }}
- onConfirm={() => {
- // Handle purchase confirmation
- setShowCheckout(false);
- setSelectedPackage(null);
- }}
- />
- )}
- </div>
- );
+            {/* Checkout Modal */}
+            {showCheckout && selectedPackage && (
+                <CheckoutModal
+                    package={selectedPackage}
+                    onClose={() => {
+                        setShowCheckout(false);
+                        setSelectedPackage(null);
+                    }}
+                    onConfirm={() => {
+                        // Handle purchase confirmation
+                        setShowCheckout(false);
+                        setSelectedPackage(null);
+                    }}
+                />
+            )}
+        </div>
+    );
 }
