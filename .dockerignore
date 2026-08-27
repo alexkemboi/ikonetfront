@@ -11,4 +11,7 @@ logs
 .env.production 
 .DS_Store
 .git
-.gitignore  
+.gitignore
+.next
+*.tsbuildinfo
+pnpm-debug.log*  
