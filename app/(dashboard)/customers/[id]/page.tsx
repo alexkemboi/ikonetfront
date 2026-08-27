@@ -5,27 +5,27 @@ import { PPPoECustomerProfile } from "./_components/PPPoECustomerProfile";
 export const metadata = { title: "Customer Profile — Beesmart Billing" };
 
 interface CustomerDetailsPageProps {
- params: Promise<{ id: string }>;
+  params: Promise<{ id: string }>;
 }
 
 export default async function CustomerDetailsPage({
- params,
+  params,
 }: CustomerDetailsPageProps) {
- const customerId = parseInt((await params).id);
+  const customerId = parseInt((await params).id);
 
- if (isNaN(customerId)) {
- notFound();
- }
+  if (isNaN(customerId)) {
+    notFound();
+  }
 
- const response = await getCustomerById(customerId);
+  const response = await getCustomerById(customerId);
 
- if (!response.success || !response.data) {
- notFound();
- }
+  if (!response.success || !response.data) {
+    notFound();
+  }
 
- return (
- <div className="flex-1 p-8 pt-6">
- <PPPoECustomerProfile customer={response.data} />
- </div>
- );
+  return (
+    <div className="flex-1 p-8 pt-6">
+      <PPPoECustomerProfile customer={response.data} />
+    </div>
+  );
 }
