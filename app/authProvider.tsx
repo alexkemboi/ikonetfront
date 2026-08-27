@@ -4,11 +4,11 @@ import { SessionGuard } from "./sessionGuard"
 
 
 export default function AuthProvider({ children }: { children: React.ReactNode }) {
-    return (
-        <SessionProvider>
-            <SessionGuard>
-            {children}
-            </SessionGuard>
-        </SessionProvider>
-    )
+ return (
+ <SessionProvider>
+ <SessionGuard>
+ {children}
+ </SessionGuard>
+ </SessionProvider>
+ )
 }

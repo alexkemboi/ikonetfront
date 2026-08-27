@@ -4,12 +4,12 @@ import { PPPoECustomerTable } from "./_components/PPPoECustomerTable";
 export const metadata = { title: "PPPoE Clients — Beesmart Billing" };
 
 export default async function PppoeCustomersPage() {
-  const response = await getCustomers(0, 50, { custtype: "pppoe" });
-  const customers = response.success ? response.data.content : [];
+ const response = await getCustomers(0, 50, { custtype: "pppoe" });
+ const customers = response.success ? response.data.content : [];
 
-  return (
-    <div className="p-8 pt-6">
-      <PPPoECustomerTable customers={customers} />
-    </div>
-  );
+ return (
+ <div className="p-8 pt-6">
+ <PPPoECustomerTable customers={customers} />
+ </div>
+ );
 }
