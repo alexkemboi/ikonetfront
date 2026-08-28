@@ -1,6 +1,6 @@
 "use server"
 
-import { revalidatePath, revalidateTag } from "next/cache"
+import { revalidatePath, revalidateTag, updateTag } from "next/cache"
 import { auth } from "@/lib/auth"
 import type {
   Ticket,
@@ -11,11 +11,14 @@ import type {
 } from "@/lib/types/ticket"
 import type { ApiResponse } from "@/lib/types/auth"
 
-const BASE_URL = process.env.BASE_API_URL
+import { buildApiUrl } from "@/lib/constants"
 
 async function getAuthHeaders(): Promise<Record<string, string>> {
   const session = await auth()
-  if (!session?.user?.apiToken) return {}
+  if (!session?.user?.apiToken) {
+    console.error("[Ticket Action] Missing apiToken in session!")
+    return {}
+  }
   return { Authorization: `Bearer ${session.user.apiToken}` }
 }
 
@@ -26,7 +29,7 @@ async function getAuthHeaders(): Promise<Record<string, string>> {
 export async function getTickets(): Promise<ApiResponse<Ticket[]>> {
   try {
     const headers = await getAuthHeaders()
-    const res = await fetch(`${BASE_URL}tickets`, {
+    const res = await fetch(buildApiUrl("/tickets"), {
       headers,
       next: { tags: ["tickets"] },
     })
@@ -46,7 +49,7 @@ export async function getTickets(): Promise<ApiResponse<Ticket[]>> {
 export async function getTicketById(id: number): Promise<ApiResponse<Ticket>> {
   try {
     const headers = await getAuthHeaders()
-    const res = await fetch(`${BASE_URL}tickets/${id}`, {
+    const res = await fetch(buildApiUrl(`/tickets/${id}`), {
       headers,
       next: { tags: [`ticket-${id}`] },
     })
@@ -65,7 +68,7 @@ export async function getTicketById(id: number): Promise<ApiResponse<Ticket>> {
 export async function getTicketComments(id: number): Promise<ApiResponse<TicketComment[]>> {
   try {
     const headers = await getAuthHeaders()
-    const res = await fetch(`${BASE_URL}tickets/${id}/comments`, {
+    const res = await fetch(buildApiUrl(`/tickets/${id}/comments`), {
       headers,
       next: { tags: [`ticket-comments-${id}`] },
     })
@@ -88,7 +91,7 @@ export async function getTicketComments(id: number): Promise<ApiResponse<TicketC
 export async function createTicket(payload: CreateTicketPayload): Promise<ApiResponse<Ticket>> {
   try {
     const headers = await getAuthHeaders()
-    const res = await fetch(`${BASE_URL}tickets`, {
+    const res = await fetch(buildApiUrl("/tickets"), {
       method: "POST",
       headers: { ...headers, "Content-Type": "application/json" },
       body: JSON.stringify(payload),
@@ -111,14 +114,14 @@ export async function createTicket(payload: CreateTicketPayload): Promise<ApiRes
 export async function updateTicketStatus(id: number, status: TicketStatus): Promise<ApiResponse<Ticket>> {
   try {
     const headers = await getAuthHeaders()
-    const res = await fetch(`${BASE_URL}tickets/${id}/status?status=${status}`, {
+    const res = await fetch(buildApiUrl(`/tickets/${id}/status?status=${status}`), {
       method: "PATCH",
       headers,
     })
     const data: ApiResponse<Ticket> = await res.json()
     if (data.success) {
       revalidatePath("/customers/tickets")
-      revalidateTag(`ticket-${id}`, "page")
+      revalidateTag(`ticket-${id}`, "max")
     }
     return data
   } catch (error) {
@@ -136,14 +139,14 @@ export async function updateTicketStatus(id: number, status: TicketStatus): Prom
 export async function assignTicket(id: number, staffId: number): Promise<ApiResponse<Ticket>> {
   try {
     const headers = await getAuthHeaders()
-    const res = await fetch(`${BASE_URL}tickets/${id}/assign/${staffId}`, {
+    const res = await fetch(buildApiUrl(`/tickets/${id}/assign/${staffId}`), {
       method: "PATCH",
       headers,
     })
     const data: ApiResponse<Ticket> = await res.json()
     if (data.success) {
       revalidatePath("/customers/tickets")
-      revalidateTag(`ticket-${id}`, "page")
+      revalidateTag(`ticket-${id}`, "max")
     }
     return data
   } catch (error) {
@@ -163,13 +166,13 @@ export async function addTicketComment(
 ): Promise<ApiResponse<TicketComment>> {
   try {
     const headers = await getAuthHeaders()
-    const res = await fetch(`${BASE_URL}tickets/${id}/comments`, {
+    const res = await fetch(buildApiUrl(`/tickets/${id}/comments`), {
       method: "POST",
       headers: { ...headers, "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     })
     const data: ApiResponse<TicketComment> = await res.json()
-    if (data.success) revalidateTag(`ticket-comments-${id}`, "page")
+    if (data.success) updateTag(`ticket-comments-${id}`)
     return data
   } catch (error) {
     return {

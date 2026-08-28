@@ -1,6 +1,6 @@
 'use server';
 
-import { revalidateTag } from 'next/cache';
+import { updateTag } from 'next/cache';
 import {
   HotspotPackagesResponse,
   InitiatePaymentRequest,
@@ -75,7 +75,7 @@ export async function initiateHotspotPayment(
       throw new Error(errorData.message || 'Failed to initiate payment');
     }
 
-    revalidateTag('hotspot-packages', 'page'); // Revalidate packages after payment
+    updateTag('hotspot-packages');
     const paymentData = await response.json();
     return paymentData;
   } catch (error) {
@@ -103,7 +103,7 @@ export async function activateVoucherAction(code: string) {
       throw new Error(errorData?.message || `Voucher activation failed with status ${res.status}`);
     }
 
-    revalidateTag("hotspot", "page");
+    updateTag("hotspot");
     return await res.json();
   } catch (error) {
     console.error("[Hotspot Action] activateVoucherAction error:", error);

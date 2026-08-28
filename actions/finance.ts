@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidateTag } from "next/cache";
+import { updateTag } from "next/cache";
 import { auth } from "@/lib/auth";
 import { BASE_URL } from "@/lib/constants";
 import type { ApiResponse } from "@/lib/types/auth";
@@ -351,7 +351,7 @@ export async function createExpense(
     });
     if (!res.ok) return handleFinanceResponse(res, "Failed to create expense");
     const data: ApiResponse<Expense> = await res.json();
-    if (data.success) revalidateTag("expenses", "page");
+    if (data.success) updateTag("expenses");
     return data;
   } catch (error) {
     console.error("[Finance] createExpense error:", error);
@@ -372,7 +372,7 @@ export async function deleteExpense(id: number): Promise<ApiResponse<null>> {
       headers: await getAuthHeaders(),
     });
     const result = await handleFinanceResponse<null>(res, "Failed to delete expense");
-    if (result.success) revalidateTag("expenses", "page");
+    if (result.success) updateTag("expenses");
     return result;
   } catch (error) {
     console.error("[Finance] deleteExpense error:", error);
@@ -397,7 +397,7 @@ export async function generateStatement(
     });
     if (!res.ok) return handleFinanceResponse(res, "Failed to generate statement");
     const data: ApiResponse<Statement> = await res.json();
-    if (data.success) revalidateTag("statements", "page");
+    if (data.success) updateTag("statements");
     return data;
   } catch (error) {
     console.error("[Finance] generateStatement error:", error);
