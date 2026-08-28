@@ -1,5 +1,5 @@
 export type TicketStatus = "OPEN" | "ASSIGNED" | "IN_PROGRESS" | "RESOLVED" | "CLOSED"
-export type TicketPriority = "LOW" | "MEDIUM" | "HIGH" | "CRITICAL"
+export type TicketPriority = "LOW" | "MEDIUM" | "HIGH" | "URGENT"
 
 export interface Ticket {
   idxno: number
@@ -80,7 +80,7 @@ export const PRIORITY_BADGE: Record<TicketPriority, string> = {
   LOW:      "bg-muted text-muted-foreground",
   MEDIUM:   "bg-blue-500/10 text-blue-600",
   HIGH:     "bg-warning/10 text-warning",
-  CRITICAL: "bg-destructive/10 text-destructive",
+  URGENT:   "bg-destructive/10 text-destructive",
 }
 
 export const STATUS_BADGE: Record<TicketStatus, string> = {

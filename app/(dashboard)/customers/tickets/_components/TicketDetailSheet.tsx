@@ -40,7 +40,7 @@ interface TicketDetailSheetProps {
 }
 
 const PRIORITY_LABELS: Record<TicketPriority, string> = {
- LOW: "Low", MEDIUM: "Medium", HIGH: "High", CRITICAL: "Critical",
+ LOW: "Low", MEDIUM: "Medium", HIGH: "High", URGENT: "Urgent",
 }
 
 const STATUS_LABELS: Record<TicketStatus, string> = {
@@ -205,13 +205,18 @@ export function TicketDetailSheet({ ticket, staffList, onClose }: TicketDetailSh
  },
  })
 
+ useEffect(() => {
+ if (!ticket) return
+ commentFormik.resetForm()
+ }, [ticket?.idxno])
+
  const nextStatus = ticket ? NEXT_STATUS_MAP[ticket.status] : null
  const prevStatus = ticket ? PREV_STATUS_MAP[ticket.status] : null
  const needsAssignee = ticket && !ticket.assignedAgentName && nextStatus
 
  return (
  <Sheet open={ticket !== null} onOpenChange={(open) => !open && onClose()}>
- <SheetContent side="right" className="sm:max-w-xl w-full p-0 flex flex-col">
+ <SheetContent side="right" className="sm:max-w-xl w-[92vw] p-0 flex flex-col overflow-hidden">
  {ticket && (
  <>
  {/* Fixed header */}
@@ -246,7 +251,7 @@ export function TicketDetailSheet({ ticket, staffList, onClose }: TicketDetailSh
  </SheetHeader>
 
  {/* Scrollable body */}
- <ScrollArea className="flex-1">
+ <ScrollArea className="flex-1 min-h-0">
  <div className="px-6 py-4 space-y-5">
 
  {/* Assignee warning — only meaningful when user can act */}
@@ -341,6 +346,57 @@ export function TicketDetailSheet({ ticket, staffList, onClose }: TicketDetailSh
 
  <Separator />
 
+ {/* Comments */}
+ <div className="space-y-4">
+ <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+ Comments ({comments.length})
+ </p>
+
+ <form onSubmit={commentFormik.handleSubmit} className="space-y-2 pt-2">
+ <textarea
+ {...commentFormik.getFieldProps("comment")}
+ rows={3}
+ placeholder="Add a comment…"
+ className={cn(
+ "w-full rounded-md border bg-background px-3 py-2 text-sm text-foreground resize-none",
+ "placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30",
+ commentFormik.touched.comment && commentFormik.errors.comment
+ ? "border-destructive"
+ : "border-border"
+ )}
+ />
+ {commentFormik.touched.comment && commentFormik.errors.comment && (
+ <p className="text-xs text-destructive">{commentFormik.errors.comment}</p>
+ )}
+ <div className="flex justify-end">
+ <Button type="submit" size="sm" disabled={commentFormik.isSubmitting}>
+ {commentFormik.isSubmitting
+ ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+ : <Send className="mr-1.5 h-3.5 w-3.5" />
+ }
+ Post Comment
+ </Button>
+ </div>
+ </form>
+
+ {commentsLoading ? (
+ <div className="flex items-center gap-2 text-xs text-muted-foreground">
+ <Loader2 className="h-3.5 w-3.5 animate-spin" />
+ Loading comments…
+ </div>
+ ) : comments.length === 0 ? (
+ <p className="text-xs text-muted-foreground italic">No comments yet.</p>
+ ) : (
+ <div className="space-y-4">
+ {comments.map((c, i) => (
+ <CommentItem key={c.idxno ?? i} comment={c} />
+ ))}
+ </div>
+ )}
+ </div>
+
+ <Separator />
+
  {/* SLA */}
  <div className="space-y-1.5">
  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">SLA Deadline</p>
@@ -375,55 +431,6 @@ export function TicketDetailSheet({ ticket, staffList, onClose }: TicketDetailSh
  </div>
 
  <Separator />
-
- {/* Comments */}
- <div className="space-y-4">
- <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
- Comments ({comments.length})
- </p>
-
- {commentsLoading ? (
- <div className="flex items-center gap-2 text-xs text-muted-foreground">
- <Loader2 className="h-3.5 w-3.5 animate-spin" />
- Loading comments…
- </div>
- ) : comments.length === 0 ? (
- <p className="text-xs text-muted-foreground italic">No comments yet.</p>
- ) : (
- <div className="space-y-4">
- {comments.map((c, i) => (
- <CommentItem key={c.idxno ?? i} comment={c} />
- ))}
- </div>
- )}
-
- <form onSubmit={commentFormik.handleSubmit} className="space-y-2 pt-2">
- <textarea
- {...commentFormik.getFieldProps("comment")}
- rows={3}
- placeholder="Add a comment…"
- className={cn(
- "w-full rounded-md border bg-background px-3 py-2 text-sm text-foreground resize-none",
- "placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30",
- commentFormik.touched.comment && commentFormik.errors.comment
- ? "border-destructive"
- : "border-border"
- )}
- />
- {commentFormik.touched.comment && commentFormik.errors.comment && (
- <p className="text-xs text-destructive">{commentFormik.errors.comment}</p>
- )}
- <div className="flex justify-end">
- <Button type="submit" size="sm" disabled={commentFormik.isSubmitting}>
- {commentFormik.isSubmitting
- ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
- : <Send className="mr-1.5 h-3.5 w-3.5" />
- }
- Post Comment
- </Button>
- </div>
- </form>
- </div>
 
  </div>
  </ScrollArea>
