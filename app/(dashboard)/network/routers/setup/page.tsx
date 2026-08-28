@@ -11,60 +11,60 @@ import { generateZtpScript } from "@/actions/provisioning";
 import { ProvisioningScriptResponse } from "@/lib/types/provisioning";
 
 export default function RouterSetupWizardPage() {
-  const router = useRouter();
-  const [step, setStep] = useState(1);
-  const [identity, setIdentity] = useState("");
-  const [scriptData, setScriptData] = useState<ProvisioningScriptResponse | null>(null);
+ const router = useRouter();
+ const [step, setStep] = useState(1);
+ const [identity, setIdentity] = useState("");
+ const [scriptData, setScriptData] = useState<ProvisioningScriptResponse | null>(null);
 
-  async function handleIdentitySubmit(inputIdentity: string) {
-    setIdentity(inputIdentity);
-    const data = await generateZtpScript(inputIdentity);
-    setScriptData(data);
-    setStep(2);
-  }
+ async function handleIdentitySubmit(inputIdentity: string) {
+ setIdentity(inputIdentity);
+ const data = await generateZtpScript(inputIdentity);
+ setScriptData(data);
+ setStep(2);
+ }
 
-  return (
-    <div className="min-h-screen bg-[#0d0d0d] p-4 text-zinc-100 sm:p-6 lg:p-8">
-      <div className="mx-auto max-w-3xl space-y-6">
-        <div>
-          <span className="text-[11px] font-mono tracking-wider text-zinc-500 uppercase">
-            NETWORK — ROUTERS
-          </span>
-          <h1 className="text-3xl font-serif font-semibold text-white">Link a MikroTik.</h1>
-          <p className="mt-1 text-xs text-zinc-400">
-            Register the router, paste the provisioning script on RouterOS, then choose PPPoE or Hotspot services.
-          </p>
-        </div>
+ return (
+ <div className="min-h-screen p-4 text-foreground sm:p-6 lg:p-8">
+ <div className="mx-auto max-w-3xl space-y-6">
+ <div>
+ <span className="text-[11px] font-mono tracking-wider text-muted-foreground uppercase">
+ NETWORK — ROUTERS
+ </span>
+ <h1 className="text-3xl font-serif font-semibold text-foreground">Link a MikroTik.</h1>
+ <p className="mt-1 text-xs text-muted-foreground">
+ Register the router, paste the provisioning script on RouterOS, then choose PPPoE or Hotspot services.
+ </p>
+ </div>
 
-        {/* Stepper Navigation */}
-        <div className="border-y border-[#262626] py-4">
-          <ProvisioningStepper currentStep={step} />
-        </div>
+ {/* Stepper Navigation */}
+ <div className="border-y border-border py-4">
+ <ProvisioningStepper currentStep={step} />
+ </div>
 
-        {/* Step Views */}
-        {step === 1 && (
-          <Step1Identity
-            onContinue={handleIdentitySubmit}
-            onCancel={() => router.push("/network/routers")}
-          />
-        )}
+ {/* Step Views */}
+ {step === 1 && (
+ <Step1Identity
+ onContinue={handleIdentitySubmit}
+ onCancel={() => router.push("/network/routers")}
+ />
+ )}
 
-        {step === 2 && scriptData && (
-          <Step2Script
-            scriptData={scriptData}
-            onConnected={() => setStep(3)}
-          />
-        )}
+ {step === 2 && scriptData && (
+ <Step2Script
+ scriptData={scriptData}
+ onConnected={() => setStep(3)}
+ />
+ )}
 
-        {step === 3 && scriptData && (
-          <Step3Services
-            routerId={scriptData.routerId}
-            onComplete={() => setStep(4)}
-          />
-        )}
+ {step === 3 && scriptData && (
+ <Step3Services
+ routerId={scriptData.routerId}
+ onComplete={() => setStep(4)}
+ />
+ )}
 
-        {step === 4 && <Step4Done identity={identity} />}
-      </div>
-    </div>
-  );
+ {step === 4 && <Step4Done identity={identity} />}
+ </div>
+ </div>
+ );
 }
