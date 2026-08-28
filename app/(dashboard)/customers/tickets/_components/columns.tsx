@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import { ColumnDef } from "@tanstack/react-table"
 import { Flame, Clock, MoreHorizontal, Eye, ArrowRight, Undo2 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
@@ -32,7 +33,14 @@ const STATUS_LABELS: Record<TicketStatus, string> = {
 }
 
 function SlaCountdown({ deadline }: { deadline: string | null }) {
+ const [hydrated, setHydrated] = useState(false)
+
+ useEffect(() => {
+ setHydrated(true)
+ }, [])
+
  if (!deadline) return <span className="text-xs text-muted-foreground">—</span>
+ if (!hydrated) return <span className="text-xs text-muted-foreground">—</span>
 
  const diff = new Date(deadline).getTime() - Date.now()
  const absMinutes = Math.abs(Math.floor(diff / 60_000))
