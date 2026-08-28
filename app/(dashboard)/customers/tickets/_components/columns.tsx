@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import { ColumnDef } from "@tanstack/react-table"
 import { Flame, Clock, MoreHorizontal, Eye, ArrowRight, Undo2 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
@@ -23,7 +24,7 @@ import { updateTicketStatus } from "@/actions/ticket"
 import { toast } from "sonner"
 
 const PRIORITY_LABELS: Record<TicketPriority, string> = {
- LOW: "Low", MEDIUM: "Medium", HIGH: "High", CRITICAL: "Critical",
+ LOW: "Low", MEDIUM: "Medium", HIGH: "High", URGENT: "Urgent",
 }
 
 const STATUS_LABELS: Record<TicketStatus, string> = {
@@ -32,7 +33,14 @@ const STATUS_LABELS: Record<TicketStatus, string> = {
 }
 
 function SlaCountdown({ deadline }: { deadline: string | null }) {
+ const [hydrated, setHydrated] = useState(false)
+
+ useEffect(() => {
+ setHydrated(true)
+ }, [])
+
  if (!deadline) return <span className="text-xs text-muted-foreground">—</span>
+ if (!hydrated) return <span className="text-xs text-muted-foreground">—</span>
 
  const diff = new Date(deadline).getTime() - Date.now()
  const absMinutes = Math.abs(Math.floor(diff / 60_000))
@@ -89,10 +97,11 @@ export function createTicketColumns(dispatch: AppDispatch, perms: PermissionFlag
  accessorKey: "priority",
  header: ({ column }) => <DataTableColumnHeader column={column} title="Priority" />,
  cell: ({ row }) => {
- const p: TicketPriority = row.getValue("priority")
+ const rawPriority = String(row.getValue("priority") ?? "").trim().toUpperCase()
+ const p: TicketPriority = rawPriority === "CRITICAL" ? "URGENT" : rawPriority as TicketPriority
  return (
  <Badge variant="outline" className={cn("text-[10px] px-1.5 py-0 font-semibold uppercase tracking-wide", PRIORITY_BADGE[p])}>
- {PRIORITY_LABELS[p]}
+ {PRIORITY_LABELS[p] ?? (rawPriority || "Unknown")}
  </Badge>
  )
  },

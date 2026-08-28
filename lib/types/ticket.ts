@@ -1,5 +1,5 @@
 export type TicketStatus = "OPEN" | "ASSIGNED" | "IN_PROGRESS" | "RESOLVED" | "CLOSED"
-export type TicketPriority = "LOW" | "MEDIUM" | "HIGH" | "CRITICAL"
+export type TicketPriority = "LOW" | "MEDIUM" | "HIGH" | "URGENT"
 
 export interface Ticket {
   idxno: number
@@ -40,6 +40,26 @@ export interface AddCommentPayload {
   authorCustomerId?: number | null
 }
 
+export interface TicketMetrics {
+  totalOpen: number
+  inProgress: number
+  resolved: number
+  escalated: number
+  breachedSla: number
+}
+
+export interface TicketPage {
+  content: Ticket[]
+  totalElements: number
+  totalPages: number
+  last: boolean
+  first: boolean
+  numberOfElements: number
+  size: number
+  number: number
+  empty: boolean
+}
+
 export const NEXT_STATUS_MAP: Record<TicketStatus, { label: string; next: TicketStatus } | null> = {
   OPEN:        { label: "Assign",        next: "ASSIGNED"    },
   ASSIGNED:    { label: "Start Work",    next: "IN_PROGRESS" },
@@ -60,7 +80,7 @@ export const PRIORITY_BADGE: Record<TicketPriority, string> = {
   LOW:      "bg-muted text-muted-foreground",
   MEDIUM:   "bg-blue-500/10 text-blue-600",
   HIGH:     "bg-warning/10 text-warning",
-  CRITICAL: "bg-destructive/10 text-destructive",
+  URGENT:   "bg-destructive/10 text-destructive",
 }
 
 export const STATUS_BADGE: Record<TicketStatus, string> = {

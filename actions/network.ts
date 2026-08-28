@@ -26,7 +26,7 @@ import {
   SubscriberProvisioningRequest,
   RouterResponse,
 } from "@/lib/types/network";
-import { revalidatePath, revalidateTag } from "next/cache";
+import { revalidatePath, revalidateTag, updateTag } from "next/cache";
 import { auth } from "@/lib/auth";
 import { getPermissionForRoute } from "@/lib/data/nav";
 
@@ -191,7 +191,7 @@ export const finalizeRouter = async (
     }
 
     revalidatePath("/network/routers");
-    revalidateTag("pending-routers", "page");
+    updateTag("pending-routers");
 
     return {
       success: true,
@@ -235,7 +235,7 @@ export const updateRouter = async (
       };
     }
 
-    revalidateTag(`router-${id}`, "page");
+    updateTag(`router-${id}`);
     revalidatePath("/network/routers");
 
     return {
@@ -356,7 +356,7 @@ export const createRegion = async (
     } catch {
       // Response body is empty or not JSON — treat 2xx as success
       if (response.ok) {
-        revalidateTag("network:regions", "page");
+        revalidateTag("network:regions", "max");
         return {
           success: true,
           message: "Region created successfully",
@@ -376,7 +376,7 @@ export const createRegion = async (
     }
 
     if (!parseOk) {
-      revalidateTag("network:regions", "page");
+      revalidateTag("network:regions", "max");
       return {
         success: true,
         message: "Region created successfully",
@@ -385,7 +385,7 @@ export const createRegion = async (
       };
     }
 
-    revalidateTag("network:regions", "page");
+    revalidateTag("network:regions", "max");
     return {
       success: true,
       message: (parsed.message as string) || "Region created successfully",
@@ -419,7 +419,7 @@ export const deleteRegion = async (
         status: response.status,
       };
     }
-    revalidateTag("network:regions", "page");
+    revalidateTag("network:regions", "max");
     return {
       success: true,
       message: data.message || "Region deleted successfully",
@@ -480,8 +480,8 @@ export const createLocation = async (
       parseOk = true;
     } catch {
       if (response.ok) {
-        revalidateTag(`network:locations:region:${request.regionIdxno}`, "page");
-        revalidateTag("network:regions", "page");
+        updateTag(`network:locations:region:${request.regionIdxno}`);
+        updateTag("network:regions");
         return {
           success: true,
           message: "Location created successfully",
@@ -500,8 +500,8 @@ export const createLocation = async (
       };
     }
 
-    revalidateTag(`network:locations:region:${request.regionIdxno}`, "page");
-    revalidateTag("network:regions", "page");
+    updateTag(`network:locations:region:${request.regionIdxno}`);
+    updateTag("network:regions");
     return {
       success: true,
       message: (parsed.message as string) || "Location created successfully",
@@ -536,8 +536,8 @@ export const deleteLocation = async (
         status: response.status,
       };
     }
-    revalidateTag(`network:locations:region:${regionIdxno}`, "page");
-    revalidateTag("network:regions", "page");
+    updateTag(`network:locations:region:${regionIdxno}`);
+    updateTag("network:regions");
     return {
       success: true,
       message: data.message || "Location deleted successfully",
@@ -598,8 +598,8 @@ export const createStation = async (
       parseOk = true;
     } catch {
       if (response.ok) {
-        revalidateTag(`network:stations:location:${request.locationIdxno}`, "page");
-        revalidateTag("network:regions", "page");
+        updateTag(`network:stations:location:${request.locationIdxno}`);
+        updateTag("network:regions");
         return {
           success: true,
           message: "Station created successfully",
@@ -618,8 +618,8 @@ export const createStation = async (
       };
     }
 
-    revalidateTag(`network:stations:location:${request.locationIdxno}`, "page");
-    revalidateTag("network:regions", "page");
+    updateTag(`network:stations:location:${request.locationIdxno}`);
+    updateTag("network:regions");
     return {
       success: true,
       message: (parsed.message as string) || "Station created successfully",
@@ -654,8 +654,8 @@ export const deleteStation = async (
         status: response.status,
       };
     }
-    revalidateTag(`network:stations:location:${locationIdxno}`, "page");
-    revalidateTag("network:regions", "page");
+    updateTag(`network:stations:location:${locationIdxno}`);
+    updateTag("network:regions");
     return {
       success: true,
       message: data.message || "Station deleted successfully",
@@ -708,7 +708,7 @@ export const onboardRouter = async (
 
     const body = await res.json();
     if (body.success) {
-      revalidateTag("network:regions", "page");
+      revalidateTag("network:regions", "max");
     }
     return body;
   } catch (error: unknown) {
@@ -776,7 +776,7 @@ export const provisionSubscriber = async (
 
     const body = await res.json();
     if (body.success) {
-      revalidateTag("network:regions", "page");
+      revalidateTag("network:regions", "max");
     }
     return body;
   } catch (error: unknown) {
@@ -886,7 +886,7 @@ export async function createIpMappingAction(input: {
         message: body?.message || `Failed to create mapping (HTTP ${res.status})`,
       };
     }
-    revalidateTag("network", "page");
+    revalidateTag("network", "max");
     return { success: true, message: "Mapping created successfully." };
   } catch (error) {
     console.error("[Network Action] createIpMappingAction error:", error);

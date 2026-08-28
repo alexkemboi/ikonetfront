@@ -171,7 +171,7 @@ function Field({ label, error, children }: { label: string; error?: string; chil
 const validationSchema = Yup.object({
  title: Yup.string().trim().required("Title is required"),
  description: Yup.string().trim().required("Description is required"),
- priority: Yup.string().oneOf(["LOW", "MEDIUM", "HIGH", "CRITICAL"] as const).required("Priority is required"),
+ priority: Yup.string().oneOf(["LOW", "MEDIUM", "HIGH", "URGENT"] as const).required("Priority is required"),
  customerId: Yup.number().nullable().optional(),
 })
 
@@ -223,7 +223,7 @@ export function CreateTicketSheet({ open, onClose }: CreateTicketSheetProps) {
 
  return (
  <Sheet open={open} onOpenChange={(o) => !o && handleClose()}>
- <SheetContent side="right" className="sm:max-w-md w-full p-0 flex flex-col">
+ <SheetContent side="right" className="sm:max-w-md w-[92vw] p-0 flex flex-col overflow-hidden">
  <SheetHeader className="px-6 py-4 border-b border-border shrink-0">
  <SheetTitle className="text-base font-semibold">Create Support Ticket</SheetTitle>
  <SheetDescription className="text-xs text-muted-foreground">
@@ -231,7 +231,7 @@ export function CreateTicketSheet({ open, onClose }: CreateTicketSheetProps) {
  </SheetDescription>
  </SheetHeader>
 
- <ScrollArea className="flex-1">
+ <div className="flex-1 min-h-0 overflow-y-auto">
  <form onSubmit={formik.handleSubmit} id="create-ticket-form">
  <div className="px-6 py-5 space-y-5">
  <p className="text-xs font-bold text-foreground uppercase tracking-widest">
@@ -278,7 +278,7 @@ export function CreateTicketSheet({ open, onClose }: CreateTicketSheetProps) {
  <option value="LOW">Low</option>
  <option value="MEDIUM">Medium</option>
  <option value="HIGH">High</option>
- <option value="CRITICAL">Critical</option>
+ <option value="URGENT">Urgent</option>
  </select>
  </Field>
 
@@ -307,7 +307,7 @@ export function CreateTicketSheet({ open, onClose }: CreateTicketSheetProps) {
  </Field>
  </div>
  </form>
- </ScrollArea>
+ </div>
 
  <div className="border-t border-border px-6 py-4 flex justify-end gap-2 shrink-0">
  <Button variant="outline" size="sm" type="button" onClick={handleClose} disabled={formik.isSubmitting}>
