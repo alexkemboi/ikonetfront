@@ -8,6 +8,9 @@ import type {
   CreateTicketPayload,
   AddCommentPayload,
   TicketStatus,
+  TicketMetrics,
+  TicketPage,
+  TicketPriority,
 } from "@/lib/types/ticket"
 import type { ApiResponse } from "@/lib/types/auth"
 
@@ -79,6 +82,81 @@ export async function getTicketComments(id: number): Promise<ApiResponse<TicketC
       success: false,
       message: error instanceof Error ? error.message : String(error),
       data: [],
+      timestamp: new Date().toISOString(),
+    }
+  }
+}
+
+export async function searchTickets(params: {
+  status?: TicketStatus
+  priority?: TicketPriority
+  assignedAgentId?: number
+  customerId?: number
+  routerId?: number
+  startDate?: string
+  endDate?: string
+  page?: number
+  size?: number
+  sort?: string
+} = {}): Promise<ApiResponse<TicketPage>> {
+  try {
+    const headers = await getAuthHeaders()
+    const searchParams = new URLSearchParams()
+
+    Object.entries(params).forEach(([key, value]) => {
+      if (value === undefined || value === null || value === "") return
+      searchParams.append(key, String(value))
+    })
+
+    const url = `${buildApiUrl("/tickets/search")}${searchParams.toString() ? `?${searchParams.toString()}` : ""}`
+    const res = await fetch(url, {
+      headers,
+      next: { tags: ["tickets-search"] },
+    })
+    const data: ApiResponse<TicketPage> = await res.json()
+    return data
+  } catch (error) {
+    return {
+      status: 500,
+      success: false,
+      message: error instanceof Error ? error.message : String(error),
+      data: {
+        content: [],
+        totalElements: 0,
+        totalPages: 0,
+        last: true,
+        first: true,
+        numberOfElements: 0,
+        size: 10,
+        number: 0,
+        empty: true,
+      },
+      timestamp: new Date().toISOString(),
+    }
+  }
+}
+
+export async function getTicketMetrics(): Promise<ApiResponse<TicketMetrics>> {
+  try {
+    const headers = await getAuthHeaders()
+    const res = await fetch(buildApiUrl("/tickets/metrics"), {
+      headers,
+      next: { tags: ["tickets-metrics"] },
+    })
+    const data: ApiResponse<TicketMetrics> = await res.json()
+    return data
+  } catch (error) {
+    return {
+      status: 500,
+      success: false,
+      message: error instanceof Error ? error.message : String(error),
+      data: {
+        totalOpen: 0,
+        inProgress: 0,
+        resolved: 0,
+        escalated: 0,
+        breachedSla: 0,
+      },
       timestamp: new Date().toISOString(),
     }
   }

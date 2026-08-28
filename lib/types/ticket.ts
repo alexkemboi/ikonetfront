@@ -40,6 +40,26 @@ export interface AddCommentPayload {
   authorCustomerId?: number | null
 }
 
+export interface TicketMetrics {
+  totalOpen: number
+  inProgress: number
+  resolved: number
+  escalated: number
+  breachedSla: number
+}
+
+export interface TicketPage {
+  content: Ticket[]
+  totalElements: number
+  totalPages: number
+  last: boolean
+  first: boolean
+  numberOfElements: number
+  size: number
+  number: number
+  empty: boolean
+}
+
 export const NEXT_STATUS_MAP: Record<TicketStatus, { label: string; next: TicketStatus } | null> = {
   OPEN:        { label: "Assign",        next: "ASSIGNED"    },
   ASSIGNED:    { label: "Start Work",    next: "IN_PROGRESS" },
