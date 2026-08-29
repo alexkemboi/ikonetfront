@@ -29,6 +29,8 @@ import {
 import { revalidatePath, revalidateTag, updateTag } from "next/cache";
 import { auth } from "@/lib/auth";
 import { getPermissionForRoute } from "@/lib/data/nav";
+import type { IpMappingResponse, IpPool, PageResponse } from "@/lib/types/api";
+import { apiFetch } from "@/lib/apiClient";
 
 async function getRlsScopeParams(): Promise<URLSearchParams> {
   const session = await auth();
@@ -676,14 +678,11 @@ export const validateRouterConnectivity = async (
   request: RouterConnectionRequest
 ): Promise<ApiResponse<RouterValidationResponse>> => {
   try {
-    const headers = await getAuthHeaders();
-    const res = await fetch(`${BASE_URL}network/routers/validate-connectivity`, {
+    return await apiFetch<RouterValidationResponse>("/network/routers/validate-connectivity", {
       method: "POST",
-      headers,
-      body: JSON.stringify(request),
+      body: request,
+      auth: "required",
     });
-
-    return await res.json();
   } catch (error: unknown) {
     return {
       status: 500,
@@ -699,18 +698,16 @@ export const onboardRouter = async (
   request: RouterOnboardRequest
 ): Promise<ApiResponse<unknown>> => {
   try {
-    const headers = await getAuthHeaders();
-    const res = await fetch(`${BASE_URL}network/routers/onboard`, {
+    const res = await apiFetch<unknown>("/network/routers/onboard", {
       method: "POST",
-      headers,
-      body: JSON.stringify(request),
+      body: request,
+      auth: "required",
     });
 
-    const body = await res.json();
-    if (body.success) {
-      revalidateTag("network:regions", "max");
+    if (res.success) {
+      revalidateTag("network:regions", "page");
     }
-    return body;
+    return res;
   } catch (error: unknown) {
     return {
       status: 500,
@@ -724,22 +721,43 @@ export const onboardRouter = async (
 
 export const getRouterHistory = async (
   routerId: number,
-  limit: number = 30
+  size: number = 30
 ): Promise<RouterHealthSnapshot[]> => {
   try {
-    const headers = await getAuthHeaders();
-    const res = await fetch(`${BASE_URL}network/monitoring/router/${routerId}/history?limit=${limit}`, {
-      method: "GET",
-      headers,
-      next: { revalidate: 0 },
-    });
-
-    if (!res.ok) throw new Error(`History fetch failed. Status: ${res.status}`);
-    const body: ApiResponse<RouterHealthSnapshot[]> = await res.json();
-    return body.data || [];
+    // Contract (verified 2026-08-29): `GET /api/v1/network/monitoring/router/{routerId}/history`
+    // paginates via `?page=&size=` and returns `ApiResponse<Page<RouterHealthSnapshot>>`
+    // (NOT a bare array and NOT a `limit` param). Unwrap `data.content`.
+    const res = await apiFetch<PageResponse<RouterHealthSnapshot>>(
+      `/network/monitoring/router/${routerId}/history?page=0&size=${size}`,
+      { auth: "required", revalidate: 0 }
+    );
+    return res.data?.content ?? [];
   } catch (error) {
-    console.error(`getRouterHistory Error for ID ${routerId}:`, error);
+    console.error(`getRouterMonitoringHistory Error for ID ${routerId}:`, error);
     return [];
+  }
+};
+
+/** Polling alias for the live-telemetry connector (BE-AAA-045 pending). */
+export const getRouterMonitoringHistory = getRouterHistory;
+
+/**
+ * Latest router health snapshot — polling alias for the missing SSE live
+ * endpoint. Used by the NOC monitor page on a `refetchInterval` until the
+ * backend lands `GET /network/monitoring/router/{id}/live` (BE-AAA-045).
+ */
+export async function getRouterMonitoringLatest(
+  routerId: number
+): Promise<RouterHealthSnapshot | null> {
+  try {
+    const res = await apiFetch<RouterHealthSnapshot>(
+      `/network/monitoring/router/${routerId}/latest`,
+      { auth: "required", revalidate: 0 }
+    );
+    return res.data ?? null;
+  } catch (error) {
+    console.error(`getRouterMonitoringLatest Error for ID ${routerId}:`, error);
+    return null;
   }
 };
 
@@ -793,51 +811,47 @@ export const provisionSubscriber = async (
 export const getRouters = async (): Promise<RouterResponse[]> => {
   try {
     const params = await getRlsScopeParams();
-    const res = await fetch(`${BASE_URL}network/routers?${params.toString()}`, {
-      method: "GET",
-      headers: await getAuthHeaders(),
-      next: { tags: ["network:routers"] },
+    const res = await apiFetch<RouterResponse[]>(`/network/routers?${params.toString()}`, {
+      auth: "required",
+      tags: ["network:routers"],
     });
 
-    if (!res.ok) {
-      const errorText = await res.text();
-      console.error(`getRouters failed — status: ${res.status}, response: ${errorText}`);
-      throw new Error(`Failed to fetch routers: ${res.status}`);
+    if (!res.success) {
+      console.error(`getRouters failed — status: ${res.status}, message: ${res.message}`);
+      return [];
     }
-    const body = await res.json();
-    return body.data || [];
+    return res.data ?? [];
   } catch (error) {
     console.error("getRouters Error:", error);
     return [];
   }
 };
 
-export async function getIpPools() {
+export async function getIpPools(): Promise<IpPool[]> {
   try {
-    const headers = await getAuthHeaders();
-    const res = await fetch(`${BASE_URL}network/ip-pools`, {
-      headers,
-      next: { tags: ["network"] },
+    const res = await apiFetch<IpPool[]>("/network/ip-pools", {
+      auth: "required",
+      tags: ["network"],
     });
-    if (!res.ok) throw new Error(`Failed to fetch IP pools: ${res.statusText}`);
-    const body = await res.json();
-    return body.data || [];
+    return res.data ?? [];
   } catch (error) {
     console.error("[Network Action] getIpPools error:", error);
     return [];
   }
 }
 
-export async function getIpMappings() {
+/**
+ * `GET /api/v1/network/ip-mappings` returns `ApiResponse<Page<IpMappingResponse>>`.
+ * Unwrap the Page envelope to `content[]` — the previously returned Page object
+ * was the "subscriber tracking" break point (near-empty KPIs + BINDING rows).
+ */
+export async function getIpMappings(): Promise<IpMappingResponse[]> {
   try {
-    const headers = await getAuthHeaders();
-    const res = await fetch(`${BASE_URL}network/ip-mappings`, {
-      headers,
-      next: { tags: ["network"] },
+    const res = await apiFetch<PageResponse<IpMappingResponse>>("/network/ip-mappings", {
+      auth: "required",
+      tags: ["network"],
     });
-    if (!res.ok) throw new Error(`Failed to fetch IP mappings: ${res.statusText}`);
-    const body = await res.json();
-    return body.data || [];
+    return res.data?.content ?? [];
   } catch (error) {
     console.error("[Network Action] getIpMappings error:", error);
     return [];
@@ -866,24 +880,21 @@ export async function createIpMappingAction(input: {
     };
   }
   try {
-    const headers = await getAuthHeaders();
-    const res = await fetch(`${BASE_URL}customer-devices`, {
+    const res = await apiFetch("/customer-devices", {
       method: "POST",
-      headers,
-      body: JSON.stringify({
+      auth: "required",
+      body: {
         customerIdxno: Number(input.customerId),
         macAddress: input.macAddress.trim(),
         ipAddress: input.ipAddress.trim(),
         deviceType: "SMART_TV",
-      }),
+      },
     });
-    const body = (await res.json().catch(() => null)) as {
-      message?: string;
-    } | null;
-    if (!res.ok) {
+
+    if (!res.success) {
       return {
         success: false,
-        message: body?.message || `Failed to create mapping (HTTP ${res.status})`,
+        message: res.message || `Failed to create mapping (HTTP ${res.status})`,
       };
     }
     revalidateTag("network", "max");

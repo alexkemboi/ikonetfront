@@ -1,40 +1,29 @@
 "use server";
 
 import type { ApiResponse, LoginData, RefreshTokenResponse } from "@/lib/types/auth";
-
-const JSON_HEADERS = { "Content-Type": "application/json" };
+import { apiFetch } from "@/lib/apiClient";
 
 export async function loginAction(credentials: {
   username: string;
   password: string;
-}) {
-  const res = await fetch(`${process.env.BASE_API_URL}auth/userlogin`, {
+}): Promise<ApiResponse<LoginData & { refreshToken?: string }>> {
+  return apiFetch<LoginData & { refreshToken?: string }>("/auth/userlogin", {
     method: "POST",
-    headers: JSON_HEADERS,
-    body: JSON.stringify(credentials),
+    body: credentials,
+    auth: "public",
     cache: "no-store",
   });
-
-  console.log("Login response:", res);
-  const data = await res.json();
-  return data as Promise<ApiResponse<LoginData>>;
 }
 
 export async function forgotPasswordAction(
   email: string
 ): Promise<ApiResponse<unknown>> {
-  try {
-    const res = await fetch(`${process.env.BASE_API_URL}auth/forgot-password`, {
-      method:  "POST",
-      headers: JSON_HEADERS,
-      body:    JSON.stringify({ email }),
-      cache:   "no-store",
-    });
-    const data = await res.json();
-    return data;
-  } catch {
-    return { status: 500, success: false, message: "Network error. Please try again.", data: null, timestamp: "" };
-  }
+  return apiFetch("/auth/forgot-password", {
+    method: "POST",
+    body: { email },
+    auth: "public",
+    cache: "no-store",
+  });
 }
 
 export async function resetPasswordAction(payload: {
@@ -42,44 +31,39 @@ export async function resetPasswordAction(payload: {
   otp:         string;
   newPassword: string;
 }): Promise<ApiResponse<unknown>> {
-  try {
-    const res = await fetch(`${process.env.BASE_API_URL}auth/reset-password`, {
-      method:  "POST",
-      headers: JSON_HEADERS,
-      body:    JSON.stringify(payload),
-      cache:   "no-store",
-    });
-    const data = await res.json();
-    return data;
-  } catch {
-    return { status: 500, success: false, message: "Network error. Please try again.", data: null, timestamp: "" };
-  }
+  return apiFetch("/auth/reset-password", {
+    method: "POST",
+    body: payload,
+    auth: "public",
+    cache: "no-store",
+  });
 }
 
-export async function refreshAccessToken(refreshToken: string): Promise<RefreshTokenResponse | null> {
-  try {
-    const response = await fetch(`${process.env.BASE_API_URL}auth/refresh-token`, {
-      method: "POST",
-      headers: JSON_HEADERS,
-      body: JSON.stringify({ refresh_token: refreshToken }),
-    });
-
-    if (!response.ok) return null;
-
-    return await response.json();
-  } catch {
-    return null;
-  }
+/**
+ * Refresh the backend access JWT.
+ * Contract (verified): `POST /api/v1/auth/refresh-token` with
+ * `Authorization: Bearer <oldJwt>`; reply envelope `ApiResponse<{ token }>`.
+ * The backend keys refresh off the Bearer access JWT, NOT the `refreshToken`
+ * captured at login (that field is stored for forward-compat only).
+ */
+export async function refreshAccessToken(
+  currentJwt: string
+): Promise<{ token: string } | null> {
+  const res = await apiFetch<RefreshTokenResponse>("/auth/refresh-token", {
+    method: "POST",
+    body: {},
+    authorization: `Bearer ${currentJwt}`,
+    cache: "no-store",
+  });
+  if (!res.success || !res.data?.token) return null;
+  return { token: res.data.token };
 }
 
 export async function logoutAction(token: string): Promise<void> {
   try {
-    await fetch(`${process.env.BASE_API_URL}auth/logout`, {
+    await apiFetch("/auth/logout", {
       method: "POST",
-      headers: {
-        ...JSON_HEADERS,
-        Authorization: `Bearer ${token}`,
-      },
+      authorization: `Bearer ${token}`,
     });
   } catch {
     // Silently fail — the session will be cleaned up client-side

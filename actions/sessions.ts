@@ -1,13 +1,18 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
-import { BASE_URL } from "@/lib/constants";
 import { getIpMappings, getRouters } from "@/actions/network";
+import { getCustomers } from "@/actions/customer";
 import { getCurrentUserPermissions, NO_PERMISSIONS } from "@/lib/data/nav";
-import { LiveSessionItem, LiveSessionKpis, SessionProtocol } from "@/lib/types/sessions";
+import type {
+  IpMappingResponse,
+  LiveSessionItem,
+  LiveSessionKpis,
+  SessionProtocol,
+} from "@/lib/types/sessions";
+import type { Customer } from "@/lib/types/customer";
 
-// ── Display fallbacks (blueprint atom values) ────────────────────────────────
+// ── Display fallbacks (blueprint atom values, ONLY when no token / no data) ──
 
 const FALLBACK_SESSION_KPIS: LiveSessionKpis = {
   currentlyConnectedCount: 51,
@@ -113,33 +118,10 @@ function formatOnlineDuration(startIso?: string): string {
   return `${h}h ${m}m`;
 }
 
-function formatDelta(ms: number): string {
-  const minutes = Math.max(1, Math.round(ms / 60000));
-  if (minutes < 60) return `${minutes}m`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 48) return `${hours}h`;
-  return `${Math.floor(hours / 24)}d`;
-}
-
-function formatExpiry(iso?: string): string {
-  if (!iso || isNaN(new Date(iso).getTime())) return "—";
-  const expiry = new Date(iso);
-  const base = expiry.toLocaleString("en-US", {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-  });
-  const diffMs = expiry.getTime() - Date.now();
-  const relative = diffMs < 0 ? `${formatDelta(-diffMs)} ago` : `in ${formatDelta(diffMs)}`;
-  return `${base} (${relative})`;
-}
-
 /**
- * Deterministic, stable pseudo-counters synthesized per device (MAC) because
- * the `/network/ip-mappings` endpoint returns binding records without octet
- * counters. Approved hybrid model — real identity + synthesized traffic.
+ * Deterministic pseudo-counters per device (MAC). `/network/ip-mappings`
+ * returns binding records without octet counters — identity is real, traffic
+ * volume is synthesized until the backend publishes radacct octets.
  */
 function hashString(input: string): number {
   let hash = 0;
@@ -149,36 +131,52 @@ function hashString(input: string): number {
   return Math.abs(hash);
 }
 
-// ── Raw shape returned by the network/ip-mappings endpoint ──────────────────
+// ── Aggregation from the real `IpMappingResponse` DTO ────────────────────────
 
-type IpMappingRecord = {
-  id?: string | number;
-  customerId?: string | number;
-  customerName?: string;
-  customerEmail?: string;
-  custType?: string;
-  packageName?: string;
-  package?: string;
-  ipAddress?: string;
-  macAddress?: string;
-  routerId?: string | number;
-  routerName?: string;
-  routerLocation?: string;
-  routerIp?: string;
-  leaseStart?: string;
-  leaseExpiry?: string;
-  status?: string;
-};
-
-function isActiveMapping(mapping: IpMappingRecord): boolean {
-  if (String(mapping.status ?? "").toLowerCase() === "reserved") return false;
-  if (String(mapping.status ?? "").toLowerCase() === "active") return true;
-  const expiryMs = mapping.leaseExpiry ? new Date(mapping.leaseExpiry).getTime() : NaN;
-  if (!isNaN(expiryMs)) return expiryMs > Date.now();
-  return true;
+function isActiveMapping(mapping: IpMappingResponse): boolean {
+  return mapping.status === "ONLINE";
 }
 
-// ── Hybrid data flow ─────────────────────────────────────────────────────────
+function mapToSession(
+  mapping: IpMappingResponse,
+  nameByUsername: Map<string, string>,
+  routerNameByStation: Map<string, string>,
+  routerIpByStation: Map<string, string>
+): LiveSessionItem | null {
+  const username = String(mapping.username ?? "").trim();
+  const mac = String(mapping.macAddress ?? "").trim();
+  const ip = String(mapping.ipAddress ?? "").trim();
+  if (!username && !mac && !ip) return null;
+
+  const stationName = String(mapping.stationName ?? "").trim();
+  const protocol: SessionProtocol =
+    String(mapping.serviceType ?? "").toUpperCase() === "PPPOE" ? "PPPOE" : "HOTSPOT";
+
+  const seed = mac || ip || username;
+  const downloadBytes = hashString(seed) % 5500000000;
+  const uploadBytes = hashString(seed + ":upload") % 800000000;
+
+  return {
+    id: `${username}|${mac}|${ip}`,
+    subscriberCode: username || "—",
+    subscriberName: username && nameByUsername.has(username) ? nameByUsername.get(username) : undefined,
+    protocol,
+    deviceMac: mac || "—",
+    assignedIp: ip || "—",
+    routerName: routerNameByStation.get(stationName) || stationName || "—",
+    routerManagementIp: routerIpByStation.get(stationName) || "",
+    downloadBytes,
+    uploadBytes,
+    downloadFormatted: formatBytes(downloadBytes),
+    uploadFormatted: formatBytes(uploadBytes),
+    onlineDurationFormatted: formatOnlineDuration(mapping.lastSeen),
+    expiryFormatted: "—",
+    connectedAt: mapping.lastSeen,
+    isFallback: false,
+  };
+}
+
+// ── Hybrid data flow (real bindings + synthesized octets) ────────────────────
 
 export async function getLiveSessionsData(): Promise<{
   kpis: LiveSessionKpis;
@@ -192,23 +190,38 @@ export async function getLiveSessionsData(): Promise<{
   }
 
   try {
-    const [mappings, routers] = await Promise.all([getIpMappings(), getRouters()]);
+    const [mappings, routers] = await Promise.all([
+      getIpMappings(),
+      getRouters(),
+    ]);
     if (!mappings || mappings.length === 0) {
       return { kpis: FALLBACK_SESSION_KPIS, sessions: FALLBACK_LIVE_SESSIONS };
     }
 
-    const routerIpById = new Map<number, string>();
-    const routerNameById = new Map<number, string>();
+    // Join on `username` so display names come from the real customer directory.
+    // Bounded read (200 rows) — a full-directory scan on a frequently-refreshed
+    // monitor page is too expensive; unresolvable usernames simply fall back to
+    // showing `subscriberCode` as the display name.
+    const customersRes = await getCustomers(0, 200).catch(() => null);
+    const nameByUsername = new Map<string, string>();
+    const customerList = (customersRes?.data?.content ?? []) as Customer[];
+    for (const c of customerList) {
+      if (c.username && c.fullName) nameByUsername.set(c.username, c.fullName);
+    }
+
+    // Join router management IPs on `stationName`.
+    const routerIpByStation = new Map<string, string>();
+    const routerNameByStation = new Map<string, string>();
     for (const router of routers) {
-      if (router?.id == null) continue;
-      if (router.ipAddress) routerIpById.set(router.id, router.ipAddress);
-      if (router.name) routerNameById.set(router.id, router.name);
+      if (!router?.stationName) continue;
+      if (router.ipAddress) routerIpByStation.set(router.stationName, router.ipAddress);
+      if (router.name) routerNameByStation.set(router.stationName, router.name);
     }
 
     const sessions: LiveSessionItem[] = [];
-    for (const raw of mappings as IpMappingRecord[]) {
+    for (const raw of mappings as IpMappingResponse[]) {
       if (!isActiveMapping(raw)) continue;
-      const sessionItem = mapToSession(raw, routerNameById, routerIpById);
+      const sessionItem = mapToSession(raw, nameByUsername, routerNameByStation, routerIpByStation);
       if (sessionItem) sessions.push(sessionItem);
     }
 
@@ -234,49 +247,7 @@ export async function getLiveSessionsData(): Promise<{
   }
 }
 
-function mapToSession(
-  mapping: IpMappingRecord,
-  routerNameById: Map<number, string>,
-  routerIpById: Map<number, string>
-): LiveSessionItem | null {
-  const name = String(mapping.customerName ?? "").trim();
-  const mac = String(mapping.macAddress ?? "").trim();
-  const ip = String(mapping.ipAddress ?? "").trim();
-  if (!name && !mac && !ip) return null;
-
-  const seed = mac || ip || name;
-  const downloadBytes = hashString(seed) % 5500000000;
-  const uploadBytes = hashString(seed + ":upload") % 800000000;
-
-  const routerKey = mapping.routerId != null ? Number(mapping.routerId) : NaN;
-  const protocol: SessionProtocol =
-    String(mapping.custType ?? "").toLowerCase() === "pppoe" ? "PPPOE" : "HOTSPOT";
-  const routerName = !isNaN(routerKey)
-    ? routerNameById.get(routerKey) || mapping.routerName || ""
-    : mapping.routerName || "";
-
-  return {
-    id: mapping.id != null ? String(mapping.id) : `${name}|${mac}|${ip}`,
-    subscriberCode: name || "—",
-    subscriberName: undefined,
-    protocol,
-    deviceMac: mac || "—",
-    assignedIp: ip || "—",
-    routerName: routerName || "—",
-    routerManagementIp: (!isNaN(routerKey) && routerIpById.get(routerKey)) || mapping.routerIp || "",
-    downloadBytes,
-    uploadBytes,
-    downloadFormatted: formatBytes(downloadBytes),
-    uploadFormatted: formatBytes(uploadBytes),
-    onlineDurationFormatted: formatOnlineDuration(mapping.leaseStart),
-    expiryFormatted: formatExpiry(mapping.leaseExpiry),
-    connectedAt: mapping.leaseStart,
-    leaseExpiry: mapping.leaseExpiry,
-    isFallback: false,
-  };
-}
-
-// ── RFC 5176 CoA disconnect ──────────────────────────────────────────────────
+// ── RFC 5176 CoA disconnect (GATED until BE-AAA-043) ─────────────────────────
 
 export async function disconnectLiveSession(
   username: string,
@@ -304,32 +275,12 @@ export async function disconnectLiveSession(
     };
   }
 
-  try {
-    const res = await fetch(`${BASE_URL}radius/coa/disconnect`, {
-      method: "POST",
-      cache: "no-store",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ username, nasIp }),
-    });
-
-    const body = (await res.json().catch(() => ({}))) as { message?: string };
-    if (!res.ok) {
-      return {
-        success: false,
-        message: body.message || `Disconnect failed (HTTP ${res.status})`,
-      };
-    }
-
-    revalidatePath("/network/live-sessions");
-    return { success: true, message: body.message || "Session disconnected" };
-  } catch (error) {
-    console.warn("Failed to disconnect live session:", error);
-    return {
-      success: false,
-      message: error instanceof Error ? error.message : "Failed to disconnect session",
-    };
-  }
+  // GATED: the RFC 5176 CoA HTTP adapter (`POST /api/v1/radius/coa/disconnect`)
+  // does not exist in the backend (UDP 3799 engine is server-side only).
+  // Re-enable once BE-AAA-043 lands; the UI control is disabled meanwhile.
+  return {
+    success: false,
+    message:
+      "Session disconnect is disabled — pending the backend RADIUS CoA HTTP adapter (BE-AAA-043).",
+  };
 }

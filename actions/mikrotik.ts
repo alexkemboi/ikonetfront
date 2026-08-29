@@ -11,6 +11,7 @@ import {
 } from "@/lib/types/mikrotik";
 import { BASE_URL } from "@/lib/constants";
 import { auth } from "@/lib/auth";
+import { apiFetch } from "@/lib/apiClient";
 
 async function getRlsScopeParams(): Promise<URLSearchParams> {
   const session = await auth();
@@ -39,32 +40,11 @@ export async function getMikrotikDevices(): Promise<
 > {
   try {
     const params = await getRlsScopeParams();
-    const response = await fetch(`${BASE_URL}network-devices?${params.toString()}`, {
-      headers: await getAuthHeaders(),
-      next: {
-        tags: ["mikrotik-devices"],
-      },
+    const res = await apiFetch<MikrotikDevice[]>(`/network-devices?${params.toString()}`, {
+      auth: "required",
+      tags: ["mikrotik-devices"],
     });
-    console.log("Fetching MikroTik devices from API...", response);
-    if (!response.ok) {
-      const contentType = response.headers.get('content-type');
-      let errorData: unknown;
-      if (contentType && contentType.includes('application/json')) {
-        errorData = await response.json();
-      } else {
-        errorData = await response.text(); // Read as text if not JSON
-      }
-      return {
-        status: response.status,
-        success: false,
-        data: [],
-        timestamp: new Date().toISOString(),
-        message: typeof errorData === 'string' ? errorData : (errorData as { message?: string })?.message || 'Failed to fetch MikroTik devices',
-        error: (errorData as { message?: string })?.message || String(errorData) || 'An unknown error occurred',
-      };
-    }
-    const data: ApiResponse<MikrotikDevice[]> = await response.json();
-    return data;
+    return { ...res, data: res.data ?? [], error: res.message };
   } catch (error: unknown) {
     console.error("Error fetching MikroTik devices:", error);
     return {
@@ -119,25 +99,11 @@ export async function getMikrotikDeviceStatus(
   id: number
 ): Promise<ApiResponse<MikrotikDeviceStatus | null>> {
   try {
-    const response = await fetch(`${BASE_URL}network-devices/${id}/status`, {
-      next: {
-        tags: [`mikrotik-device-status-${id}`],
-      },
-      headers: await getAuthHeaders(),
+    const res = await apiFetch<MikrotikDeviceStatus>(`/network-devices/${id}/status`, {
+      auth: "required",
+      tags: [`mikrotik-device-status-${id}`],
     });
-    if (!response.ok) {
-      const errorData: unknown = await response.json();
-      return {
-        status: response.status,
-        success: false,
-        message: (errorData as { message?: string })?.message || "Failed to fetch device status",
-        data: null,
-        timestamp: new Date().toISOString(),
-      };
-    }
-    const data: ApiResponse<MikrotikDeviceStatus> = await response.json();
-    console.log(`Fetched status for device ${id}:`, data);
-    return data;
+    return { ...res, data: res.data, error: res.message };
   } catch (error: unknown) {
     console.error(`Error fetching status for device ${id}:`, error);
     return {
@@ -154,35 +120,11 @@ export async function getMikrotikDeviceInterfaces(
   id: number
 ): Promise<ApiResponse<MikrotikInterface[]>> {
   try {
-    console.log(`Fetching interfaces for device ${ BASE_URL } / network - devices / ${ id } / interfaces...`);
-    const response = await fetch(
-      `${BASE_URL}network-devices/${id}/interfaces`,
-      {
-        next: {
-          tags: [`mikrotik-device-interfaces-${id}`],
-        },
-        headers: await getAuthHeaders(),
-      }
-    );
-    if (!response.ok) {
-      const contentType = response.headers.get('content-type');
-      let errorData: unknown;
-      if (contentType && contentType.includes('application/json')) {
-        errorData = await response.json();
-      } else {
-        errorData = await response.text(); // Read as text if not JSON
-      }
-      return {
-        status: response.status,
-        success: false,
-        message: typeof errorData === 'string' ? errorData : (errorData as { message?: string })?.message || 'Failed to fetch device interfaces',
-        data: [],
-        timestamp: new Date().toISOString(),
-        error: (errorData as { message?: string })?.message || String(errorData) || 'An unknown error occurred',
-      };
-    }
-    const data: ApiResponse<MikrotikInterface[]> = await response.json();
-    return data;
+    const res = await apiFetch<MikrotikInterface[]>(`/network-devices/${id}/interfaces`, {
+      auth: "required",
+      tags: [`mikrotik-device-interfaces-${id}`],
+    });
+    return { ...res, data: res.data ?? [], error: res.message };
   } catch (error: unknown) {
     console.error(`Error fetching interfaces for device ${id}:`, error);
     return {
