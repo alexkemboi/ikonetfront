@@ -12,37 +12,37 @@ interface PackageCardProps {
 export default function PackageCard({ pkg, onSelect }: PackageCardProps) {
  const [isExpanded, setIsExpanded] = useState(false);
 
- const speedLabel =
- pkg.speedDownload >= 1000 ? "Unlimited" : `${pkg.speedDownload} Mbps`;
+    const speedLabel =
+        (pkg.speedDownload ?? 0) >= 1000 ? "Unlimited" : `${pkg.speedDownload ?? 0} Mbps`;
 
- return (
- <div
- className="border border-border rounded-lg overflow-hidden bg-card transition-all duration-200 hover:border-primary/50"
- role="button"
- tabIndex={0}
- onKeyDown={(e) => {
- if (e.key === "Enter") onSelect(pkg);
- if (e.key === " ") setIsExpanded(!isExpanded);
- }}
- aria-label={`${pkg.packageName} package`}
- >
- {/* Main row - always visible */}
- <div className="px-4 py-3 flex items-center justify-between gap-4">
- {/* Left: Package info (compact) */}
- <div className="flex-1 min-w-0 ">
- <h3 className="text-sm font-semibold text-foreground truncate">
- {pkg.packageName}
- </h3>
- <div className="text-xs text-muted-foreground mt-4.5 md:mt-0.5 flex items-center gap-2 ">
- <div className="flex items-center gap-1">
- <ArrowUp className="w-4 h-4 text-primary" />
- {pkg.speedUpload} Mbps 
- </div>
+    return (
+        <div
+            className="border border-border rounded-lg overflow-hidden bg-card transition-all duration-200 hover:border-primary/50"
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => {
+                if (e.key === "Enter") onSelect(pkg);
+                if (e.key === " ") setIsExpanded(!isExpanded);
+            }}
+            aria-label={`${pkg.packageName} package`}
+        >
+            {/* Main row - always visible */}
+            <div className="px-4 py-3 flex items-center justify-between gap-4">
+                {/* Left: Package info (compact) */}
+                <div className="flex-1 min-w-0  ">
+                    <h3 className="text-sm font-semibold text-foreground truncate">
+                        {pkg.packageName}
+                    </h3>
+                    <p className="text-xs text-muted-foreground mt-4.5 md:mt-0.5 flex items-center gap-2 ">
+                        <div className="flex items-center gap-1">
+                            <ArrowUp className="w-4 h-4 text-primary" />
+                            {pkg.speedUpload ?? 0} Mbps 
+                        </div>
 
- <div className="flex items-center gap-1">
- <ArrowDown className="w-4 h-4 text-green-700" />
- {pkg.speedDownload} Mbps
- </div>
+                        <div className="flex items-center gap-1">
+                            <ArrowDown className="w-4 h-4 text-green-700" />
+                            {pkg.speedDownload ?? 0} Mbps
+                        </div>
 
 
  {/* <div className="flex items-center gap-1">
@@ -84,34 +84,34 @@ export default function PackageCard({ pkg, onSelect }: PackageCardProps) {
  </div>
  </div>
 
- {/* Expanded details */}
- {isExpanded && (
- <div className="border-t border-border px-4 py-3 bg-secondary/30 space-y-2 text-sm">
- <div className="flex justify-between items-start">
- <span className="text-muted-foreground">Download Speed:</span>
- <span className="font-medium text-foreground">{speedLabel}</span>
- </div>
- <div className="flex justify-between items-start">
- <span className="text-muted-foreground">Data Amount:</span>
- <span className="font-medium text-foreground">{pkg.speedDownload} GB</span>
- </div>
- <div className="flex justify-between items-start">
- <span className="text-muted-foreground">Upload Speed:</span>
- <span className="font-medium text-foreground">{pkg.speedUpload} Mbps</span>
- </div>
- <div className="flex justify-between items-start">
- <span className="text-muted-foreground">Validity:</span>
- <span className="font-medium text-foreground">
- {pkg.validityValue} {pkg.validityType}
- </span>
- </div>
- {/* {pkg.description && (
- <div className="pt-2 border-t border-border">
- <p className="text-muted-foreground">{pkg.description}</p>
- </div>
- )} */}
- </div>
- )}
- </div>
- );
+            {/* Expanded details */}
+            {isExpanded && (
+                <div className="border-t border-border px-4 py-3 bg-secondary/30 space-y-2 text-sm">
+                    <div className="flex justify-between items-start">
+                        <span className="text-muted-foreground">Download Speed:</span>
+                        <span className="font-medium text-foreground">{speedLabel}</span>
+                    </div>
+                    <div className="flex justify-between items-start">
+                        <span className="text-muted-foreground">Data Amount:</span>
+                        <span className="font-medium text-foreground">{pkg.speedDownload ?? 0} GB</span>
+                    </div>
+                    <div className="flex justify-between items-start">
+                        <span className="text-muted-foreground">Upload Speed:</span>
+                        <span className="font-medium text-foreground">{pkg.speedUpload ?? 0} Mbps</span>
+                    </div>
+                    <div className="flex justify-between items-start">
+                        <span className="text-muted-foreground">Validity:</span>
+                        <span className="font-medium text-foreground">
+                            {pkg.validityValue} {pkg.validityType}
+                        </span>
+                    </div>
+                    {/* {pkg.description && (
+                        <div className="pt-2 border-t border-border">
+                            <p className="text-muted-foreground">{pkg.description}</p>
+                        </div>
+                    )} */}
+                </div>
+            )}
+        </div>
+    );
 }
