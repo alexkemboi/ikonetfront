@@ -85,8 +85,8 @@ export default function LoginForm({ error }: { error?: string }) {
           redirect: true,
           callbackUrl: "/dashboard",
         });
-      }catch(e:any){
-        // console.error(e?.message)
+      } catch {
+        // Swallow — signIn with redirect handles the error surface server-side.
       }
       
     },
