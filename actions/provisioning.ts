@@ -225,6 +225,9 @@ function buildLocalToken(identity: string): string {
 }
 
 function buildFetchCommand(token: string): string {
-  const url = buildApiUrl(`/network/provisioning/${token}`);
+  // Verified backend contract: `GET /api/v1/provision/bootstrap?token=<token>`
+  // (permitAll, text/plain, attachment `ibs-init.rsc`). The old
+  // `/network/provisioning/{token}` route has no controller mapping.
+  const url = buildApiUrl(`/provision/bootstrap?token=${token}`);
   return `/tool fetch mode=https url="${url}" dst-path=ibs-init.rsc check-certificate=no;:delay 2s;/import ibs-init.rsc;`;
 }

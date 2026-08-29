@@ -1,156 +1,110 @@
 'use server';
 
 import { revalidateTag } from 'next/cache';
-import {
+import type {
   HotspotPackagesResponse,
+  HotspotPackage,
   InitiatePaymentRequest,
   InitiatePaymentResponse,
+  HotspotSessionResponse,
   ReconnectResponse,
+  ReconnectResponseData,
 } from '@/lib/types/hotspot';
-import { BASE_URL, buildApiUrl } from '@/lib/constants';
-import { auth } from '@/lib/auth';
+import type { ApiResponse } from '@/lib/types/api';
+import { apiFetch } from '@/lib/apiClient';
 
-async function getAuthHeaders(): Promise<HeadersInit> {
-  const session = await auth();
-  const headers: HeadersInit = { "Content-Type": "application/json" };
-  if (session?.user?.apiToken) {
-    (headers as Record<string, string>)["Authorization"] =
-      `Bearer ${session.user.apiToken}`;
-  }
-  return headers;
+/**
+ * Public hotspot portal actions.
+ *
+ * These routes live under `/api/v1/hotspot/**` + `/api/v1/system/**`, which the
+ * backend SecurityConfig marks `permitAll` for the public (captive-portal)
+ * subset — NO Authorization header may be attached here (an admin JWT on a
+ * captive portal would be both wrong scoped and potentially exposed to
+ * unauthenticated users).
+ *
+ * Contract (verified 2026-08-29): `GET /api/v1/hotspot/packages` is served by
+ * `HotspotPublicController` and returns `ApiResponse<List<NetPackageResponse>>`
+ * (the captive-portal active-package landing). BE-AAA-042 shipped — this is the
+ * endpoint per plan decision D2.
+ */
+
+export async function getPublicHotspotPackagesAction(): Promise<HotspotPackagesResponse> {
+  const res = await apiFetch<HotspotPackage[]>('/hotspot/packages', {
+    auth: 'public',
+    tags: ['hotspot-packages'],
+    revalidate: 60,
+  });
+  return { ...res, data: res.data ?? [] };
 }
 
-
-export async function getHotspotPackages(): Promise<HotspotPackagesResponse> {
-  try {
-    console.log(`${BASE_URL}system/packages`)
-    const response = await fetch(`${BASE_URL}system/packages`, {
-      headers: await getAuthHeaders(),
-      next: {
-        tags: ['hotspot-packages'],
-        revalidate: 3600, // Revalidate every hour
-      },
-    });
-
-    
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || 'Failed to fetch hotspot packages');
-    }
-
-    const data = await response.json()
-
-    console.log(data)
-
-    return data;
-  } catch (error) {
-    console.error('Error fetching hotspot packages:', error);
-    return {
-      status: 500,
-      success: false,
-      message: (error as Error).message || 'Internal server error',
-      data: [],
-      timestamp: new Date().toISOString(),
-    };
-  }
-}
+/** Backward-compatible alias — see `getPublicHotspotPackagesAction`. */
+export const getHotspotPackages = getPublicHotspotPackagesAction;
 
 export async function initiateHotspotPayment(
   requestBody: InitiatePaymentRequest
 ): Promise<InitiatePaymentResponse> {
-  try {
-    console.log(`${BASE_URL}hotspot/initiate` );
-    const response = await fetch(`${BASE_URL}hotspot/initiate`, {
-      method: 'POST',
-      headers: await getAuthHeaders(),
-      body: JSON.stringify(requestBody),
-    });
+  const res = await apiFetch<HotspotSessionResponse>('/hotspot/initiate', {
+    method: 'POST',
+    body: requestBody,
+    auth: 'public',
+  });
 
-    console.log('Initiate Payment Request:', requestBody);
-    console.log('Initiate Payment Response Status:', response.status);
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || 'Failed to initiate payment');
-    }
-
-    revalidateTag('hotspot-packages', 'page'); // Revalidate packages after payment
-    const paymentData = await response.json();
-    return paymentData;
-  } catch (error) {
-    return {
-      status: 500,
-      success: false,
-      message: (error as Error).message || 'Internal server error',
-      data: null,
-      timestamp: new Date().toISOString(),
-    };
+  if (!res.success) {
+    return { ...res, data: null };
   }
+
+  revalidateTag('hotspot-packages', 'page');
+  return { ...res, data: res.data ?? null };
 }
 
-export async function activateVoucherAction(code: string) {
-  try {
-    const headers = await getAuthHeaders();
-    const res = await fetch(`${BASE_URL}hotspot/activate`, {
-      method: "POST",
-      headers,
-      body: JSON.stringify({ voucherCode: code }),
-    });
-
-    if (!res.ok) {
-      const errorData = await res.json().catch(() => null);
-      throw new Error(errorData?.message || `Voucher activation failed with status ${res.status}`);
-    }
-
-    revalidateTag("hotspot", "page");
-    return await res.json();
-  } catch (error) {
-    console.error("[Hotspot Action] activateVoucherAction error:", error);
-    return {
-      status: 500,
-      success: false,
-      message: (error as Error).message,
-      data: null,
-      timestamp: new Date().toISOString(),
-    };
-  }
+/**
+ * Voucher activation — TEMPORARILY GATED OFF.
+ *
+ * The backend has no `POST /hotspot/activate` mapping in HotspotController /
+ * HotspotSessionController (BE gap ticket; endpoint exists only in OpenAPI
+ * docs). Keep the action returning a readable envelope so the UI can explain
+ * the state instead of 404ing. Re-enable once the backend route lands.
+ */
+export async function activateVoucherAction(code: string): Promise<ApiResponse<null>> {
+  void code;
+  return {
+    status: 503,
+    success: false,
+    message:
+      "Voucher activation is temporarily unavailable — pending the backend route (POST /hotspot/activate) being verified. Tier-2 BE ticket.",
+    data: null,
+    timestamp: new Date().toISOString(),
+  };
 }
 
 export async function checkActiveSession(
   macAddress: string,
   ipAddress: string
 ): Promise<ReconnectResponse> {
-  try {
-    const response = await fetch(
-      `${buildApiUrl("/hotspot/reconnect")}?mac=${macAddress}&ip=${ipAddress}`,
-      {
-        next: {
-          tags: ['hotspot-session'],
-          revalidate: 60, // Revalidate every minute for session status
-        },
-        headers: await getAuthHeaders(),
-      }
-    );
+  // Contract: `POST /api/v1/hotspot/reconnect` body `HotspotConnectRequest { macAddress, clientIp }`.
+  const res = await apiFetch<ReconnectResponseData>('/hotspot/reconnect', {
+    method: 'POST',
+    body: { macAddress, clientIp: ipAddress },
+    auth: 'public',
+  });
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || 'Failed to check active session');
-    }
-
-    const sessionData = await response.json();
-    return sessionData;
-  } catch (error) {
+  if (!res.success) {
     return {
-      status: 500,
-      success: false,
-      message: (error as Error).message || 'Internal server error',
+      ...res,
       data: {
         hasActiveSession: false,
-        message: (error as Error).message || 'Internal server error',
+        message: res.message,
         session: null,
       },
-      timestamp: new Date().toISOString(),
     };
   }
+
+  return {
+    ...res,
+    data: res.data ?? {
+      hasActiveSession: false,
+      message: res.message,
+      session: null,
+    },
+  };
 }
