@@ -96,6 +96,24 @@ export interface RouterHealthSnapshot {
   createdAt: string;
 }
 
+/**
+ * Contract for the SSE `RouterTelemetryEvent` frames BE-AAA-045 will publish on
+ * `GET /api/v1/network/monitoring/router/{id}/live` (text/event-stream, Bearer)
+ * once it lands. Until then the NOC monitor page polls `/latest` + `/history`.
+ */
+export interface RouterTelemetryFrame {
+  routerId: number;
+  timestamp: string;
+  cpuUsage: number;
+  totalMemory: number;
+  freeMemory: number;
+  activePppoeSessions: number;
+  activeHotspotSessions: number;
+  uptime: string;
+  latencyMs: number;
+  isOnline: boolean;
+}
+
 export interface RouterCapacityResponse {
   id: number;
   name: string;
