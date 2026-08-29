@@ -57,8 +57,8 @@ const CustomerForm = () => {
         } else {
           toast.error(result.message || "Failed to create customer.");
         }
-      } catch (error: any) {
-        toast.error(error.message || "An unexpected error occurred.");
+      } catch (error: unknown) {
+        toast.error(error instanceof Error ? error.message : "An unexpected error occurred.");
       } finally {
         setSubmitting(false);
       }
