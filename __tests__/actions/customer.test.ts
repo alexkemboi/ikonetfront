@@ -1,82 +1,99 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { getCustomers, addCustomer } from "@/actions/customer";
+import { server } from "@/mocks/server";
+import { http, HttpResponse } from "msw";
+import { API_PREFIX } from "@/mocks/handlers/auth-guard";
+import {
+  customersPageFixture,
+  customerByIdFixture,
+  errorEnvelope,
+} from "@/contracts/catalog";
+import { getCustomers, getCustomerById, addCustomer } from "@/actions/customer";
+import { revalidatePath, revalidateTag } from "next/cache";
 
-const BASE_URL = "http://localhost:8381/api/v1/";
+const TOKEN = "mock-valid-bearer-token";
 
 beforeEach(() => {
   vi.clearAllMocks();
 });
 
 describe("getCustomers", () => {
-  it("fetches customers with correct URL and auth headers", async () => {
-    const mockResponse = {
-      status: 200,
-      success: true,
-      message: "Customers fetched successfully",
-      data: {
-        content: [
-          { id: 1, firstname: "John", lname: "Doe" },
-          { id: 2, firstname: "Jane", lname: "Smith" },
-        ],
-        pageable: {
-          pageNumber: 0,
-          pageSize: 10,
-          sort: { unsorted: false, sorted: true, empty: false },
-          offset: 0,
-          unpaged: false,
-          paged: true,
-        },
-        totalElements: 2,
-        totalPages: 1,
-        last: true,
-        first: true,
-        numberOfElements: 2,
-        size: 10,
-        number: 0,
-        sort: { unsorted: false, sorted: true, empty: false },
-        empty: false,
-      },
-      timestamp: new Date().toISOString(),
-    };
+  it("fetches the customers Page envelope with Bearer auth", async () => {
+    const result = await getCustomers(0, 10);
 
-    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      new Response(JSON.stringify(mockResponse), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
+    expect(result.success).toBe(true);
+    expect(result.data?.content).toHaveLength(2);
+    expect(result.data?.totalElements).toBe(2);
+  });
+
+  it("sends the Authorization header on this protected route", async () => {
+    server.use(
+      http.get(`${API_PREFIX}/customers`, ({ request }) => {
+        expect(request.headers.get("authorization")).toBe(`Bearer ${TOKEN}`);
+        return HttpResponse.json(customersPageFixture(), { status: 200 });
       })
     );
 
-    const result = await getCustomers(0, 10);
+    await getCustomers(0, 10);
+  });
 
-    const expectedUrl = `${BASE_URL}customers?page=0&size=10&regionId=1&stationId=2&locationId=3`;
-    expect(fetchSpy).toHaveBeenCalledWith(expectedUrl, {
-      headers: expect.objectContaining({
-        "Content-Type": "application/json",
-        Authorization: "Bearer mock-valid-bearer-token",
-      }),
-      next: { tags: ["customers"] },
-    });
+  it("passes page/size/scope query params to the backend", async () => {
+    server.use(
+      http.get(`${API_PREFIX}/customers`, ({ request }) => {
+        const url = new URL(request.url);
+        expect(url.searchParams.get("page")).toBe("0");
+        expect(url.searchParams.get("size")).toBe("10");
+        expect(url.searchParams.get("regionId")).toBe("1");
+        expect(url.searchParams.get("stationId")).toBe("2");
+        expect(url.searchParams.get("locationId")).toBe("3");
+        return HttpResponse.json(customersPageFixture(), { status: 200 });
+      })
+    );
+
+    await getCustomers(0, 10);
+  });
+
+  it("re-fetches fresh data after revalidateTag (page-refresh flow)", async () => {
+    let call = 0;
+    server.use(
+      http.get(`${API_PREFIX}/customers`, () => {
+        call += 1;
+        return HttpResponse.json(
+          call === 1 ? customersPageFixture(2, 2) : customersPageFixture(2, 5),
+          { status: 200 }
+        );
+      })
+    );
+
+    const first = await getCustomers(0, 10);
+    expect(first.data?.totalElements).toBe(2);
+
+    revalidateTag("customers", "page"); // simulated invalidation
+    const second = await getCustomers(0, 10);
+    expect(second.data?.totalElements).toBe(5);
+  });
+});
+
+describe("getCustomerById", () => {
+  it("fetches a single customer by idxno", async () => {
+    const result = await getCustomerById(1);
     expect(result.success).toBe(true);
-    expect(result.data.content).toHaveLength(2);
+    expect(result.data?.userIdxno).toBe(customerByIdFixture().data?.userIdxno);
   });
 });
 
 describe("addCustomer", () => {
-  it("returns error envelope on 500 response", async () => {
-    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          status: 500,
-          message: "Internal server error",
-        }),
-        {
-          status: 500,
-          headers: { "Content-Type": "application/json" },
-        }
-      )
+  it("POSTs Bearer payload and calls revalidatePath (button-click refresh)", async () => {
+    server.use(
+      http.post(`${API_PREFIX}/customers`, async ({ request }) => {
+        expect(request.headers.get("authorization")).toBe(`Bearer ${TOKEN}`);
+        const body = (await request.json()) as Record<string, unknown>;
+        expect(body.username).toBe("johndoe");
+        expect(body.firstname).toBe("John");
+        return HttpResponse.json(customersPageFixture(), { status: 200 });
+      })
     );
 
-    const payload = {
+    const result = await addCustomer({
       username: "johndoe",
       firstname: "John",
       lname: "Doe",
@@ -84,20 +101,31 @@ describe("addCustomer", () => {
       phoneNumber: "+254700000000",
       isActive: true,
       canLogin: true,
-    };
-
-    const result = await addCustomer(payload);
-
-    expect(fetchSpy).toHaveBeenCalledWith(`${BASE_URL}customers`, {
-      method: "POST",
-      headers: expect.objectContaining({
-        "Content-Type": "application/json",
-        Authorization: "Bearer mock-valid-bearer-token",
-      }),
-      body: JSON.stringify(payload),
     });
+
+    expect(result.success).toBe(true);
+    expect(revalidatePath).toHaveBeenCalledWith("/customers/all");
+  });
+
+  it("returns an error envelope on a 500 response", async () => {
+    server.use(
+      http.post(`${API_PREFIX}/customers`, () =>
+        HttpResponse.json(errorEnvelope(500, "Internal server error"), { status: 500 })
+      )
+    );
+
+    const result = await addCustomer({
+      username: "johndoe",
+      firstname: "John",
+      lname: "Doe",
+      email: "john@example.com",
+      phoneNumber: "+254700000000",
+      isActive: true,
+      canLogin: true,
+    });
+
     expect(result.success).toBe(false);
-    expect(result.message).toBeDefined();
     expect(result.status).toBe(500);
+    expect(result.message).toBe("Internal server error");
   });
 });
