@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import { ColumnDef } from "@tanstack/react-table"
 import { Flame, Clock, MoreHorizontal, Eye, ArrowRight, Undo2 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
@@ -33,8 +34,18 @@ const STATUS_LABELS: Record<TicketStatus, string> = {
 
 function SlaCountdown({ deadline }: { deadline: string | null }) {
   if (!deadline) return <span className="text-xs text-muted-foreground">—</span>
+  return <SlaClock deadline={deadline} />
+}
 
-  const diff = new Date(deadline).getTime() - Date.now()
+function SlaClock({ deadline }: { deadline: string }) {
+  // `now` snapshotted in state so the render body stays pure (react-hooks/purity).
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 60_000)
+    return () => clearInterval(t)
+  }, [])
+
+  const diff = new Date(deadline).getTime() - now
   const absMinutes = Math.abs(Math.floor(diff / 60_000))
   const hours = Math.floor(absMinutes / 60)
   const mins = absMinutes % 60
