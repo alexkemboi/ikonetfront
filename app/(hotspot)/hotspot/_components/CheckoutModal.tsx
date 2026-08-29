@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { X, Loader2 } from "lucide-react";
+import { toast } from "sonner";
+import { initiateHotspotPayment } from "@/actions/hotspot";
 import { HotspotPackage } from "@/lib/types/hotspot";
 
 interface CheckoutModalProps {
@@ -23,12 +25,29 @@ export default function CheckoutModal({
  alert("Please enter a phone number");
  return;
  }
-
  setIsProcessing(true);
  try {
- // Simulate payment processing
- await new Promise((resolve) => setTimeout(resolve, 1500));
+ const result = await initiateHotspotPayment({
+ packageId: pkg.idxno,
+ phone: phoneNumber.trim(),
+ paymentMode: "MPESA",
+ macAddress: "",
+ clientMac: "",
+ clientIp: "",
+ });
+
+ if (!result.success) {
+ throw new Error(result.message || "Failed to initiate payment");
+ }
+
+ toast.success("Payment prompt sent", {
+ description: "Check your phone and enter your M-Pesa PIN to complete payment.",
+ });
  onConfirm();
+ } catch (error) {
+ toast.error("Payment could not be started", {
+ description: error instanceof Error ? error.message : "Please try again.",
+ });
  } finally {
  setIsProcessing(false);
  }
