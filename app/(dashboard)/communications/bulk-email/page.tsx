@@ -24,14 +24,26 @@ export default async function BulkEmailPage() {
     getAudienceSegments().catch(() => ({ success: false, data: [] })),
   ]);
 
-  const templates: EmailTemplate[] = (templatesResult?.data || []).map((t: any) => ({
+  const templates: EmailTemplate[] = (templatesResult?.data || []).map((t: {
+    id?: unknown;
+    name?: unknown;
+    subject?: unknown;
+    body?: unknown;
+  }) => ({
     id: t.id?.toString() || "",
     name: t.name || "",
     subject: t.subject || "",
     body: t.body || "",
   }));
 
-  const segments: AudienceSegment[] = (segmentsResult?.data || []).map((s: any) => ({
+  const segments: AudienceSegment[] = (segmentsResult?.data || []).map((s: {
+    id?: unknown;
+    label?: unknown;
+    name?: unknown;
+    description?: unknown;
+    count?: unknown;
+    icon?: unknown;
+  }) => ({
     id: s.id?.toString() || "",
     label: s.label || s.name || "",
     description: s.description || "",
