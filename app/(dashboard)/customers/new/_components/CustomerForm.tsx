@@ -50,20 +50,20 @@ const CustomerForm = () => {
  try {
  
 
- const result = await addCustomer(values);
- if (result.success) {
- toast.success("Customer created successfully!");
- resetForm();
- } else {
- toast.error(result.message || "Failed to create customer.");
- }
- } catch (error: any) {
- toast.error(error.message || "An unexpected error occurred.");
- } finally {
- setSubmitting(false);
- }
- },
- });
+        const result = await addCustomer(values);
+        if (result.success) {
+          toast.success("Customer created successfully!");
+          resetForm();
+        } else {
+          toast.error(result.message || "Failed to create customer.");
+        }
+      } catch (error: unknown) {
+        toast.error(error instanceof Error ? error.message : "An unexpected error occurred.");
+      } finally {
+        setSubmitting(false);
+      }
+    },
+  });
 
  return (
  <Card className="w-full max-w-md mx-auto">
