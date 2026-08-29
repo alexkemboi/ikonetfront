@@ -172,10 +172,15 @@ function NavParent({ item }: { item: NavItem }) {
  // the useEffect below syncs immediately on mount)
  const [open, setOpen] = useState(isAnyChildActive);
 
- // Auto-open when navigating to a child route
- useEffect(() => {
- if (isAnyChildActive) setOpen(true);
- }, [isAnyChildActive]);
+  // Auto-open when navigating to a child route
+  useEffect(() => {
+    if (isAnyChildActive) {
+      // Deferred so the update lands after the render cycle (avoids a
+      // cascading-render chain flagged by react-hooks/set-state-in-effect).
+      const t = setTimeout(() => setOpen(true), 0);
+      return () => clearTimeout(t);
+    }
+  }, [isAnyChildActive]);
 
  return (
  <div>

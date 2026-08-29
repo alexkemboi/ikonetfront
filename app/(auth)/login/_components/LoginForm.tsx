@@ -78,19 +78,19 @@ export default function LoginForm({ error }: { error?: string }) {
  validationSchema,
  onSubmit: async () => {
 
- try {
- await signIn("credentials", {
- username: formik.values.username,
- password: formik.values.password,
- redirect: true,
- callbackUrl: "/dashboard",
- });
- }catch(e:any){
- // console.error(e?.message)
- }
- 
- },
- });
+      try {
+        await signIn("credentials", {
+          username: formik.values.username,
+          password: formik.values.password,
+          redirect: true,
+          callbackUrl: "/dashboard",
+        });
+      } catch {
+        // Swallow — signIn with redirect handles the error surface server-side.
+      }
+      
+    },
+  });
 
  return (
  <div className="space-y-5">
