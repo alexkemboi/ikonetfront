@@ -153,7 +153,7 @@ export function MikrotikClient({ initialDevices }: MikrotikClientProps) {
       const result = await getMikrotikDeviceInterfaces(deviceId);
       console.log("Fetched device interfaces:", result); // Debugging log
       if (result.success) {
-        setSelectedDeviceInterfaces(result.data);
+        setSelectedDeviceInterfaces(result.data ?? []);
         setIsInterfacesDialogOpen(true);
       }
     } catch (error: unknown) {

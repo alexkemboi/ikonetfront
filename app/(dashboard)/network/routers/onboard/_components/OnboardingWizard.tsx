@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { Formik, Form, Field } from "formik";
 import * as Yup from "yup";
-import { RegionResponse, LocationResponse, StationResponse, RouterOnboardRequest } from "@/lib/types/network";
+import { RegionResponse, LocationResponse, StationResponse, RouterOnboardRequest, RouterValidationResponse } from "@/lib/types/network";
 import { validateRouterConnectivity, onboardRouter } from "@/actions/network";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,7 +20,7 @@ interface OnboardingWizardProps {
 export function OnboardingWizard({ regionsTree }: OnboardingWizardProps) {
   const router = useRouter();
   const [step, setStep] = useState(1);
-  const [hardwareProfile, setHardwareProfile] = useState<any>(null);
+  const [hardwareProfile, setHardwareProfile] = useState<RouterValidationResponse | null>(null);
   const [isVerifying, setIsVerifying] = useState(false);
   const [filteredLocations, setFilteredLocations] = useState<LocationResponse[]>([]);
   const [filteredStations, setFilteredStations] = useState<StationResponse[]>([]);
@@ -39,7 +39,12 @@ export function OnboardingWizard({ regionsTree }: OnboardingWizardProps) {
     monitoringEnabled: true,
   });
 
-  const validateStep1 = async (values: any) => {
+  const validateStep1 = async (values: {
+  ipAddress: string;
+  port: number;
+  username: string;
+  password: string;
+}) => {
     setIsVerifying(true);
     try {
       const res = await validateRouterConnectivity({
@@ -230,6 +235,7 @@ export function OnboardingWizard({ regionsTree }: OnboardingWizardProps) {
               }}
             >
               {({ errors, touched, values, setFieldValue }) => {
+                // eslint-disable-next-line react-hooks/rules-of-hooks -- Formik render-prop callbacks are top-level hook calls in this pattern
                 useEffect(() => {
                   if (values.regionIdxno) {
                     const selReg = regionsTree.find(r => r.idxno === Number(values.regionIdxno));
@@ -242,6 +248,7 @@ export function OnboardingWizard({ regionsTree }: OnboardingWizardProps) {
                   }
                 }, [values.regionIdxno, setFieldValue]);
 
+                // eslint-disable-next-line react-hooks/rules-of-hooks -- Formik render-prop callbacks are top-level hook calls in this pattern
                 useEffect(() => {
                   if (values.locationIdxno) {
                     const selLoc = filteredLocations.find(l => l.idxno === Number(values.locationIdxno));

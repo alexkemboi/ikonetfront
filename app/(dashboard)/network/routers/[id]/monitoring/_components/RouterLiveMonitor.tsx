@@ -2,6 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { RouterHealthSnapshot } from "@/lib/types/network";
+import {
+  getRouterMonitoringLatest,
+  getRouterMonitoringHistory,
+} from "@/actions/network";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { 
@@ -14,49 +18,61 @@ interface RouterLiveMonitorProps {
   initialHistory: RouterHealthSnapshot[];
 }
 
+const POLL_INTERVAL_MS = 5000;
+
 export function RouterLiveMonitor({ routerId, initialHistory }: RouterLiveMonitorProps) {
   const [dataStream, setDataStream] = useState<RouterHealthSnapshot[]>(initialHistory);
   const [isOnline, setIsOnline] = useState<boolean>(true);
   const [latest, setLatest] = useState<RouterHealthSnapshot | null>(initialHistory[initialHistory.length - 1] || null);
 
+  // BE-AAA-045 (SSE live endpoint) is not deployed yet, so we prime the window
+  // from `/history` once, then poll only `/latest` — with an in-flight guard so
+  // slow ticks can never stack overlapping requests on a 5s interval.
   useEffect(() => {
-    const eventSource = new EventSource(`/api/monitoring/router/${routerId}/live`);
+    let cancelled = false;
+    let inFlight = false;
 
-    eventSource.addEventListener("TELEMETRY", (event: MessageEvent) => {
+    // Prime the rolling window once from history.
+    getRouterMonitoringHistory(routerId, 20)
+      .then((history) => {
+        if (!cancelled && history.length > 0) setDataStream(history);
+      })
+      .catch(() => undefined);
+
+    const tick = async () => {
+      if (cancelled || inFlight) return;
+      inFlight = true;
       try {
-        const payload: RouterHealthSnapshot = JSON.parse(event.data);
-        setLatest(payload);
-        setIsOnline(true);
+        const latestSnap = await getRouterMonitoringLatest(routerId);
+        if (cancelled) return;
+
+        setIsOnline(!!latestSnap);
+        if (!latestSnap) return;
+        setLatest(latestSnap);
         setDataStream((prev) => {
-          const updated = [...prev, payload];
-          if (updated.length > 20) {
-            updated.shift();
-          }
-          return updated;
+          if (prev.some((s) => s.idxno === latestSnap.idxno)) return prev;
+          return [...prev, latestSnap].slice(-20);
         });
-      } catch (err) {
-        console.error("Failed to parse telemetry stream packet", err);
+      } catch {
+        if (!cancelled) setIsOnline(false);
+      } finally {
+        inFlight = false;
       }
-    });
-
-    eventSource.addEventListener("CONNECTED", () => {
-      setIsOnline(true);
-    });
-
-    eventSource.onerror = () => {
-      setIsOnline(false);
     };
 
+    tick();
+    const interval = setInterval(tick, POLL_INTERVAL_MS);
     return () => {
-      eventSource.close();
+      cancelled = true;
+      clearInterval(interval);
     };
   }, [routerId]);
 
   const formatRAM = (bytes: number) => `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 
-  const formatTime = (timeStr: any) => {
+  const formatTime = (timeStr: unknown): string => {
     try {
-      const date = new Date(timeStr);
+      const date = new Date(String(timeStr));
       return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
     } catch {
       return "";
@@ -71,7 +87,7 @@ export function RouterLiveMonitor({ routerId, initialHistory }: RouterLiveMonito
           <span className="font-semibold text-sm">Monitoring Status</span>
         </div>
         <Badge variant={isOnline ? "default" : "destructive"} className="text-xs">
-          {isOnline ? "LIVE FEED ACTIVE" : "STREAM RETRYING..."}
+          {isOnline ? "POLLING · LIVE DATA" : "POLLING · OFFLINE"}
         </Badge>
       </div>
 
