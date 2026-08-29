@@ -27,13 +27,13 @@ export default async function StaffDashboardPage() {
 
   const totalCustomers = allCustomersRes.data?.totalElements ?? 0;
   const activeCustomers = activeCustomersRes.data?.totalElements ?? 0;
-  const allPPPoE = pppoeCustomersRes.success ? pppoeCustomersRes.data.content : [];
+  const allPPPoE = pppoeCustomersRes.success ? (pppoeCustomersRes.data?.content ?? []) : [];
   const recentCustomers = recentCustomersRes.success
-    ? recentCustomersRes.data.content
+    ? (recentCustomersRes.data?.content ?? [])
     : [];
 
   // Customers whose subscription expires within 7 days
-  const urgentRenewals = allPPPoE.filter((c:any) => {
+  const urgentRenewals = allPPPoE.filter((c: { expiryDate: string | null }) => {
     if (!c.expiryDate) return false;
     const expiry = new Date(c.expiryDate);
     const now = new Date();

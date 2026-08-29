@@ -492,7 +492,7 @@ export function DashboardShell({
           />
 
           <YAxis
-            tickFormatter={(value:any) =>
+            tickFormatter={(value: number) =>
               `${value / 1000}K`
             }
             tickLine={false}
@@ -501,8 +501,8 @@ export function DashboardShell({
           />
 
           <Tooltip
-            formatter={(value: any) =>
-              formatKES(value)
+            formatter={(value) =>
+              formatKES(typeof value === "number" ? value : Number(value ?? 0))
             }
           />
 

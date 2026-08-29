@@ -28,11 +28,11 @@ export default async function ManagementDashboardPage() {
 
   const totalCustomers = allCustomersRes.data?.totalElements ?? 0;
   const activeCustomers = activeCustomersRes.data?.totalElements ?? 0;
-  const allPPPoE = pppoeCustomersRes.success ? pppoeCustomersRes.data.content : [];
+  const allPPPoE = pppoeCustomersRes.success ? (pppoeCustomersRes.data?.content ?? []) : [];
   const packages = packagesRes.success ? (packagesRes.data ?? []) : [];
 
   // Customers whose subscription expires within 30 days
-  const expiringCustomers = allPPPoE.filter((c:any) => {
+  const expiringCustomers = allPPPoE.filter((c: { expiryDate: string | null }) => {
     if (!c.expiryDate) return false;
     const expiry = new Date(c.expiryDate);
     const now = new Date();
