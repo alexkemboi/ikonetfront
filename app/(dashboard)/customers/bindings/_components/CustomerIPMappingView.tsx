@@ -99,32 +99,27 @@ function FieldError({ msg }: { msg?: string }) {
 }
 
 function StatusBadge({ status }: { status: IPMapping["status"] }) {
-  if (status === "active")
+  if (status === "ONLINE")
     return (
       <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-[oklch(0.97_0.03_155)] text-[oklch(0.38_0.12_155)] border border-[oklch(0.88_0.06_155)]">
         <span className="w-1.5 h-1.5 rounded-full bg-[oklch(0.52_0.16_155)] animate-pulse" />
         Active
       </span>
     );
-  if (status === "expired")
-    return (
-      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-[oklch(0.97_0.02_25)] text-[oklch(0.48_0.14_25)] border border-[oklch(0.88_0.06_25)]">
-        <WifiOff className="w-3 h-3" />
-        Expired
-      </span>
-    );
   return (
-    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-[oklch(0.97_0.03_255)] text-[oklch(0.45_0.14_255)] border border-[oklch(0.88_0.06_255)]">
-      <Bookmark className="w-3 h-3" />
-      Reserved
+    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-[oklch(0.97_0.02_25)] text-[oklch(0.48_0.14_25)] border border-[oklch(0.88_0.06_25)]">
+      <WifiOff className="w-3 h-3" />
+      Expired
     </span>
   );
 }
 
 function PoolBar({ pool }: { pool: IPPool }) {
-  const usedPct = Math.round((pool.used / pool.total) * 100);
-  const reservedPct = Math.round((pool.reserved / pool.total) * 100);
-  const free = pool.total - pool.used - pool.reserved;
+  const total = pool.totalIps || 1;
+  const used = pool.usedIps || 0;
+  const free = Math.max(0, pool.availableIps || 0);
+  const usedPct = Math.min(100, Math.round((pool.utilizationPercentage ?? (used / total) * 100)));
+  const reservedPct = 0;
   const color =
     usedPct > 85
       ? "bg-[oklch(0.6_0.2_25)]"
@@ -137,7 +132,7 @@ function PoolBar({ pool }: { pool: IPPool }) {
       <div className="flex items-center justify-between text-xs">
         <div className="flex items-center gap-1.5 font-medium text-foreground">
           <Router className="w-3.5 h-3.5 text-muted-foreground" />
-          {pool.routerName}
+          {pool.poolName}
         </div>
         <span className="text-muted-foreground font-mono text-[11px]">{pool.subnet}</span>
       </div>
@@ -146,9 +141,9 @@ function PoolBar({ pool }: { pool: IPPool }) {
         <div className="absolute top-0 h-full bg-[oklch(0.72_0.1_255)] opacity-60" style={{ left: `${usedPct}%`, width: `${reservedPct}%` }} />
       </div>
       <div className="flex gap-3 text-[11px] text-muted-foreground">
-        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[oklch(0.52_0.16_155)] inline-block" />{pool.used} used</span>
-        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[oklch(0.72_0.1_255)] inline-block" />{pool.reserved} reserved</span>
+        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[oklch(0.52_0.16_155)] inline-block" />{used} used</span>
         <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-muted-foreground/30 inline-block" />{free} free</span>
+        <span className="ml-auto font-mono">{usedPct}%</span>
       </div>
     </div>
   );
@@ -163,15 +158,15 @@ function MappingRow({ m }: { m: IPMapping }) {
           <User className="w-4 h-4 text-primary" />
         </div>
         <div className="min-w-0">
-          <p className="text-sm font-medium text-foreground truncate">{m.customerName}</p>
-          <p className="text-[11px] text-muted-foreground truncate">{m.customerEmail || "—"}</p>
+          <p className="text-sm font-medium text-foreground truncate">{m.username}</p>
+          <p className="text-[11px] text-muted-foreground truncate">{m.macAddress || "—"}</p>
         </div>
       </div>
       <ChevronRight className="w-4 h-4 text-muted-foreground/40 shrink-0" />
       <div className="min-w-0">
         <p className="font-mono text-sm font-semibold text-foreground tracking-tight">{m.ipAddress}</p>
         <p className="font-mono text-[11px] text-muted-foreground tracking-wide">
-          {m.macAddress !== "00:00:00:00:00:00" ? m.macAddress : "—"}
+          {m.macAddress && m.macAddress !== "00:00:00:00:00:00" ? m.macAddress : "—"}
         </p>
       </div>
       <ChevronRight className="w-4 h-4 text-muted-foreground/40 shrink-0" />
@@ -180,15 +175,15 @@ function MappingRow({ m }: { m: IPMapping }) {
           <Router className="w-4 h-4 text-muted-foreground" />
         </div>
         <div className="min-w-0">
-          <p className="text-sm font-medium text-foreground">{m.routerName}</p>
-          <p className="text-[11px] text-muted-foreground truncate">{m.routerLocation}</p>
+          <p className="text-sm font-medium text-foreground">{m.stationName}</p>
+          <p className="text-[11px] text-muted-foreground truncate">{m.lastSeen ? new Date(m.lastSeen).toLocaleString() : "—"}</p>
         </div>
       </div>
       <div className="text-center">
-        <Badge variant={m.custType === "pppoe" ? "default" : "outline"} className="text-[11px]">
-          {m.custType === "pppoe" ? "PPPoE" : "Hotspot"}
+        <Badge variant={m.serviceType === "PPPOE" ? "default" : "outline"} className="text-[11px]">
+          {m.serviceType === "PPPOE" ? "PPPoE" : "Hotspot"}
         </Badge>
-        <p className="text-[11px] text-muted-foreground mt-0.5 truncate">{m.package}</p>
+        <p className="text-[11px] text-muted-foreground mt-0.5 truncate">—</p>
       </div>
       <div className="flex justify-end">
        <div className="flex items-center justify-end gap-2">
@@ -232,22 +227,22 @@ function MappingRow({ m }: { m: IPMapping }) {
         Copy IP Address
       </DropdownMenuItem>
 
-      {perms.canEdit && (
-        <>
-          <DropdownMenuSeparator />
-          {m.status === "active" ? (
-            <DropdownMenuItem className="gap-2 text-amber-600">
-              <Ban className="h-4 w-4" />
-              Suspend Lease
-            </DropdownMenuItem>
-          ) : (
-            <DropdownMenuItem className="gap-2 text-emerald-600">
-              <RotateCcw className="h-4 w-4" />
-              Restore Lease
-            </DropdownMenuItem>
+{perms.canEdit && (
+            <>
+              <DropdownMenuSeparator />
+              {m.status === "ONLINE" ? (
+                <DropdownMenuItem className="gap-2 text-amber-600">
+                  <Ban className="h-4 w-4" />
+                  Suspend Lease
+                </DropdownMenuItem>
+              ) : (
+                <DropdownMenuItem className="gap-2 text-emerald-600">
+                  <RotateCcw className="h-4 w-4" />
+                  Restore Lease
+                </DropdownMenuItem>
+              )}
+            </>
           )}
-        </>
-      )}
 
       {perms.canDelete && (
         <DropdownMenuItem className="gap-2 text-red-600">
@@ -428,11 +423,11 @@ function MapIPSheet({
                 </SelectTrigger>
                 <SelectContent>
                   {pools.map((p) => (
-                    <SelectItem key={p.routerId} value={p.routerId}>
+                    <SelectItem key={p.poolName} value={p.poolName}>
                       <div className="flex items-center gap-2">
                         <Router className="w-3.5 h-3.5 text-muted-foreground" />
-                        <span>{p.routerName}</span>
-                        <span className="text-xs text-muted-foreground">— {p.location}</span>
+                        <span>{p.poolName}</span>
+                        <span className="text-xs text-muted-foreground">— {p.subnet}</span>
                       </div>
                     </SelectItem>
                   ))}
@@ -551,7 +546,7 @@ export default function CustomerIPMappingView({ mappings, pools, customers, pack
   const perms = usePermissions("/network/ip-mapping");
 
   const routers = useMemo(
-    () => Array.from(new Set(mappings.map((m) => m.routerName))),
+    () => Array.from(new Set(mappings.map((m) => m.stationName))),
     [mappings]
   );
 
@@ -561,11 +556,11 @@ export default function CustomerIPMappingView({ mappings, pools, customers, pack
         const q = search.toLowerCase();
         const matchSearch =
           !q ||
-          m.customerName.toLowerCase().includes(q) ||
+          m.username.toLowerCase().includes(q) ||
           m.ipAddress.includes(q) ||
           m.macAddress.toLowerCase().includes(q) ||
-          m.routerName.toLowerCase().includes(q);
-        const matchRouter = routerFilter === "all" || m.routerName === routerFilter;
+          m.stationName.toLowerCase().includes(q);
+        const matchRouter = routerFilter === "all" || m.stationName === routerFilter;
         const matchStatus = statusFilter === "all" || m.status === statusFilter;
         return matchSearch && matchRouter && matchStatus;
       }),
@@ -574,14 +569,14 @@ export default function CustomerIPMappingView({ mappings, pools, customers, pack
 
   const stats = useMemo(() => {
     const total    = mappings.length;
-    const active   = mappings.filter((m) => m.status === "active").length;
-    const expired  = mappings.filter((m) => m.status === "expired").length;
-    const reserved = mappings.filter((m) => m.status === "reserved").length;
-    return { total, active, expired, reserved };
-  }, [mappings]);
+    const active   = mappings.filter((m) => m.status === "ONLINE").length;
+    const expired  = mappings.filter((m) => m.status === "EXPIRED").length;
+    const available = pools.reduce((s, p) => s + (p.availableIps || 0), 0);
+    return { total, active, expired, available };
+  }, [mappings, pools]);
 
-  const totalIPs  = pools.reduce((s, p) => s + p.total, 0);
-  const totalUsed = pools.reduce((s, p) => s + p.used, 0);
+  const totalIPs  = pools.reduce((s, p) => s + (p.totalIps || 0), 0);
+  const totalUsed = pools.reduce((s, p) => s + (p.usedIps || 0), 0);
 
   return (
     <div className="space-y-6">
@@ -613,7 +608,7 @@ export default function CustomerIPMappingView({ mappings, pools, customers, pack
           { label: "Total Leases", value: stats.total,    icon: Network,   color: "text-primary bg-primary/10" },
           { label: "Active",       value: stats.active,   icon: Wifi,      color: "text-[oklch(0.52_0.16_155)] bg-[oklch(0.97_0.03_155)]" },
           { label: "Expired",      value: stats.expired,  icon: WifiOff,   color: "text-[oklch(0.55_0.18_25)] bg-[oklch(0.97_0.02_25)]" },
-          { label: "Reserved",     value: stats.reserved, icon: Bookmark,  color: "text-[oklch(0.45_0.14_255)] bg-[oklch(0.97_0.03_255)]" },
+          { label: "Available IPs", value: stats.available, icon: Bookmark, color: "text-[oklch(0.45_0.14_255)] bg-[oklch(0.97_0.03_255)]" },
         ].map(({ label, value, icon: Icon, color }) => (
           <Card key={label} className="border-border">
             <CardContent className="p-4 flex items-center gap-3">
@@ -660,9 +655,8 @@ export default function CustomerIPMappingView({ mappings, pools, customers, pack
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="expired">Expired</SelectItem>
-                <SelectItem value="reserved">Reserved</SelectItem>
+                <SelectItem value="ONLINE">Active</SelectItem>
+                <SelectItem value="EXPIRED">Expired</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -725,7 +719,7 @@ export default function CustomerIPMappingView({ mappings, pools, customers, pack
             </CardHeader>
             <CardContent className="px-4 pb-4 space-y-5">
               {pools.map((pool) => (
-                <PoolBar key={pool.routerId} pool={pool} />
+                <PoolBar key={pool.poolName} pool={pool} />
               ))}
             </CardContent>
           </Card>
