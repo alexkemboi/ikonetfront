@@ -161,11 +161,14 @@ function StatusBadge({ status }: { status: string }) {
 
 // ── Main ───────────────────────────────────────────────────────────────────────
 
+type MonthlyRevenuePoint = (typeof FALLBACK_MONTHLY_REVENUE)[number];
+type RecentTransaction = (typeof FALLBACK_TRANSACTIONS)[number];
+
 export default function FinanceDashboard() {
   const [revenueFilter, setRevenueFilter] = useState<"all" | "hotspot" | "pppoe">("all");
   const [txFilter, setTxFilter] = useState<"all" | "hotspot" | "pppoe">("all");
-  const [revenueData, setRevenueData] = useState<any>(null);
-  const [transactions, setTransactions] = useState<any[]>([]);
+  const [revenueData, setRevenueData] = useState<{ monthlyRevenue: MonthlyRevenuePoint[] } | null>(null);
+  const [transactions, setTransactions] = useState<RecentTransaction[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -189,8 +192,10 @@ export default function FinanceDashboard() {
     return () => { cancelled = true; };
   }, []);
 
-  const hasData = revenueData?.monthlyRevenue?.length > 0;
-  const monthlyRevenue = hasData ? revenueData.monthlyRevenue : FALLBACK_MONTHLY_REVENUE;
+  const hasData = !!revenueData?.monthlyRevenue?.length;
+  const monthlyRevenue = revenueData?.monthlyRevenue?.length
+    ? revenueData.monthlyRevenue
+    : FALLBACK_MONTHLY_REVENUE;
   const recentTransactions = transactions.length > 0 ? transactions : FALLBACK_TRANSACTIONS;
 
   const current = monthlyRevenue[monthlyRevenue.length - 1];
