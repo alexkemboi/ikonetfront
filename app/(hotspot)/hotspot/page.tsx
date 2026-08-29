@@ -1,6 +1,6 @@
 import HotspotFlow from "./_components/HotspotFlow";
 import { Wifi, Phone, Zap, Shield, Clock } from "lucide-react";
-import { getHotspotPackages } from "@/actions/hotspot";
+import { getPublicHotspotPackagesAction } from "@/actions/hotspot";
 import { HotspotPackage } from "@/lib/types/hotspot";
 
 export const metadata = {
@@ -10,7 +10,7 @@ export const metadata = {
 export const dynamic = "force-dynamic"; // Ensure the page is always rendered on the server
 
 export default async function HotspotPage() {
-  const packagesResponse = await getHotspotPackages();
+  const packagesResponse = await getPublicHotspotPackagesAction();
   const packages: HotspotPackage[] = packagesResponse.success
     ? packagesResponse.data || []
     : [];

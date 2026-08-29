@@ -13,7 +13,7 @@ export default function PackageCard({ pkg, onSelect }: PackageCardProps) {
     const [isExpanded, setIsExpanded] = useState(false);
 
     const speedLabel =
-        pkg.speedDownload >= 1000 ? "Unlimited" : `${pkg.speedDownload} Mbps`;
+        (pkg.speedDownload ?? 0) >= 1000 ? "Unlimited" : `${pkg.speedDownload ?? 0} Mbps`;
 
     return (
         <div
@@ -34,14 +34,14 @@ export default function PackageCard({ pkg, onSelect }: PackageCardProps) {
                         {pkg.packageName}
                     </h3>
                     <p className="text-xs text-muted-foreground mt-4.5 md:mt-0.5 flex items-center gap-2 ">
-                        <div className="flex  items-center gap-1">
+                        <div className="flex items-center gap-1">
                             <ArrowUp className="w-4 h-4 text-primary" />
-                            {pkg.speedUpload} Mbps 
+                            {pkg.speedUpload ?? 0} Mbps 
                         </div>
 
                         <div className="flex items-center gap-1">
                             <ArrowDown className="w-4 h-4 text-green-700" />
-                            {pkg.speedDownload} Mbps
+                            {pkg.speedDownload ?? 0} Mbps
                         </div>
 
 
@@ -93,11 +93,11 @@ export default function PackageCard({ pkg, onSelect }: PackageCardProps) {
                     </div>
                     <div className="flex justify-between items-start">
                         <span className="text-muted-foreground">Data Amount:</span>
-                        <span className="font-medium text-foreground">{pkg.speedDownload} GB</span>
+                        <span className="font-medium text-foreground">{pkg.speedDownload ?? 0} GB</span>
                     </div>
                     <div className="flex justify-between items-start">
                         <span className="text-muted-foreground">Upload Speed:</span>
-                        <span className="font-medium text-foreground">{pkg.speedUpload} Mbps</span>
+                        <span className="font-medium text-foreground">{pkg.speedUpload ?? 0} Mbps</span>
                     </div>
                     <div className="flex justify-between items-start">
                         <span className="text-muted-foreground">Validity:</span>

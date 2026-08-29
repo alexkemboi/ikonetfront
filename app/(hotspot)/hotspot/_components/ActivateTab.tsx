@@ -3,7 +3,11 @@
 import { useState } from "react";
 import { CheckCircle2, XCircle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { activateVoucherAction } from "@/actions/hotspot";
+
+// Voucher activation is gated off pending the backend HTTP route
+// `POST /hotspot/activate` (BE gap ticket). See actions/hotspot.ts
+// `activateVoucherAction` — it returns a 503 envelope without hitting network.
+const VOUCHER_ACTIVATION_DISABLED = true;
 
 type ValidationState = "idle" | "validating" | "valid" | "invalid";
 
@@ -40,6 +44,7 @@ export default function ActivateTab() {
     };
 
     const handleSubmit = async () => {
+        if (VOUCHER_ACTIVATION_DISABLED) return;
         if (!validateVoucher(voucher)) {
             setValidationState("invalid");
             return;
@@ -49,20 +54,8 @@ export default function ActivateTab() {
         setValidationState("validating");
 
         try {
-            const result = await activateVoucherAction(voucher);
-
-            if (result.success) {
-                setValidationState("valid");
-                setMessage(result.data?.message || "Voucher activated successfully! You now have internet access.");
-                setVoucher("");
-                setTimeout(() => {
-                    setValidationState("idle");
-                    setMessage("");
-                }, 3000);
-            } else {
-                setValidationState("invalid");
-                setMessage(result.message || "Failed to activate voucher. Please try again.");
-            }
+            setValidationState("invalid");
+            setMessage("Voucher activation is temporarily unavailable (backend route pending).");
         } catch (error) {
             setValidationState("invalid");
             setMessage("Failed to activate voucher. Please try again.");
@@ -121,10 +114,13 @@ export default function ActivateTab() {
             {/* Submit button */}
             <Button
                 onClick={handleSubmit}
-                disabled={validationState !== "valid" || isSubmitting}
+                disabled={VOUCHER_ACTIVATION_DISABLED || validationState !== "valid" || isSubmitting}
                 className="w-full"
+                title="Pending backend route — leave a comment or contact support"
             >
-                {isSubmitting ? (
+                {VOUCHER_ACTIVATION_DISABLED ? (
+                    "Voucher Activation Pending"
+                ) : isSubmitting ? (
                     <>
                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                         Activating...

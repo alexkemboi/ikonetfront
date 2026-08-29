@@ -22,7 +22,7 @@ export default function BuyTab({ packages, onBack }: BuyTabProps) {
 
     // Filter and sort packages
     const filteredAndSorted = useMemo(() => {
-        let result = packages.filter((pkg) =>
+        const result = packages.filter((pkg) =>
             pkg.packageName.toLowerCase().includes(searchQuery.toLowerCase())
         );
 
@@ -34,9 +34,9 @@ export default function BuyTab({ packages, onBack }: BuyTabProps) {
                 case "price-desc":
                     return b.price - a.price;
                 case "data-asc":
-                    return a.speedDownload - b.speedDownload;
+                    return (a.speedDownload ?? 0) - (b.speedDownload ?? 0);
                 case "data-desc":
-                    return b.speedDownload - a.speedDownload;
+                    return (b.speedDownload ?? 0) - (a.speedDownload ?? 0);
                 default:
                     return 0;
             }
