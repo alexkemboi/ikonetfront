@@ -3,6 +3,7 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import { jwtVerify, decodeJwt } from "jose";
 import { JwtPayload, LoginResponse } from "@/lib/types/auth";
 import { buildApiUrl } from "@/lib/constants";
+import { refreshAccessToken } from "@/actions/auth";
 
 function getJwtSecret(): string {
   const secret = process.env.AUTH_JWT_SECRET;
@@ -16,15 +17,56 @@ async function parseBackendJwt(token: string, secret: string): Promise<JwtPayloa
     const { payload } = await jwtVerify(token, secretKey, { algorithms: ["HS256"] });
     return payload as unknown as JwtPayload;
   } catch (verifyError) {
-    // Fail-safe fallback: Decode valid Spring Boot JWT payload if signature check fails
-    try {
-      const decoded = decodeJwt(token);
-      return decoded as unknown as JwtPayload;
-    } catch (decodeError) {
-      console.error("[Auth] Token decoding failed completely:", decodeError);
-      return null;
+    // Fail-safe fallback: decode the payload for local claim extraction ONLY
+    // outside production. In production an invalid signature must NOT be
+    // treated as valid — that would bypass JWT authentication.
+    if (process.env.NODE_ENV !== "production") {
+      try {
+        const decoded = decodeJwt(token);
+        return decoded as unknown as JwtPayload;
+      } catch (decodeError) {
+        console.error("[Auth] Token decoding failed completely:", decodeError);
+        return null;
+      }
     }
+    console.error("[Auth] JWT signature verification failed:", verifyError);
+    return null;
   }
+}
+
+/** Read the backend JWT `exp` claim (seconds → ms). Never a security control. */
+function tokenExpiryMs(token: string): number | null {
+  try {
+    const payload = decodeJwt(token);
+    if (typeof payload?.exp === "number") return payload.exp * 1000;
+  } catch {
+    // Ignore malformed tokens — caller falls back to a default window.
+  }
+  return null;
+}
+
+/**
+ * Single-flight refresh locks (Guardrail 1) keyed by the exact JWT being
+ * refreshed — one Next.js render fans out 4–6 parallel Server Components/Actions
+ * that all await the SAME refresh, while a different session's token refresh is
+ * never conflated with another user's. `apiClient`'s 401 branch never calls
+ * refresh directly — this is the only refresh entry.
+ */
+const refreshLocks = new Map<string, Promise<string | null>>();
+
+export async function getValidAccessToken(currentJwt: string): Promise<string | null> {
+  const inFlight = refreshLocks.get(currentJwt);
+  if (inFlight) return inFlight;
+  const promise = (async () => {
+    try {
+      const r = await refreshAccessToken(currentJwt);
+      return r?.token ?? null;
+    } finally {
+      refreshLocks.delete(currentJwt);
+    }
+  })();
+  refreshLocks.set(currentJwt, promise);
+  return promise;
 }
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
@@ -76,7 +118,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             phoneNumber: decoded?.phoneNumber,
             apiToken: token,
             refreshToken: loginRes.data.refreshToken,
-            expiresAt: Date.now() + 2 * 60 * 60 * 1000,
+            expiresAt: tokenExpiryMs(token) ?? Date.now() + 2 * 60 * 60 * 1000,
             regionId: decoded?.regionId,
             stationId: decoded?.stationId,
             locationId: decoded?.locationId,
@@ -103,6 +145,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           otherName: user.otherName,
           phoneNumber: user.phoneNumber,
           apiToken: user.apiToken,
+          refreshToken: user.refreshToken,
           expiresAt: user.expiresAt,
           regionId: user.regionId,
           stationId: user.stationId,
@@ -110,6 +153,23 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           investorScope: user.investorScope,
         };
       }
+
+      // Refresh the backend access JWT when it is within 60s of expiring.
+      const expiresAt = typeof token.expiresAt === "number" ? token.expiresAt : 0;
+      if (token.apiToken && Date.now() >= expiresAt - 60_000) {
+        const newToken = await getValidAccessToken(String(token.apiToken));
+        if (newToken) {
+          return {
+            ...token,
+            apiToken: newToken,
+            expiresAt: tokenExpiryMs(newToken) ?? Date.now() + 2 * 60 * 60 * 1000,
+            error: undefined,
+          };
+        }
+        // Existing middleware/SessionGuard path handles the signout flow.
+        return { ...token, error: "RefreshAccessTokenError" };
+      }
+
       return token;
     },
     async session({ session, token }) {
@@ -125,6 +185,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         otherName: token.otherName as string | undefined,
         phoneNumber: token.phoneNumber as string | undefined,
         apiToken: token.apiToken as string,
+        expiresAt: token.expiresAt as number | undefined,
         regionId: token.regionId as number | undefined,
         stationId: token.stationId as number | undefined,
         locationId: token.locationId as number | undefined,

@@ -12,6 +12,9 @@ if (!rawBaseUrl) {
 }
 export const BASE_URL = rawBaseUrl.endsWith("/") ? rawBaseUrl : `${rawBaseUrl}/`;
 
+/** Alias with an explicit name for the single backend URL authority. */
+export const API_BASE = BASE_URL;
+
 /**
  * Safely construct a backend URL without double-slash bugs.
  * BASE_URL keeps its trailing slash (existing ${BASE_URL}path call sites
