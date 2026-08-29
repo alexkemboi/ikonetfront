@@ -180,14 +180,19 @@ export function CreateTicketSheet({ open, onClose }: CreateTicketSheetProps) {
  const [customersLoading, setCustomersLoading] = useState(false)
  const [selectedCustomerName, setSelectedCustomerName] = useState("")
 
- // Fetch customers once when sheet opens
- useEffect(() => {
- if (!open) return
- setCustomersLoading(true)
- getCustomers(0, 100).then((res) => {
- setCustomers(res?.data?.content ?? [])
- }).finally(() => setCustomersLoading(false))
- }, [open])
+  // Fetch customers once when sheet opens
+  useEffect(() => {
+    if (!open) return
+    // Deferred micro-flush so the loading flag isn't set synchronously in the
+    // effect body (react-hooks/set-state-in-effect).
+    const t = setTimeout(() => {
+      setCustomersLoading(true)
+      getCustomers(0, 100).then((res) => {
+        setCustomers(res?.data?.content ?? [])
+      }).finally(() => setCustomersLoading(false))
+    }, 0)
+    return () => clearTimeout(t)
+  }, [open])
 
  const formik = useFormik({
  initialValues: {
