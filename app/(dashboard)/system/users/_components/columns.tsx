@@ -11,7 +11,9 @@ import { Button } from "@/components/ui/button";
 import { useAppDispatch } from "@/store/hooks";
 import { setEditUserSheetOpen } from "@/store/slices/systemslice";
 
-export const staffUserColumns: ColumnDef<ApiRoleUser>[] = [
+export function useStaffUserColumns(): ColumnDef<ApiRoleUser>[] {
+  const dispatch = useAppDispatch();
+  return [
   {
     accessorKey: "fullName",
     header: ({ column }) => (
@@ -134,7 +136,6 @@ export const staffUserColumns: ColumnDef<ApiRoleUser>[] = [
     id: "actions",
     cell: ({ row }) => {
       const payment = row.original
-      const dispatch = useAppDispatch();
 
       return (
         <DropdownMenu>
@@ -159,3 +160,4 @@ export const staffUserColumns: ColumnDef<ApiRoleUser>[] = [
     },
   },
 ];
+}

@@ -19,7 +19,7 @@ import {
   SheetDescription,
 } from "@/components/ui/sheet";
 import { DataTable } from "@/components/shared/data-table";
-import { staffUserColumns } from "./columns";
+import { useStaffUserColumns } from "./columns";
 import { addSystemUser, type UserData } from "@/actions/system";
 import type { ApiRole, ApiRoleUser } from "@/lib/types/roles";
 import { cn } from "@/lib/utils";
@@ -304,6 +304,7 @@ export default function StaffUsersClient({ users, roles }: StaffUsersClientProps
   const perms = usePermissions("/system/users");
   const editUser = useAppSelector((state) => state.system.editUserSheetOpen);
   const dispatch = useAppDispatch();
+  const columns = useStaffUserColumns();
 
   
 
@@ -355,7 +356,7 @@ export default function StaffUsersClient({ users, roles }: StaffUsersClientProps
 
       {/* Table */}
       <DataTable
-        columns={staffUserColumns}
+        columns={columns}
         data={users}
         searchPlaceholder="Search by name, email, username…"
         toolbar={
