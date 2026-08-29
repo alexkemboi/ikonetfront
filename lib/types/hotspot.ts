@@ -1,16 +1,7 @@
-export interface HotspotPackage {
-  idxno: number;
-  packageName: string;
-  price: number;
-  packageCategory: string;
-  validityType: string;
-  validityValue: number;
-  bandwidthType: string;
-  activeStatus: boolean;
-  speedDownload: number;
-  speedUpload: number;
+import type { ApiResponse, NetPackage } from "@/lib/types/api";
+
+export interface HotspotPackage extends NetPackage {
   enableBurst: boolean;
-  rateLimit: string;
   burstLimit: string;
   burstThreshold: string;
   burstTime: string;
@@ -20,13 +11,7 @@ export interface HotspotPackage {
   isApproved: boolean;
 }
 
-export interface HotspotPackagesResponse {
-  status: number;
-  success: boolean;
-  message: string;
-  data: HotspotPackage[];
-  timestamp: string;
-}
+export type HotspotPackagesResponse = ApiResponse<HotspotPackage[]>;
 
 export interface InitiatePaymentRequest {
   packageId: number;
@@ -37,25 +22,39 @@ export interface InitiatePaymentRequest {
   clientIp: string;
 }
 
-export interface InitiatePaymentResponse {
-  status: number;
-  success: boolean;
-  message: string;
-  data: any; // Adjust based on actual response data if available
-  timestamp: string;
+/**
+ * `HotspotSessionResponse` — verified backend envelope fields from
+ * `POST /api/v1/hotspot/initiate` (201).
+ */
+export interface HotspotSessionResponse {
+  sessionId: string;
+  macAddress: string;
+  clientPhone: string;
+  payerPhone: string;
+  packageName: string;
+  amountPaid: number;
+  sessionStatus: string;
+  startedAt: string;
+  expiresAt: string;
+  minutesRemaining: number;
+  mpesaReference: string;
+  voucherCode: string;
+  concurrentUserLimit?: number;
+  durationSeconds?: number;
+  dataUploadedBytes?: number;
+  dataDownloadedBytes?: number;
+  ipAddress?: string;
 }
 
-export interface ReconnectResponse {
-  status: number;
-  success: boolean;
+export type InitiatePaymentResponse = ApiResponse<HotspotSessionResponse>;
+
+export interface ReconnectResponseData {
+  hasActiveSession: boolean;
   message: string;
-  data: {
-    hasActiveSession: boolean;
-    message: string;
-    session: any; // Adjust based on actual session data if available
-  };
-  timestamp: string;
+  session: HotspotSessionResponse | null;
 }
+
+export type ReconnectResponse = ApiResponse<ReconnectResponseData>;
 
 export interface HotspotState {
   packages: HotspotPackage[];

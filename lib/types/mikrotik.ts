@@ -1,4 +1,6 @@
 
+import type { ApiResponse as BaseApiResponse } from "@/lib/types/api";
+
 export interface MikrotikDevice {
   id: number;
   name: string;
@@ -102,11 +104,4 @@ export interface AddMikrotikDevicePayload {
   description?: string;
 }
 
-export interface ApiResponse<T> {
-  status: number;
-  success: boolean;
-  message: string;
-  data: T;
-  timestamp: string;
-  error?: unknown;
-}
+export type ApiResponse<T> = BaseApiResponse<T> & { error?: unknown };

@@ -3,14 +3,10 @@
  * Used by server actions, lib/auth.ts, and NextAuth callbacks.
  */
 
+import type { ApiResponse as BaseApiResponse } from "@/lib/types/api";
+
 /** Standard envelope returned by every API endpoint */
-export type ApiResponse<T = unknown> = {
-  status: number;
-  success: boolean;
-  message: string;
-  data: T | null | undefined;
-  timestamp?: string;
-};
+export type ApiResponse<T = unknown> = BaseApiResponse<T>;
 
 /** Login endpoint response data */
 export type LoginData = { token: string; username: string; role: string };
@@ -45,8 +41,10 @@ export type LoginResponse = ApiResponse<{
   expiresIn?: number;
 }>;
 
+/**
+ * Refresh-token success payload. The backend keys refresh off the Bearer
+ * access JWT (`Authorization: Bearer <oldJwt>`) and replies `{ token }`.
+ */
 export type RefreshTokenResponse = {
-  access_token: string;
-  refresh_token?: string;
-  expires_in: number;
+  token: string;
 };

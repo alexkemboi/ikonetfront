@@ -1,4 +1,8 @@
+import type { IpMappingResponse as BaseIpMappingResponse } from "@/lib/types/api";
+
 export type SessionProtocol = "PPPOE" | "HOTSPOT";
+
+export type IpMappingResponse = BaseIpMappingResponse;
 
 export interface LiveSessionItem {
   id: string;
