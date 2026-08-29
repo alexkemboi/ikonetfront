@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Loader2, Power, Search } from "lucide-react";
+import { Power, Search } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { disconnectLiveSession } from "@/actions/sessions";
@@ -38,7 +38,6 @@ export function LiveSessionDataTable({
   const [items, setItems] = useState<LiveSessionItem[]>(sessions);
   const [tab, setTab] = useState<TabKey>("ALL");
   const [search, setSearch] = useState("");
-  const [disconnectingId, setDisconnectingId] = useState<string | null>(null);
 
   const counts = useMemo(
     () => ({
@@ -67,7 +66,6 @@ export function LiveSessionDataTable({
   }, [items, tab, search]);
 
   async function handleDisconnect(session: LiveSessionItem) {
-    setDisconnectingId(session.id);
     try {
       // RFC 5176 CoA keyed on RADIUS username: Hotspot rows record the client
       // MAC in radacct.username, PPPoE rows the account username. Send the
@@ -86,8 +84,8 @@ export function LiveSessionDataTable({
       } else {
         toast.error(result.message);
       }
-    } finally {
-      setDisconnectingId(null);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to disconnect");
     }
   }
 
@@ -243,16 +241,13 @@ export function LiveSessionDataTable({
                     ) : (
                       <button
                         type="button"
-                        disabled={disconnectingId === session.id}
+                        disabled // Pending backend RADIUS CoA HTTP adapter (BE-AAA-043)
+                        title="Disconnect is disabled — pending the backend CoA adapter (BE-AAA-043)"
                         onClick={() => handleDisconnect(session)}
-                        className="inline-flex h-8 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium text-rose-400 transition-colors hover:bg-rose-500/10 hover:text-rose-300 disabled:pointer-events-none disabled:opacity-50"
+                        className="inline-flex h-8 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium text-rose-400/60 transition-colors disabled:pointer-events-none disabled:opacity-50"
                       >
-                        {disconnectingId === session.id ? (
-                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                        ) : (
-                          <Power className="h-3.5 w-3.5" />
-                        )}
-                        Disconnect
+                        <Power className="h-3.5 w-3.5" />
+                        Disconnect (pending)
                       </button>
                     )}
                   </td>
