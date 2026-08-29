@@ -33,7 +33,7 @@ export default function PackageCard({ pkg, onSelect }: PackageCardProps) {
  <h3 className="text-sm font-semibold text-foreground truncate">
  {pkg.packageName}
  </h3>
- <p className="text-xs text-muted-foreground mt-4.5 md:mt-0.5 flex items-center gap-2 ">
+ <div className="text-xs text-muted-foreground mt-4.5 md:mt-0.5 flex items-center gap-2 ">
  <div className="flex items-center gap-1">
  <ArrowUp className="w-4 h-4 text-primary" />
  {pkg.speedUpload} Mbps 
@@ -51,7 +51,7 @@ export default function PackageCard({ pkg, onSelect }: PackageCardProps) {
  </div> */}
  
  
- </p>
+ </div>
  </div>
 
  {/* Center: Price */}
