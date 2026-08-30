@@ -643,18 +643,119 @@ export default function PackagesClient({
  )}
  </div>
  ) : (
- <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
- {filtered.map((pkg) => (
- <PackageCard
- key={pkg.idxno}
- pkg={pkg}
- onEdit={openEdit}
- onDelete={handleDelete}
- onToggleActive={handleToggleActive}
- deletingId={deletingId}
- togglingId={togglingId}
- />
+ <div className="border border-border rounded-lg overflow-hidden bg-card">
+ <table className="w-full">
+ <thead className="bg-muted/50 border-b border-border">
+ <tr>
+ <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Package Name</th>
+ <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Category</th>
+ <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Price</th>
+ <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Validity</th>
+ <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Download</th>
+ <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Upload</th>
+ <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Status</th>
+ {(perms.canEdit || perms.canDelete) && <th className="px-4 py-3 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wider">Actions</th>}
+ </tr>
+ </thead>
+ <tbody>
+ {filtered.map((pkg, idx) => (
+ <tr key={pkg.idxno} className={cn("border-b border-border hover:bg-muted/30 transition-colors", !pkg.activeStatus && "opacity-60")}>
+ <td className="px-4 py-3">
+ <div className="flex flex-col gap-1">
+ <p className="font-medium text-foreground">{pkg.packageName}</p>
+ {pkg.enableBurst && (
+ <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 w-fit">
+ <Zap className="w-2.5 h-2.5" /> Burst
+ </span>
+ )}
+ </div>
+ </td>
+ <td className="px-4 py-3">
+ <span className={cn("text-xs font-medium px-2.5 py-1 rounded-full border", getCategoryStyle(pkg.packageCategory))}>
+ {pkg.packageCategory}
+ </span>
+ </td>
+ <td className="px-4 py-3">
+ <p className="font-bold text-primary">
+ {pkg.price.toLocaleString("en-KE", { style: "currency", currency: "KES", maximumFractionDigits: 0 })}
+ </p>
+ </td>
+ <td className="px-4 py-3">
+ <div className="flex flex-col gap-1 text-sm text-muted-foreground">
+ <span>{pkg.validityValue} {pkg.validityType}</span>
+ <span className="text-xs">{pkg.bandwidthType}</span>
+ </div>
+ </td>
+ <td className="px-4 py-3">
+ <div className="flex items-center gap-1.5">
+ <ArrowDown className="w-4 h-4 text-success" />
+ <span className="font-medium">{pkg.speedDownload} Mbps</span>
+ </div>
+ </td>
+ <td className="px-4 py-3">
+ <div className="flex items-center gap-1.5">
+ <ArrowUp className="w-4 h-4 text-primary" />
+ <span className="font-medium">{pkg.speedUpload} Mbps</span>
+ </div>
+ </td>
+ <td className="px-4 py-3">
+ <div className="flex items-center gap-2">
+ <Badge variant="outline" className={cn("text-xs", pkg.activeStatus ? "text-success border-success/30 bg-success/5" : "text-muted-foreground")}>
+ {pkg.activeStatus ? <CheckCircle2 className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}
+ {pkg.activeStatus ? "Active" : "Inactive"}
+ </Badge>
+ <Badge variant="outline" className={cn("text-xs", pkg.isApproved ? "text-success border-success/30 bg-success/5" : "text-warning border-warning/30 bg-warning/5")}>
+ {pkg.isApproved ? <ShieldCheck className="w-3 h-3" /> : <AlertCircle className="w-3 h-3" />}
+ {pkg.isApproved ? "Approved" : "Pending"}
+ </Badge>
+ </div>
+ </td>
+ {(perms.canEdit || perms.canDelete) && (
+ <td className="px-4 py-3">
+ <div className="flex items-center justify-center gap-2">
+ {perms.canEdit && (
+ <>
+ <button
+ onClick={() => handleToggleActive(pkg)}
+ disabled={togglingId === pkg.idxno || deletingId === pkg.idxno}
+ className="p-1.5 rounded-md hover:bg-muted/50 transition-colors disabled:opacity-50 text-muted-foreground hover:text-foreground"
+ title={pkg.activeStatus ? "Deactivate" : "Activate"}
+ >
+ {togglingId === pkg.idxno
+ ? <Loader2 className="w-4 h-4 animate-spin" />
+ : pkg.activeStatus
+ ? <XCircle className="w-4 h-4" />
+ : <CheckCircle2 className="w-4 h-4" />}
+ </button>
+ <button
+ onClick={() => openEdit(pkg)}
+ disabled={deletingId === pkg.idxno || togglingId === pkg.idxno}
+ className="p-1.5 rounded-md hover:bg-muted/50 transition-colors disabled:opacity-50 text-muted-foreground hover:text-foreground"
+ title="Edit"
+ >
+ <Pencil className="w-4 h-4" />
+ </button>
+ </>
+ )}
+ {perms.canDelete && (
+ <button
+ onClick={() => handleDelete(pkg.idxno)}
+ disabled={deletingId === pkg.idxno || togglingId === pkg.idxno}
+ className="p-1.5 rounded-md hover:bg-destructive/10 transition-colors disabled:opacity-50 text-muted-foreground hover:text-destructive"
+ title="Delete"
+ >
+ {deletingId === pkg.idxno
+ ? <Loader2 className="w-4 h-4 animate-spin" />
+ : <Trash2 className="w-4 h-4" />}
+ </button>
+ )}
+ </div>
+ </td>
+ )}
+ </tr>
  ))}
+ </tbody>
+ </table>
  </div>
  )}
 

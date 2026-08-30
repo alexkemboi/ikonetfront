@@ -29,7 +29,7 @@ async function getAuthHeaders(): Promise<HeadersInit> {
 export async function getAuditLogsAction(): Promise<ApiResponse<AuditLog[]>> {
   try {
     const res = await fetch(
-      buildApiUrl("/system-setup/audit-logs"),
+      buildApiUrl("/systemsetup/audit-logs"),
       { headers: await getAuthHeaders(), cache: "no-store" }
     );
     const data = await res.json();
