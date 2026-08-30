@@ -135,11 +135,16 @@ export async function getSystemUsers(): Promise<ApiRoleUser[]> {
   let lastError: unknown = null;
   const attempts: { url: string; status?: number; error?: string }[] = [];
 
+  console.log("[System Users] BASE_API_URL:", process.env.BASE_API_URL);
+  const headers = await getAuthHeaders();
+  console.log("[System Users] Auth headers:", headers);
+
   for (const url of candidateUrls) {
     try {
       const fullUrl = buildApiUrl(url);
+      console.log(`[System Users] Attempting fetch from: ${fullUrl}`);
       const response = await fetch(fullUrl, {
-        headers: await getAuthHeaders(),
+        headers,
         cache: "no-store",
       });
 
