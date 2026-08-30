@@ -19,6 +19,7 @@ export default function CheckoutModal({
 }: CheckoutModalProps) {
  const [isProcessing, setIsProcessing] = useState(false);
  const [phoneNumber, setPhoneNumber] = useState("");
+ const defaultMacAddress = "00:00:00:00:00:00";
 
  const handleConfirm = async () => {
  if (!phoneNumber.trim()) {
@@ -31,8 +32,8 @@ export default function CheckoutModal({
  packageId: pkg.idxno,
  phone: phoneNumber.trim(),
  paymentMode: "MPESA",
- macAddress: "",
- clientMac: "",
+ macAddress: defaultMacAddress,
+ clientMac: defaultMacAddress,
  clientIp: "",
  });
 
