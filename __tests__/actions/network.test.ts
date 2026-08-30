@@ -5,8 +5,6 @@ import { API_PREFIX } from "@/mocks/handlers/auth-guard";
 import {
   routerHistoryFixture,
   routerLatestFixture,
-  deviceStatusFixture,
-  ipPoolsFixture,
   errorEnvelope,
 } from "@/contracts/catalog";
 import {
@@ -105,7 +103,7 @@ describe("bindings: createIpMappingAction", () => {
     });
 
     expect(result.success).toBe(true);
-    expect(revalidateTag).toHaveBeenCalledWith("network", "page");
+    expect(revalidateTag).toHaveBeenCalledWith("network", "max");
   });
 
   it("returns the failure message when the backend rejects", async () => {
