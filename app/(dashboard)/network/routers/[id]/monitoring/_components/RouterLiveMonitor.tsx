@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { getRouterMonitoringLatest, getRouterMonitoringHistory } from "@/actions/network";
 import { RouterHealthSnapshot } from "@/lib/types/network";
-import { getRouterMonitoringLatest } from "@/actions/network";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { 
