@@ -133,15 +133,18 @@ export async function getSystemUsers(): Promise<ApiRoleUser[]> {
   ];
 
   let lastError: unknown = null;
+  const attempts: { url: string; status?: number; error?: string }[] = [];
 
   for (const url of candidateUrls) {
     try {
-      const response = await fetch(buildApiUrl(url), {
+      const fullUrl = buildApiUrl(url);
+      const response = await fetch(fullUrl, {
         headers: await getAuthHeaders(),
         cache: "no-store",
       });
 
       if (!response.ok) {
+        attempts.push({ url: fullUrl, status: response.status });
         lastError = new Error(`Request failed with status ${response.status}`);
         continue;
       }
@@ -151,17 +154,26 @@ export async function getSystemUsers(): Promise<ApiRoleUser[]> {
       const users = extractUsersPayload(result);
 
       if (Array.isArray(users)) {
+        console.log(`[System Users] Fetched from ${fullUrl}:`, users.length, "users");
         return users.map(normalizeUserRecord);
       }
 
       if (result?.success === false) {
+        attempts.push({ url: fullUrl, error: result?.message });
         throw new Error(result?.message || "Failed to fetch system users");
       }
     } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      attempts.push({ url, error: msg });
       lastError = error;
     }
   }
 
-  console.error("[System Users] Failed to load users from all configured endpoints:", lastError);
+  console.error(
+    "[System Users] Failed to load users. Attempted URLs:",
+    JSON.stringify(attempts, null, 2),
+    "Last error:",
+    lastError instanceof Error ? lastError.message : lastError
+  );
   return [];
 }
