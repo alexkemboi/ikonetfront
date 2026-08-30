@@ -1,30 +1,27 @@
 "use strict";
 
 export const API_VERSION = "v1";
-const nodeEnv = process.env.NODE_ENV || "development";
-const rawBaseUrl =
-  process.env.BASE_API_URL ||
-  (nodeEnv === "development"
-    ? "http://localhost:8381/api/v1/"
-    : "");
+const rawBaseUrl = process.env.BASE_API_URL || "/api/v1/";
 
 export const BASE_URL = rawBaseUrl
-  ? (rawBaseUrl.endsWith("/") ? rawBaseUrl : `${rawBaseUrl}/`)
-  : "";
+  ? rawBaseUrl.endsWith("/")
+    ? rawBaseUrl
+    : `${rawBaseUrl}/`
+  : "/api/v1/";
 
 /** Alias with an explicit name for the single backend URL authority. */
 export const API_BASE = BASE_URL;
 
 /**
  * Safely construct a backend URL without double-slash bugs.
- * BASE_URL keeps its trailing slash (existing ${BASE_URL}path call sites
- * depend on it); this helper normalizes only the site(s) we touch.
+ * If BASE_API_URL is not configured, we fall back to the in-app API prefix
+ * rather than throwing during module import in production builds.
  */
 export function buildApiUrl(path: string): string {
-  if (!BASE_URL) {
-    throw new Error("BASE_API_URL is required for API calls but not configured.");
-  }
+  if (!path) return BASE_URL;
+  if (/^https?:\/\//i.test(path)) return path;
+
   const base = BASE_URL.replace(/\/+$/, "");
   const cleanPath = path.replace(/^\/+/, "");
-  return `${base}/${cleanPath}`;
+  return cleanPath ? `${base}/${cleanPath}` : base;
 }
