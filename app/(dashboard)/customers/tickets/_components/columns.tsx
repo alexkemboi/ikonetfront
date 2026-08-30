@@ -1,7 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { useEffect, useState } from "react"
+import { useEffect, useState, useSyncExternalStore } from "react"
 import { ColumnDef } from "@tanstack/react-table"
 import { Flame, Clock, MoreHorizontal, Eye, ArrowRight, Undo2 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
@@ -33,16 +32,22 @@ const STATUS_LABELS: Record<TicketStatus, string> = {
  RESOLVED: "Resolved", CLOSED: "Closed",
 }
 
+const subscribe = () => () => {}
+
+function useIsHydrated() {
+  return useSyncExternalStore(
+    subscribe,
+    () => true,
+    () => false
+  )
+}
+
 function SlaCountdown({ deadline }: { deadline: string | null }) {
- const [hydrated, setHydrated] = useState(false)
+  const hydrated = useIsHydrated()
 
- useEffect(() => {
- setHydrated(true)
- }, [])
-
- if (!deadline) return <span className="text-xs text-muted-foreground">—</span>
- if (!hydrated) return <span className="text-xs text-muted-foreground">—</span>
-  return <SlaClock deadline={deadline} />
+  if (!deadline) return <span className="text-xs text-muted-foreground">—</span>
+  if (!hydrated) return <span className="text-xs text-muted-foreground">—</span>
+   return <SlaClock deadline={deadline} />
 }
 
 function SlaClock({ deadline }: { deadline: string }) {

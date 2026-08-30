@@ -113,13 +113,14 @@ export function TicketDetailSheet({ ticket, staffList, onClose }: TicketDetailSh
  const [assignLoading, setAssignLoading] = useState(false)
 
   useEffect(() => {
-    if (!ticket) {
+    const idxno = ticket?.idxno
+    if (!idxno) {
       const t = setTimeout(() => setComments([]), 0)
       return () => clearTimeout(t)
     }
     const t = setTimeout(() => {
       setCommentsLoading(true)
-      getTicketComments(ticket.idxno)
+      getTicketComments(idxno)
         .then((res) => { if (res.success) setComments(Array.isArray(res.data) ? res.data : []) })
         .finally(() => setCommentsLoading(false))
     }, 0)
@@ -220,8 +221,10 @@ export function TicketDetailSheet({ ticket, staffList, onClose }: TicketDetailSh
  })
 
  useEffect(() => {
- if (!ticket) return
+ // commentFormik identity is not stable across renders — only react to ticket changes.
+ if (!ticket?.idxno) return
  commentFormik.resetForm()
+ // eslint-disable-next-line react-hooks/exhaustive-deps
  }, [ticket?.idxno])
 
  const nextStatus = ticket ? NEXT_STATUS_MAP[ticket.status] : null
