@@ -49,6 +49,9 @@ export default async function RolesPage() {
 
  const apiRoles = rolesResult.success ? (rolesResult.data ?? []) : [];
 
+ console.log("[RolesPage] API Roles:", JSON.stringify(apiRoles, null, 2));
+ console.log("[RolesPage] All System Users:", JSON.stringify(allSystemUsers, null, 2));
+
  // Fetch per-role menus and users in parallel
  const [menusResults, usersResults] = await Promise.all([
  Promise.all(apiRoles.map((r) => getRoleMenusAction(r.roleCode))),
@@ -57,14 +60,22 @@ export default async function RolesPage() {
 
  const roles: Role[] = apiRoles.map((apiRole, i) => {
  const apiUsers = usersResults[i]?.data ?? [];
- const users: RoleUser[] = apiUsers.map((u) => ({
- id: u.userId,
- name: u.fullName,
- email: u.email,
+ console.log(`[RolesPage] Role ${apiRole.roleCode} users:`, JSON.stringify(apiUsers, null, 2));
+ 
+ const users: RoleUser[] = apiUsers.map((u) => {
+ const fullName = u.fullName || `${u.fname || ""} ${u.middleName || ""} ${u.otherName || ""}`.trim() || u.username || "Unknown";
+ const fname = u.fname || fullName.split(" ")[0] || "U";
+ const middleName = u.middleName || (fullName.split(" ")[1] ? fullName.split(" ")[1][0] : "");
+ 
+ return {
+ id: u.userId || String(u.idxno),
+ name: fullName,
+ email: u.email || "",
  status: u.isactive ? "active" : "inactive",
- initials: (u.fname?.[0] ?? "U").toUpperCase() + (u.middleName?.[0] ?? "").toUpperCase(),
- joinedAt: u.createdAt,
- }));
+ initials: (fname?.[0] ?? "U").toUpperCase() + (middleName?.[0] ?? "").toUpperCase(),
+ joinedAt: u.createdAt || "",
+ };
+ });
 
  return {
  id: apiRole.roleCode,
@@ -77,6 +88,7 @@ export default async function RolesPage() {
  };
  });
 
+ console.log("[RolesPage] Final roles:", JSON.stringify(roles, null, 2));
 
  return (
  <div className="p-6 h-full">
