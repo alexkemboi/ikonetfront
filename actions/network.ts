@@ -22,8 +22,6 @@ import {
   RouterValidationResponse,
   RouterOnboardRequest,
   RouterHealthSnapshot,
-  IpPoolResponse,
-  IpMappingResponse,
   RouterCapacityResponse,
   SubscriberProvisioningRequest,
   RouterResponse,
@@ -777,46 +775,7 @@ export const getNetworkDeviceInterfaces = async (
   }
 };
 
-export const getIpPools = async (): Promise<IpPoolResponse[]> => {
-  try {
-    const res = await fetch(buildApiUrl("/network/ip-pools"), {
-      headers: await getAuthHeaders(),
-      next: { revalidate: 0 },
-    });
 
-    if (!res.ok) return [];
-    const body: ApiResponse<IpPoolResponse[] | null> = await res.json();
-    return Array.isArray(body.data) ? body.data : [];
-  } catch (error) {
-    console.error("getIpPools Error:", error);
-    return [];
-  }
-};
-
-export const getIpMappings = async (
-  serviceType?: string,
-  searchIp?: string
-): Promise<IpMappingResponse[]> => {
-  try {
-    const params = new URLSearchParams();
-    if (serviceType) params.set("serviceType", serviceType);
-    if (searchIp) params.set("searchIp", searchIp);
-
-    const url = buildApiUrl(`/network/ip-mappings${params.size ? `?${params.toString()}` : ""}`);
-    const res = await fetch(url, {
-      headers: await getAuthHeaders(),
-      next: { revalidate: 0 },
-    });
-
-    if (!res.ok) return [];
-    const body: ApiResponse<{ content?: IpMappingResponse[] } | IpMappingResponse[]> = await res.json();
-    if (Array.isArray(body.data)) return body.data;
-    return Array.isArray(body.data?.content) ? body.data.content : [];
-  } catch (error) {
-    console.error("getIpMappings Error:", error);
-    return [];
-  }
-};
 
 export const getStationLoad = async (
   stationId: number
@@ -884,6 +843,10 @@ export const getRouters = async (): Promise<RouterResponse[]> => {
   }
 };
 
+/**
+ * GET /api/v1/network/ip-pools — admin inventory view of IP pools.
+ * NOTE: pool fields are currently hardcoded fixtures in the backend (BE-AAA-046).
+ */
 export async function getIpPools(): Promise<IpPool[]> {
   try {
     const res = await apiFetch<IpPool[]>("/network/ip-pools", {
@@ -898,9 +861,8 @@ export async function getIpPools(): Promise<IpPool[]> {
 }
 
 /**
- * `GET /api/v1/network/ip-mappings` returns `ApiResponse<Page<IpMappingResponse>>`.
- * Unwrap the Page envelope to `content[]` — the previously returned Page object
- * was the "subscriber tracking" break point (near-empty KPIs + BINDING rows).
+ * GET /api/v1/network/ip-mappings — active/expired session bindings from RADIUS accounting logs.
+ * Returns `ApiResponse<Page<IpMappingResponse>>`. Unwrap the Page envelope to `content[]`.
  */
 export async function getIpMappings(): Promise<IpMappingResponse[]> {
   try {

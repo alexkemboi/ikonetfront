@@ -1,5 +1,5 @@
 import { getIpMappings } from "@/actions/network";
-import type { IpMappingResponse } from "@/lib/types/network";
+import type { IpMappingResponse } from "@/lib/types/api";
 import { getPermissionForRoute } from "@/lib/data/nav";
 import { redirect } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";

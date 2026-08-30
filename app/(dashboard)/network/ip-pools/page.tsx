@@ -1,5 +1,5 @@
 import { getIpPools } from "@/actions/network";
-import type { IpPoolResponse } from "@/lib/types/network";
+import type { IpPool } from "@/lib/types/api";
 import { getPermissionForRoute } from "@/lib/data/nav";
 import { redirect } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -62,14 +62,14 @@ export default async function IpPoolsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {pools.map((pool: IpPoolResponse, idx: number) => (
-                  <TableRow key={`${pool.id ?? pool.name ?? "pool"}-${idx}`} className="hover:bg-muted/50">
-                    <TableCell className="font-medium">{pool.name || "—"}</TableCell>
-                    <TableCell className="font-mono text-sm">{pool.network || pool.range || "—"}</TableCell>
+                {pools.map((pool: IpPool, idx: number) => (
+                  <TableRow key={`${pool.poolName}-${idx}`} className="hover:bg-muted/50">
+                    <TableCell className="font-medium">{pool.poolName || "—"}</TableCell>
+                    <TableCell className="font-mono text-sm">{pool.subnet || "—"}</TableCell>
                     <TableCell className="font-mono text-sm">{pool.gateway || "—"}</TableCell>
                     <TableCell>
-                      <Badge variant={pool.status === "active" ? "default" : "secondary"} className="text-xs">
-                        {pool.status || "—"}
+                      <Badge variant="default" className="text-xs">
+                        {pool.utilizationPercentage}% used
                       </Badge>
                     </TableCell>
                   </TableRow>

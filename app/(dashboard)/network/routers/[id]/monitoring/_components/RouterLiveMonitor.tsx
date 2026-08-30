@@ -1,12 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getLatestRouterHealth } from "@/actions/network";
+import { getRouterMonitoringLatest, getRouterMonitoringHistory } from "@/actions/network";
 import { RouterHealthSnapshot } from "@/lib/types/network";
-import {
-  getRouterMonitoringLatest,
-  getRouterMonitoringHistory,
-} from "@/actions/network";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { 
@@ -25,7 +21,6 @@ export function RouterLiveMonitor({ routerId, initialHistory }: RouterLiveMonito
  const [dataStream, setDataStream] = useState<RouterHealthSnapshot[]>(initialHistory);
  const [isOnline, setIsOnline] = useState<boolean>(true);
  const [latest, setLatest] = useState<RouterHealthSnapshot | null>(initialHistory[initialHistory.length - 1] || null);
- const [isPolling, setIsPolling] = useState<boolean>(false);
 
   // BE-AAA-045 (SSE live endpoint) is not deployed yet, so we prime the window
   // from `/history` once, then poll only `/latest` — with an in-flight guard so
