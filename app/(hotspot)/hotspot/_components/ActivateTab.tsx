@@ -56,7 +56,7 @@ export default function ActivateTab() {
         try {
             setValidationState("invalid");
             setMessage("Voucher activation is temporarily unavailable (backend route pending).");
-        } catch (error) {
+        } catch {
             setValidationState("invalid");
             setMessage("Failed to activate voucher. Please try again.");
         } finally {
