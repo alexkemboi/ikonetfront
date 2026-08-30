@@ -2,10 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { RouterHealthSnapshot } from "@/lib/types/network";
-import {
-  getRouterMonitoringLatest,
-  getRouterMonitoringHistory,
-} from "@/actions/network";
+import { getRouterMonitoringLatest } from "@/actions/network";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { 
@@ -19,54 +16,149 @@ interface RouterLiveMonitorProps {
 }
 
 const POLL_INTERVAL_MS = 5000;
+const STREAM_RECONNECT_MS = 30000;
+const STREAM_CONNECT_TIMEOUT_MS = 10000;
+const STREAM_STALL_MS = 45000;
+const WINDOW_SIZE = 20;
 
 export function RouterLiveMonitor({ routerId, initialHistory }: RouterLiveMonitorProps) {
  const [dataStream, setDataStream] = useState<RouterHealthSnapshot[]>(initialHistory);
  const [isOnline, setIsOnline] = useState<boolean>(true);
+ const [streamMode, setStreamMode] = useState<"streaming" | "polling">("streaming");
  const [latest, setLatest] = useState<RouterHealthSnapshot | null>(initialHistory[initialHistory.length - 1] || null);
 
-  // BE-AAA-045 (SSE live endpoint) is not deployed yet, so we prime the window
-  // from `/history` once, then poll only `/latest` — with an in-flight guard so
-  // slow ticks can never stack overlapping requests on a 5s interval.
-  useEffect(() => {
-    let cancelled = false;
-    let inFlight = false;
+ // Prefer the SSE live stream (relayed by /api/monitoring/router/[id]/live).
+ // If the EventSource drops — backend down, relay returning an error envelope —
+ // degrade to the historical 5s `/latest` polling so the page never goes dark.
+ // While polling, periodically re-probe the stream and switch back once frames
+ // flow again.
+ useEffect(() => {
+ let cancelled = false;
+ let source: EventSource | null = null;
+ let pollTimer: ReturnType<typeof setInterval> | null = null;
+ let reconnectTimer: ReturnType<typeof setInterval> | null = null;
+ let connectTimer: ReturnType<typeof setTimeout> | null = null;
+ let stallTimer: ReturnType<typeof setTimeout> | null = null;
+ let inFlight = false;
 
-    // Prime the rolling window once from history.
-    getRouterMonitoringHistory(routerId, 20)
-      .then((history) => {
-        if (!cancelled && history.length > 0) setDataStream(history);
-      })
-      .catch(() => undefined);
+ const append = (snap: RouterHealthSnapshot) => {
+ if (cancelled) return;
+ setLatest(snap);
+ setIsOnline(true);
+ setDataStream((prev) => {
+ if (prev.some((s) => s.idxno === snap.idxno)) return prev;
+ return [...prev, snap].slice(-WINDOW_SIZE);
+ });
+ };
 
-    const tick = async () => {
-      if (cancelled || inFlight) return;
-      inFlight = true;
-      try {
-        const latestSnap = await getRouterMonitoringLatest(routerId);
-        if (cancelled) return;
+ const tick = async () => {
+ if (cancelled || inFlight) return;
+ inFlight = true;
+ try {
+ const latestSnap = await getRouterMonitoringLatest(routerId);
+ if (cancelled) return;
+ setIsOnline(!!latestSnap);
+ if (latestSnap) append(latestSnap);
+ } catch {
+ if (!cancelled) setIsOnline(false);
+ } finally {
+ inFlight = false;
+ }
+ };
 
-        setIsOnline(!!latestSnap);
-        if (!latestSnap) return;
-        setLatest(latestSnap);
-        setDataStream((prev) => {
-          if (prev.some((s) => s.idxno === latestSnap.idxno)) return prev;
-          return [...prev, latestSnap].slice(-20);
-        });
-      } catch {
-        if (!cancelled) setIsOnline(false);
-      } finally {
-        inFlight = false;
-      }
-    };
+ const stopTimers = () => {
+ if (pollTimer) {
+ clearInterval(pollTimer);
+ pollTimer = null;
+ }
+ if (reconnectTimer) {
+ clearInterval(reconnectTimer);
+ reconnectTimer = null;
+ }
+ if (connectTimer) {
+ clearTimeout(connectTimer);
+ connectTimer = null;
+ }
+ if (stallTimer) {
+ clearTimeout(stallTimer);
+ stallTimer = null;
+ }
+ };
 
-    tick();
-    const interval = setInterval(tick, POLL_INTERVAL_MS);
-    return () => {
-      cancelled = true;
-      clearInterval(interval);
-    };
-  }, [routerId]);
+ const degradeToPolling = () => {
+ source?.close();
+ source = null;
+ if (connectTimer) {
+ clearTimeout(connectTimer);
+ connectTimer = null;
+ }
+ if (stallTimer) {
+ clearTimeout(stallTimer);
+ stallTimer = null;
+ }
+ setIsOnline(false);
+ startPolling();
+ };
+
+ const startPolling = () => {
+ setStreamMode("polling");
+ if (pollTimer) return;
+ tick();
+ pollTimer = setInterval(tick, POLL_INTERVAL_MS);
+ reconnectTimer = setInterval(() => {
+ if (!cancelled) startStreaming();
+ }, STREAM_RECONNECT_MS);
+ };
+
+ const startStreaming = () => {
+ setStreamMode("streaming");
+ stopTimers();
+ source = new EventSource(`/api/monitoring/router/${routerId}/live`);
+
+ const armStallWatchdog = () => {
+ if (stallTimer) clearTimeout(stallTimer);
+ stallTimer = setTimeout(() => {
+ if (!cancelled) degradeToPolling();
+ }, STREAM_STALL_MS);
+ };
+
+ connectTimer = setTimeout(() => {
+ if (source && source.readyState === EventSource.CONNECTING) {
+ degradeToPolling();
+ }
+ }, STREAM_CONNECT_TIMEOUT_MS);
+
+ source.addEventListener("telemetry", (event) => {
+ try {
+ const snap = JSON.parse((event as MessageEvent).data as string) as RouterHealthSnapshot;
+ append(snap);
+ armStallWatchdog();
+ } catch {
+ // Malformed frame — ignore, the heartbeat keeps the stream alive.
+ }
+ });
+ source.onopen = () => {
+ if (cancelled) return;
+ if (connectTimer) {
+ clearTimeout(connectTimer);
+ connectTimer = null;
+ }
+ setIsOnline(true);
+ armStallWatchdog();
+ };
+ source.onerror = () => {
+ degradeToPolling();
+ };
+ };
+
+ startStreaming();
+
+ return () => {
+ cancelled = true;
+ source?.close();
+ stopTimers();
+ };
+ }, [routerId]);
 
  const formatRAM = (bytes: number) => `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 
@@ -87,7 +179,13 @@ export function RouterLiveMonitor({ routerId, initialHistory }: RouterLiveMonito
           <span className="font-semibold text-sm">Monitoring Status</span>
         </div>
         <Badge variant={isOnline ? "default" : "destructive"} className="text-xs">
-          {isOnline ? "POLLING · LIVE DATA" : "POLLING · OFFLINE"}
+          {streamMode === "streaming"
+            ? isOnline
+              ? "STREAMING · LIVE"
+              : "STREAMING · RECONNECTING"
+            : isOnline
+              ? "POLLING · LIVE DATA"
+              : "POLLING · OFFLINE"}
         </Badge>
       </div>
 
