@@ -96,6 +96,48 @@ export interface RouterHealthSnapshot {
   createdAt: string;
 }
 
+export interface NetworkDeviceStatus {
+  id?: number;
+  deviceId?: number;
+  online?: boolean;
+  status?: string;
+  ipAddress?: string;
+  uptime?: string;
+  model?: string;
+  name?: string;
+  [key: string]: unknown;
+}
+
+export interface NetworkDeviceInterface {
+  id?: number;
+  name?: string;
+  alias?: string;
+  type?: string;
+  enabled?: boolean;
+  macAddress?: string;
+  [key: string]: unknown;
+}
+
+export interface IpPoolResponse {
+  id?: number;
+  name?: string;
+  network?: string;
+  range?: string;
+  gateway?: string;
+  status?: string;
+  [key: string]: unknown;
+}
+
+export interface IpMappingResponse {
+  ipAddress: string;
+  macAddress: string;
+  username: string;
+  serviceType: string;
+  stationName: string;
+  status: "ONLINE" | "EXPIRED";
+  lastSeen?: string;
+}
+
 export interface RouterCapacityResponse {
   id: number;
   name: string;

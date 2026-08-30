@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { getLatestRouterHealth } from "@/actions/network";
 import { RouterHealthSnapshot } from "@/lib/types/network";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -18,37 +19,49 @@ export function RouterLiveMonitor({ routerId, initialHistory }: RouterLiveMonito
  const [dataStream, setDataStream] = useState<RouterHealthSnapshot[]>(initialHistory);
  const [isOnline, setIsOnline] = useState<boolean>(true);
  const [latest, setLatest] = useState<RouterHealthSnapshot | null>(initialHistory[initialHistory.length - 1] || null);
+ const [isPolling, setIsPolling] = useState<boolean>(false);
 
  useEffect(() => {
- const eventSource = new EventSource(`/api/monitoring/router/${routerId}/live`);
+ let pollTimer: NodeJS.Timeout | null = null;
+ let isMounted = true;
 
- eventSource.addEventListener("TELEMETRY", (event: MessageEvent) => {
+ const poll = async () => {
+ if (isPolling) return;
+
+ setIsPolling(true);
  try {
- const payload: RouterHealthSnapshot = JSON.parse(event.data);
- setLatest(payload);
+ const snapshot = await getLatestRouterHealth(routerId);
+ if (isMounted && snapshot) {
+ setLatest(snapshot);
  setIsOnline(true);
  setDataStream((prev) => {
- const updated = [...prev, payload];
+ const updated = [...prev, snapshot];
  if (updated.length > 20) {
  updated.shift();
  }
  return updated;
  });
- } catch (err) {
- console.error("Failed to parse telemetry stream packet", err);
- }
- });
-
- eventSource.addEventListener("CONNECTED", () => {
- setIsOnline(true);
- });
-
- eventSource.onerror = () => {
+ } else if (isMounted) {
  setIsOnline(false);
+ }
+ } catch (err) {
+ console.warn("Failed to poll router health snapshot", err);
+ if (isMounted) {
+ setIsOnline(false);
+ }
+ } finally {
+ if (isMounted) {
+ setIsPolling(false);
+ }
+ }
  };
 
+ pollTimer = setInterval(poll, 5000);
+ poll();
+
  return () => {
- eventSource.close();
+ isMounted = false;
+ if (pollTimer) clearInterval(pollTimer);
  };
  }, [routerId]);
 
@@ -71,7 +84,7 @@ export function RouterLiveMonitor({ routerId, initialHistory }: RouterLiveMonito
  <span className="font-semibold text-sm">Monitoring Status</span>
  </div>
  <Badge variant={isOnline ? "default" : "destructive"} className="text-xs">
- {isOnline ? "LIVE FEED ACTIVE" : "STREAM RETRYING..."}
+ {isOnline ? "POLLING ACTIVE (5s)" : "OFFLINE"}
  </Badge>
  </div>
 

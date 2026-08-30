@@ -1,10 +1,23 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { refreshAccessToken, logoutAction } from "@/actions/auth";
+import { buildApiUrl } from "@/lib/constants";
 
 const BASE_URL = process.env.BASE_API_URL || "http://localhost:8381/api/v1/";
 
 beforeEach(() => {
   vi.clearAllMocks();
+});
+
+afterEach(() => {
+  process.env.BASE_API_URL = "http://localhost:8381/api/v1/";
+});
+
+describe("buildApiUrl", () => {
+  it("does not throw and returns a valid URL path", () => {
+    const result = buildApiUrl("/auth/userlogin");
+    expect(() => buildApiUrl("/auth/userlogin")).not.toThrow();
+    expect(result).toMatch(/auth\/userlogin/);
+  });
 });
 
 describe("refreshAccessToken", () => {

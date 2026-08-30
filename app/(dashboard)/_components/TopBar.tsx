@@ -15,7 +15,7 @@ import {
  DropdownMenuLabel,
  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { SidebarInner, type SidebarUser } from "./Sidebar";
 import type { NavGroup } from "@/lib/nav";
 
@@ -67,6 +67,7 @@ export default function TopBar({
  side="left"
  className="w-64 p-0 bg-sidebar border-sidebar-border [&>button]:hidden"
  >
+ <SheetTitle className="sr-only">Mobile navigation</SheetTitle>
  <SidebarInner
  navGroups={navGroups}
  brandName={brandName}

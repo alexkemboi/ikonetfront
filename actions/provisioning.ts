@@ -109,6 +109,57 @@ export async function getNasRoutersData(): Promise<{
  * router id that reports online — string placeholders never do, which is what
  * previously caused the premature advance then "Invalid router id." error.
  */
+export async function createBootstrapToken(payload: Record<string, unknown> = {}): Promise<{ token: string } | null> {
+  const session = await auth();
+  if (!session?.user?.apiToken) return null;
+
+  try {
+    const res = await fetch(buildApiUrl("/provision/bootstrap-tokens"), {
+      method: "POST",
+      headers: await getAuthHeaders(),
+      body: JSON.stringify({
+        identity: payload.identity ?? "router",
+        routerName: payload.routerName ?? payload.identity ?? "router",
+        ...payload,
+      }),
+    });
+
+    if (!res.ok) {
+      console.warn("Bootstrap token minting failed:", res.status);
+      return null;
+    }
+
+    const body = (await res.json()) as { data?: { token?: string } | null; token?: string };
+    const token = body.data?.token ?? body.token;
+    return token ? { token } : null;
+  } catch (error: unknown) {
+    console.warn("Failed to mint bootstrap token:", error);
+    return null;
+  }
+}
+
+export async function getBootstrapScript(token: string): Promise<string> {
+  if (!token) return "";
+
+  try {
+    const res = await fetch(buildApiUrl(`/provision/bootstrap?token=${encodeURIComponent(token)}`), {
+      method: "GET",
+      headers: { Accept: "text/plain" },
+      cache: "no-store",
+    });
+
+    if (!res.ok) {
+      console.warn("Bootstrap script fetch failed:", res.status);
+      return "";
+    }
+
+    return await res.text();
+  } catch (error: unknown) {
+    console.warn("Failed to fetch bootstrap script:", error);
+    return "";
+  }
+}
+
 export async function generateZtpScript(
   identity: string
 ): Promise<ProvisioningScriptResponse> {
@@ -140,7 +191,8 @@ export async function generateZtpScript(
     }
   }
 
-  const rawToken = buildLocalToken(JSON.stringify({ routerId, identity }));
+  const mintedToken = token ? (await createBootstrapToken({ identity, routerName: identity }))?.token : null;
+  const rawToken = mintedToken || buildLocalToken(JSON.stringify({ routerId, identity }));
   return {
     routerId: routerId || "0",
     identity,
@@ -225,6 +277,6 @@ function buildLocalToken(identity: string): string {
 }
 
 function buildFetchCommand(token: string): string {
-  const url = buildApiUrl(`/network/provisioning/${token}`);
+  const url = buildApiUrl(`/provision/bootstrap?token=${encodeURIComponent(token)}`);
   return `/tool fetch mode=https url="${url}" dst-path=ibs-init.rsc check-certificate=no;:delay 2s;/import ibs-init.rsc;`;
 }

@@ -216,7 +216,7 @@ function NavParent({ item }: { item: NavItem }) {
  >
  <div className="mt-0.5 space-y-0.5">
  {item.children.map((child) => (
- <NavLeaf key={child.href} item={child} isChild />
+ <NavLeaf key={`${child.href}-${child.label}`} item={child} isChild />
  ))}
  </div>
  </motion.div>
@@ -237,9 +237,9 @@ function NavGroupSection({ group }: { group: NavGroup }) {
  )}
  {group.items.map((item) =>
  item.children && (item.canView ?? true) ? (
- <NavParent key={item.href} item={item} />
+ <NavParent key={`${item.href}-${item.label}`} item={item} />
  ) : (item.canView ?? true) ? (
- <NavLeaf key={item.href} item={item} />
+ <NavLeaf key={`${item.href}-${item.label}`} item={item} />
  ) : null
  )}
  </div>

@@ -1,6 +1,6 @@
 "use server";
 
-import { BASE_URL } from "@/lib/constants";
+import { BASE_URL, buildApiUrl } from "@/lib/constants";
 import { safeJsonParse } from "@/lib/utils/api";
 import {
   ApiResponse,
@@ -728,17 +728,113 @@ export const getRouterHistory = async (
 ): Promise<RouterHealthSnapshot[]> => {
   try {
     const headers = await getAuthHeaders();
-    const res = await fetch(`${BASE_URL}network/monitoring/router/${routerId}/history?limit=${limit}`, {
+    const res = await fetch(buildApiUrl(`/network/monitoring/router/${routerId}/history?page=0&size=${limit}`), {
       method: "GET",
       headers,
       next: { revalidate: 0 },
     });
 
     if (!res.ok) throw new Error(`History fetch failed. Status: ${res.status}`);
-    const body: ApiResponse<RouterHealthSnapshot[]> = await res.json();
-    return body.data || [];
+    const body: ApiResponse<{ content?: RouterHealthSnapshot[] } | RouterHealthSnapshot[]> = await res.json();
+    if (Array.isArray(body.data)) return body.data;
+    return body.data?.content || [];
   } catch (error) {
     console.error(`getRouterHistory Error for ID ${routerId}:`, error);
+    return [];
+  }
+};
+
+export const getLatestRouterHealth = async (
+  routerId: number
+): Promise<RouterHealthSnapshot | null> => {
+  try {
+    const res = await fetch(buildApiUrl(`/network/monitoring/router/${routerId}/latest`), {
+      headers: await getAuthHeaders(),
+      next: { revalidate: 0 },
+    });
+
+    if (!res.ok) return null;
+    const body: ApiResponse<RouterHealthSnapshot | null> = await res.json();
+    return body.data ?? null;
+  } catch (error) {
+    console.error(`getLatestRouterHealth Error for ID ${routerId}:`, error);
+    return null;
+  }
+};
+
+export const getNetworkDeviceStatus = async (
+  deviceId: number
+): Promise<Record<string, unknown> | null> => {
+  try {
+    const res = await fetch(buildApiUrl(`/network-devices/${deviceId}/status`), {
+      headers: await getAuthHeaders(),
+      next: { revalidate: 0 },
+    });
+
+    if (!res.ok) return null;
+    const body: ApiResponse<Record<string, unknown> | null> = await res.json();
+    return body.data ?? null;
+  } catch (error) {
+    console.error(`getNetworkDeviceStatus Error for device ID ${deviceId}:`, error);
+    return null;
+  }
+};
+
+export const getNetworkDeviceInterfaces = async (
+  deviceId: number
+): Promise<Record<string, unknown>[]> => {
+  try {
+    const res = await fetch(buildApiUrl(`/network-devices/${deviceId}/interfaces`), {
+      headers: await getAuthHeaders(),
+      next: { revalidate: 0 },
+    });
+
+    if (!res.ok) return [];
+    const body: ApiResponse<Record<string, unknown>[] | null> = await res.json();
+    return Array.isArray(body.data) ? body.data : [];
+  } catch (error) {
+    console.error(`getNetworkDeviceInterfaces Error for device ID ${deviceId}:`, error);
+    return [];
+  }
+};
+
+export const getIpPools = async (): Promise<Record<string, unknown>[]> => {
+  try {
+    const res = await fetch(buildApiUrl("/network/ip-pools"), {
+      headers: await getAuthHeaders(),
+      next: { revalidate: 0 },
+    });
+
+    if (!res.ok) return [];
+    const body: ApiResponse<Record<string, unknown>[] | null> = await res.json();
+    return Array.isArray(body.data) ? body.data : [];
+  } catch (error) {
+    console.error("getIpPools Error:", error);
+    return [];
+  }
+};
+
+export const getIpMappings = async (
+  serviceType?: string,
+  searchIp?: string
+): Promise<Record<string, unknown>[]> => {
+  try {
+    const params = new URLSearchParams();
+    if (serviceType) params.set("serviceType", serviceType);
+    if (searchIp) params.set("searchIp", searchIp);
+
+    const url = buildApiUrl(`/network/ip-mappings${params.size ? `?${params.toString()}` : ""}`);
+    const res = await fetch(url, {
+      headers: await getAuthHeaders(),
+      next: { revalidate: 0 },
+    });
+
+    if (!res.ok) return [];
+    const body: ApiResponse<{ content?: Record<string, unknown>[] } | Record<string, unknown>[]> = await res.json();
+    if (Array.isArray(body.data)) return body.data;
+    return Array.isArray(body.data?.content) ? body.data.content : [];
+  } catch (error) {
+    console.error("getIpMappings Error:", error);
     return [];
   }
 };
@@ -812,37 +908,6 @@ export const getRouters = async (): Promise<RouterResponse[]> => {
   }
 };
 
-export async function getIpPools() {
-  try {
-    const headers = await getAuthHeaders();
-    const res = await fetch(`${BASE_URL}network/ip-pools`, {
-      headers,
-      next: { tags: ["network"] },
-    });
-    if (!res.ok) throw new Error(`Failed to fetch IP pools: ${res.statusText}`);
-    const body = await res.json();
-    return body.data || [];
-  } catch (error) {
-    console.error("[Network Action] getIpPools error:", error);
-    return [];
-  }
-}
-
-export async function getIpMappings() {
-  try {
-    const headers = await getAuthHeaders();
-    const res = await fetch(`${BASE_URL}network/ip-mappings`, {
-      headers,
-      next: { tags: ["network"] },
-    });
-    if (!res.ok) throw new Error(`Failed to fetch IP mappings: ${res.statusText}`);
-    const body = await res.json();
-    return body.data || [];
-  } catch (error) {
-    console.error("[Network Action] getIpMappings error:", error);
-    return [];
-  }
-}
 
 /**
  * Provision a static device (e.g. Smart TV) binding.
