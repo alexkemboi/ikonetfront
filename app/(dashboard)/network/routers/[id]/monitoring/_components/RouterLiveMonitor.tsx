@@ -1,9 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getRouterMonitoringLatest, getRouterMonitoringHistory } from "@/actions/network";
-import { RouterHealthSnapshot } from "@/lib/types/network";
 import { getRouterMonitoringLatest } from "@/actions/network";
+import { RouterHealthSnapshot } from "@/lib/types/network";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { 
@@ -239,7 +238,7 @@ export function RouterLiveMonitor({ routerId, initialHistory }: RouterLiveMonito
  <CardContent className="h-80">
  <ResponsiveContainer width="100%" height="100%">
  <LineChart data={dataStream} margin={{ left: -10, right: 10, top: 10, bottom: 5 }}>
- <CartesianGrid strokeDasharray="3 3" stroke="#333/10" />
+ <CartesianGrid strokeDasharray="3 3" stroke="rgba(51, 51, 51, 0.1)" />
  <XAxis dataKey="createdAt" tickFormatter={formatTime} className="text-xs font-mono" />
  <YAxis yAxisId="left" className="text-xs" />
  <YAxis yAxisId="right" orientation="right" className="text-xs" unit="ms" />
@@ -257,7 +256,7 @@ export function RouterLiveMonitor({ routerId, initialHistory }: RouterLiveMonito
  <CardContent className="h-80">
  <ResponsiveContainer width="100%" height="100%">
  <LineChart data={dataStream} margin={{ left: -10, right: 10, top: 10, bottom: 5 }}>
- <CartesianGrid strokeDasharray="3 3" stroke="#333/10" />
+ <CartesianGrid strokeDasharray="3 3" stroke="rgba(51, 51, 51, 0.1)" />
  <XAxis dataKey="createdAt" tickFormatter={formatTime} className="text-xs font-mono" />
  <YAxis className="text-xs" allowDecimals={false} />
  <Tooltip labelFormatter={formatTime} />
