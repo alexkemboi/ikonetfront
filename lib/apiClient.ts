@@ -72,7 +72,6 @@ export async function apiFetch<T = unknown>(
     auth: authPolicy = "required",
     authorization,
     cache,
-    tags,
     revalidate,
     timeoutMs = 30_000,
     retries = 0,
