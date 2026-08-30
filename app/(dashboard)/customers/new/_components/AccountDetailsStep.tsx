@@ -1,6 +1,5 @@
 import React from "react";
 import { FormikProps } from "formik";
-import * as Yup from "yup";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
