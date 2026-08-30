@@ -62,9 +62,9 @@ export function OnboardingWizard({ regionsTree }: OnboardingWizardProps) {
  } else {
  toast.error(res.message || "Failed to connect to router.");
  }
- } catch (err) {
- toast.error("Network validation error occurred.");
- } finally {
+} catch {
+  toast.error("Network validation error occurred.");
+  } finally {
  setIsVerifying(false);
  }
  };
@@ -90,9 +90,9 @@ export function OnboardingWizard({ regionsTree }: OnboardingWizardProps) {
  } else {
  toast.error(res.message || "Onboarding failed.");
  }
- } catch (err) {
- toast.error("Unexpected failure saving profile.");
- }
+} catch {
+  toast.error("Unexpected failure saving profile.");
+  }
  };
 
  return (
@@ -257,7 +257,7 @@ export function OnboardingWizard({ regionsTree }: OnboardingWizardProps) {
                   } else {
                     setFilteredStations([]);
                   }
-                }, [values.locationIdxno, setFieldValue, filteredLocations]);
+                }, [values.locationIdxno, setFieldValue]);
 
  const hasRegions = regionsTree.length > 0;
 
