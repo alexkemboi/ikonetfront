@@ -97,22 +97,18 @@ export interface RouterHealthSnapshot {
 }
 
 /**
- * Contract for the SSE `RouterTelemetryEvent` frames BE-AAA-045 will publish on
- * `GET /api/v1/network/monitoring/router/{id}/live` (text/event-stream, Bearer)
- * once it lands. Until then the NOC monitor page polls `/latest` + `/history`.
+ * SSE live-telemetry contract.
+ *
+ * `GET /api/v1/network/monitoring/router/{id}/live` (text/event-stream,
+ * Bearer, SYSADMIN/ADMIN/01) emits a named `telemetry` event whose data is a
+ * `RouterHealthSnapshot` JSON object and whose `id` is the snapshot `idxno`
+ * (the consumer dedupes frames on it). A `: ping` comment arrives every 15s to
+ * keep intermediaries from closing the stream. The NOC monitor relays this
+ * through `app/api/monitoring/router/[id]/live` and falls back to `/latest` +
+ * `/history` polling whenever the EventSource errors; a reconnected stream
+ * restarts from the backend's latest snapshot rather than replaying frames
+ * missed while disconnected.
  */
-export interface RouterTelemetryFrame {
-  routerId: number;
-  timestamp: string;
-  cpuUsage: number;
-  totalMemory: number;
-  freeMemory: number;
-  activePppoeSessions: number;
-  activeHotspotSessions: number;
-  uptime: string;
-  latencyMs: number;
-  isOnline: boolean;
-}
 
 export interface RouterCapacityResponse {
   id: number;

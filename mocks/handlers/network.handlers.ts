@@ -7,6 +7,7 @@ import {
   topologyFixture,
   routerHistoryFixture,
   routerLatestFixture,
+  routerLiveStreamFixture,
   deviceStatusFixture,
   ipPoolsFixture,
 } from "@/contracts/catalog";
@@ -46,6 +47,15 @@ export const networkHandlers = [
     const forbidden = requireAuth(info.request);
     if (forbidden) return forbidden;
     return HttpResponse.json(routerLatestFixture(), { status: 200 });
+  }),
+
+  http.get(`${API_PREFIX}/network/monitoring/router/:id/live`, (info) => {
+    const forbidden = requireAuth(info.request);
+    if (forbidden) return forbidden;
+    return HttpResponse.text(routerLiveStreamFixture(), {
+      status: 200,
+      headers: { "Content-Type": "text/event-stream" },
+    });
   }),
 
   http.get(`${API_PREFIX}/network-devices/:id/status`, (info) => {
