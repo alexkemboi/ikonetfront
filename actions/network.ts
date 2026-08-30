@@ -476,10 +476,8 @@ export const createLocation = async (
 
     const textBody = await response.text();
     let parsed: Record<string, unknown> = {};
-    let parseOk = false;
     try {
       parsed = JSON.parse(textBody);
-      parseOk = true;
     } catch {
       if (response.ok) {
         updateTag(`network:locations:region:${request.regionIdxno}`);
@@ -594,10 +592,8 @@ export const createStation = async (
 
     const textBody = await response.text();
     let parsed: Record<string, unknown> = {};
-    let parseOk = false;
     try {
       parsed = JSON.parse(textBody);
-      parseOk = true;
     } catch {
       if (response.ok) {
         updateTag(`network:stations:location:${request.locationIdxno}`);

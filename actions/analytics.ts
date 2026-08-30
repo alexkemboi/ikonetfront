@@ -130,8 +130,7 @@ const FALLBACK_ANALYTICS: NetworkAnalyticsOverview = {
 };
 
 export async function getNetworkAnalyticsData(
-  timeWindow: AnalyticsTimeWindow = "MONTHLY",
-  _routerId?: string
+  timeWindow: AnalyticsTimeWindow = "MONTHLY"
 ): Promise<NetworkAnalyticsOverview> {
   const session = await auth();
   const token = session?.user?.apiToken;
@@ -188,7 +187,7 @@ export async function getNetworkAnalyticsData(
         FALLBACK_ANALYTICS.routerPerformance
       ),
     };
-  } catch (e) {
+  } catch {
     return FALLBACK_ANALYTICS;
   }
 }
