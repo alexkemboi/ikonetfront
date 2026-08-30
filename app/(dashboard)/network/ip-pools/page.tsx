@@ -1,4 +1,5 @@
 import { getIpPools } from "@/actions/network";
+import type { IpPoolResponse } from "@/lib/types/network";
 import { getPermissionForRoute } from "@/lib/data/nav";
 import { redirect } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -61,8 +62,8 @@ export default async function IpPoolsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {pools.map((pool: any, idx: number) => (
-                  <TableRow key={idx} className="hover:bg-muted/50">
+                {pools.map((pool: IpPoolResponse, idx: number) => (
+                  <TableRow key={`${pool.id ?? pool.name ?? "pool"}-${idx}`} className="hover:bg-muted/50">
                     <TableCell className="font-medium">{pool.name || "—"}</TableCell>
                     <TableCell className="font-mono text-sm">{pool.network || pool.range || "—"}</TableCell>
                     <TableCell className="font-mono text-sm">{pool.gateway || "—"}</TableCell>

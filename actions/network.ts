@@ -22,6 +22,8 @@ import {
   RouterValidationResponse,
   RouterOnboardRequest,
   RouterHealthSnapshot,
+  IpPoolResponse,
+  IpMappingResponse,
   RouterCapacityResponse,
   SubscriberProvisioningRequest,
   RouterResponse,
@@ -775,7 +777,7 @@ export const getNetworkDeviceInterfaces = async (
   }
 };
 
-export const getIpPools = async (): Promise<Record<string, unknown>[]> => {
+export const getIpPools = async (): Promise<IpPoolResponse[]> => {
   try {
     const res = await fetch(buildApiUrl("/network/ip-pools"), {
       headers: await getAuthHeaders(),
@@ -783,7 +785,7 @@ export const getIpPools = async (): Promise<Record<string, unknown>[]> => {
     });
 
     if (!res.ok) return [];
-    const body: ApiResponse<Record<string, unknown>[] | null> = await res.json();
+    const body: ApiResponse<IpPoolResponse[] | null> = await res.json();
     return Array.isArray(body.data) ? body.data : [];
   } catch (error) {
     console.error("getIpPools Error:", error);
@@ -794,7 +796,7 @@ export const getIpPools = async (): Promise<Record<string, unknown>[]> => {
 export const getIpMappings = async (
   serviceType?: string,
   searchIp?: string
-): Promise<Record<string, unknown>[]> => {
+): Promise<IpMappingResponse[]> => {
   try {
     const params = new URLSearchParams();
     if (serviceType) params.set("serviceType", serviceType);
@@ -807,7 +809,7 @@ export const getIpMappings = async (
     });
 
     if (!res.ok) return [];
-    const body: ApiResponse<{ content?: Record<string, unknown>[] } | Record<string, unknown>[]> = await res.json();
+    const body: ApiResponse<{ content?: IpMappingResponse[] } | IpMappingResponse[]> = await res.json();
     if (Array.isArray(body.data)) return body.data;
     return Array.isArray(body.data?.content) ? body.data.content : [];
   } catch (error) {

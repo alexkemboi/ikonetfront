@@ -1,4 +1,5 @@
 import { getIpMappings } from "@/actions/network";
+import type { IpMappingResponse } from "@/lib/types/network";
 import { getPermissionForRoute } from "@/lib/data/nav";
 import { redirect } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,8 +24,8 @@ export default async function IpMappingsPage() {
 
   const mappings = await getIpMappings();
 
-  const onlineCount = mappings.filter((m: any) => m.status === "ONLINE").length;
-  const expiredCount = mappings.filter((m: any) => m.status === "EXPIRED").length;
+  const onlineCount = mappings.filter((mapping: IpMappingResponse) => mapping.status === "ONLINE").length;
+  const expiredCount = mappings.filter((mapping: IpMappingResponse) => mapping.status === "EXPIRED").length;
 
   return (
     <div className="min-h-screen p-4 text-foreground sm:p-6 lg:p-8">
@@ -112,8 +113,8 @@ export default async function IpMappingsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {mappings.map((mapping: any, idx: number) => (
-                  <TableRow key={idx} className="hover:bg-muted/50">
+                {mappings.map((mapping: IpMappingResponse, idx: number) => (
+                  <TableRow key={`${mapping.ipAddress}-${mapping.macAddress}-${idx}`} className="hover:bg-muted/50">
                     <TableCell className="font-mono text-sm font-medium">{mapping.ipAddress}</TableCell>
                     <TableCell className="font-mono text-sm">{mapping.macAddress}</TableCell>
                     <TableCell className="text-sm">{mapping.username || "—"}</TableCell>
