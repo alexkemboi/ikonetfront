@@ -2,6 +2,7 @@
 
 import { revalidatePath, revalidateTag } from "next/cache";
 import { auth } from "@/lib/auth";
+import { buildApiUrl } from "@/lib/constants";
 import type { ApiResponse } from "@/lib/types/auth";
 import type { ApiRole, ApiMenuItem, ApiRoleUser, AddRolePayload, MenuAssignment } from "@/lib/types/roles";
 import { NAV_MENUS_TAG } from "@/lib/data/nav";
@@ -39,16 +40,16 @@ function extractCollection(payload: any): any[] {
 
 export async function getRolesAction(): Promise<ApiResponse<ApiRole[]>> {
   const candidateUrls = [
-    `${process.env.BASE_API_URL}system-setup/all-roles`,
-    `${process.env.BASE_API_URL}system-setup/roles`,
-    `${process.env.BASE_API_URL}system/roles`,
+    "/system-setup/all-roles",
+    "/system-setup/roles",
+    "/system/roles",
   ];
 
   let lastError = "Failed to fetch roles";
 
   for (const url of candidateUrls) {
     try {
-      const res = await fetch(url, {
+      const res = await fetch(buildApiUrl(url), {
         headers: await getAuthHeaders(),
         cache: "no-store",
       });
@@ -91,7 +92,7 @@ export async function getRolesAction(): Promise<ApiResponse<ApiRole[]>> {
 export async function getAllMenusAction(): Promise<ApiResponse<ApiMenuItem[]>> {
   try {
     const res = await fetch(
-      `${process.env.BASE_API_URL}system-setup/all-menus`,
+      buildApiUrl("/system-setup/all-menus"),
       { headers: await getAuthHeaders(), cache: "no-store" }
     );
     return await res.json();
@@ -105,7 +106,7 @@ export async function getRoleMenusAction(
 ): Promise<ApiResponse<ApiMenuItem[]>> {
   try {
     const res = await fetch(
-      `${process.env.BASE_API_URL}system-setup/${roleCode}/menus`,
+      buildApiUrl(`/system-setup/${roleCode}/menus`),
       { headers: await getAuthHeaders(), cache: "no-store" }
     );
     return await res.json();
@@ -119,7 +120,7 @@ export async function getRoleUsersAction(
 ): Promise<ApiResponse<ApiRoleUser[]>> {
   try {
     const res = await fetch(
-      `${process.env.BASE_API_URL}system-setup/${roleCode}/users`,
+      buildApiUrl(`/system-setup/${roleCode}/users`),
       { headers: await getAuthHeaders(), cache: "no-store" }
     );
     return await res.json();
@@ -132,7 +133,7 @@ export async function addRoleAction(
   payload: AddRolePayload
 ): Promise<ApiResponse<ApiRole>> {
   const res = await fetch(
-    `${process.env.BASE_API_URL}system-setup/add-role`,
+    buildApiUrl("/system-setup/add-role"),
     {
       method: "POST",
       headers: await getAuthHeaders(),
@@ -156,7 +157,7 @@ export async function saveRoleMenusAction(
   assignments: MenuAssignment[]
 ): Promise<{ success: number; failed: number }> {
   const headers = await getAuthHeaders();
-  const url = `${process.env.BASE_API_URL}system-setup/${roleCode}/menus`;
+  const url = buildApiUrl(`/system-setup/${roleCode}/menus`);
 
   console.log("Saving role menus:", { roleCode, assignments, url, headers });
 
@@ -191,7 +192,7 @@ export async function renameRoleAction(
 ): Promise<ApiResponse<ApiRole>> {
   try {
     const res = await fetch(
-      `${process.env.BASE_API_URL}system-setup/update-role/${roleCode}`,
+      buildApiUrl(`/system-setup/update-role/${roleCode}`),
       {
         method: "PUT",
         headers: await getAuthHeaders(),
@@ -215,7 +216,7 @@ export async function assignUserToRoleAction(
 ): Promise<ApiResponse<null>> {
   try {
     const res = await fetch(
-      `${process.env.BASE_API_URL}system-setup/${roleCode}/users`,
+      buildApiUrl(`/system-setup/${roleCode}/users`),
       {
         method: "POST",
         headers: await getAuthHeaders(),
@@ -239,7 +240,7 @@ export async function removeUserFromRoleAction(
 ): Promise<ApiResponse<null>> {
   try {
     const res = await fetch(
-      `${process.env.BASE_API_URL}system-setup/${roleCode}/users/${userId}`,
+      buildApiUrl(`/system-setup/${roleCode}/users/${userId}`),
       {
         method: "DELETE",
         headers: await getAuthHeaders(),
