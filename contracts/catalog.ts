@@ -393,6 +393,20 @@ export function routerLatestFixture(): ApiResponse<RouterHealthSnapshot> {
   return envelope(routerHealthSnapshotFixture(), "Router latest snapshot fetched successfully");
 }
 
+/**
+ * SSE `text/event-stream` body for the live telemetry route. Emits one named
+ * `telemetry` frame (the exact payload shape `RouterHealthSnapshot`) plus the
+ * `: ping` keepalive the backend broker sends every 15s.
+ */
+export function routerLiveStreamFixture(
+  snapshots: RouterHealthSnapshot[] = [routerHealthSnapshotFixture()]
+): string {
+  const frames = snapshots.map(
+    (snapshot) => `id: ${snapshot.idxno}\nevent: telemetry\ndata: ${JSON.stringify(snapshot)}\n`
+  );
+  return [...frames, ": ping", ""].join("\n");
+}
+
 export function deviceStatusFixture(): ApiResponse<MikrotikDeviceStatus> {
   return envelope(
     {
@@ -728,6 +742,24 @@ export const sessionInteractions: Interaction[] = [
     auth: "bearer",
     status: 200,
     responseBody: ipMappingsPageFixture(),
+  },
+];
+
+/**
+ * Live SSE surfaces — intentionally OUT of Pact. The committed pact suite and
+ * its provider verification assume a JSON `ApiResponse` envelope on every
+ * interaction; a perpetual `text/event-stream` body cannot be replayed there.
+ * These are covered by the MSW handler + integration-manual against a live
+ * backend instead.
+ */
+export const sseInteractions: Interaction[] = [
+  {
+    name: "GET /api/v1/network/monitoring/router/{id}/live (SSE)",
+    method: "GET",
+    path: "/api/v1/network/monitoring/router/1/live",
+    auth: "bearer",
+    status: 200,
+    responseBody: routerLiveStreamFixture(),
   },
 ];
 
