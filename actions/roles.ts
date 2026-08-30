@@ -18,23 +18,25 @@ async function getAuthHeaders(): Promise<HeadersInit> {
   return headers;
 }
 
-function normalizeRoleRecord(raw: any): ApiRole {
-  const roleCode = String(raw?.roleCode ?? raw?.role_code ?? raw?.code ?? raw?.id ?? "");
+function normalizeRoleRecord(raw: unknown): ApiRole {
+  const r = (raw ?? {}) as Record<string, unknown>;
+  const roleCode = String(r.roleCode ?? r.role_code ?? r.code ?? r.id ?? "");
   return {
-    idxno: Number(raw?.idxno ?? raw?.id ?? 0),
-    roleCode: roleCode || String(raw?.idxno ?? raw?.id ?? ""),
-    name: String(raw?.name ?? raw?.roleName ?? raw?.role_name ?? raw?.title ?? "Untitled role"),
-    description: String(raw?.description ?? raw?.desc ?? ""),
-    createdAt: String(raw?.createdAt ?? raw?.created_at ?? ""),
+    idxno: Number(r.idxno ?? r.id ?? 0),
+    roleCode: roleCode || String(r.idxno ?? r.id ?? ""),
+    name: String(r.name ?? r.roleName ?? r.role_name ?? r.title ?? "Untitled role"),
+    description: String(r.description ?? r.desc ?? ""),
+    createdAt: String(r.createdAt ?? r.created_at ?? ""),
   };
 }
 
-function extractCollection(payload: any): any[] {
+function extractCollection(payload: unknown): unknown[] {
   if (Array.isArray(payload)) return payload;
-  if (Array.isArray(payload?.data)) return payload.data;
-  if (Array.isArray(payload?.items)) return payload.items;
-  if (Array.isArray(payload?.roles)) return payload.roles;
-  if (Array.isArray(payload?.content)) return payload.content;
+  const obj = payload as Record<string, unknown> | null;
+  if (obj?.data && Array.isArray(obj.data)) return obj.data;
+  if (obj?.items && Array.isArray(obj.items)) return obj.items;
+  if (obj?.roles && Array.isArray(obj.roles)) return obj.roles;
+  if (obj?.content && Array.isArray(obj.content)) return obj.content;
   return [];
 }
 

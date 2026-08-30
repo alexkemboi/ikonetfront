@@ -491,20 +491,20 @@ export function DashboardShell({
  fontSize={11}
  />
 
- <YAxis
- tickFormatter={(value:any) =>
- `${value / 1000}K`
- }
- tickLine={false}
- axisLine={false}
- fontSize={11}
- />
+          <YAxis
+            tickFormatter={(value: number) =>
+              `${value / 1000}K`
+            }
+            tickLine={false}
+            axisLine={false}
+            fontSize={11}
+          />
 
- <Tooltip
- formatter={(value: any) =>
- formatKES(value)
- }
- />
+          <Tooltip
+            formatter={(value) =>
+              formatKES(typeof value === "number" ? value : Number(value ?? 0))
+            }
+          />
 
  <Area
  type="monotone"

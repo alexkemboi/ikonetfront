@@ -1,3 +1,5 @@
+import type { ApiResponse as BaseApiResponse, PageResponse } from "@/lib/types/api";
+
 export interface Customer {
   userIdxno: number;
   username: string;
@@ -20,43 +22,11 @@ export interface Customer {
   lastActiveDate: string | null;
 }
 
-export interface CustomerPageable {
-  pageNumber: number;
-  pageSize: number;
-  sort: {
-    unsorted: boolean;
-    sorted: boolean;
-    empty: boolean;
-  };
-  offset: number;
-  unpaged: boolean;
-  paged: boolean;
-}
+export type CustomerPageable = PageResponse<never>["pageable"];
 
-export interface CustomerApiResponse<T> {
-  status: number;
-  success: boolean;
-  message: string;
-  data: {
-    content: T[];
-    pageable: CustomerPageable;
-    totalElements: number;
-    totalPages: number;
-    last: boolean;
-    first: boolean;
-    numberOfElements: number;
-    size: number;
-    number: number;
-    sort: {
-      unsorted: boolean;
-      sorted: boolean;
-      empty: boolean;
-    };
-    empty: boolean;
-  };
-  timestamp: string;
+export type CustomerApiResponse<T = unknown> = BaseApiResponse<PageResponse<T>> & {
   error?: unknown;
-}
+};
 
 export interface AddCustomerPayload {
   username: string;

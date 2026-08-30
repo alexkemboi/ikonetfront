@@ -11,18 +11,20 @@ import { Button } from "@/components/ui/button";
 import { useAppDispatch } from "@/store/hooks";
 import { setEditUserSheetOpen } from "@/store/slices/systemslice";
 
-export const staffUserColumns: ColumnDef<ApiRoleUser>[] = [
- {
- accessorKey: "fullName",
- header: ({ column }) => (
- <DataTableColumnHeader column={column} title="Name" />
- ),
- cell: ({ row }) => {
- const user = row.original;
- const initials = [user.fname, user.otherName || user.middleName]
- .filter(Boolean)
- .map((n) => n[0].toUpperCase())
- .join("");
+export function useStaffUserColumns(): ColumnDef<ApiRoleUser>[] {
+  const dispatch = useAppDispatch();
+  return [
+  {
+    accessorKey: "fullName",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Name" />
+    ),
+    cell: ({ row }) => {
+      const user = row.original;
+      const initials = [user.fname, user.otherName || user.middleName]
+        .filter(Boolean)
+        .map((n) => n[0].toUpperCase())
+        .join("");
 
  return (
  <div className="flex items-center gap-3 min-w-0">
@@ -130,11 +132,9 @@ export const staffUserColumns: ColumnDef<ApiRoleUser>[] = [
  },
  },
 
- {
- id: "actions",
- cell: ({ row }) => {
- const payment = row.original
- const dispatch = useAppDispatch();
+  {
+    id: "actions",
+cell: () => {
 
  return (
  <DropdownMenu>
@@ -159,3 +159,4 @@ export const staffUserColumns: ColumnDef<ApiRoleUser>[] = [
  },
  },
 ];
+}

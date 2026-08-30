@@ -30,8 +30,8 @@ export function StationCapacityIndicator({ stationId }: StationCapacityIndicator
  startTransition(() => {
  setRouters(data);
  });
- } catch (err) {
- setError("Failed to query hardware load indexes from this station.");
+} catch {
+  setError("Failed to query hardware load indexes from this station.");
  } finally {
  setLoading(false);
  }

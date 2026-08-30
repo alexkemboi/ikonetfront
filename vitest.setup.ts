@@ -1,5 +1,6 @@
 /// <reference types="vitest/globals" />
 import "@testing-library/jest-dom/vitest";
+import { server } from "./mocks/server";
 
 process.env.BASE_API_URL = "http://localhost:8381/api/v1/";
 
@@ -34,6 +35,7 @@ vi.mock("next/navigation", () => ({
 
 vi.mock("next/cache", () => ({
   revalidatePath: vi.fn(),
+  revalidateTag: vi.fn(),
 }));
 
 vi.mock("next-auth/react", () => ({
@@ -41,3 +43,8 @@ vi.mock("next-auth/react", () => ({
   useSession: vi.fn(),
   SessionProvider: ({ children }: { children: React.ReactNode }) => children,
 }));
+
+// MSW network-level mock server backed by contracts/catalog.ts fixtures.
+beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
+afterEach(() => server.resetHandlers());
+afterAll(() => server.close());

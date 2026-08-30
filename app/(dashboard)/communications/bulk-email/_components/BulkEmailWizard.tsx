@@ -199,14 +199,14 @@ function EmailPreview({
  </div>
  </div>
 
- <div className="flex items-start gap-2 p-3 rounded-lg bg-[oklch(0.97_0.04_65)] border border-[oklch(0.86_0.1_65)]">
- <AlertCircle className="w-4 h-4 text-[oklch(0.65_0.18_65)] shrink-0 mt-0.5" />
- <p className="text-xs text-[oklch(0.5_0.18_65)]">
- Variables like <code className="font-mono bg-[oklch(0.93_0.04_65)] px-1 rounded">{"{{customer_name}}"}</code> will be replaced with each recipient's actual details before sending.
- </p>
- </div>
- </div>
- );
+      <div className="flex items-start gap-2 p-3 rounded-lg bg-[oklch(0.97_0.04_65)] border border-[oklch(0.86_0.1_65)]">
+        <AlertCircle className="w-4 h-4 text-[oklch(0.65_0.18_65)] shrink-0 mt-0.5" />
+        <p className="text-xs text-[oklch(0.5_0.18_65)]">
+          Variables like <code className="font-mono bg-[oklch(0.93_0.04_65)] px-1 rounded">{"{{customer_name}}"}</code> will be replaced with each recipient&apos;s actual details before sending.
+        </p>
+      </div>
+    </div>
+  );
 }
 
 export default function BulkEmailWizard({ segments, templates }: Props) {

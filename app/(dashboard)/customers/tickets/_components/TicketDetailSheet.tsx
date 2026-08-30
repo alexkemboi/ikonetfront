@@ -49,14 +49,25 @@ const STATUS_LABELS: Record<TicketStatus, string> = {
 }
 
 function SlaDisplay({ deadline }: { deadline: string | null }) {
- if (!deadline) return <span className="text-sm text-muted-foreground">Not set</span>
+  if (!deadline) return <span className="text-sm text-muted-foreground">Not set</span>
+  return <SlaClock deadline={deadline} />
+}
 
- const diff = new Date(deadline).getTime() - Date.now()
- const isOverdue = diff < 0
- const formatted = new Date(deadline).toLocaleString("en-KE", {
- day: "2-digit", month: "short", year: "numeric",
- hour: "2-digit", minute: "2-digit", hour12: false,
- })
+function SlaClock({ deadline }: { deadline: string }) {
+  // Snapshot `now` in state (refreshed each minute) so the render stays pure —
+  // `Date.now()` in the render body is impure and would trip the compiler lints.
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 60_000)
+    return () => clearInterval(t)
+  }, [])
+
+  const diff = new Date(deadline).getTime() - now
+  const isOverdue = diff < 0
+  const formatted = new Date(deadline).toLocaleString("en-KE", {
+    day: "2-digit", month: "short", year: "numeric",
+    hour: "2-digit", minute: "2-digit", hour12: false,
+  })
 
  return (
  <div className="flex items-center gap-2">
@@ -101,16 +112,20 @@ export function TicketDetailSheet({ ticket, staffList, onClose }: TicketDetailSh
  const [reverseLoading, setReverseLoading] = useState(false)
  const [assignLoading, setAssignLoading] = useState(false)
 
- useEffect(() => {
- if (!ticket) {
- setComments([])
- return
- }
- setCommentsLoading(true)
- getTicketComments(ticket.idxno)
- .then((res) => { if (res.success) setComments(Array.isArray(res.data) ? res.data : []) })
- .finally(() => setCommentsLoading(false))
- }, [ticket?.idxno])
+  useEffect(() => {
+    const idxno = ticket?.idxno
+    if (!idxno) {
+      const t = setTimeout(() => setComments([]), 0)
+      return () => clearTimeout(t)
+    }
+    const t = setTimeout(() => {
+      setCommentsLoading(true)
+      getTicketComments(idxno)
+        .then((res) => { if (res.success) setComments(Array.isArray(res.data) ? res.data : []) })
+        .finally(() => setCommentsLoading(false))
+    }, 0)
+    return () => clearTimeout(t)
+  }, [ticket?.idxno])
 
  // Move forward — blocked if no assignee and target status requires one
  async function handleStatusForward() {
@@ -206,8 +221,10 @@ export function TicketDetailSheet({ ticket, staffList, onClose }: TicketDetailSh
  })
 
  useEffect(() => {
- if (!ticket) return
+ // commentFormik identity is not stable across renders — only react to ticket changes.
+ if (!ticket?.idxno) return
  commentFormik.resetForm()
+ // eslint-disable-next-line react-hooks/exhaustive-deps
  }, [ticket?.idxno])
 
  const nextStatus = ticket ? NEXT_STATUS_MAP[ticket.status] : null

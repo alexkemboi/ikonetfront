@@ -68,8 +68,8 @@ export function LocationForm({ regions, onSuccess }: LocationFormProps) {
  }
  }}
  >
- {({ errors, touched }) => (
- <Form className="space-y-4 pt-4">
+{() => (
+  <Form className="space-y-4 pt-4">
  <div className="space-y-2">
  <Label htmlFor="regionIdxno">Parent Region</Label>
  <Field

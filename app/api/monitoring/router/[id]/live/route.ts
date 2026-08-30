@@ -2,8 +2,15 @@ import { auth } from "@/lib/auth";
 import { NextRequest } from "next/server";
 import { getCurrentUserPermissions, NO_PERMISSIONS } from "@/lib/data/nav";
 
-const BASE_URL = process.env.BASE_API_URL || "http://localhost:8381/api/v1";
-
+/**
+ * Live router telemetry SSE proxy.
+ *
+ * The backend has no `GET /api/v1/network/monitoring/router/{id}/live` yet
+ * (BE-AAA-045) — the NOC monitor page polls `/latest` + `/history` on a
+ * refetch interval instead of opening this EventSource. Keep this route as the
+ * future streaming target with a graceful 501 so any stale EventSource shows a
+ * readable state instead of a backend 404 relay.
+ */
 export async function GET(
  request: NextRequest,
  { params }: { params: Promise<{ id: string }> }
@@ -25,25 +32,16 @@ export async function GET(
  return new Response("Invalid router ID", { status: 400 });
  }
 
- const backendUrl = `${BASE_URL.replace(/\/+$/, "")}/network/monitoring/router/${id}/live`;
-
- const backendResponse = await fetch(backendUrl, {
- headers: {
- Authorization: `Bearer ${session.user.apiToken}`,
- Accept: "text/event-stream",
- },
- cache: "no-store",
- });
-
- if (!backendResponse.ok) {
- return new Response("Backend error", { status: backendResponse.status });
- }
-
- return new Response(backendResponse.body, {
- headers: {
- "Content-Type": "text/event-stream",
- "Cache-Control": "no-cache, no-transform",
- Connection: "keep-alive",
- },
- });
+  return new Response(
+    JSON.stringify({
+      status: 501,
+      success: false,
+      message:
+        "Live SSE telemetry is not available yet (pending backend BE-AAA-045). The monitor page polls /network/monitoring/router/{id}/latest + /history meanwhile.",
+    }),
+    {
+      status: 501,
+      headers: { "Content-Type": "application/json" },
+    }
+  );
 }

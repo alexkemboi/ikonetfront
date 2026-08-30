@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { Formik, Form, Field } from "formik";
 import * as Yup from "yup";
-import { RegionResponse, LocationResponse, StationResponse, RouterOnboardRequest } from "@/lib/types/network";
+import { RegionResponse, LocationResponse, StationResponse, RouterOnboardRequest, RouterValidationResponse } from "@/lib/types/network";
 import { validateRouterConnectivity, onboardRouter } from "@/actions/network";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,12 +18,12 @@ interface OnboardingWizardProps {
 }
 
 export function OnboardingWizard({ regionsTree }: OnboardingWizardProps) {
- const router = useRouter();
- const [step, setStep] = useState(1);
- const [hardwareProfile, setHardwareProfile] = useState<any>(null);
- const [isVerifying, setIsVerifying] = useState(false);
- const [filteredLocations, setFilteredLocations] = useState<LocationResponse[]>([]);
- const [filteredStations, setFilteredStations] = useState<StationResponse[]>([]);
+  const router = useRouter();
+  const [step, setStep] = useState(1);
+  const [hardwareProfile, setHardwareProfile] = useState<RouterValidationResponse | null>(null);
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [filteredLocations, setFilteredLocations] = useState<LocationResponse[]>([]);
+  const [filteredStations, setFilteredStations] = useState<StationResponse[]>([]);
 
  const [wizardData, setWizardData] = useState({
  ipAddress: "",
@@ -39,15 +39,20 @@ export function OnboardingWizard({ regionsTree }: OnboardingWizardProps) {
  monitoringEnabled: true,
  });
 
- const validateStep1 = async (values: any) => {
- setIsVerifying(true);
- try {
- const res = await validateRouterConnectivity({
- ipAddress: values.ipAddress,
- port: Number(values.port),
- username: values.username,
- password: values.password,
- });
+  const validateStep1 = async (values: {
+  ipAddress: string;
+  port: number;
+  username: string;
+  password: string;
+}) => {
+    setIsVerifying(true);
+    try {
+      const res = await validateRouterConnectivity({
+        ipAddress: values.ipAddress,
+        port: Number(values.port),
+        username: values.username,
+        password: values.password,
+      });
 
  if (res.success && res.data) {
  setHardwareProfile(res.data);
@@ -57,9 +62,9 @@ export function OnboardingWizard({ regionsTree }: OnboardingWizardProps) {
  } else {
  toast.error(res.message || "Failed to connect to router.");
  }
- } catch (err) {
- toast.error("Network validation error occurred.");
- } finally {
+} catch {
+  toast.error("Network validation error occurred.");
+  } finally {
  setIsVerifying(false);
  }
  };
@@ -85,9 +90,9 @@ export function OnboardingWizard({ regionsTree }: OnboardingWizardProps) {
  } else {
  toast.error(res.message || "Onboarding failed.");
  }
- } catch (err) {
- toast.error("Unexpected failure saving profile.");
- }
+} catch {
+  toast.error("Unexpected failure saving profile.");
+  }
  };
 
  return (
@@ -212,45 +217,47 @@ export function OnboardingWizard({ regionsTree }: OnboardingWizardProps) {
  </div>
  )}
 
- {step === 3 && (
- <Formik
- initialValues={{
- regionIdxno: wizardData.regionIdxno,
- locationIdxno: wizardData.locationIdxno,
- stationIdxno: wizardData.stationIdxno,
- }}
- validationSchema={Yup.object({
- regionIdxno: Yup.number().required("Region is required"),
- locationIdxno: Yup.number().required("Location is required"),
- stationIdxno: Yup.number().required("Station POP is required"),
- })}
- onSubmit={(values) => {
- setWizardData((prev) => ({ ...prev, ...values }));
- setStep(4);
- }}
- >
- {({ errors, touched, values, setFieldValue }) => {
- useEffect(() => {
- if (values.regionIdxno) {
- const selReg = regionsTree.find(r => r.idxno === Number(values.regionIdxno));
- setFilteredLocations(selReg?.locations || []);
- setFieldValue("locationIdxno", "");
- setFieldValue("stationIdxno", "");
- } else {
- setFilteredLocations([]);
- setFilteredStations([]);
- }
- }, [values.regionIdxno, setFieldValue]);
+          {step === 3 && (
+            <Formik
+              initialValues={{
+                regionIdxno: wizardData.regionIdxno,
+                locationIdxno: wizardData.locationIdxno,
+                stationIdxno: wizardData.stationIdxno,
+              }}
+              validationSchema={Yup.object({
+                regionIdxno: Yup.number().required("Region is required"),
+                locationIdxno: Yup.number().required("Location is required"),
+                stationIdxno: Yup.number().required("Station POP is required"),
+              })}
+              onSubmit={(values) => {
+                setWizardData((prev) => ({ ...prev, ...values }));
+                setStep(4);
+              }}
+            >
+              {({ errors, touched, values, setFieldValue }) => {
+                // eslint-disable-next-line react-hooks/rules-of-hooks -- Formik render-prop callbacks are top-level hook calls in this pattern
+                useEffect(() => {
+                  if (values.regionIdxno) {
+                    const selReg = regionsTree.find(r => r.idxno === Number(values.regionIdxno));
+                    setFilteredLocations(selReg?.locations || []);
+                    setFieldValue("locationIdxno", "");
+                    setFieldValue("stationIdxno", "");
+                  } else {
+                    setFilteredLocations([]);
+                    setFilteredStations([]);
+                  }
+                }, [values.regionIdxno, setFieldValue]);
 
- useEffect(() => {
- if (values.locationIdxno) {
- const selLoc = filteredLocations.find(l => l.idxno === Number(values.locationIdxno));
- setFilteredStations(selLoc?.stations || []);
- setFieldValue("stationIdxno", "");
- } else {
- setFilteredStations([]);
- }
- }, [values.locationIdxno, setFieldValue, filteredLocations]);
+                // eslint-disable-next-line react-hooks/rules-of-hooks -- Formik render-prop callbacks are top-level hook calls in this pattern
+                useEffect(() => {
+                  if (values.locationIdxno) {
+                    const selLoc = filteredLocations.find(l => l.idxno === Number(values.locationIdxno));
+                    setFilteredStations(selLoc?.stations || []);
+                    setFieldValue("stationIdxno", "");
+                  } else {
+                    setFilteredStations([]);
+                  }
+                }, [values.locationIdxno, setFieldValue]);
 
  const hasRegions = regionsTree.length > 0;
 

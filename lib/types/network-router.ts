@@ -1,3 +1,5 @@
+import type { ApiResponse as BaseApiResponse } from "@/lib/types/api";
+
 export type RouterNodeStatus = "ACTIVE" | "PASSIVE" | "UNREGISTERED" | "OFFLINE";
 
 export type RouterAction =
@@ -61,11 +63,4 @@ export interface RouterActionResponse {
   output?: string;
 }
 
-export interface ApiResponse<T> {
-  status: number;
-  success: boolean;
-  message: string;
-  data: T;
-  timestamp: string;
-  error?: unknown;
-}
+export type ApiResponse<T> = BaseApiResponse<T> & { error?: unknown };

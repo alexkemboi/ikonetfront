@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { Bell, LogOut, Menu, Shield } from "lucide-react";
@@ -15,7 +15,7 @@ import {
  DropdownMenuLabel,
  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { SidebarInner, type SidebarUser } from "./Sidebar";
 import type { NavGroup } from "@/lib/nav";
 
@@ -49,9 +49,8 @@ export default function TopBar({
  brandName = "Beesmart",
  sidebarUser,
 }: TopBarProps) {
- const breadcrumbs = useBreadcrumb();
- const pathname = usePathname();
- const [mobileOpen, setMobileOpen] = useState(false);
+const breadcrumbs = useBreadcrumb();
+	const [mobileOpen, setMobileOpen] = useState(false);
 
 
 

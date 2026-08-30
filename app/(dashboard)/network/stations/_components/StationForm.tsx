@@ -32,12 +32,9 @@ const StationValidationSchema = Yup.object().shape({
 
 export function StationForm({ regions, onSuccess }: StationFormProps) {
  const [isSubmitting, setIsSubmitting] = useState(false);
- const [filteredLocations, setFilteredLocations] = useState<LocationResponse[]>([]);
- const [availableRegions, setAvailableRegions] = useState<RegionResponse[]>(() =>
- regions.filter((r) => (r.locations && r.locations.length > 0) || true)
- );
+const [filteredLocations, setFilteredLocations] = useState<LocationResponse[]>([]);
 
- const hasRegions = regions.length > 0;
+const hasRegions = regions.length > 0;
 
  const handleRegionChange = (
  e: React.ChangeEvent<HTMLSelectElement>,

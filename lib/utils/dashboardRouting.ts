@@ -4,5 +4,6 @@
  */
 
 export function resolveDashboardPathForRole(_roleCode: string | undefined | null): string {
+  void _roleCode;
   return "/dashboard";
 }

@@ -27,22 +27,23 @@ export function PPPoECustomerTable({ customers }: PPPoECustomerTableProps) {
  async function handleToggleActive(customer: Customer) {
  toast.loading(`Updating ${customer.fullName}…`);
  try {
- const result = await toggleCustomerActiveStatus(customer.userIdxno);
- toast.dismiss();
- result.success
- ? toast.success(result.message || "Status updated.")
- : toast.error(result.message || "Failed to update status.");
- } catch {
+const result = await toggleCustomerActiveStatus(customer.userIdxno);
+  toast.dismiss();
+  if (result.success) {
+  toast.success(result.message || "Status updated.");
+  } else {
+  toast.error(result.message || "Failed to update status.");
+  }
+  } catch {
  toast.dismiss();
  toast.error("Failed to update status.");
  }
  }
 
- const columns = useMemo(
- () => createPPPoEColumns(router, dispatch, handleToggleActive),
- // eslint-disable-next-line react-hooks/exhaustive-deps
- [router, dispatch]
- );
+const columns = useMemo(
+  () => createPPPoEColumns(router, dispatch, handleToggleActive),
+  [router, dispatch]
+  );
 
  const activeCount = customers.filter((c) => c.isActive).length;
  const subActive = customers.filter((c) => c.isSubActive).length;

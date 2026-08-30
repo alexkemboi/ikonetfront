@@ -8,8 +8,10 @@ import {
   UpdateCustomerPayload,
   CustomerFilters,
 } from "@/lib/types/customer";
+import type { ApiResponse, PageResponse } from "@/lib/types/api";
 import { BASE_URL } from "@/lib/constants";
 import { auth } from "@/lib/auth";
+import { apiFetch } from "@/lib/apiClient";
 
 async function getRlsScopeParams(): Promise<URLSearchParams> {
   const session = await auth();
@@ -29,6 +31,29 @@ async function getAuthHeaders(): Promise<HeadersInit> {
       `Bearer ${session.user.apiToken}`;
   }
   return headers;
+}
+
+function emptyCustomerPage(page = 0, size = 0): PageResponse<never> {
+  return {
+    content: [],
+    pageable: {
+      pageNumber: page,
+      pageSize: size,
+      sort: { unsorted: true, sorted: false, empty: true },
+      offset: 0,
+      unpaged: false,
+      paged: false,
+    },
+    totalElements: 0,
+    totalPages: 0,
+    last: true,
+    first: true,
+    numberOfElements: 0,
+    size,
+    number: page,
+    sort: { unsorted: true, sorted: false, empty: true },
+    empty: true,
+  };
 }
 
 
@@ -82,7 +107,7 @@ export async function getCustomers(
   page: number = 0,
   size: number = 10,
   filters?: CustomerFilters
-) {
+): Promise<CustomerApiResponse<Customer>> {
   try {
     const params = new URLSearchParams();
     params.append("page", page.toString());
@@ -101,19 +126,11 @@ export async function getCustomers(
     const scopeParams = await getRlsScopeParams();
     scopeParams.forEach((value, key) => params.append(key, value));
 
-    const response = await fetch(`${BASE_URL}customers?${params.toString()}`, {
-      headers: await getAuthHeaders(),
-      next: {
-        tags: ["customers"],
-      },
+    const res = await apiFetch<PageResponse<Customer>>(`/customers?${params.toString()}`, {
+      auth: "required",
+      tags: ["customers"],
     });
-
-    if (!response.ok) {
-      return handleApiResponse(response, "Failed to fetch customers");
-    }
-
-    const data = await response.json();
-    return data;
+    return res as CustomerApiResponse<Customer>;
   } catch (error: unknown) {
     console.error("Error fetching customers:", error);
     return {
@@ -147,28 +164,20 @@ export async function getCustomers(
 
 export async function getCustomerById(
   id: number
-){
+): Promise<ApiResponse<Customer>> {
   try {
-    const response = await fetch(`${BASE_URL}customers/${id}`, {
-      headers: await getAuthHeaders(),
-      next: {
-        tags: [`customer-${id}`],
-      },
+    const res = await apiFetch<Customer>(`/customers/${id}`, {
+      auth: "required",
+      tags: [`customer-${id}`],
     });
-
-    if (!response.ok) {
-      return handleApiResponse(response, "Failed to fetch customer by ID");
-    }
-
-    const data = await response.json();
-    return data;
+    return res;
   } catch (error: unknown) {
     console.error(`Error fetching customer ${id}:`, error);
     return {
       status: 500,
       success: false,
       message: (error instanceof Error ? error.message : String(error)) || "An unexpected error occurred",
-      data: {}, // Return an empty Customer object or null if appropriate
+      data: {} as Customer,
       timestamp: new Date().toISOString(),
     };
   }
@@ -176,32 +185,26 @@ export async function getCustomerById(
 
 export async function addCustomer(
   payload: AddCustomerPayload
-){
+): Promise<CustomerApiResponse<Customer>> {
   try {
-    console.log("Adding customer with payload:", payload);
-    const response = await fetch(`${BASE_URL}customers`, {
+    const res = await apiFetch<PageResponse<Customer>>("/customers", {
       method: "POST",
-      headers: await getAuthHeaders(),
-      body: JSON.stringify(payload),
+      body: payload,
+      auth: "required",
     });
 
-    console.log("Customer added successfully:", response);
-    if (!response.ok) {
-      return handleApiResponse(response, "Failed to add customer");
+    if (res.success) {
+      revalidatePath("/customers/all");
     }
 
-    
-
-    const data= await response.json();
-    revalidatePath("/customers/all");
-    return data;
+    return res as CustomerApiResponse<Customer>;
   } catch (error: unknown) {
     console.error("Error adding customer:", error);
     return {
       status: 500,
       success: false,
       message: (error instanceof Error ? error.message : String(error)) || "An unexpected error occurred",
-      data: {} as Customer,
+      data: emptyCustomerPage(),
       timestamp: new Date().toISOString(),
     };
   }

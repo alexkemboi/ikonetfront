@@ -20,27 +20,27 @@ export default function BuyTab({ packages, onBack }: BuyTabProps) {
  const [selectedPackage, setSelectedPackage] = useState<HotspotPackage | null>(null);
  const [showCheckout, setShowCheckout] = useState(false);
 
- // Filter and sort packages
- const filteredAndSorted = useMemo(() => {
- let result = packages.filter((pkg) =>
- pkg.packageName.toLowerCase().includes(searchQuery.toLowerCase())
- );
+    // Filter and sort packages
+    const filteredAndSorted = useMemo(() => {
+        const result = packages.filter((pkg) =>
+            pkg.packageName.toLowerCase().includes(searchQuery.toLowerCase())
+        );
 
- // Sort
- result.sort((a, b) => {
- switch (sortBy) {
- case "price-asc":
- return a.price - b.price;
- case "price-desc":
- return b.price - a.price;
- case "data-asc":
- return a.speedDownload - b.speedDownload;
- case "data-desc":
- return b.speedDownload - a.speedDownload;
- default:
- return 0;
- }
- });
+        // Sort
+        result.sort((a, b) => {
+            switch (sortBy) {
+                case "price-asc":
+                    return a.price - b.price;
+                case "price-desc":
+                    return b.price - a.price;
+                case "data-asc":
+                    return (a.speedDownload ?? 0) - (b.speedDownload ?? 0);
+                case "data-desc":
+                    return (b.speedDownload ?? 0) - (a.speedDownload ?? 0);
+                default:
+                    return 0;
+            }
+        });
 
  return result;
  }, [packages, searchQuery, sortBy]);

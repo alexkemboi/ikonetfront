@@ -16,31 +16,38 @@ async function getAuthHeaders(): Promise<HeadersInit> {
   return headers;
 }
 
-function normalizeUserRecord(raw: any): ApiRoleUser {
+function normalizeUserRecord(raw: unknown): ApiRoleUser {
+  const r = (raw ?? {}) as Record<string, unknown>;
   return {
-    idxno: Number(raw?.idxno ?? raw?.userIdxno ?? raw?.id ?? 0),
-    username: String(raw?.username ?? raw?.userName ?? raw?.name ?? ""),
-    userId: String(raw?.userId ?? raw?.user_id ?? raw?.id ?? raw?.idxno ?? ""),
-    role: String(raw?.role ?? raw?.roleCode ?? ""),
-    roleName: String(raw?.roleName ?? raw?.role_name ?? raw?.role ?? ""),
-    createdAt: String(raw?.createdAt ?? raw?.created_at ?? ""),
-    isactive: Boolean(raw?.isactive ?? raw?.isActive ?? true),
-    fname: String(raw?.fname ?? raw?.firstName ?? raw?.first_name ?? ""),
-    middleName: String(raw?.middleName ?? raw?.middle_name ?? ""),
-    otherName: String(raw?.otherName ?? raw?.other_name ?? ""),
-    fullName: String(raw?.fullName ?? raw?.full_name ?? [raw?.fname, raw?.middleName, raw?.otherName].filter(Boolean).join(" ") ?? ""),
-    email: String(raw?.email ?? ""),
-    phoneNumber: String(raw?.phoneNumber ?? raw?.phone_number ?? ""),
-    canLogin: Boolean(raw?.canLogin ?? raw?.can_login ?? true),
+    idxno: Number(r.idxno ?? r.userIdxno ?? r.id ?? 0),
+    username: String(r.username ?? r.userName ?? r.name ?? ""),
+    userId: String(r.userId ?? r.user_id ?? r.id ?? r.idxno ?? ""),
+    role: String(r.role ?? r.roleCode ?? ""),
+    roleName: String(r.roleName ?? r.role_name ?? r.role ?? ""),
+    createdAt: String(r.createdAt ?? r.created_at ?? ""),
+    isactive: Boolean(r.isactive ?? r.isActive ?? true),
+    fname: String(r.fname ?? r.firstName ?? r.first_name ?? ""),
+    middleName: String(r.middleName ?? r.middle_name ?? ""),
+    otherName: String(r.otherName ?? r.other_name ?? ""),
+    fullName: String(
+      r.fullName ??
+        r.full_name ??
+        [r.fname, r.middleName, r.otherName].filter(Boolean).join(" ") ??
+        ""
+    ),
+    email: String(r.email ?? ""),
+    phoneNumber: String(r.phoneNumber ?? r.phone_number ?? ""),
+    canLogin: Boolean(r.canLogin ?? r.can_login ?? true),
   };
 }
 
-function extractUsersPayload(payload: any): any[] {
+function extractUsersPayload(payload: unknown): unknown[] {
   if (Array.isArray(payload)) return payload;
-  if (Array.isArray(payload?.data)) return payload.data;
-  if (Array.isArray(payload?.items)) return payload.items;
-  if (Array.isArray(payload?.users)) return payload.users;
-  if (Array.isArray(payload?.content)) return payload.content;
+  const obj = payload as Record<string, unknown> | null;
+  if (obj?.data && Array.isArray(obj.data)) return obj.data;
+  if (obj?.items && Array.isArray(obj.items)) return obj.items;
+  if (obj?.users && Array.isArray(obj.users)) return obj.users;
+  if (obj?.content && Array.isArray(obj.content)) return obj.content;
   return [];
 }
 
