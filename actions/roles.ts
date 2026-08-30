@@ -45,23 +45,37 @@ export async function getRolesAction(): Promise<ApiResponse<ApiRole[]>> {
   ];
 
   let lastError = "Failed to fetch roles";
+  const attempts: { url: string; status?: number; error?: string; responsePreview?: string }[] = [];
+
+  console.log("[Roles] BASE_API_URL:", process.env.BASE_API_URL);
+  const headers = await getAuthHeaders();
+  console.log("[Roles] Auth token:", headers.Authorization?.substring(0, 50) + "...");
 
   for (const url of candidateUrls) {
     try {
+      console.log(`[Roles] Attempting fetch from: ${url}`);
       const res = await fetch(url, {
-        headers: await getAuthHeaders(),
+        headers,
         cache: "no-store",
       });
 
+      console.log(`[Roles] Response status: ${res.status}`);
+
       if (!res.ok) {
+        const text = await res.text();
+        attempts.push({ url, status: res.status, responsePreview: text.substring(0, 200) });
         lastError = `Failed to fetch roles (${res.status})`;
         continue;
       }
 
       const payload = await res.json();
+      console.log("[Roles] Raw payload:", JSON.stringify(payload, null, 2).substring(0, 500));
+      
       const collection = extractCollection(payload);
+      console.log("[Roles] Extracted collection:", collection.length, "items");
 
       if (collection.length > 0) {
+        console.log("[Roles] Success! Returning roles:", collection.map((r: any) => r.roleCode || r.id));
         return {
           status: res.status,
           success: true,
@@ -72,12 +86,22 @@ export async function getRolesAction(): Promise<ApiResponse<ApiRole[]>> {
       }
 
       if (payload?.success === false) {
+        attempts.push({ url, error: payload?.message });
         lastError = payload?.message || lastError;
       }
     } catch (error) {
-      lastError = error instanceof Error ? error.message : "Failed to fetch roles";
+      const msg = error instanceof Error ? error.message : String(error);
+      attempts.push({ url, error: msg });
+      lastError = msg;
     }
   }
+
+  console.error(
+    "[Roles] Failed to load roles. Attempted URLs:",
+    JSON.stringify(attempts, null, 2),
+    "Last error:",
+    lastError
+  );
 
   return {
     status: 500,
