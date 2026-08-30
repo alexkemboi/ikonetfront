@@ -17,16 +17,75 @@ async function getAuthHeaders(): Promise<HeadersInit> {
   return headers;
 }
 
+function normalizeRoleRecord(raw: any): ApiRole {
+  const roleCode = String(raw?.roleCode ?? raw?.role_code ?? raw?.code ?? raw?.id ?? "");
+  return {
+    idxno: Number(raw?.idxno ?? raw?.id ?? 0),
+    roleCode: roleCode || String(raw?.idxno ?? raw?.id ?? ""),
+    name: String(raw?.name ?? raw?.roleName ?? raw?.role_name ?? raw?.title ?? "Untitled role"),
+    description: String(raw?.description ?? raw?.desc ?? ""),
+    createdAt: String(raw?.createdAt ?? raw?.created_at ?? ""),
+  };
+}
+
+function extractCollection(payload: any): any[] {
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload?.data)) return payload.data;
+  if (Array.isArray(payload?.items)) return payload.items;
+  if (Array.isArray(payload?.roles)) return payload.roles;
+  if (Array.isArray(payload?.content)) return payload.content;
+  return [];
+}
+
 export async function getRolesAction(): Promise<ApiResponse<ApiRole[]>> {
-  try {
-    const res = await fetch(
-      `${process.env.BASE_API_URL}system-setup/all-roles`,
-      { headers: await getAuthHeaders(), cache: "no-store" }
-    );
-    return await res.json();
-  } catch {
-    return { status: 500, success: false, message: "Failed to fetch roles", data: null as unknown as ApiRole[], timestamp: "" };
+  const candidateUrls = [
+    `${process.env.BASE_API_URL}system-setup/all-roles`,
+    `${process.env.BASE_API_URL}system-setup/roles`,
+    `${process.env.BASE_API_URL}system/roles`,
+  ];
+
+  let lastError = "Failed to fetch roles";
+
+  for (const url of candidateUrls) {
+    try {
+      const res = await fetch(url, {
+        headers: await getAuthHeaders(),
+        cache: "no-store",
+      });
+
+      if (!res.ok) {
+        lastError = `Failed to fetch roles (${res.status})`;
+        continue;
+      }
+
+      const payload = await res.json();
+      const collection = extractCollection(payload);
+
+      if (collection.length > 0) {
+        return {
+          status: res.status,
+          success: true,
+          message: payload?.message || "Roles fetched successfully",
+          data: collection.map(normalizeRoleRecord),
+          timestamp: new Date().toISOString(),
+        };
+      }
+
+      if (payload?.success === false) {
+        lastError = payload?.message || lastError;
+      }
+    } catch (error) {
+      lastError = error instanceof Error ? error.message : "Failed to fetch roles";
+    }
   }
+
+  return {
+    status: 500,
+    success: false,
+    message: lastError,
+    data: [],
+    timestamp: new Date().toISOString(),
+  };
 }
 
 export async function getAllMenusAction(): Promise<ApiResponse<ApiMenuItem[]>> {
