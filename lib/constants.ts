@@ -4,13 +4,13 @@ export const API_VERSION = "v1";
 const nodeEnv = process.env.NODE_ENV || "development";
 const rawBaseUrl =
   process.env.BASE_API_URL ||
-  (nodeEnv === "production"
-    ? ""
-    : "http://localhost:8381/api/v1/");
-if (!rawBaseUrl) {
-  throw new Error("BASE_API_URL is required in production.");
-}
-export const BASE_URL = rawBaseUrl.endsWith("/") ? rawBaseUrl : `${rawBaseUrl}/`;
+  (nodeEnv === "development"
+    ? "http://localhost:8381/api/v1/"
+    : "");
+
+export const BASE_URL = rawBaseUrl
+  ? (rawBaseUrl.endsWith("/") ? rawBaseUrl : `${rawBaseUrl}/`)
+  : "";
 
 /**
  * Safely construct a backend URL without double-slash bugs.
@@ -18,6 +18,9 @@ export const BASE_URL = rawBaseUrl.endsWith("/") ? rawBaseUrl : `${rawBaseUrl}/`
  * depend on it); this helper normalizes only the site(s) we touch.
  */
 export function buildApiUrl(path: string): string {
+  if (!BASE_URL) {
+    throw new Error("BASE_API_URL is required for API calls but not configured.");
+  }
   const base = BASE_URL.replace(/\/+$/, "");
   const cleanPath = path.replace(/^\/+/, "");
   return `${base}/${cleanPath}`;
