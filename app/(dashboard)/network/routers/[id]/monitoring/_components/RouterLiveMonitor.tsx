@@ -3,6 +3,10 @@
 import { useEffect, useState } from "react";
 import { getLatestRouterHealth } from "@/actions/network";
 import { RouterHealthSnapshot } from "@/lib/types/network";
+import {
+  getRouterMonitoringLatest,
+  getRouterMonitoringHistory,
+} from "@/actions/network";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { 
@@ -15,78 +19,79 @@ interface RouterLiveMonitorProps {
  initialHistory: RouterHealthSnapshot[];
 }
 
+const POLL_INTERVAL_MS = 5000;
+
 export function RouterLiveMonitor({ routerId, initialHistory }: RouterLiveMonitorProps) {
  const [dataStream, setDataStream] = useState<RouterHealthSnapshot[]>(initialHistory);
  const [isOnline, setIsOnline] = useState<boolean>(true);
  const [latest, setLatest] = useState<RouterHealthSnapshot | null>(initialHistory[initialHistory.length - 1] || null);
  const [isPolling, setIsPolling] = useState<boolean>(false);
 
- useEffect(() => {
- let pollTimer: NodeJS.Timeout | null = null;
- let isMounted = true;
+  // BE-AAA-045 (SSE live endpoint) is not deployed yet, so we prime the window
+  // from `/history` once, then poll only `/latest` — with an in-flight guard so
+  // slow ticks can never stack overlapping requests on a 5s interval.
+  useEffect(() => {
+    let cancelled = false;
+    let inFlight = false;
 
- const poll = async () => {
- if (isPolling) return;
+    // Prime the rolling window once from history.
+    getRouterMonitoringHistory(routerId, 20)
+      .then((history) => {
+        if (!cancelled && history.length > 0) setDataStream(history);
+      })
+      .catch(() => undefined);
 
- setIsPolling(true);
- try {
- const snapshot = await getLatestRouterHealth(routerId);
- if (isMounted && snapshot) {
- setLatest(snapshot);
- setIsOnline(true);
- setDataStream((prev) => {
- const updated = [...prev, snapshot];
- if (updated.length > 20) {
- updated.shift();
- }
- return updated;
- });
- } else if (isMounted) {
- setIsOnline(false);
- }
- } catch (err) {
- console.warn("Failed to poll router health snapshot", err);
- if (isMounted) {
- setIsOnline(false);
- }
- } finally {
- if (isMounted) {
- setIsPolling(false);
- }
- }
- };
+    const tick = async () => {
+      if (cancelled || inFlight) return;
+      inFlight = true;
+      try {
+        const latestSnap = await getRouterMonitoringLatest(routerId);
+        if (cancelled) return;
 
- pollTimer = setInterval(poll, 5000);
- poll();
+        setIsOnline(!!latestSnap);
+        if (!latestSnap) return;
+        setLatest(latestSnap);
+        setDataStream((prev) => {
+          if (prev.some((s) => s.idxno === latestSnap.idxno)) return prev;
+          return [...prev, latestSnap].slice(-20);
+        });
+      } catch {
+        if (!cancelled) setIsOnline(false);
+      } finally {
+        inFlight = false;
+      }
+    };
 
- return () => {
- isMounted = false;
- if (pollTimer) clearInterval(pollTimer);
- };
- }, [routerId]);
+    tick();
+    const interval = setInterval(tick, POLL_INTERVAL_MS);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [routerId]);
 
  const formatRAM = (bytes: number) => `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 
- const formatTime = (timeStr: any) => {
- try {
- const date = new Date(timeStr);
- return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
- } catch {
- return "";
- }
- };
+  const formatTime = (timeStr: unknown): string => {
+    try {
+      const date = new Date(String(timeStr));
+      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    } catch {
+      return "";
+    }
+  };
 
- return (
- <div className="space-y-6">
- <div className="flex justify-between items-center bg-card p-4 rounded-lg border border-border shadow-sm">
- <div className="flex items-center gap-3">
- <Heart className={`h-5 w-5 animate-pulse ${isOnline ? "text-red-500" : "text-muted-foreground"}`} />
- <span className="font-semibold text-sm">Monitoring Status</span>
- </div>
- <Badge variant={isOnline ? "default" : "destructive"} className="text-xs">
- {isOnline ? "POLLING ACTIVE (5s)" : "OFFLINE"}
- </Badge>
- </div>
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center bg-card p-4 rounded-lg border border-border shadow-sm">
+        <div className="flex items-center gap-3">
+          <Heart className={`h-5 w-5 animate-pulse ${isOnline ? "text-red-500" : "text-muted-foreground"}`} />
+          <span className="font-semibold text-sm">Monitoring Status</span>
+        </div>
+        <Badge variant={isOnline ? "default" : "destructive"} className="text-xs">
+          {isOnline ? "POLLING · LIVE DATA" : "POLLING · OFFLINE"}
+        </Badge>
+      </div>
 
  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
  <Card className="border shadow-sm">

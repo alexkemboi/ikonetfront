@@ -3,13 +3,12 @@
 import { useCallback, useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import {
- ChevronRight,
- ChevronDown,
- Folder,
- FileText,
- AlertCircle,
- RefreshCw,
- Calendar,
+  ChevronRight,
+  ChevronDown,
+  FileText,
+  AlertCircle,
+  RefreshCw,
+  Calendar,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";

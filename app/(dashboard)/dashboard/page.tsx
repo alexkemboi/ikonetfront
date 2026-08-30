@@ -187,17 +187,17 @@ const inactiveRevenue = 0
  getPackagesAction(),
  ]);
 
- const totalCustomers = allRes.data?.totalElements ?? 0;
- const activeCustomers = activeRes.data?.totalElements ?? 0;
- const allPPPoE = pppoeRes.success ? pppoeRes.data.content : [];
- const packages = packagesRes.success ? (packagesRes.data ?? []) : [];
+    const totalCustomers  = allRes.data?.totalElements ?? 0;
+    const activeCustomers = activeRes.data?.totalElements ?? 0;
+    const allPPPoE        = pppoeRes.success ? (pppoeRes.data?.content ?? []) : [];
+    const packages        = packagesRes.success ? (packagesRes.data ?? []) : [];
 
- const expiringCustomers = allPPPoE.filter((c: any) => {
- if (!c.expiryDate) return false;
- const expiry = new Date(c.expiryDate);
- const now = new Date();
- return expiry >= now && expiry <= thirtyDaysFromNow;
- });
+    const expiringCustomers = allPPPoE.filter((c: { expiryDate: string | null }) => {
+      if (!c.expiryDate) return false;
+      const expiry = new Date(c.expiryDate);
+      const now = new Date();
+      return expiry >= now && expiry <= thirtyDaysFromNow;
+    });
 
  const revenuePotential = packages
  .filter((p) => p.activeStatus)
@@ -230,17 +230,17 @@ const inactiveRevenue = 0
  getCustomers(0, 10),
  ]);
 
- const totalCustomers = allRes.data?.totalElements ?? 0;
- const activeCustomers = activeRes.data?.totalElements ?? 0;
- const allPPPoE = pppoeRes.success ? pppoeRes.data.content : [];
- const recentCustomers = recentRes.success ? recentRes.data.content : [];
+    const totalCustomers  = allRes.data?.totalElements ?? 0;
+    const activeCustomers = activeRes.data?.totalElements ?? 0;
+    const allPPPoE        = pppoeRes.success ? (pppoeRes.data?.content ?? []) : [];
+    const recentCustomers = recentRes.success ? (recentRes.data?.content ?? []) : [];
 
- const urgentRenewals = allPPPoE.filter((c: any) => {
- if (!c.expiryDate) return false;
- const expiry = new Date(c.expiryDate);
- const now = new Date();
- return expiry >= now && expiry <= sevenDaysFromNow;
- });
+    const urgentRenewals = allPPPoE.filter((c: { expiryDate: string | null }) => {
+      if (!c.expiryDate) return false;
+      const expiry = new Date(c.expiryDate);
+      const now = new Date();
+      return expiry >= now && expiry <= sevenDaysFromNow;
+    });
 
  return (
  <div className="flex-1 p-8 pt-6">

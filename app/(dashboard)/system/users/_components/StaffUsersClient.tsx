@@ -19,7 +19,7 @@ import {
  SheetDescription,
 } from "@/components/ui/sheet";
 import { DataTable } from "@/components/shared/data-table";
-import { staffUserColumns } from "./columns";
+import { useStaffUserColumns } from "./columns";
 import { addSystemUser, type UserData } from "@/actions/system";
 import type { ApiRole, ApiRoleUser } from "@/lib/types/roles";
 import { cn } from "@/lib/utils";
@@ -300,10 +300,11 @@ interface StaffUsersClientProps {
 }
 
 export default function StaffUsersClient({ users, roles }: StaffUsersClientProps) {
- const [sheetOpen, setSheetOpen] = useState(false);
- const perms = usePermissions("/system/users");
- const editUser = useAppSelector((state) => state.system.editUserSheetOpen);
- const dispatch = useAppDispatch();
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const perms = usePermissions("/system/users");
+  const editUser = useAppSelector((state) => state.system.editUserSheetOpen);
+  const dispatch = useAppDispatch();
+  const columns = useStaffUserColumns();
 
  
 
@@ -353,17 +354,17 @@ export default function StaffUsersClient({ users, roles }: StaffUsersClientProps
 
  <Separator />
 
- {/* Table */}
- <DataTable
- columns={staffUserColumns}
- data={users}
- searchPlaceholder="Search by name, email, username…"
- toolbar={
- <span className="text-xs text-muted-foreground hidden sm:inline">
- {users.length} {users.length === 1 ? "user" : "users"}
- </span>
- }
- />
+      {/* Table */}
+      <DataTable
+        columns={columns}
+        data={users}
+        searchPlaceholder="Search by name, email, username…"
+        toolbar={
+          <span className="text-xs text-muted-foreground hidden sm:inline">
+            {users.length} {users.length === 1 ? "user" : "users"}
+          </span>
+        }
+      />
 
  {/* Sheet */}
  <CreateUserSheet

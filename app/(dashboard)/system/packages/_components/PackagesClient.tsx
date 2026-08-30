@@ -6,7 +6,7 @@ import * as Yup from "yup";
 import { toast } from "sonner";
 import {
  Wifi, Plus, Pencil, Trash2, Zap, ArrowDown, ArrowUp,
- Clock, CheckCircle2, XCircle, Loader2, Package, ShieldCheck,
+ CheckCircle2, XCircle, Loader2, Package, ShieldCheck,
  AlertCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -353,140 +353,6 @@ function PackageSheet({
  );
 }
 
-// ── Package Card ───────────────────────────────────────────────────────────────
-function PackageCard({
- pkg,
- onEdit,
- onDelete,
- onToggleActive,
- deletingId,
- togglingId,
-}: {
- pkg: InternetPackage;
- onEdit: (p: InternetPackage) => void;
- onDelete: (id: number) => void;
- onToggleActive: (p: InternetPackage) => void;
- deletingId: number | null;
- togglingId: number | null;
-}) {
- const isDeleting = deletingId === pkg.idxno;
- const isToggling = togglingId === pkg.idxno;
- const perms = usePermissions("/system/packages");
-
- return (
- <div className={cn(
- "relative flex flex-col rounded-xl border bg-card overflow-hidden transition-all duration-200 hover:shadow-md hover:-translate-y-0.5",
- !pkg.activeStatus && "opacity-60"
- )}>
- {/* Top accent strip */}
- <div className={cn(
- "h-1 w-full",
- pkg.activeStatus ? "bg-primary" : "bg-muted-foreground"
- )} />
-
- <div className="p-5 flex flex-col gap-4 flex-1">
- {/* Header: name + category */}
- <div className="flex items-start justify-between gap-2">
- <div className="flex-1 min-w-0">
- <p className="font-semibold text-foreground leading-tight truncate">{pkg.packageName}</p>
- <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
- <span className={cn("text-xs font-medium px-2 py-0.5 rounded-full border", getCategoryStyle(pkg.packageCategory))}>
- {pkg.packageCategory}
- </span>
- {pkg.enableBurst && (
- <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
- <Zap className="w-2.5 h-2.5" /> Burst
- </span>
- )}
- </div>
- </div>
- {/* Price hero */}
- <div className="text-right shrink-0">
- <p className="text-2xl font-bold text-primary leading-none">
- {pkg.price.toLocaleString("en-KE", { style: "currency", currency: "KES", maximumFractionDigits: 0 })}
- </p>
- </div>
- </div>
-
- {/* Validity */}
- <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
- <Clock className="w-3.5 h-3.5 shrink-0" />
- <span>{pkg.validityValue} {pkg.validityType}</span>
- <span className="text-border">·</span>
- <span>{pkg.bandwidthType}</span>
- </div>
-
- {/* Speed */}
- <div className="flex items-center gap-4 rounded-lg bg-muted/50 px-3 py-2">
- <div className="flex items-center gap-1.5">
- <ArrowDown className="w-3.5 h-3.5 text-success" />
- <span className="text-sm font-medium">{pkg.speedDownload} Mbps</span>
- </div>
- <div className="w-px h-4 bg-border" />
- <div className="flex items-center gap-1.5">
- <ArrowUp className="w-3.5 h-3.5 text-primary" />
- <span className="text-sm font-medium">{pkg.speedUpload} Mbps</span>
- </div>
- </div>
-
- {/* Status badges */}
- <div className="flex items-center gap-2 flex-wrap">
- <Badge variant="outline" className={cn("gap-1 text-xs", pkg.activeStatus ? "text-success border-success/30 bg-success/5" : "text-muted-foreground")}>
- {pkg.activeStatus
- ? <><CheckCircle2 className="w-3 h-3" /> Active</>
- : <><XCircle className="w-3 h-3" /> Inactive</>}
- </Badge>
- <Badge variant="outline" className={cn("gap-1 text-xs", pkg.isApproved ? "text-success border-success/30 bg-success/5" : "text-warning border-warning/30 bg-warning/5")}>
- {pkg.isApproved
- ? <><ShieldCheck className="w-3 h-3" /> Approved</>
- : <><AlertCircle className="w-3 h-3" /> Pending</>}
- </Badge>
- </div>
- </div>
-
- {/* Footer actions — each button only renders when the flag allows it */}
- {(perms.canEdit || perms.canDelete) && (
- <div className="flex items-center border-t border-border">
- {perms.canEdit && (
- <>
- <button
- onClick={() => onToggleActive(pkg)}
- disabled={isToggling || isDeleting}
- className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors disabled:opacity-50"
- >
- {isToggling
- ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
- : pkg.activeStatus
- ? <><XCircle className="w-3.5 h-3.5" /> Deactivate</>
- : <><CheckCircle2 className="w-3.5 h-3.5" /> Activate</>}
- </button>
- <div className="w-px h-6 bg-border" />
- <button
- onClick={() => onEdit(pkg)}
- disabled={isDeleting || isToggling}
- className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors disabled:opacity-50"
- >
- <Pencil className="w-3.5 h-3.5" /> Edit
- </button>
- </>
- )}
- {perms.canEdit && perms.canDelete && <div className="w-px h-6 bg-border" />}
- {perms.canDelete && (
- <button
- onClick={() => onDelete(pkg.idxno)}
- disabled={isDeleting || isToggling}
- className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-medium text-muted-foreground hover:text-destructive hover:bg-destructive/5 transition-colors disabled:opacity-50"
- >
- {isDeleting
- ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
- : <><Trash2 className="w-3.5 h-3.5" /> Delete</>}
- </button>
- )}
- </div>
- )}
- </div>
- );
-}
 
 // ── Main client component ──────────────────────────────────────────────────────
 export default function PackagesClient({
@@ -658,7 +524,7 @@ export default function PackagesClient({
  </tr>
  </thead>
  <tbody>
- {filtered.map((pkg, idx) => (
+ {filtered.map((pkg) => (
  <tr key={pkg.idxno} className={cn("border-b border-border hover:bg-muted/30 transition-colors", !pkg.activeStatus && "opacity-60")}>
  <td className="px-4 py-3">
  <div className="flex flex-col gap-1">

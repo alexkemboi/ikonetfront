@@ -1,5 +1,4 @@
 "use client"
-import { UserData } from "@/actions/system";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,12 +9,11 @@ import {
  SheetTitle,
  SheetDescription,
 } from "@/components/ui/sheet";
-import type { ApiRole, ApiRoleUser } from "@/lib/types/roles";
+import type { ApiRole } from "@/lib/types/roles";
 import { cn } from "@/lib/utils";
 import { useFormik } from "formik";
 import { Eye, EyeOff, Loader2, UserPlus } from "lucide-react";
 import { useState } from "react";
-import { toast } from "sonner";
 
 import * as Yup from "yup"
 
@@ -90,32 +88,9 @@ export function EditUserSheet({
  const formik = useFormik<FormValues>({
  initialValues: EMPTY,
  validationSchema: schema,
- onSubmit: async (values, { resetForm }) => {
- const payload: UserData = {
- fname: values.fname,
- middleName: values.middleName ?? "",
- otherName: values.otherName ?? "",
- username: values.username,
- email: values.email,
- phoneNumber: values.phoneNumber,
- role: values.role,
- password: values.password,
- };
-
- // const result = await addSystemUser(payload);
-
- // if (result.success && result.data) {
- // toast.success("User created", {
- // description: `${values.fname} has been added as a system user.`,
- // });
- // resetForm();
- // onClose();
- // } else {
- // toast.error("Failed to create user", {
- // description: result.message ?? "Something went wrong.",
- // });
- // }
- },
+onSubmit: async () => {
+  // addSystemUser flow is currently gated (backend contract pending).
+  },
  });
 
  const { touched, errors } = formik;

@@ -2,10 +2,8 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Customer } from "@/lib/types/customer";
-import { Button } from "@/components/ui/button"; // Assuming Button is needed for actions
 
 interface CustomerViewProps {
  customer: Customer;

@@ -147,21 +147,21 @@ export function MikrotikClient({ initialDevices }: MikrotikClientProps) {
  }
  };
 
- const handleViewInterfaces = async (deviceId: number) => {
- setLoadingInterfaces((prev) => ({ ...prev, [deviceId]: true }));
- try {
- const result = await getMikrotikDeviceInterfaces(deviceId);
- console.log("Fetched device interfaces:", result); // Debugging log
- if (result.success) {
- setSelectedDeviceInterfaces(result.data);
- setIsInterfacesDialogOpen(true);
- }
- } catch (error: unknown) {
- toast.error(`Failed to fetch interfaces: ${(error instanceof Error ? error.message : String(error))}`);
- } finally {
- setLoadingInterfaces((prev) => ({ ...prev, [deviceId]: false }));
- }
- };
+  const handleViewInterfaces = async (deviceId: number) => {
+    setLoadingInterfaces((prev) => ({ ...prev, [deviceId]: true }));
+    try {
+      const result = await getMikrotikDeviceInterfaces(deviceId);
+      console.log("Fetched device interfaces:", result); // Debugging log
+      if (result.success) {
+        setSelectedDeviceInterfaces(result.data ?? []);
+        setIsInterfacesDialogOpen(true);
+      }
+    } catch (error: unknown) {
+      toast.error(`Failed to fetch interfaces: ${(error instanceof Error ? error.message : String(error))}`);
+    } finally {
+      setLoadingInterfaces((prev) => ({ ...prev, [deviceId]: false }));
+    }
+  };
 
  const columns: ColumnDef<MikrotikDevice>[] = [
  {

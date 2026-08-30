@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Loader2, Power, Search } from "lucide-react";
+import { Power, Search } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { disconnectLiveSession } from "@/actions/sessions";
@@ -35,10 +35,9 @@ export function LiveSessionDataTable({
 }: {
  sessions: LiveSessionItem[];
 }) {
- const [items, setItems] = useState<LiveSessionItem[]>(sessions);
- const [tab, setTab] = useState<TabKey>("ALL");
- const [search, setSearch] = useState("");
- const [disconnectingId, setDisconnectingId] = useState<string | null>(null);
+  const [items, setItems] = useState<LiveSessionItem[]>(sessions);
+  const [tab, setTab] = useState<TabKey>("ALL");
+  const [search, setSearch] = useState("");
 
  const counts = useMemo(
  () => ({
@@ -66,30 +65,29 @@ export function LiveSessionDataTable({
  });
  }, [items, tab, search]);
 
- async function handleDisconnect(session: LiveSessionItem) {
- setDisconnectingId(session.id);
- try {
- // RFC 5176 CoA keyed on RADIUS username: Hotspot rows record the client
- // MAC in radacct.username, PPPoE rows the account username. Send the
- // real MAC when present, else the subscriber code — never just a name.
- const radUsername =
- session.deviceMac && session.deviceMac !== "—"
- ? session.deviceMac
- : session.subscriberCode;
- const result = await disconnectLiveSession(
- radUsername,
- session.routerManagementIp
- );
- if (result.success) {
- toast.success(result.message);
- setItems((prev) => prev.filter((s) => s.id !== session.id));
- } else {
- toast.error(result.message);
- }
- } finally {
- setDisconnectingId(null);
- }
- }
+  async function handleDisconnect(session: LiveSessionItem) {
+    try {
+      // RFC 5176 CoA keyed on RADIUS username: Hotspot rows record the client
+      // MAC in radacct.username, PPPoE rows the account username. Send the
+      // real MAC when present, else the subscriber code — never just a name.
+      const radUsername =
+        session.deviceMac && session.deviceMac !== "—"
+          ? session.deviceMac
+          : session.subscriberCode;
+      const result = await disconnectLiveSession(
+        radUsername,
+        session.routerManagementIp
+      );
+      if (result.success) {
+        toast.success(result.message);
+        setItems((prev) => prev.filter((s) => s.id !== session.id));
+      } else {
+        toast.error(result.message);
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to disconnect");
+    }
+  }
 
  return (
  <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-lg">
@@ -234,34 +232,31 @@ export function LiveSessionDataTable({
  </p>
  </td>
 
- {/* Action */}
- <td className="px-4 py-3 text-right">
- {session.isFallback ? (
- <span className="inline-flex h-8 items-center rounded-md px-2.5 text-[11px] font-medium text-muted-foreground">
- DEMO ROW
- </span>
- ) : (
- <button
- type="button"
- disabled={disconnectingId === session.id}
- onClick={() => handleDisconnect(session)}
- className="inline-flex h-8 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium text-rose-400 transition-colors hover:bg-rose-500/10 hover:text-rose-300 disabled:pointer-events-none disabled:opacity-50"
- >
- {disconnectingId === session.id ? (
- <Loader2 className="h-3.5 w-3.5 animate-spin" />
- ) : (
- <Power className="h-3.5 w-3.5" />
- )}
- Disconnect
- </button>
- )}
- </td>
- </tr>
- ))
- )}
- </tbody>
- </table>
- </div>
+                  {/* Action */}
+                  <td className="px-4 py-3 text-right">
+                    {session.isFallback ? (
+                      <span className="inline-flex h-8 items-center rounded-md px-2.5 text-[11px] font-medium text-zinc-600">
+                        DEMO ROW
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled // Pending backend RADIUS CoA HTTP adapter (BE-AAA-043)
+                        title="Disconnect is disabled — pending the backend CoA adapter (BE-AAA-043)"
+                        onClick={() => handleDisconnect(session)}
+                        className="inline-flex h-8 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium text-rose-400/60 transition-colors disabled:pointer-events-none disabled:opacity-50"
+                      >
+                        <Power className="h-3.5 w-3.5" />
+                        Disconnect (pending)
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
 
  <div className="flex items-center justify-between border-t border-border px-4 py-2.5 text-xs text-muted-foreground">
  <span>

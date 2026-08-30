@@ -96,46 +96,22 @@ export interface RouterHealthSnapshot {
   createdAt: string;
 }
 
-export interface NetworkDeviceStatus {
-  id?: number;
-  deviceId?: number;
-  online?: boolean;
-  status?: string;
-  ipAddress?: string;
-  uptime?: string;
-  model?: string;
-  name?: string;
-  [key: string]: unknown;
-}
-
-export interface NetworkDeviceInterface {
-  id?: number;
-  name?: string;
-  alias?: string;
-  type?: string;
-  enabled?: boolean;
-  macAddress?: string;
-  [key: string]: unknown;
-}
-
-export interface IpPoolResponse {
-  id?: number;
-  name?: string;
-  network?: string;
-  range?: string;
-  gateway?: string;
-  status?: string;
-  [key: string]: unknown;
-}
-
-export interface IpMappingResponse {
-  ipAddress: string;
-  macAddress: string;
-  username: string;
-  serviceType: string;
-  stationName: string;
-  status: "ONLINE" | "EXPIRED";
-  lastSeen?: string;
+/**
+ * Contract for the SSE `RouterTelemetryEvent` frames BE-AAA-045 will publish on
+ * `GET /api/v1/network/monitoring/router/{id}/live` (text/event-stream, Bearer)
+ * once it lands. Until then the NOC monitor page polls `/latest` + `/history`.
+ */
+export interface RouterTelemetryFrame {
+  routerId: number;
+  timestamp: string;
+  cpuUsage: number;
+  totalMemory: number;
+  freeMemory: number;
+  activePppoeSessions: number;
+  activeHotspotSessions: number;
+  uptime: string;
+  latencyMs: number;
+  isOnline: boolean;
 }
 
 export interface RouterCapacityResponse {

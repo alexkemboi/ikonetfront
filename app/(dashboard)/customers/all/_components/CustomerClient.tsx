@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useState, useCallback, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Users } from "lucide-react";
 import { toast } from "sonner";
@@ -81,12 +81,14 @@ export function CustomerClient({
  async function handleToggleActive(customer: Customer) {
  toast.loading(`Updating ${customer.fullName}…`);
  try {
- const result = await toggleCustomerActiveStatus(customer.userIdxno);
- toast.dismiss();
- result.success
- ? toast.success(result.message || "Status updated.")
- : toast.error(result.message || "Failed to update status.");
- } catch {
+const result = await toggleCustomerActiveStatus(customer.userIdxno);
+  toast.dismiss();
+  if (result.success) {
+  toast.success(result.message || "Status updated.");
+  } else {
+  toast.error(result.message || "Failed to update status.");
+  }
+  } catch {
  toast.dismiss();
  toast.error("Failed to update status.");
  }
@@ -95,22 +97,23 @@ export function CustomerClient({
  async function handleDelete(customer: Customer) {
  toast.loading(`Deleting ${customer.fullName}…`);
  try {
- const result = await deleteCustomer(customer.userIdxno);
- toast.dismiss();
- result.success
- ? toast.success(result.message || "Customer deleted.")
- : toast.error(result.message || "Failed to delete.");
- } catch {
+const result = await deleteCustomer(customer.userIdxno);
+  toast.dismiss();
+  if (result.success) {
+  toast.success(result.message || "Customer deleted.");
+  } else {
+  toast.error(result.message || "Failed to delete.");
+  }
+  } catch {
  toast.dismiss();
  toast.error("Failed to delete customer.");
  }
  }
 
- const columns = useMemo(
- () => createCustomerColumns(router, dispatch, handleToggleActive, handleDelete),
- // eslint-disable-next-line react-hooks/exhaustive-deps
- [router, dispatch]
- );
+const columns = useMemo(
+  () => createCustomerColumns(router, dispatch, handleToggleActive, handleDelete),
+  [router, dispatch]
+  );
 
  const pageCount = Math.ceil(totalElements / pageSize);
 

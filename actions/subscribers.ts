@@ -5,6 +5,7 @@ import { BASE_URL } from "@/lib/constants";
 import { getCustomers } from "@/actions/customer";
 import { getIpMappings } from "@/actions/network";
 import type { Customer } from "@/lib/types/customer";
+import type { IpMappingResponse } from "@/lib/types/api";
 import {
   OutageCompensationRequest,
   SubscriberItem,
@@ -126,32 +127,10 @@ const FALLBACK_SUBSCRIBERS: SubscriberItem[] = [
 
 // ── Raw shape returned by the network/ip-mappings endpoint ──────────────────
 
-type IpMappingRecord = {
-  id?: string | number;
-  customerId?: string | number;
-  customerName?: string;
-  customerEmail?: string;
-  custType?: string;
-  packageName?: string;
-  package?: string;
-  ipAddress?: string;
-  macAddress?: string;
-  routerId?: string | number;
-  routerName?: string;
-  routerIp?: string;
-  leaseStart?: string;
-  leaseExpiry?: string;
-  status?: string;
-};
-
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-function isActiveMapping(mapping: IpMappingRecord): boolean {
-  if (String(mapping.status ?? "").toLowerCase() === "reserved") return false;
-  if (String(mapping.status ?? "").toLowerCase() === "active") return true;
-  const expiryMs = mapping.leaseExpiry ? new Date(mapping.leaseExpiry).getTime() : NaN;
-  if (!isNaN(expiryMs)) return expiryMs > Date.now();
-  return true;
+function isActiveMapping(mapping: IpMappingResponse): boolean {
+  return mapping.status === "ONLINE";
 }
 
 function normalizeType(custtype?: string | null): SubscriberType {
@@ -204,6 +183,16 @@ export async function getSubscribersData(): Promise<{
       return { kpis: FALLBACK_KPIS, subscribers: FALLBACK_SUBSCRIBERS };
     }
 
+    // Join radacct-derived bindings on `username` (real `IpMappingResponse`).
+    const onlineByUsername = new Map<string, IpMappingResponse>();
+    for (const raw of mappings as IpMappingResponse[]) {
+      if (!isActiveMapping(raw)) continue;
+      const username = String(raw.username ?? "").trim();
+      if (username && !onlineByUsername.has(username)) {
+        onlineByUsername.set(username, raw);
+      }
+    }
+
     const now = Date.now();
     let expiringIn7DaysCount = 0;
     let newThisWeekCount = 0;
@@ -239,6 +228,12 @@ export async function getSubscribersData(): Promise<{
         atRiskCount += 1;
       }
 
+      const onlineMapping = customer.username
+        ? onlineByUsername.get(customer.username)
+        : undefined;
+      const isOnline = !!onlineMapping;
+      if (isOnline) onlineCount += 1;
+
       return {
         id: customer.userIdxno != null ? String(customer.userIdxno) : customer.username || "—",
         code: customer.username || customer.fullName || "—",
@@ -254,38 +249,12 @@ export async function getSubscribersData(): Promise<{
         isExpiringToday: customer.expiryDate
           ? isSameDay(new Date(customer.expiryDate), new Date())
           : false,
-        status: customer.isSubActive ? "ONLINE" : "OFFLINE",
-        nasName: "—",
+        status: isOnline ? "ONLINE" : "OFFLINE",
+        nasName: onlineMapping?.stationName || "—",
+        macAddress: onlineMapping?.macAddress || undefined,
+        ipAddress: onlineMapping?.ipAddress || undefined,
       };
     });
-
-    for (const raw of mappings as IpMappingRecord[]) {
-      if (String(raw.status ?? "").toLowerCase() === "reserved") {
-        subscribers.push({
-          id: raw.id != null ? String(raw.id) : `bind-${subscribers.length}`,
-          code: raw.customerName || "BINDING",
-          fullName: raw.customerName || "Static Binding",
-          phone: "—",
-          type: "BINDING",
-          planName: raw.packageName || raw.package || "Static Binding",
-          planSpeed: "",
-          planPrice: 0,
-          expiryText: "—",
-          status: "OFFLINE",
-          nasName: raw.routerName || "—",
-          isDeviceBinding: true,
-          macAddress: raw.macAddress || undefined,
-          ipAddress: raw.ipAddress || undefined,
-        });
-        continue;
-      }
-      if (isActiveMapping(raw)) onlineCount += 1;
-    }
-
-    // Bindings last; keep stable ordering for everything else.
-    subscribers.sort(
-      (a, b) => (a.type === "BINDING" ? 1 : 0) - (b.type === "BINDING" ? 1 : 0)
-    );
 
     const kpis: SubscriberKpis = {
       allUsersCount: totalElements,

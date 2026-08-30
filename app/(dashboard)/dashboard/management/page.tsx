@@ -26,18 +26,18 @@ export default async function ManagementDashboardPage() {
  getPackagesAction(),
  ]);
 
- const totalCustomers = allCustomersRes.data?.totalElements ?? 0;
- const activeCustomers = activeCustomersRes.data?.totalElements ?? 0;
- const allPPPoE = pppoeCustomersRes.success ? pppoeCustomersRes.data.content : [];
- const packages = packagesRes.success ? (packagesRes.data ?? []) : [];
+  const totalCustomers = allCustomersRes.data?.totalElements ?? 0;
+  const activeCustomers = activeCustomersRes.data?.totalElements ?? 0;
+  const allPPPoE = pppoeCustomersRes.success ? (pppoeCustomersRes.data?.content ?? []) : [];
+  const packages = packagesRes.success ? (packagesRes.data ?? []) : [];
 
- // Customers whose subscription expires within 30 days
- const expiringCustomers = allPPPoE.filter((c:any) => {
- if (!c.expiryDate) return false;
- const expiry = new Date(c.expiryDate);
- const now = new Date();
- return expiry >= now && expiry <= thirtyDaysFromNow;
- });
+  // Customers whose subscription expires within 30 days
+  const expiringCustomers = allPPPoE.filter((c: { expiryDate: string | null }) => {
+    if (!c.expiryDate) return false;
+    const expiry = new Date(c.expiryDate);
+    const now = new Date();
+    return expiry >= now && expiry <= thirtyDaysFromNow;
+  });
 
  // Revenue potential: active packages total price (representative metric)
  const revenuePotential = packages
