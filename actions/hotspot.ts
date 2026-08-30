@@ -1,7 +1,7 @@
 'use server';
 
 import { revalidateTag } from 'next/cache';
-import {
+import type {
   HotspotPackagesResponse,
   HotspotPackage,
   InitiatePaymentRequest,
