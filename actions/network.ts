@@ -1,6 +1,6 @@
 "use server";
 
-import { BASE_URL } from "@/lib/constants";
+import { BASE_URL, buildApiUrl } from "@/lib/constants";
 import { safeJsonParse } from "@/lib/utils/api";
 import {
   ApiResponse,
@@ -757,6 +757,26 @@ export async function getRouterMonitoringLatest(
   }
 };
 
+export const getNetworkDeviceInterfaces = async (
+  deviceId: number
+): Promise<Record<string, unknown>[]> => {
+  try {
+    const res = await fetch(buildApiUrl(`/network-devices/${deviceId}/interfaces`), {
+      headers: await getAuthHeaders(),
+      next: { revalidate: 0 },
+    });
+
+    if (!res.ok) return [];
+    const body: ApiResponse<Record<string, unknown>[] | null> = await res.json();
+    return Array.isArray(body.data) ? body.data : [];
+  } catch (error) {
+    console.error(`getNetworkDeviceInterfaces Error for device ID ${deviceId}:`, error);
+    return [];
+  }
+};
+
+
+
 export const getStationLoad = async (
   stationId: number
 ): Promise<RouterCapacityResponse[]> => {
@@ -823,6 +843,10 @@ export const getRouters = async (): Promise<RouterResponse[]> => {
   }
 };
 
+/**
+ * GET /api/v1/network/ip-pools — admin inventory view of IP pools.
+ * NOTE: pool fields are currently hardcoded fixtures in the backend (BE-AAA-046).
+ */
 export async function getIpPools(): Promise<IpPool[]> {
   try {
     const res = await apiFetch<IpPool[]>("/network/ip-pools", {
@@ -837,9 +861,8 @@ export async function getIpPools(): Promise<IpPool[]> {
 }
 
 /**
- * `GET /api/v1/network/ip-mappings` returns `ApiResponse<Page<IpMappingResponse>>`.
- * Unwrap the Page envelope to `content[]` — the previously returned Page object
- * was the "subscriber tracking" break point (near-empty KPIs + BINDING rows).
+ * GET /api/v1/network/ip-mappings — active/expired session bindings from RADIUS accounting logs.
+ * Returns `ApiResponse<Page<IpMappingResponse>>`. Unwrap the Page envelope to `content[]`.
  */
 export async function getIpMappings(): Promise<IpMappingResponse[]> {
   try {
