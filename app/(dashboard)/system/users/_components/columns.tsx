@@ -134,8 +134,7 @@ export function useStaffUserColumns(): ColumnDef<ApiRoleUser>[] {
 
   {
     id: "actions",
-    cell: ({ row }) => {
-      const payment = row.original
+cell: () => {
 
  return (
  <DropdownMenu>
