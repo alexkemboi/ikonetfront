@@ -2,7 +2,7 @@
 
 import { updateTag } from "next/cache";
 import { auth } from "@/lib/auth";
-import { BASE_URL } from "@/lib/constants";
+import { BASE_URL, buildApiUrl } from "@/lib/constants";
 import type { ApiResponse } from "@/lib/types/auth";
 import type {
   AccountBalanceProjection,
@@ -29,6 +29,19 @@ async function getAuthHeaders(): Promise<Record<string, string>> {
     headers["Authorization"] = `Bearer ${session.user.apiToken}`;
   }
   return headers;
+}
+
+/**
+ * Defensive unwrap shared by the four CoA reads. The backend returns raw
+ * payloads (no `ApiResponse<T>` envelope) for `/finance/coa*`; when the
+ * backend does (or later does) wrap a body in `{ data: ... }`, this still
+ * unwraps it. Raw non-envelope bodies pass through untouched.
+ */
+function unwrapData<T>(json: unknown): T | null | undefined {
+  if (typeof json === "object" && json !== null && "data" in json) {
+    return (json as { data?: T }).data;
+  }
+  return json as T;
 }
 
 // ── Finance response helper (mirrors customer.ts handleApiResponse + 204 skip) ──
@@ -109,65 +122,54 @@ export async function getRecentTransactions(limit = 10) {
   }
 }
 
-// ── New read actions ──────────────────────────────────────────────────────────
+// ── CoA reads (raw /finance/coa* payloads — no envelope) ─────────────────────
 
-export async function getChartOfAccountsTree(): Promise<ApiResponse<ChartOfAccountNode[]>> {
+export async function getChartOfAccountsTree(): Promise<Record<string, ChartOfAccountNode[]>> {
   try {
-    const res = await fetch(`${BASE_URL}finance/coa`, {
-      headers: await getAuthHeaders(),
-      next: { tags: ["coa-tree"], revalidate: 60 },
-    });
-    if (!res.ok) return handleFinanceResponse(res, "Failed to fetch chart of accounts");
-    return res.json();
-  } catch (error) {
-    console.error("[Finance] getChartOfAccountsTree error:", error);
-    return {
-      status: 500,
-      success: false,
-      message: error instanceof Error ? error.message : String(error),
-      data: null,
-      timestamp: new Date().toISOString(),
-    };
-  }
-}
-
-export async function getAccountBalances(): Promise<ApiResponse<AccountBalanceProjection[]>> {
-  try {
-    const res = await fetch(`${BASE_URL}finance/coa/balance`, {
-      headers: await getAuthHeaders(),
-      next: { tags: ["coa-balances"], revalidate: 30 },
-    });
-    if (!res.ok) return handleFinanceResponse(res, "Failed to fetch account balances");
-    return res.json();
-  } catch (error) {
-    console.error("[Finance] getAccountBalances error:", error);
-    return {
-      status: 500,
-      success: false,
-      message: error instanceof Error ? error.message : String(error),
-      data: null,
-      timestamp: new Date().toISOString(),
-    };
-  }
-}
-
-export async function getTrialBalance(): Promise<ApiResponse<TrialBalanceResponse>> {
-  try {
-    const res = await fetch(`${BASE_URL}finance/coa/trial-balance`, {
+    const res = await fetch(buildApiUrl("/finance/coa"), {
       headers: await getAuthHeaders(),
       cache: "no-store",
     });
-    if (!res.ok) return handleFinanceResponse(res, "Failed to fetch trial balance");
-    return res.json();
+    if (!res.ok) return {};
+    const raw = unwrapData<Record<string, ChartOfAccountNode[]>>(await res.json());
+    return typeof raw === "object" && raw !== null ? raw : {};
+  } catch (error) {
+    console.error("[Finance] getChartOfAccountsTree error:", error);
+    return {};
+  }
+}
+
+export async function getAccountBalances(): Promise<AccountBalanceProjection[]> {
+  try {
+    const res = await fetch(buildApiUrl("/finance/coa/balance"), {
+      headers: await getAuthHeaders(),
+      cache: "no-store",
+    });
+    if (!res.ok) return [];
+    const list = unwrapData<AccountBalanceProjection[]>(await res.json());
+    return Array.isArray(list) ? list : [];
+  } catch (error) {
+    console.error("[Finance] getAccountBalances error:", error);
+    return [];
+  }
+}
+
+export async function getTrialBalance(): Promise<TrialBalanceResponse | null> {
+  try {
+    const res = await fetch(buildApiUrl("/finance/coa/trial-balance"), {
+      headers: await getAuthHeaders(),
+      cache: "no-store",
+    });
+    if (!res.ok) return null;
+    const raw = unwrapData<TrialBalanceResponse>(await res.json());
+    if (typeof raw !== "object" || raw === null) return null;
+    if (typeof raw.delta !== "number" || typeof raw.isBalanced !== "boolean") return null;
+    if (typeof raw.debits !== "number" || typeof raw.credits !== "number") return null;
+    if (!Array.isArray(raw.accounts)) return null;
+    return raw;
   } catch (error) {
     console.error("[Finance] getTrialBalance error:", error);
-    return {
-      status: 500,
-      success: false,
-      message: error instanceof Error ? error.message : String(error),
-      data: null,
-      timestamp: new Date().toISOString(),
-    };
+    return null;
   }
 }
 
@@ -177,35 +179,56 @@ export type LedgerParams = {
   size?: number;
   fromDate?: string;
   toDate?: string;
+  companyScope?: string;
 };
 
 export async function getLedgerPostings(
   params: LedgerParams = {}
-): Promise<ApiResponse<SpringPage<AccountPosting>>> {
+): Promise<SpringPage<AccountPosting>> {
   try {
+    // Architect hardening #1: the backend binds `@DateTimeFormat(iso =
+    // ISO.DATE_TIME) LocalDateTime`, so a bare `YYYY-MM-DD` from `<input
+    // type="date">` yields HTTP 400. Normalize before building the query.
+    const toDateTime = (d?: string, endOfDay = false) =>
+      !d ? undefined : d.includes("T") ? d : `${d}T${endOfDay ? "23:59:59" : "00:00:00"}`;
+    const from = toDateTime(params.fromDate, false);
+    const to = toDateTime(params.toDate, true);
+
     const qs = new URLSearchParams();
     qs.append("page", (params.page ?? 0).toString());
     qs.append("size", (params.size ?? 20).toString());
     qs.append("sort", "occurredAt,desc");
     if (params.accountCode) qs.append("accountCode", params.accountCode);
-    if (params.fromDate) qs.append("fromDate", params.fromDate);
-    if (params.toDate) qs.append("toDate", params.toDate);
+    if (from) qs.append("fromDate", from);
+    if (to) qs.append("toDate", to);
+    if (params.companyScope) qs.append("companyScope", params.companyScope);
 
-    const res = await fetch(`${BASE_URL}finance/coa/postings?${qs.toString()}`, {
+    const res = await fetch(buildApiUrl(`/finance/coa/postings?${qs.toString()}`), {
       headers: await getAuthHeaders(),
       cache: "no-store",
     });
-    if (!res.ok) return handleFinanceResponse(res, "Failed to fetch ledger postings");
-    return res.json();
+    if (!res.ok) return EMPTY_PAGE(params.size ?? 20);
+
+    const pageData = unwrapData<SpringPage<AccountPosting> | AccountPosting[]>(await res.json());
+
+    const isPage =
+      typeof pageData === "object" &&
+      pageData !== null &&
+      Array.isArray((pageData as SpringPage<AccountPosting>).content);
+    if (isPage) return pageData as SpringPage<AccountPosting>;
+
+    if (Array.isArray(pageData)) {
+      return {
+        ...EMPTY_PAGE(params.size ?? 20),
+        content: pageData,
+        totalElements: pageData.length,
+      };
+    }
+
+    return EMPTY_PAGE(params.size ?? 20);
   } catch (error) {
     console.error("[Finance] getLedgerPostings error:", error);
-    return {
-      status: 500,
-      success: false,
-      message: error instanceof Error ? error.message : String(error),
-      data: EMPTY_PAGE(params.size ?? 20),
-      timestamp: new Date().toISOString(),
-    };
+    return EMPTY_PAGE(params.size ?? 20);
   }
 }
 
