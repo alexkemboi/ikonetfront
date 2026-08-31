@@ -20,15 +20,17 @@ export default async function AllCustomersPage() {
  getCustomers(0, 1, { custtype: "hotspot" }),
  ]);
 
- return (
- <div className="p-8 pt-6">
- <CustomerClient
- initialTotalElements={firstPage?.data?.totalElements ?? 0}
- initialActiveCount={activeRes?.data?.totalElements ?? 0}
- initialPppoeCount={pppoeRes?.data?.totalElements ?? 0}
- initialHotspotCount={hotspotRes?.data?.totalElements ?? 0}
- initialData={firstPage?.data?.content ?? []}
- />
- </div>
- );
+return (
+    <div className="min-h-screen p-4 text-foreground sm:p-6 lg:p-8">
+      <div className="mx-auto max-w-7xl space-y-6">
+        <CustomerClient
+          initialTotalElements={firstPage?.data?.totalElements ?? 0}
+          initialActiveCount={activeRes?.data?.totalElements ?? 0}
+          initialPppoeCount={pppoeRes?.data?.totalElements ?? 0}
+          initialHotspotCount={hotspotRes?.data?.totalElements ?? 0}
+          initialData={firstPage?.data?.content ?? []}
+        />
+      </div>
+    </div>
+  );
 }

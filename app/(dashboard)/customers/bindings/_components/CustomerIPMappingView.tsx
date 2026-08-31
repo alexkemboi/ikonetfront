@@ -101,13 +101,13 @@ function FieldError({ msg }: { msg?: string }) {
 function StatusBadge({ status }: { status: IPMapping["status"] }) {
   if (status === "ONLINE")
     return (
-      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-[oklch(0.97_0.03_155)] text-[oklch(0.38_0.12_155)] border border-[oklch(0.88_0.06_155)]">
-        <span className="w-1.5 h-1.5 rounded-full bg-[oklch(0.52_0.16_155)] animate-pulse" />
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-success/10 text-success border border-success/20">
+        <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
         Active
       </span>
     );
   return (
-    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-[oklch(0.97_0.02_25)] text-[oklch(0.48_0.14_25)] border border-[oklch(0.88_0.06_25)]">
+    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-destructive/10 text-destructive border border-destructive/20">
       <WifiOff className="w-3 h-3" />
       Expired
     </span>
@@ -122,10 +122,10 @@ function PoolBar({ pool }: { pool: IPPool }) {
   const reservedPct = 0;
   const color =
     usedPct > 85
-      ? "bg-[oklch(0.6_0.2_25)]"
+      ? "bg-destructive"
       : usedPct > 60
-      ? "bg-[oklch(0.72_0.18_65)]"
-      : "bg-[oklch(0.52_0.16_155)]";
+      ? "bg-warning"
+      : "bg-success";
 
   return (
     <div className="space-y-1.5">
@@ -138,10 +138,10 @@ function PoolBar({ pool }: { pool: IPPool }) {
       </div>
       <div className="relative h-2.5 rounded-full bg-muted overflow-hidden">
         <div className={`absolute left-0 top-0 h-full rounded-full transition-all ${color}`} style={{ width: `${usedPct}%` }} />
-        <div className="absolute top-0 h-full bg-[oklch(0.72_0.1_255)] opacity-60" style={{ left: `${usedPct}%`, width: `${reservedPct}%` }} />
+        <div className="absolute top-0 h-full bg-primary opacity-60" style={{ left: `${usedPct}%`, width: `${reservedPct}%` }} />
       </div>
       <div className="flex gap-3 text-[11px] text-muted-foreground">
-        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[oklch(0.52_0.16_155)] inline-block" />{used} used</span>
+        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-success inline-block" />{used} used</span>
         <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-muted-foreground/30 inline-block" />{free} free</span>
         <span className="ml-auto font-mono">{usedPct}%</span>
       </div>
@@ -340,11 +340,11 @@ function MapIPSheet({
  </SheetDescription>
  </SheetHeader>
 
- {success ? (
- <div className="flex flex-col items-center justify-center py-16 space-y-3">
- <div className="w-14 h-14 rounded-full bg-[oklch(0.97_0.03_155)] flex items-center justify-center">
- <CheckCircle2 className="w-7 h-7 text-[oklch(0.52_0.16_155)]" />
- </div>
+{success ? (
+  <div className="flex flex-col items-center justify-center py-16 space-y-3">
+  <div className="w-14 h-14 rounded-full bg-success/10 flex items-center justify-center">
+  <CheckCircle2 className="w-7 h-7 text-success" />
+  </div>
  <p className="text-sm font-semibold text-foreground">Mapping created</p>
  <p className="text-xs text-muted-foreground">Closing…</p>
  </div>
@@ -580,35 +580,42 @@ export default function CustomerIPMappingView({ mappings, pools, customers, pack
 
  return (
  <div className="space-y-6">
- {/* Header */}
- <div className="flex items-start justify-between">
- <div>
- <h1 className="text-2xl font-bold text-foreground">Customer IP Mapping</h1>
- <p className="text-sm text-muted-foreground mt-0.5">
- Track which customer owns which IP across all routers
- </p>
- </div>
- <div className="flex items-center gap-2">
- <Button variant="outline" size="sm" className="gap-1.5">
- <Layers className="w-4 h-4" />
- Export
- </Button>
- {perms.canCreate && (
- <Button size="sm" className="gap-1.5" onClick={() => setSheetOpen(true)}>
- <Plus className="w-4 h-4" />
- Map IP
- </Button>
- )}
- </div>
- </div>
+{/* Header */}
+  <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+    <div>
+      <p className="text-[11px] font-mono tracking-wider text-muted-foreground uppercase">
+        Customers — Bindings
+      </p>
+      <h1 className="text-3xl font-serif font-semibold text-foreground">Customer IP Bindings.</h1>
+      <p className="mt-1 text-xs text-muted-foreground">
+        Track which customer owns which IP across all routers
+      </p>
+    </div>
+    <div className="flex items-center gap-2">
+      <Button variant="outline" size="sm" className="gap-1.5">
+        <Layers className="w-4 h-4" />
+        Export
+      </Button>
+      {perms.canCreate && (
+        <Button
+          size="sm"
+          className="gap-1.5 rounded-xl bg-amber-500 text-xs font-semibold text-black hover:bg-amber-400 transition shadow-lg shadow-amber-500/20"
+          onClick={() => setSheetOpen(true)}
+        >
+          <Plus className="w-4 h-4" />
+          Map IP
+        </Button>
+      )}
+    </div>
+  </div>
 
       {/* Stats row */}
       <div className="grid grid-cols-4 gap-4">
         {[
           { label: "Total Leases", value: stats.total,    icon: Network,   color: "text-primary bg-primary/10" },
-          { label: "Active",       value: stats.active,   icon: Wifi,      color: "text-[oklch(0.52_0.16_155)] bg-[oklch(0.97_0.03_155)]" },
-          { label: "Expired",      value: stats.expired,  icon: WifiOff,   color: "text-[oklch(0.55_0.18_25)] bg-[oklch(0.97_0.02_25)]" },
-          { label: "Available IPs", value: stats.available, icon: Bookmark, color: "text-[oklch(0.45_0.14_255)] bg-[oklch(0.97_0.03_255)]" },
+          { label: "Active",       value: stats.active,   icon: Wifi,      color: "text-success bg-success/10" },
+          { label: "Expired",      value: stats.expired,  icon: WifiOff,   color: "text-warning bg-warning/10" },
+          { label: "Available IPs", value: stats.available, icon: Bookmark, color: "text-muted-foreground bg-muted" },
         ].map(({ label, value, icon: Icon, color }) => (
           <Card key={label} className="border-border">
             <CardContent className="p-4 flex items-center gap-3">

@@ -10,6 +10,8 @@ export interface ChartOfAccountNode {
   children?: ChartOfAccountNode[];
 }
 
+export type ChartOfAccountsTree = Record<string, ChartOfAccountNode[]>;
+
 export interface AccountBalanceProjection {
   companyId?: number;
   accountCode: string;
