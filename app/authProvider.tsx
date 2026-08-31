@@ -5,7 +5,7 @@ import { SessionGuard } from "./sessionGuard"
 
 export default function AuthProvider({ children }: { children: React.ReactNode }) {
  return (
- <SessionProvider>
+ <SessionProvider refetchInterval={300}>
  <SessionGuard>
  {children}
  </SessionGuard>
