@@ -89,13 +89,15 @@ export default async function CustomerIPMappingPage() {
   }));
 
   return (
-    <div className="p-6 h-full">
-      <CustomerIPMappingView
-        mappings={mappedMappings}
-        pools={mappedPools}
-        customers={customers}
-        packages={packages}
-      />
+    <div className="min-h-screen p-4 text-foreground sm:p-6 lg:p-8">
+      <div className="mx-auto max-w-7xl space-y-6">
+        <CustomerIPMappingView
+          mappings={mappedMappings}
+          pools={mappedPools}
+          customers={customers}
+          packages={packages}
+        />
+      </div>
     </div>
   );
 }
