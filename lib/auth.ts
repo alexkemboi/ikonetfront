@@ -154,9 +154,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         };
       }
 
-      // Refresh the backend access JWT when it is within 60s of expiring.
+      // Refresh the backend access JWT when it is within 15 minutes of expiring.
       const expiresAt = typeof token.expiresAt === "number" ? token.expiresAt : 0;
-      if (token.apiToken && Date.now() >= expiresAt - 60_000) {
+      if (token.apiToken && expiresAt > 0 && Date.now() >= expiresAt - 15 * 60_000) {
         const newToken = await getValidAccessToken(String(token.apiToken));
         if (newToken) {
           return {

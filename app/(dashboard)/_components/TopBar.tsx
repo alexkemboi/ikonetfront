@@ -71,6 +71,7 @@ const breadcrumbs = useBreadcrumb();
  navGroups={navGroups}
  brandName={brandName}
  user={sidebarUser}
+ isMobile={true}
  />
  </SheetContent>
  </Sheet>
