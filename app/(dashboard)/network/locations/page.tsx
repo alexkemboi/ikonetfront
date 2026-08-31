@@ -8,15 +8,21 @@ export const metadata = {
 
 export default async function LocationsPage() {
  const regionsTree = await getRegions(true);
- return (
- <div className="space-y-6 p-6">
- <div className="flex flex-col gap-2">
- <h1 className="text-3xl font-bold tracking-tight">Locations</h1>
- <p className="text-muted-foreground">
- Manage POPs, exchanges, and physical sites within each region.
- </p>
- </div>
- <LocationClient regionsTree={regionsTree} />
- </div>
- );
+return (
+    <div className="min-h-screen p-4 text-foreground sm:p-6 lg:p-8">
+      <div className="mx-auto max-w-7xl space-y-6">
+        <div>
+          <p className="text-[11px] font-mono tracking-wider text-muted-foreground uppercase">
+            Network — Locations
+          </p>
+          <h1 className="text-3xl font-serif font-semibold text-foreground">Locations.</h1>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Manage POPs, exchanges, and physical sites within each region.
+          </p>
+        </div>
+
+        <LocationClient regionsTree={regionsTree} />
+      </div>
+    </div>
+  );
 }
