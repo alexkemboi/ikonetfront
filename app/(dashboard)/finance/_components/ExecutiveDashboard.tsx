@@ -109,15 +109,15 @@ export default function ExecutiveDashboard() {
  setLoading(true);
  setError("");
  try {
- const [pnlRes, tbRes, balRes] = await Promise.all([
- getProfitAndLossDashboard(startDate || undefined, endDate || undefined),
- getTrialBalance(),
- getAccountBalances(),
- ]);
- if (pnlRes.success && pnlRes.data) setPnl(pnlRes.data);
- else if (!pnlRes.success) setError(pnlRes.message);
- if (tbRes.success && tbRes.data) setTrialBalance(tbRes.data);
- if (balRes.success && balRes.data) setBalances(balRes.data);
+const [pnlRes, trialBalance, balances] = await Promise.all([
+    getProfitAndLossDashboard(startDate || undefined, endDate || undefined),
+    getTrialBalance(),
+    getAccountBalances(),
+  ]);
+  if (pnlRes.success && pnlRes.data) setPnl(pnlRes.data);
+  else if (!pnlRes.success) setError(pnlRes.message);
+  setTrialBalance(trialBalance);
+  setBalances(balances);
  } catch {
  setError("Failed to load dashboard data");
  } finally {
