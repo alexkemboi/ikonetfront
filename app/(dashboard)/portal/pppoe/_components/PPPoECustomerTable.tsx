@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Wifi } from "lucide-react";
+import { Plus } from "lucide-react";
 import { toast } from "sonner";
 import { Customer } from "@/lib/types/customer";
 import { toggleCustomerActiveStatus } from "@/actions/customer";
@@ -51,33 +51,34 @@ const columns = useMemo(
  return (
  <>
  <div className="space-y-6">
- {/* Header */}
- <div className="flex items-start justify-between gap-4">
- <div>
- <div className="flex items-center gap-2">
- <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
- <Wifi className="w-4 h-4 text-primary" />
- </div>
- <h1 className="text-2xl font-bold tracking-tight">PPPoE Clients</h1>
- </div>
- <div className="flex items-center gap-3 mt-1">
- <p className="text-sm text-muted-foreground">
- {customers.length} {customers.length === 1 ? "client" : "clients"}
- </p>
- <Badge variant="outline" className="text-[11px] bg-success/10 text-success border-success/20">
- {subActive} subscribed
- </Badge>
- <Badge variant="outline" className="text-[11px] bg-primary/10 text-primary border-primary/20">
- {activeCount} active
- </Badge>
- </div>
- </div>
- {perms.canCreate && (
- <Button onClick={() => router.push("/customers/new")} className="gap-2 shrink-0">
- <Plus className="h-4 w-4" /> Add Client
- </Button>
- )}
- </div>
+{/* Header */}
+  <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+    <div>
+      <p className="text-[11px] font-mono tracking-wider text-muted-foreground uppercase">
+        Portal — PPPoE Clients
+      </p>
+      <h1 className="text-3xl font-serif font-semibold text-foreground">PPPoE Clients.</h1>
+      <div className="mt-1 flex items-center gap-3">
+        <p className="text-xs text-muted-foreground">
+          {customers.length} {customers.length === 1 ? "client" : "clients"}
+        </p>
+        <Badge variant="outline" className="text-[11px] bg-success/10 text-success border-success/20">
+          {subActive} subscribed
+        </Badge>
+        <Badge variant="outline" className="text-[11px] bg-primary/10 text-primary border-primary/20">
+          {activeCount} active
+        </Badge>
+      </div>
+    </div>
+    {perms.canCreate && (
+      <Button
+        onClick={() => router.push("/customers/new")}
+        className="inline-flex items-center gap-2 rounded-xl bg-amber-500 px-5 py-2.5 text-xs font-semibold text-black hover:bg-amber-400 transition shadow-lg shadow-amber-500/20 shrink-0"
+      >
+        <Plus className="h-4 w-4" /> Add Client
+      </Button>
+    )}
+  </div>
 
  {/* Table */}
  <DataTable
