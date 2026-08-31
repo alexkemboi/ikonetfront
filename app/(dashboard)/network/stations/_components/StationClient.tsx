@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { Database, Plus, Trash2 } from "lucide-react";
 import { ColumnDef } from "@tanstack/react-table";
 import { usePermissions } from "@/providers/PermissionsProvider";
+import { cn } from "@/lib/utils";
 
 interface StationClientProps {
  regionsTree: RegionResponse[];
@@ -57,37 +58,38 @@ export function StationClient({ regionsTree }: StationClientProps) {
  accessorKey: "locationName",
  header: "Parent Location",
  },
- {
- accessorKey: "powerType",
- header: "Power Profile",
- cell: ({ row }) => (
- <span className="inline-flex items-center rounded-md bg-blue-500/10 px-2 py-1 text-xs font-mono font-medium text-blue-400 ring-1 ring-inset ring-blue-500/20">
- {row.original.powerType}
- </span>
- ),
- },
- {
- accessorKey: "backhaulType",
- header: "Backhaul Medium",
- cell: ({ row }) => (
- <span className="inline-flex items-center rounded-md bg-purple-500/10 px-2 py-1 text-xs font-mono font-medium text-purple-400 ring-1 ring-inset ring-purple-500/20">
- {row.original.backhaulType}
- </span>
- ),
- },
- {
- accessorKey: "isActive",
- header: "Status",
- cell: ({ row }) => (
- <span className={`inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset ${
- row.original.isActive
- ? "bg-green-500/10 text-green-400 ring-green-500/20"
- : "bg-red-500/10 text-red-400 ring-red-500/20"
- }`}>
- {row.original.isActive ? "Online" : "Offline"}
- </span>
- ),
- },
+{
+  accessorKey: "powerType",
+  header: "Power Profile",
+  cell: ({ row }) => (
+    <span className="inline-flex items-center rounded-full border border-border bg-muted px-2.5 py-0.5 text-[11px] font-mono font-medium text-muted-foreground">
+      {row.original.powerType}
+    </span>
+  ),
+},
+{
+  accessorKey: "backhaulType",
+  header: "Backhaul Medium",
+  cell: ({ row }) => (
+    <span className="inline-flex items-center rounded-full border border-border bg-muted px-2.5 py-0.5 text-[11px] font-mono font-medium text-muted-foreground">
+      {row.original.backhaulType}
+    </span>
+  ),
+},
+{
+  accessorKey: "isActive",
+  header: "Status",
+  cell: ({ row }) => (
+    <span className={cn(
+      "inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-medium",
+      row.original.isActive
+        ? "bg-success/10 text-success border-success/20"
+        : "bg-destructive/10 text-destructive border-destructive/20"
+    )}>
+      {row.original.isActive ? "Online" : "Offline"}
+    </span>
+  ),
+},
  {
  id: "actions",
  header: "Actions",
@@ -110,11 +112,11 @@ export function StationClient({ regionsTree }: StationClientProps) {
  <div className="flex justify-end">
  {perms.canCreate && (
  <Dialog open={isDialogOpen} onOpenChange={setIsOpen}>
- <DialogTrigger asChild>
- <Button className="flex items-center gap-2">
- <Plus className="h-4 w-4" /> Onboard Station
- </Button>
- </DialogTrigger>
+<DialogTrigger asChild>
+          <Button className="inline-flex items-center gap-2 rounded-xl bg-amber-500 px-5 py-2.5 text-xs font-semibold text-black hover:bg-amber-400 transition shadow-lg shadow-amber-500/20">
+            <Plus className="h-4 w-4" /> Onboard Station
+          </Button>
+          </DialogTrigger>
  <DialogContent className="sm:max-w-[425px]">
  <DialogHeader>
  <DialogTitle className="flex items-center gap-2 text-xl font-bold">
