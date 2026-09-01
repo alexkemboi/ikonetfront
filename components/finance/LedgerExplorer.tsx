@@ -15,11 +15,36 @@ import type {
   AccountBalanceProjection,
   AccountPosting,
   ChartOfAccountNode,
+  CoaType,
   SpringPage,
   TrialBalanceResponse,
 } from "@/lib/types/finance";
 
 const DEFAULT_CATEGORY_ORDER = ["ASSET", "LIABILITY", "EQUITY", "INCOME", "EXPENSE"];
+
+/** Plain-English guidance for each CoA category, with its code series. */
+const CATEGORY_GUIDES: Record<CoaType, { desc: string; series: string }> = {
+  ASSET: {
+    desc: "What the company owns — cash, receivables, equipment.",
+    series: "1000–1999",
+  },
+  LIABILITY: {
+    desc: "What the company owes — payables, prepayments, loans.",
+    series: "2000–2999",
+  },
+  EQUITY: {
+    desc: "Owner capital and retained earnings.",
+    series: "3000–3999",
+  },
+  INCOME: {
+    desc: "Revenue earned from services sold.",
+    series: "4000–4999",
+  },
+  EXPENSE: {
+    desc: "Operating costs consumed to run the business.",
+    series: "5000–6999",
+  },
+};
 
 interface Props {
   initialTree: Record<string, ChartOfAccountNode[]>;
@@ -221,6 +246,11 @@ export default function LedgerExplorer({
                   >
                     <button
                       className="flex w-full items-center justify-between gap-2 text-left"
+                      title={
+                        key in CATEGORY_GUIDES
+                          ? `${CATEGORY_GUIDES[key as CoaType].desc} Codes ${CATEGORY_GUIDES[key as CoaType].series}.`
+                          : undefined
+                      }
                       onClick={() =>
                         setOpenCategories((prev) => ({ ...prev, [key]: !(prev[key] ?? true) }))
                       }
@@ -239,6 +269,12 @@ export default function LedgerExplorer({
                         {categoryCounts[key] ?? 0}
                       </span>
                     </button>
+                    {key in CATEGORY_GUIDES && (
+                      <p className="mt-1 pb-1 px-1 text-[10px] leading-snug text-muted-foreground/80">
+                        {CATEGORY_GUIDES[key as CoaType].desc}{" "}
+                        Codes {CATEGORY_GUIDES[key as CoaType].series}.
+                      </p>
+                    )}
                     {isOpen && (
                       <div className="mt-2 space-y-0.5">
                         {nodes.map((node) => (
@@ -388,10 +424,17 @@ function AccountTreeRow({
   onSelect: (code: string) => void;
 }) {
   const children = node.children ?? [];
+  const balance = getBalance(node.code);
+  const hasBalance = balance !== 0;
   return (
     <div>
       <button
         onClick={() => onSelect(node.code)}
+        title={
+          hasBalance
+            ? `${node.code} — ${node.name} · balance ${balance.toLocaleString()}`
+            : undefined
+        }
         style={{ paddingLeft: `${depth * 12}px` }}
         className={cn(
           "flex w-full items-center justify-between gap-2 rounded-md px-2 py-1.5 text-left transition-colors",
@@ -413,10 +456,14 @@ function AccountTreeRow({
         <span
           className={cn(
             "font-mono text-xs tabular-nums",
-            selectedCode === node.code ? "text-black" : "text-muted-foreground"
+            selectedCode === node.code
+              ? "text-black"
+              : hasBalance
+                ? "font-bold text-amber-500"
+                : "text-muted-foreground"
           )}
         >
-          {getBalance(node.code).toLocaleString()}
+          {balance.toLocaleString()}
         </span>
       </button>
       {children.map((child) => (
