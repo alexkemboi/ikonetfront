@@ -59,7 +59,7 @@ export interface AccountPosting {
 export type ExpenseCategory = "SALARY" | "EQUIPMENT" | "MAINTENANCE" | "UTILITIES" | "MARKETING" | "OTHER";
 
 export interface Expense {
-  id: number;
+  id: string;
   amount: number;
   description: string;
   category: ExpenseCategory;
@@ -133,6 +133,22 @@ export interface ProfitAndLossSummary {
   hotspotRevenue?: number;
   startDate: string;
   endDate: string;
+}
+
+export interface ReportLineItem {
+  accountCode: string;
+  accountName?: string;
+  amount: number;
+}
+
+export interface ProfitLossReport {
+  revenue: ReportLineItem[];
+  expenses: ReportLineItem[];
+  totalRevenue: number;
+  totalExpenses: number;
+  netIncome: number;
+  startDate?: string;
+  endDate?: string;
 }
 
 export interface SpringPage<T> {
