@@ -1,85 +1,96 @@
 "use server";
 
 import { auth } from "@/lib/auth";
-import { BASE_URL, buildApiUrl } from "@/lib/constants";
+import { buildApiUrl } from "@/lib/constants";
 import { getPermissionForRoute } from "@/lib/data/nav";
+import { timeoutSignal, unwrapPostings } from "@/lib/finance/ledger";
+import type { AccountPosting } from "@/lib/types/finance";
 import type {
   PaymentLedgerItem,
   PaymentLedgerKpis,
   InvoiceItem,
   InvoiceKpis,
+  ServiceType,
 } from "@/lib/types/payments";
 
-const FALLBACK_PAYMENT_KPIS: PaymentLedgerKpis = {
-  todayAmount: 1485,
-  thisWeekAmount: 1485,
-  mobileMoneyMonthAmount: 154376,
+// Zero-safe KPIs — the ledger never fabricates numbers when Account 1110 has
+// no postings or the backend is unreachable.
+const ZERO_PAYMENT_KPIS: PaymentLedgerKpis = {
+  todayAmount: 0,
+  thisWeekAmount: 0,
+  mobileMoneyMonthAmount: 0,
   voucherMonthAmount: 0,
-  totalRecordedCount: 47330,
+  totalRecordedCount: 0,
 };
 
-const FALLBACK_PAYMENTS: PaymentLedgerItem[] = [
-  {
-    id: "pay-1",
-    subscriberCode: "A3762",
-    subscriberPhone: "0794095112",
-    receiptNumber: "UGK3W0IY06",
+function sameCalendarDay(at: Date, ref: Date): boolean {
+  return (
+    at.getFullYear() === ref.getFullYear() &&
+    at.getMonth() === ref.getMonth() &&
+    at.getDate() === ref.getDate()
+  );
+}
+
+/** KPIs derived from the returned 1110 postings by their `occurredAt` window. */
+function computePaymentKpis(postings: AccountPosting[]): PaymentLedgerKpis {
+  const now = new Date();
+  const monday = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate() - ((now.getDay() + 6) % 7)
+  );
+
+  let todayAmount = 0;
+  let thisWeekAmount = 0;
+  let mobileMoneyMonthAmount = 0;
+
+  for (const p of postings) {
+    const at = new Date(p.occurredAt);
+    if (isNaN(at.getTime())) continue;
+    const amount = Math.abs(p.amount);
+    if (sameCalendarDay(at, now)) todayAmount += amount;
+    if (at >= monday) thisWeekAmount += amount;
+    if (at.getFullYear() === now.getFullYear() && at.getMonth() === now.getMonth()) {
+      mobileMoneyMonthAmount += amount;
+    }
+  }
+
+  return {
+    todayAmount,
+    thisWeekAmount,
+    mobileMoneyMonthAmount,
+    voucherMonthAmount: 0,
+    totalRecordedCount: postings.length,
+  };
+}
+
+function toPaymentLedgerItem(p: AccountPosting): PaymentLedgerItem {
+  const occurred = new Date(p.occurredAt);
+  const dateFormatted = isNaN(occurred.getTime())
+    ? p.occurredAt
+    : occurred.toLocaleString("en-US", {
+        month: "short",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true,
+      });
+
+  return {
+    id: String(p.id),
+    subscriberCode: p.customerId ? `CUS-${p.customerId}` : "GUEST-USER",
+    subscriberPhone: p.memo || "—",
+    receiptNumber: p.sourceId ? String(p.sourceId).slice(0, 10).toUpperCase() : "MPESA-CONFIRMED",
     paymentMethod: "M-Pesa",
-    serviceType: "HOTSPOT",
+    serviceType: (p.serviceType as ServiceType) || "HOTSPOT",
     isReconciled: true,
     payoutType: "Direct",
-    amount: 10,
-    currency: "KES",
-    dateFormatted: "Jul 20, 09:31 AM",
-    latencyText: "1s",
-    isFallback: true,
-  },
-  {
-    id: "pay-2",
-    subscriberCode: "A5735",
-    subscriberPhone: "0794091549",
-    receiptNumber: "UGK5J0B2TS",
-    paymentMethod: "M-Pesa",
-    serviceType: "HOTSPOT",
-    isReconciled: true,
-    payoutType: "Direct",
-    amount: 10,
-    currency: "KES",
-    dateFormatted: "Jul 20, 09:28 AM",
-    latencyText: "9s",
-    isFallback: true,
-  },
-  {
-    id: "pay-3",
-    subscriberCode: "A6632",
-    subscriberPhone: "0792259662",
-    receiptNumber: "UGK70BSPLQ",
-    paymentMethod: "M-Pesa",
-    serviceType: "HOTSPOT",
-    isReconciled: true,
-    payoutType: "Direct",
-    amount: 28,
-    currency: "KES",
-    dateFormatted: "Jul 20, 09:20 AM",
-    latencyText: "2s",
-    isFallback: true,
-  },
-  {
-    id: "pay-4",
-    subscriberCode: "A1074",
-    subscriberPhone: "0711902834",
-    receiptNumber: "UGK90AKPLM",
-    paymentMethod: "M-Pesa",
-    serviceType: "HOTSPOT",
-    isReconciled: true,
-    payoutType: "Direct",
-    amount: 15,
-    currency: "KES",
-    dateFormatted: "Jul 20, 09:12 AM",
-    latencyText: "1s",
-    isFallback: true,
-  },
-];
+    amount: Math.abs(p.amount),
+    currency: p.currency || "KES",
+    dateFormatted,
+    latencyText: "<1s",
+  };
+}
 
 const FALLBACK_INVOICE_KPIS: InvoiceKpis = {
   allInvoicesCount: 0,
@@ -97,49 +108,44 @@ export async function getPaymentsLedgerData(): Promise<{
   const token = session?.user?.apiToken;
 
   if (!token) {
-    return { kpis: FALLBACK_PAYMENT_KPIS, payments: FALLBACK_PAYMENTS };
+    return { kpis: ZERO_PAYMENT_KPIS, payments: [] };
+  }
+
+  // Self-gate on the canonical route that IS present in the static nav configs
+  // (`/finance/billing/payments`), so ADMIN/MANAGEMENT still resolve canView via
+  // the static fallback while users without finance menus get a zero-safe page.
+  // The `/finance/payments` alias is deliberately NOT used: it is absent from
+  // every nav config, so gating on it would lock the pages out entirely.
+  const perms = await getPermissionForRoute("/finance/billing/payments");
+  if (!perms.canView) {
+    return { kpis: ZERO_PAYMENT_KPIS, payments: [] };
   }
 
   try {
-    const res = await fetch(`${BASE_URL}finance/transactions?limit=50`, {
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      cache: "no-store",
-    });
+    const res = await fetch(
+      buildApiUrl("/finance/transactions?accountCode=1110&page=0&size=50"),
+      {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        cache: "no-store",
+        signal: timeoutSignal(),
+      }
+    );
 
     if (!res.ok) {
-      return { kpis: FALLBACK_PAYMENT_KPIS, payments: FALLBACK_PAYMENTS };
+      return { kpis: ZERO_PAYMENT_KPIS, payments: [] };
     }
 
-    const data = await res.json();
-    const rawList = Array.isArray(data?.data)
-      ? data.data
-      : Array.isArray(data)
-        ? data
-        : FALLBACK_PAYMENTS;
-
-    const payments = (rawList as PaymentLedgerItem[]).map((row) => {
-      const r = (row ?? {}) as unknown as Record<string, unknown>;
-      const statement = r.statement as Record<string, unknown> | undefined;
-      const rawStatementId =
-        r.statementId ?? statement?.id ?? statement?.statementId ?? row.statementId;
-      const statementId =
-        typeof rawStatementId === "number"
-          ? rawStatementId
-          : typeof rawStatementId === "string" && /^\d+$/.test(rawStatementId)
-            ? Number(rawStatementId)
-            : undefined;
-      return { ...row, statementId };
-    });
-
+    const postings = unwrapPostings(await res.json());
     return {
-      kpis: FALLBACK_PAYMENT_KPIS,
-      payments,
+      kpis: computePaymentKpis(postings),
+      payments: postings.map(toPaymentLedgerItem),
     };
-  } catch {
-    return { kpis: FALLBACK_PAYMENT_KPIS, payments: FALLBACK_PAYMENTS };
+  } catch (error) {
+    console.error("[Payments] getPaymentsLedgerData error:", error);
+    return { kpis: ZERO_PAYMENT_KPIS, payments: [] };
   }
 }
 
