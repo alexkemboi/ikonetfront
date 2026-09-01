@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import {
   Plus,
@@ -76,10 +76,30 @@ const STATUS_BADGES: Record<string, { label: string; className: string }> = {
  REJECTED: { label: "Rejected", className: "bg-destructive/10 text-destructive border-destructive/20" },
 };
 
-export default function ExpenseTable() {
- const [expenses, setExpenses] = useState<SpringPage<Expense>>({ content: [], totalElements: 0, totalPages: 0, size: 20, number: 0, first: true, last: true, empty: true });
- const [summary, setSummary] = useState<ExpenseSummary | null>(null);
- const [loading, setLoading] = useState(true);
+interface ExpenseTableProps {
+  /** Server-fetched page; skips the first-mount client fetch when present. */
+  initialExpenses?: SpringPage<Expense>;
+  initialSummary?: ExpenseSummary | null;
+}
+
+export default function ExpenseTable({
+  initialExpenses,
+  initialSummary = null,
+}: ExpenseTableProps) {
+  const [expenses, setExpenses] = useState<SpringPage<Expense>>(
+    initialExpenses ?? {
+      content: [],
+      totalElements: 0,
+      totalPages: 0,
+      size: 20,
+      number: 0,
+      first: true,
+      last: true,
+      empty: true,
+    }
+  );
+  const [summary, setSummary] = useState<ExpenseSummary | null>(initialSummary);
+  const [loading, setLoading] = useState(!initialExpenses);
  const [error, setError] = useState("");
  const [startDate, setStartDate] = useState(() => {
  const d = new Date(); d.setDate(1); return d.toISOString().slice(0, 10);
@@ -117,9 +137,19 @@ export default function ExpenseTable() {
  }
  }, [startDate, endDate, category, page]);
 
- useEffect(() => {
- fetchData();
- }, [fetchData]);
+// Skip the first-mount fetch only when the server actually supplied data.
+// When the server-side seed fails (initialExpenses undefined), fall through and
+// fetch client-side so the page is never left stuck with an empty table and a
+// spinning, disabled Refresh.
+  const mountedRef = useRef(false);
+
+  useEffect(() => {
+    if (!mountedRef.current) {
+      mountedRef.current = true;
+      if (initialExpenses) return;
+    }
+    fetchData();
+  }, [fetchData]);
 
  const handleCreate = async () => {
  if (!formAmount || !formDescription) {
@@ -373,10 +403,10 @@ export default function ExpenseTable() {
  </Select>
  </div>
 
- {/* Table */}
- <Card>
- <CardContent className="p-0">
- <DataTable columns={columns} data={expenses.content} />
+{/* Table */}
+  <Card>
+    <CardContent className="p-0">
+      <DataTable columns={columns} data={Array.isArray(expenses.content) ? expenses.content : []} />
  {expenses.totalPages > 1 && (
  <div className="flex items-center justify-between px-4 pb-4 pt-2">
  <p className="text-xs text-muted-foreground">

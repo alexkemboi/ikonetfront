@@ -3,6 +3,7 @@
 import { updateTag } from "next/cache";
 import { auth } from "@/lib/auth";
 import { BASE_URL, buildApiUrl } from "@/lib/constants";
+import { timeoutSignal, unwrapPostings } from "@/lib/finance/ledger";
 import type { ApiResponse } from "@/lib/types/auth";
 import type {
   AccountBalanceProjection,
@@ -13,6 +14,7 @@ import type {
   ExpenseRequest,
   ExpenseSummary,
   ProfitAndLossSummary,
+  ProfitLossReport,
   SpringPage,
   Statement,
   StatementRequest,
@@ -90,38 +92,6 @@ async function handleFinanceResponse<T>(
   };
 }
 
-// ── Legacy: preserve exactly ──────────────────────────────────────────────────
-
-export async function getRevenueOverview() {
-  try {
-    const headers = await getAuthHeaders();
-    const res = await fetch(`${BASE_URL}finance/revenue`, {
-      headers,
-      next: { tags: ["finance"] },
-    });
-    if (!res.ok) throw new Error(`Revenue fetch failed: ${res.statusText}`);
-    return await res.json();
-  } catch (error) {
-    console.error("[Finance Action] getRevenueOverview error:", error);
-    return { success: false, data: null };
-  }
-}
-
-export async function getRecentTransactions(limit = 10) {
-  try {
-    const headers = await getAuthHeaders();
-    const res = await fetch(`${BASE_URL}finance/transactions?limit=${limit}`, {
-      headers,
-      next: { tags: ["finance"] },
-    });
-    if (!res.ok) throw new Error(`Transactions fetch failed: ${res.statusText}`);
-    return await res.json();
-  } catch (error) {
-    console.error("[Finance Action] getRecentTransactions error:", error);
-    return { success: false, data: [] };
-  }
-}
-
 // ── CoA reads (raw /finance/coa* payloads — no envelope) ─────────────────────
 
 export async function getChartOfAccountsTree(): Promise<Record<string, ChartOfAccountNode[]>> {
@@ -170,6 +140,144 @@ export async function getTrialBalance(): Promise<TrialBalanceResponse | null> {
   } catch (error) {
     console.error("[Finance] getTrialBalance error:", error);
     return null;
+  }
+}
+
+// ── Executive dashboard (live data, zero dummy numbers) ──────────────────────
+
+const ZERO_PNL: ProfitAndLossSummary = {
+  totalRevenue: 0,
+  totalExpenses: 0,
+  netProfit: 0,
+  pppoeRevenue: 0,
+  hotspotRevenue: 0,
+  startDate: "",
+  endDate: "",
+};
+
+function currentMonthWindow(): { from: string; to: string } {
+  // Local-calendar window — never slice `toISOString()` (UTC), which shifts the
+  // first-of-month a day into the previous month in any timezone ahead of UTC.
+  const now = new Date();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return {
+    from: `${now.getFullYear()}-${pad(now.getMonth() + 1)}-01`,
+    to: `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`,
+  };
+}
+
+function zeroSafePnl(from: string, to: string): ProfitAndLossSummary {
+  return { ...ZERO_PNL, startDate: from, endDate: to };
+}
+
+/**
+ * Map the backend `ProfitLossReport` into the dashboard's `ProfitAndLossSummary`.
+ * Revenue lines are matched by account code (4100 = PPPoE, 4200 = Hotspot per the
+ * contract fixture) with a name-substring fallback; missing lines never fail.
+ */
+function normalizeProfitLossReport(
+  json: unknown,
+  from: string,
+  to: string
+): ProfitAndLossSummary {
+  const report = unwrapData<ProfitLossReport>(json);
+  if (typeof report !== "object" || report === null) return zeroSafePnl(from, to);
+  const revenue = Array.isArray(report.revenue) ? report.revenue : [];
+
+  const match = (codes: string[], needles: string[]): number => {
+    const byCode = revenue.find((line) => codes.includes(line.accountCode));
+    if (byCode) return byCode.amount;
+    const byName = revenue.find((line) =>
+      needles.some((n) => (line.accountName ?? "").toLowerCase().includes(n))
+    );
+    return byName?.amount ?? 0;
+  };
+
+  return {
+    totalRevenue: report.totalRevenue ?? 0,
+    totalExpenses: report.totalExpenses ?? 0,
+    netProfit: report.netIncome ?? 0,
+    pppoeRevenue: match(["4100"], ["pppoe"]),
+    hotspotRevenue: match(["4200"], ["hotspot"]),
+    startDate: report.startDate ?? from,
+    endDate: report.endDate ?? to,
+  };
+}
+
+/** Pick the M-Pesa clearing account (1110) balance; zero when unavailable. */
+function unwrapClearingBalance(json: unknown): number {
+  const list = unwrapData<AccountBalanceProjection[]>(json);
+  if (!Array.isArray(list)) return 0;
+  return (
+    list.find(
+      (b) => b.accountCode === "1110" || b.accountCode === "M_PESA_RECEIVABLE"
+    )?.balance ?? 0
+  );
+}
+
+/**
+ * Live executive dashboard feed. Three parallel reads from the backend
+ * (`/finance/reports/profit-loss` with the contract-required dates,
+ * `/finance/transactions` page 0, `/finance/coa/balance` for the 1110
+ * clearing balance). Every failure path returns zeros — never demo numbers.
+ * The backend requires `startDate`/`endDate` (`date-time`), so bare
+ * `YYYY-MM-DD` inputs are normalized like `getLedgerPostings`.
+ */
+export async function getLiveExecutiveDashboardData(
+  from?: string,
+  to?: string
+): Promise<{
+  pnl: ProfitAndLossSummary;
+  recentTransactions: AccountPosting[];
+  clearingBalance: number;
+}> {
+  const session = await auth();
+  const token = session?.user?.apiToken;
+
+  if (!token) {
+    return { pnl: zeroSafePnl("", ""), recentTransactions: [], clearingBalance: 0 };
+  }
+
+  try {
+    const toDateTime = (d?: string, endOfDay = false) =>
+      !d ? undefined : d.includes("T") ? d : `${d}T${endOfDay ? "23:59:59" : "00:00:00"}`;
+
+    const window = currentMonthWindow();
+    const startDate = toDateTime(from || window.from, false) as string;
+    const endDate = toDateTime(to || window.to, true) as string;
+
+    const qs = new URLSearchParams({ startDate, endDate }).toString();
+    const headers = {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    };
+    const signal = timeoutSignal();
+
+    const [pnlRes, txRes, balanceRes] = await Promise.all([
+      fetch(buildApiUrl(`/finance/reports/profit-loss?${qs}`), {
+        headers,
+        cache: "no-store",
+        signal,
+      }),
+      fetch(
+        buildApiUrl("/finance/transactions?page=0&size=10&sort=occurredAt,desc"),
+        { headers, cache: "no-store", signal }
+      ),
+      fetch(buildApiUrl("/finance/coa/balance"), { headers, cache: "no-store", signal }),
+    ]);
+
+    return {
+      pnl: pnlRes.ok
+        ? normalizeProfitLossReport(await pnlRes.json(), startDate, endDate)
+        : zeroSafePnl(startDate, endDate),
+      recentTransactions: txRes.ok ? unwrapPostings(await txRes.json()) : [],
+      clearingBalance: balanceRes.ok
+        ? unwrapClearingBalance(await balanceRes.json())
+        : 0,
+    };
+  } catch (error) {
+    console.error("[Finance] getLiveExecutiveDashboardData error:", error);
+    return { pnl: zeroSafePnl("", ""), recentTransactions: [], clearingBalance: 0 };
   }
 }
 
@@ -240,6 +348,90 @@ export type ExpenseParams = {
   size?: number;
 };
 
+/**
+ * Normalize ANY backend /expenses payload into the `ApiResponse<SpringPage>`
+ * shape the UI consumes: bare page / bare array / `ApiResponse` envelope.
+ * A raw-array response (as CoaController style backends return) previously
+ * produced `expenses.content === undefined` and crashed on mount.
+ */
+function normalizeExpensesResponse(
+  json: unknown,
+  size: number
+): ApiResponse<SpringPage<Expense>> {
+  const error = (message: string, status = 500): ApiResponse<SpringPage<Expense>> => ({
+    status,
+    success: false,
+    message,
+    data: EMPTY_PAGE(size),
+    timestamp: new Date().toISOString(),
+  });
+
+  if (typeof json !== "object" || json === null) {
+    return error("Failed to fetch expenses");
+  }
+  const body = json as Record<string, unknown>;
+
+  if (Array.isArray(json)) {
+    const list = json as Expense[];
+    return {
+      status: 200,
+      success: true,
+      message: "Success",
+      data: { ...EMPTY_PAGE(size), content: list, totalElements: list.length },
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  if (Array.isArray(body.content)) {
+    return {
+      status: 200,
+      success: true,
+      message: "Success",
+      data: body as unknown as SpringPage<Expense>,
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  if (body.success === false) {
+    return error(
+      typeof body.message === "string" ? body.message : "Failed to fetch expenses",
+      typeof body.status === "number" ? body.status : 500
+    );
+  }
+
+  const data = body.data;
+  if (typeof data === "object" && data !== null) {
+    if (Array.isArray((data as Record<string, unknown>).content)) {
+      return {
+        status: 200,
+        success: true,
+        message: "Success",
+        data: data as unknown as SpringPage<Expense>,
+        timestamp: new Date().toISOString(),
+      };
+    }
+    if (Array.isArray(data)) {
+      const list = data as Expense[];
+      return {
+        status: 200,
+        success: true,
+        message: "Success",
+        data: { ...EMPTY_PAGE(size), content: list, totalElements: list.length },
+        timestamp: new Date().toISOString(),
+      };
+    }
+    if ((data as Record<string, unknown>).success === false) {
+      return error(
+        typeof (data as Record<string, unknown>).message === "string"
+          ? String((data as Record<string, unknown>).message)
+          : "Failed to fetch expenses"
+      );
+    }
+  }
+
+  return error("Unexpected expenses payload");
+}
+
 export async function getExpenses(
   params: ExpenseParams = {}
 ): Promise<ApiResponse<SpringPage<Expense>>> {
@@ -255,10 +447,15 @@ export async function getExpenses(
 
     const res = await fetch(`${BASE_URL}expenses?${qs.toString()}`, {
       headers: await getAuthHeaders(),
-      next: { tags: ["expenses"], revalidate: 15 },
+      // Never cache user/company-scoped expense data in the shared Data Cache
+      // (keyed by URL, not Authorization) — it would leak across tenants.
+      cache: "no-store",
     });
-    if (!res.ok) return handleFinanceResponse(res, "Failed to fetch expenses");
-    return res.json();
+    if (!res.ok) {
+      const result = await handleFinanceResponse<SpringPage<Expense>>(res, "Failed to fetch expenses");
+      return { ...result, data: result.data ?? EMPTY_PAGE(params.size ?? 20) };
+    }
+    return normalizeExpensesResponse(await res.json(), params.size ?? 20);
   } catch (error) {
     console.error("[Finance] getExpenses error:", error);
     return {
@@ -269,6 +466,71 @@ export async function getExpenses(
       timestamp: new Date().toISOString(),
     };
   }
+}
+
+/**
+ * Convert the backend `ExpenseSummary` payload — `{ startDate, endDate,
+ * totalExpenses, expenseCount, expensesByCategory }` — into the frontend
+ * `ExpenseSummary` shape (`totalAmount`, `totalCount`, `byCategory`).
+ * Partial/missing fields tolerate to zeros/{} so the summary KPIs and
+ * `ExpenseSummaryView` never crash on a real backend response.
+ */
+function normalizeExpenseSummaryResponse(json: unknown): ApiResponse<ExpenseSummary> {
+  const error = (message: string, status = 500): ApiResponse<ExpenseSummary> => ({
+    status,
+    success: false,
+    message,
+    data: null,
+    timestamp: new Date().toISOString(),
+  });
+
+  if (typeof json !== "object" || json === null) {
+    return error("Failed to fetch expense summary");
+  }
+  const body = json as Record<string, unknown>;
+
+  if (body.success === false) {
+    return error(
+      typeof body.message === "string" ? body.message : "Failed to fetch expense summary",
+      typeof body.status === "number" ? body.status : 500
+    );
+  }
+
+  const raw = (body.success === true ? body.data : json) as
+    | Record<string, unknown>
+    | null
+    | undefined;
+  if (typeof raw !== "object" || raw === null) {
+    return error("Failed to fetch expense summary");
+  }
+
+  const categoryMap = raw.expensesByCategory ?? raw.byCategory;
+  return {
+    status: 200,
+    success: true,
+    message: "Success",
+    data: {
+      totalAmount:
+        typeof raw.totalAmount === "number"
+          ? raw.totalAmount
+          : typeof raw.totalExpenses === "number"
+            ? raw.totalExpenses
+            : 0,
+      totalCount:
+        typeof raw.totalCount === "number"
+          ? raw.totalCount
+          : typeof raw.expenseCount === "number"
+            ? raw.expenseCount
+            : 0,
+      byCategory:
+        typeof categoryMap === "object" &&
+        categoryMap !== null &&
+        !Array.isArray(categoryMap)
+          ? (categoryMap as Record<ExpenseCategory, number>)
+          : ({} as Record<ExpenseCategory, number>),
+    },
+    timestamp: new Date().toISOString(),
+  };
 }
 
 export async function getExpenseSummary(
@@ -284,10 +546,10 @@ export async function getExpenseSummary(
 
     const res = await fetch(`${BASE_URL}expenses/summary?${qs.toString()}`, {
       headers: await getAuthHeaders(),
-      next: { tags: ["expenses"], revalidate: 30 },
+      cache: "no-store",
     });
     if (!res.ok) return handleFinanceResponse(res, "Failed to fetch expense summary");
-    return res.json();
+    return normalizeExpenseSummaryResponse(await res.json());
   } catch (error) {
     console.error("[Finance] getExpenseSummary error:", error);
     return {
@@ -388,9 +650,9 @@ export async function createExpense(
   }
 }
 
-export async function deleteExpense(id: number): Promise<ApiResponse<null>> {
+export async function deleteExpense(id: string): Promise<ApiResponse<null>> {
   try {
-    const res = await fetch(`${BASE_URL}expenses/${id}`, {
+    const res = await fetch(`${BASE_URL}expenses/${encodeURIComponent(id)}`, {
       method: "DELETE",
       headers: await getAuthHeaders(),
     });

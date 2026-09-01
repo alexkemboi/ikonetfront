@@ -17,7 +17,6 @@ export interface PaymentLedgerItem {
   dateFormatted: string;
   latencyText: string;
   memo?: string;
-  isFallback?: boolean;
 }
 
 export interface PaymentLedgerKpis {

@@ -2,51 +2,78 @@
 
 import { useMemo, useState } from "react";
 import {
- Search,
- CheckCircle2,
- MoreHorizontal,
- Download,
- Mail,
- Eye,
- Loader2,
+  Search,
+  CheckCircle2,
+  MoreHorizontal,
+  Download,
+  Mail,
+  Eye,
+  Loader2,
+  Inbox,
 } from "lucide-react";
 import { toast } from "sonner";
 import type { PaymentLedgerItem } from "@/lib/types/payments";
 import { downloadReceiptPdf, emailReceipt } from "@/actions/payments";
 import {
- Dialog,
- DialogContent,
- DialogDescription,
- DialogFooter,
- DialogHeader,
- DialogTitle,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 
 interface Props {
- payments: PaymentLedgerItem[];
+  payments: PaymentLedgerItem[];
 }
 
 export function PaymentsDataTable({ payments }: Props) {
- const [search, setSearch] = useState("");
- const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
- const [emailTarget, setEmailTarget] = useState<PaymentLedgerItem | null>(null);
- const [viewTarget, setViewTarget] = useState<PaymentLedgerItem | null>(null);
- const [email, setEmail] = useState("");
- const [sending, setSending] = useState(false);
- const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
+  const [emailTarget, setEmailTarget] = useState<PaymentLedgerItem | null>(null);
+  const [viewTarget, setViewTarget] = useState<PaymentLedgerItem | null>(null);
+  const [email, setEmail] = useState("");
+  const [sending, setSending] = useState(false);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
- const filtered = useMemo(() => {
- const q = search.trim().toLowerCase();
- if (!q) return payments;
- return payments.filter(
- (p) =>
- (p.receiptNumber ?? "").toLowerCase().includes(q) ||
- (p.subscriberCode ?? "").toLowerCase().includes(q) ||
- (p.subscriberPhone ?? "").includes(q)
- );
- }, [payments, search]);
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return payments;
+    return payments.filter(
+      (p) =>
+        (p.receiptNumber ?? "").toLowerCase().includes(q) ||
+        (p.subscriberCode ?? "").toLowerCase().includes(q) ||
+        (p.subscriberPhone ?? "").includes(q)
+    );
+  }, [payments, search]);
+
+  const allFilteredSelected = filtered.length > 0 && filtered.every((p) => selectedIds.has(p.id));
+  const someFilteredSelected = filtered.some((p) => selectedIds.has(p.id));
+
+  function toggleAll() {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (allFilteredSelected) {
+        for (const p of filtered) next.delete(p.id);
+      } else {
+        for (const p of filtered) next.add(p.id);
+      }
+      return next;
+    });
+  }
+
+  function toggleOne(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
 
  function openEmailDialog(p: PaymentLedgerItem) {
  setEmailTarget(p);
@@ -121,10 +148,14 @@ export function PaymentsDataTable({ payments }: Props) {
  <div className="mt-4 overflow-x-auto">
  <table className="w-full text-left text-xs min-w-[920px]">
  <thead>
- <tr className="border-b border-border text-[11px] font-mono tracking-wider text-muted-foreground uppercase">
- <th className="py-3 px-3 w-10">
- <input type="checkbox" className="rounded border-border bg-secondary" />
- </th>
+<tr className="border-b border-border text-[11px] font-mono tracking-wider text-muted-foreground uppercase">
+    <th className="py-3 px-3 w-10">
+      <Checkbox
+        checked={someFilteredSelected && !allFilteredSelected ? "indeterminate" : allFilteredSelected}
+        onCheckedChange={toggleAll}
+        aria-label="Select all payments"
+      />
+    </th>
  <th className="py-3 px-3">SUBSCRIBER</th>
  <th className="py-3 px-3">RECEIPT</th>
  <th className="py-3 px-3">METHOD</th>
@@ -136,40 +167,51 @@ export function PaymentsDataTable({ payments }: Props) {
  <th className="py-3 px-3 text-right" />
  </tr>
  </thead>
- <tbody className="divide-y divide-zinc-800/50 font-mono">
- {filtered.length === 0 ? (
- <tr>
- <td
- colSpan={10}
- className="px-4 py-14 text-center text-sm text-muted-foreground font-sans"
- >
- No payments match your search.
- </td>
- </tr>
- ) : (
- filtered.map((p) => (
- <tr key={p.id} className="hover:bg-zinc-800/30 transition">
- <td className="py-3.5 px-3">
- <input type="checkbox" className="rounded border-border bg-secondary" />
- </td>
+<tbody className="divide-y divide-zinc-800/50 font-mono">
+    {filtered.length === 0 ? (
+      <tr>
+        <td
+          colSpan={10}
+          className="px-4 py-14 text-center text-sm text-muted-foreground font-sans"
+        >
+          {payments.length === 0 ? (
+            <div className="flex flex-col items-center gap-2">
+              <Inbox className="h-8 w-8 text-muted-foreground/60" />
+              <span>
+                No postings recorded for Account 1110 (M-Pesa Clearing).
+              </span>
+              <span className="text-xs text-muted-foreground/70">
+                Confirmed M-Pesa payments will appear here automatically.
+              </span>
+            </div>
+          ) : (
+            "No payments match your search."
+          )}
+        </td>
+      </tr>
+    ) : (
+      filtered.map((p) => (
+        <tr key={p.id} className="hover:bg-zinc-800/30 transition">
+          <td className="py-3.5 px-3">
+            <Checkbox
+              checked={selectedIds.has(p.id)}
+              onCheckedChange={() => toggleOne(p.id)}
+              aria-label={`Select payment ${p.receiptNumber}`}
+            />
+          </td>
 
- <td className="py-3.5 px-3 font-sans">
- <div className="font-semibold text-foreground">{p.subscriberCode}</div>
- <div className="text-[11px] text-muted-foreground font-mono">
- {p.subscriberPhone}
- </div>
- </td>
+          <td className="py-3.5 px-3 font-sans">
+            <div className="font-semibold text-foreground">{p.subscriberCode}</div>
+            <div className="text-[11px] text-muted-foreground font-mono">
+              {p.subscriberPhone}
+            </div>
+          </td>
 
- <td className="py-3.5 px-3">
- <span className="font-bold text-amber-400 tracking-wider text-sm">
- {p.receiptNumber}
- </span>
- {p.isFallback && (
- <span className="ml-2 rounded-full bg-amber-500/10 px-1.5 py-0.5 align-middle text-[9px] font-mono uppercase tracking-wider text-amber-400/80">
- demo
- </span>
- )}
- </td>
+          <td className="py-3.5 px-3">
+            <span className="font-bold text-amber-400 tracking-wider text-sm">
+              {p.receiptNumber}
+            </span>
+          </td>
 
  <td className="py-3.5 px-3 font-sans text-muted-foreground">
  {p.paymentMethod}
@@ -246,9 +288,12 @@ export function PaymentsDataTable({ payments }: Props) {
  </table>
  </div>
 
- <div className="mt-2 border-t border-border pt-3 text-xs font-mono text-muted-foreground">
- Showing {filtered.length} of {payments.length} payments
- </div>
+<div className="mt-2 border-t border-border pt-3 text-xs font-mono text-muted-foreground">
+    Showing {filtered.length} of {payments.length} payments
+    {selectedIds.size > 0 && (
+      <span className="text-amber-400"> · {selectedIds.size} selected</span>
+    )}
+  </div>
 
  {/* View payment dialog */}
  <Dialog open={viewTarget !== null} onOpenChange={(o) => !o && setViewTarget(null)}>
