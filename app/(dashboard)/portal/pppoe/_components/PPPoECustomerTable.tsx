@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { Plus } from "lucide-react";
+import { Plus, Package } from "lucide-react";
 import { toast } from "sonner";
 import { Customer } from "@/lib/types/customer";
 import { toggleCustomerActiveStatus } from "@/actions/customer";
@@ -14,12 +14,15 @@ import { DataTable } from "@/components/shared/data-table";
 import { RenewSubscriptionSheet } from "@/app/(dashboard)/customers/_components/RenewSubscriptionSheet";
 import { ChangePasswordSheet } from "@/app/(dashboard)/customers/_components/ChangePasswordSheet";
 import { createPPPoEColumns } from "./columns";
+import type { PppoePackageResponse } from "@/lib/types/pppoe";
 
 interface PPPoECustomerTableProps {
  customers: Customer[];
+ /** Live PPPoE packages (GET /pppoe/packages) — surfaced as a summary. */
+ packages?: PppoePackageResponse[];
 }
 
-export function PPPoECustomerTable({ customers }: PPPoECustomerTableProps) {
+export function PPPoECustomerTable({ customers, packages = [] }: PPPoECustomerTableProps) {
  const dispatch = useAppDispatch();
  const router = useRouter();
  const perms = usePermissions("/portal/pppoe");
@@ -68,6 +71,12 @@ const columns = useMemo(
         <Badge variant="outline" className="text-[11px] bg-primary/10 text-primary border-primary/20">
           {activeCount} active
         </Badge>
+        {packages.length > 0 && (
+          <Badge variant="outline" className="text-[11px] gap-1 bg-muted text-muted-foreground border-border">
+            <Package className="h-3 w-3" />
+            {packages.length} {packages.length === 1 ? "package" : "packages"}
+          </Badge>
+        )}
       </div>
     </div>
     {perms.canCreate && (
