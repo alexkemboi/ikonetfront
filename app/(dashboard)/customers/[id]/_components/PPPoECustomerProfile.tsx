@@ -8,14 +8,24 @@ import { CustomerProfileHeader } from "./CustomerProfileHeader";
 import { CustomerLifecycleBanner } from "./CustomerLifecycleBanner";
 import { CustomerInfoGrid } from "./CustomerInfoGrid";
 import { CustomerSubscriptionPanel } from "./CustomerSubscriptionPanel";
+import { PPPoEAccountsPanel } from "./PPPoEAccountsPanel";
 import { RenewSubscriptionSheet } from "../../_components/RenewSubscriptionSheet";
 import { ChangePasswordSheet } from "../../_components/ChangePasswordSheet";
+import type { PppoeAccountResponse, PppoeSubscriptionResponse } from "@/lib/types/pppoe";
 
 interface PPPoECustomerProfileProps {
  customer: Customer;
+ /** Live PPPoE accounts for this customer (GET /pppoe/accounts/customer/{id}). */
+ accounts?: PppoeAccountResponse[];
+ /** Live PPPoE subscriptions (GET /pppoe/subscriptions/customer/{id}). */
+ subscriptions?: PppoeSubscriptionResponse[];
 }
 
-export function PPPoECustomerProfile({ customer }: PPPoECustomerProfileProps) {
+export function PPPoECustomerProfile({
+ customer,
+ accounts = [],
+ subscriptions = [],
+}: PPPoECustomerProfileProps) {
  const router = useRouter();
 
  return (
@@ -37,6 +47,12 @@ export function PPPoECustomerProfile({ customer }: PPPoECustomerProfileProps) {
  <CustomerInfoGrid customer={customer} />
  <CustomerSubscriptionPanel customer={customer} />
  </div>
+
+ <PPPoEAccountsPanel
+ customerId={String(customer.userIdxno)}
+ accounts={accounts}
+ subscriptions={subscriptions}
+ />
 
  <RenewSubscriptionSheet customers={[customer]} />
  <ChangePasswordSheet customers={[customer]} />
