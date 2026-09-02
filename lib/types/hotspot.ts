@@ -24,7 +24,7 @@ export interface InitiatePaymentRequest {
 
 /**
  * `HotspotSessionResponse` — verified backend envelope fields from
- * `POST /api/v1/hotspot/initiate` (201).
+ * `POST /api/v1/hotspot/initiate` (200) / `GET /hotspot/sessions/active`.
  */
 export interface HotspotSessionResponse {
   sessionId: string;
@@ -44,6 +44,8 @@ export interface HotspotSessionResponse {
   dataUploadedBytes?: number;
   dataDownloadedBytes?: number;
   ipAddress?: string;
+  stationId?: string;
+  companyId?: string;
 }
 
 export type InitiatePaymentResponse = ApiResponse<HotspotSessionResponse>;

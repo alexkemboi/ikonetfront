@@ -36,6 +36,7 @@ import { sendBulkEmailAction } from "@/actions/communications";
 interface Props {
  segments: AudienceSegment[];
  templates: EmailTemplate[];
+ gatedMessage?: string;
 }
 
 const ICON_MAP: Record<string, React.ElementType> = {
@@ -209,7 +210,7 @@ function EmailPreview({
   );
 }
 
-export default function BulkEmailWizard({ segments, templates }: Props) {
+export default function BulkEmailWizard({ segments, templates, gatedMessage }: Props) {
  const [step, setStep] = useState(1);
  const [selectedSegmentId, setSelectedSegmentId] = useState<string | null>(null);
  const [selectedTemplateId, setSelectedTemplateId] = useState("blank");
@@ -283,6 +284,13 @@ export default function BulkEmailWizard({ segments, templates }: Props) {
  Reach customers at scale — renewals, promos, and notices in a few clicks
  </p>
  </div>
+
+ {gatedMessage ? (
+ <div className="flex items-start gap-3 rounded-lg border border-amber-500/30 bg-amber-500/5 p-4 text-sm text-amber-600">
+ <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+ <p>{gatedMessage}</p>
+ </div>
+ ) : null}
 
  {/* Step indicator */}
  <StepIndicator current={step} />

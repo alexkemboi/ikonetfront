@@ -127,6 +127,18 @@ export async function apiFetch<T = unknown>(
         };
       }
 
+      // 2xx with an empty/non-JSON body (e.g. a 204) is still success with a
+      // null payload — the envelope parse cannot run on a body that isn't JSON.
+      if (res.ok && !parsed) {
+        return {
+          status: res.status,
+          success: true,
+          message: "Request succeeded",
+          data: null,
+          timestamp: new Date().toISOString(),
+        };
+      }
+
       if (parsed && typeof parsed === "object") {
         const api = parsed as ApiResponse<T>;
         return {

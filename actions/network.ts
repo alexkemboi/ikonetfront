@@ -1,7 +1,5 @@
 "use server";
 
-import { BASE_URL, buildApiUrl } from "@/lib/constants";
-import { safeJsonParse } from "@/lib/utils/api";
 import {
   ApiResponse,
   NetworkRouter,
@@ -41,633 +39,236 @@ async function getRlsScopeParams(): Promise<URLSearchParams> {
   return params;
 }
 
-
-async function getAuthHeaders(): Promise<HeadersInit> {
-  const headers: HeadersInit = { "Content-Type": "application/json" };
-  
-  const session = await auth();
-  if (session?.user?.apiToken) {
-    headers["Authorization"] = `Bearer ${session.user.apiToken}`;
-  }
-  
-  return headers;
-}
-  
-
 export const getPendingRouters = async (): Promise<ApiResponse<NetworkRouter[]>> => {
-  try {
-    const params = await getRlsScopeParams();
-    const response = await fetch(BASE_URL + "network-routers/pending?" + params.toString(), {
-      headers: await getAuthHeaders(),
-      next: { tags: ["pending-routers"] },
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      return {
-        success: false,
-        message: data.message || "Failed to fetch pending routers",
-        data: [],
-        status: response.status,
-        timestamp: new Date().toISOString(),
-      };
-    }
-
-    return {
-      success: true,
-      message: data.message || "Pending routers fetched successfully",
-      data: data.data as NetworkRouter[],
-      status: response.status,
-      timestamp: data.timestamp,
-    };
-  } catch (error: unknown) {
-    console.error("Error fetching pending routers:", error);
-    return {
-      success: false,
-      message: error instanceof Error ? error.message : "Failed to fetch pending routers",
-      data: [],
-      status: 500,
-      timestamp: new Date().toISOString(),
-    };
-  }
+  const params = await getRlsScopeParams();
+  const res = await apiFetch<NetworkRouter[]>(
+    `/network-routers/pending${params.toString() ? `?${params.toString()}` : ""}`,
+    { auth: "required", tags: ["pending-routers"] }
+  );
+  return res.success && Array.isArray(res.data)
+    ? res
+    : { success: false, message: res.message || "Failed to fetch pending routers", data: [], status: res.status, timestamp: res.timestamp };
 };
 
 export const getTopologyTree = async (): Promise<ApiResponse<TopologyNode[]>> => {
-  try {
-    const response = await fetch(BASE_URL + "network-routers/topology", {
-      headers: await getAuthHeaders(),
-      next: { tags: ["router-topology"] },
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      return {
-        success: false,
-        message: data.message || "Failed to fetch topology",
-        data: [],
-        status: response.status,
-        timestamp: new Date().toISOString(),
-      };
-    }
-
-    return {
-      success: true,
-      message: data.message || "Topology loaded successfully",
-      data: data.data as TopologyNode[],
-      status: response.status,
-      timestamp: data.timestamp,
-    };
-  } catch (error: unknown) {
-    console.error("Error fetching topology:", error);
-    return {
-      success: false,
-      message: error instanceof Error ? error.message : "Failed to fetch topology",
-      data: [],
-      status: 500,
-      timestamp: new Date().toISOString(),
-    };
-  }
+  const res = await apiFetch<TopologyNode[]>("/network-routers/topology", {
+    auth: "required",
+    tags: ["router-topology"],
+  });
+  return res.success && Array.isArray(res.data)
+    ? res
+    : { success: false, message: res.message || "Failed to fetch topology", data: [], status: res.status, timestamp: res.timestamp };
 };
 
 export const getRouterDetails = async (id: number): Promise<ApiResponse<NetworkRouter | null>> => {
-  try {
-    const response = await fetch(BASE_URL + `network-routers/${id}`, {
-      headers: await getAuthHeaders(),
-      next: { tags: [`router-${id}`] },
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      return {
-        success: false,
-        message: data.message || "Failed to fetch router details",
-        data: null,
-        status: response.status,
-        timestamp: new Date().toISOString(),
-      };
-    }
-
-    return {
-      success: true,
-      message: data.message || "Router details fetched successfully",
-      data: data.data as NetworkRouter,
-      status: response.status,
-      timestamp: data.timestamp,
-    };
-  } catch (error: unknown) {
-    console.error("Error fetching router details:", error);
-    return {
-      success: false,
-      message: error instanceof Error ? error.message : "Failed to fetch router details",
-      data: null,
-      status: 500,
-      timestamp: new Date().toISOString(),
-    };
-  }
+  const res = await apiFetch<NetworkRouter>(`/network-routers/${id}`, {
+    auth: "required",
+    tags: [`router-${id}`],
+  });
+  return res.success && res.data
+    ? res
+    : { success: false, message: res.message || "Failed to fetch router details", data: null, status: res.status, timestamp: res.timestamp };
 };
 
 export const finalizeRouter = async (
   id: number,
   body: RouterConfigRequest
 ): Promise<ApiResponse<NetworkRouter | null>> => {
-  try {
-    const response = await fetch(BASE_URL + `network-routers/${id}/finalize`, {
-      method: "POST",
-      headers: await getAuthHeaders(),
-      body: JSON.stringify(body),
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      return {
-        success: false,
-        message: data.message || "Failed to finalize router",
-        data: null,
-        status: response.status,
-        timestamp: new Date().toISOString(),
-      };
-    }
-
+  const res = await apiFetch<NetworkRouter>(`/network-routers/${id}/finalize`, {
+    method: "POST",
+    body,
+    auth: "required",
+  });
+  if (res.success) {
     revalidatePath("/network/routers");
     updateTag("pending-routers");
-
-    return {
-      success: true,
-      message: data.message || "Router finalized successfully",
-      data: data.data as NetworkRouter,
-      status: response.status,
-      timestamp: data.timestamp,
-    };
-  } catch (error: unknown) {
-    console.error("Error finalizing router:", error);
-    return {
-      success: false,
-      message: error instanceof Error ? error.message : "Failed to finalize router",
-      data: null,
-      status: 500,
-      timestamp: new Date().toISOString(),
-    };
+    return { success: true, message: "Router finalized successfully", data: res.data, status: res.status, timestamp: res.timestamp };
   }
+  return { success: false, message: res.message || "Failed to finalize router", data: null, status: res.status, timestamp: res.timestamp };
 };
 
 export const updateRouter = async (
   id: number,
   body: RouterConfigRequest
 ): Promise<ApiResponse<NetworkRouter | null>> => {
-  try {
-    const response = await fetch(BASE_URL + `network-routers/${id}`, {
-      method: "PATCH",
-      headers: await getAuthHeaders(),
-      body: JSON.stringify(body),
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      return {
-        success: false,
-        message: data.message || "Failed to update router",
-        data: null,
-        status: response.status,
-        timestamp: new Date().toISOString(),
-      };
-    }
-
+  const res = await apiFetch<NetworkRouter>(`/network-routers/${id}`, {
+    method: "PATCH",
+    body,
+    auth: "required",
+  });
+  if (res.success) {
     updateTag(`router-${id}`);
     revalidatePath("/network/routers");
-
-    return {
-      success: true,
-      message: data.message || "Router updated successfully",
-      data: data.data as NetworkRouter,
-      status: response.status,
-      timestamp: data.timestamp,
-    };
-  } catch (error: unknown) {
-    console.error("Error updating router:", error);
-    return {
-      success: false,
-      message: error instanceof Error ? error.message : "Failed to update router",
-      data: null,
-      status: 500,
-      timestamp: new Date().toISOString(),
-    };
+    return { success: true, message: "Router updated successfully", data: res.data, status: res.status, timestamp: res.timestamp };
   }
+  return { success: false, message: res.message || "Failed to update router", data: null, status: res.status, timestamp: res.timestamp };
 };
 
 export const executeRouterAction = async (
   id: number,
   body: RouterActionRequest
 ): Promise<ApiResponse<RouterActionResponse | null>> => {
-  try {
-    const response = await fetch(BASE_URL + `network-routers/${id}/action`, {
-      method: "PATCH",
-      headers: await getAuthHeaders(),
-      body: JSON.stringify(body),
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      return {
-        success: false,
-        message: data.message || "Failed to execute router action",
-        data: null,
-        status: response.status,
-        timestamp: new Date().toISOString(),
-      };
-    }
-
-    return {
-      success: true,
-      message: data.message || "Action executed successfully",
-      data: data.data as RouterActionResponse,
-      status: response.status,
-      timestamp: data.timestamp,
-    };
-  } catch (error: unknown) {
-    console.error("Error executing router action:", error);
-    return {
-      success: false,
-      message: error instanceof Error ? error.message : "Failed to execute action",
-      data: null,
-      status: 500,
-      timestamp: new Date().toISOString(),
-    };
-  }
+  const res = await apiFetch<RouterActionResponse>(`/network-routers/${id}/action`, {
+    method: "PATCH",
+    body,
+    auth: "required",
+  });
+  return res.success && res.data
+    ? res
+    : { success: false, message: res.message || "Failed to execute action", data: null, status: res.status, timestamp: res.timestamp };
 };
 
 // ── Region actions ────────────────────────────────────────────────────────
 
-/** Extract an array from a response that may be `{data: [...]}` or `[...]` directly */
-function resolveDataArray<T>(parsed: unknown): T[] {
-  if (Array.isArray(parsed)) return parsed as T[];
-  if (parsed && typeof parsed === "object" && "data" in (parsed as Record<string, unknown>)) {
-    const arr = (parsed as Record<string, unknown>).data;
-    if (Array.isArray(arr)) return arr as T[];
-  }
-  return [];
-}
-
 export const getRegions = async (tree?: boolean): Promise<RegionResponse[]> => {
-  try {
-    const params = await getRlsScopeParams();
-    if (tree) params.append("tree", "true");
-    const url = BASE_URL + "network/regions?" + params.toString();
-    console.log("[getRegions] fetching:", url);
-    const response = await fetch(url, {
-      cache: "no-store",
-      headers: await getAuthHeaders(),
-    });
-    console.log("[getRegions] status:", response.status);
-    const { parsed, ok, error } = await safeJsonParse<unknown>(response, {});
-    if (!response.ok || !ok) {
-      console.error("[getRegions] failed — status:", response.status, "ok:", ok, "error:", error, "parsed:", parsed);
-      return [];
-    }
-    const result = resolveDataArray<RegionResponse>(parsed);
-    console.log("[getRegions] resolved count:", result.length);
-    return result;
-  } catch (error) {
-    console.error("[getRegions] error:", error);
-    return [];
-  }
+  const params = await getRlsScopeParams();
+  if (tree) params.append("tree", "true");
+  const res = await apiFetch<RegionResponse[]>(
+    `/network/regions${params.toString() ? `?${params.toString()}` : ""}`,
+    { auth: "required", cache: "no-store" }
+  );
+  return res.success && Array.isArray(res.data) ? res.data : [];
 };
 
 export const createRegion = async (
   request: RegionRequest
 ): Promise<AuthApiResponse<RegionResponse>> => {
-  try {
-    const response = await fetch(BASE_URL + "network/regions", {
-      method: "POST",
-      headers: await getAuthHeaders(),
-      body: JSON.stringify(request),
-    });
-
-    // Handle empty or non-JSON response bodies gracefully
-    const textBody = await response.text();
-    let parsed: Record<string, unknown> = {};
-    let parseOk = false;
-    try {
-      parsed = JSON.parse(textBody);
-      parseOk = true;
-    } catch {
-      // Response body is empty or not JSON — treat 2xx as success
-      if (response.ok) {
-        revalidateTag("network:regions", "max");
-        return {
-          success: true,
-          message: "Region created successfully",
-          data: null,
-          status: response.status,
-        };
-      }
-    }
-
-    if (!response.ok) {
-      return {
-        success: false,
-        message: (parsed?.message as string) || `HTTP ${response.status}`,
-        data: null,
-        status: response.status,
-      };
-    }
-
-    if (!parseOk) {
-      revalidateTag("network:regions", "max");
-      return {
-        success: true,
-        message: "Region created successfully",
-        data: null,
-        status: response.status,
-      };
-    }
-
-    revalidateTag("network:regions", "max");
-    return {
-      success: true,
-      message: (parsed.message as string) || "Region created successfully",
-      data: parsed.data as RegionResponse,
-      status: response.status,
-    };
-  } catch (error: unknown) {
-    return {
-      success: false,
-      message: error instanceof Error ? error.message : "Failed to create region",
-      data: null,
-      status: 500,
-    };
-  }
+  const res = await apiFetch<RegionResponse>("/network/regions", {
+    method: "POST",
+    body: request,
+    auth: "required",
+  });
+  if (res.success) revalidateTag("network:regions", "max");
+  return {
+    success: res.success,
+    message: res.message || (res.success ? "Region created successfully" : "Failed to create region"),
+    data: res.success ? res.data : null,
+    status: res.status,
+    timestamp: res.timestamp,
+  };
 };
 
 export const deleteRegion = async (
   id: number
 ): Promise<AuthApiResponse<void>> => {
-  try {
-    const response = await fetch(BASE_URL + `network/regions/${id}`, {
-      method: "DELETE",
-      headers: await getAuthHeaders(),
-    });
-    const data = await response.json();
-    if (!response.ok) {
-      return {
-        success: false,
-        message: data.message || "Failed to delete region",
-        data: null,
-        status: response.status,
-      };
-    }
-    revalidateTag("network:regions", "max");
-    return {
-      success: true,
-      message: data.message || "Region deleted successfully",
-      data: undefined,
-      status: response.status,
-    };
-  } catch (error: unknown) {
-    return {
-      success: false,
-      message: error instanceof Error ? error.message : "Failed to delete region",
-      data: null,
-      status: 500,
-    };
-  }
+  const res = await apiFetch<null>(`/network/regions/${id}`, {
+    method: "DELETE",
+    auth: "required",
+  });
+  if (res.success) revalidateTag("network:regions", "max");
+  return {
+    success: res.success,
+    message: res.message || (res.success ? "Region deleted successfully" : "Failed to delete region"),
+    data: res.success ? undefined : null,
+    status: res.status,
+    timestamp: res.timestamp,
+  };
 };
 
 // ── Location actions ──────────────────────────────────────────────────────
 
 export const getLocationsByRegion = async (regionIdxno: number): Promise<LocationResponse[]> => {
-  try {
-    const params = await getRlsScopeParams();
-    const url = BASE_URL + `network/locations/region/${regionIdxno}?${params.toString()}`;
-    console.log("[getLocationsByRegion] fetching:", url);
-    const response = await fetch(url, {
-      cache: "no-store",
-      headers: await getAuthHeaders(),
-    });
-    console.log("[getLocationsByRegion] status:", response.status);
-    const { parsed, ok, error } = await safeJsonParse<unknown>(response, {});
-    if (!response.ok || !ok) {
-      console.error("[getLocationsByRegion] failed — status:", response.status, "error:", error, "parsed:", parsed);
-      return [];
-    }
-    const result = resolveDataArray<LocationResponse>(parsed);
-    console.log("[getLocationsByRegion] resolved count:", result.length);
-    return result;
-  } catch (error) {
-    console.error("[getLocationsByRegion] error:", error);
-    return [];
-  }
+  const params = await getRlsScopeParams();
+  const res = await apiFetch<LocationResponse[]>(
+    `/network/locations/region/${regionIdxno}${params.toString() ? `?${params.toString()}` : ""}`,
+    { auth: "required", cache: "no-store" }
+  );
+  return res.success && Array.isArray(res.data) ? res.data : [];
 };
 
 export const createLocation = async (
   request: LocationRequest
 ): Promise<AuthApiResponse<LocationResponse>> => {
-  try {
-    const response = await fetch(BASE_URL + "network/locations", {
-      method: "POST",
-      headers: await getAuthHeaders(),
-      body: JSON.stringify(request),
-    });
-
-    const textBody = await response.text();
-    let parsed: Record<string, unknown> = {};
-    try {
-      parsed = JSON.parse(textBody);
-    } catch {
-      if (response.ok) {
-        updateTag(`network:locations:region:${request.regionIdxno}`);
-        updateTag("network:regions");
-        return {
-          success: true,
-          message: "Location created successfully",
-          data: null,
-          status: response.status,
-        };
-      }
-    }
-
-    if (!response.ok) {
-      return {
-        success: false,
-        message: (parsed?.message as string) || `HTTP ${response.status}`,
-        data: null,
-        status: response.status,
-      };
-    }
-
+  const res = await apiFetch<LocationResponse>("/network/locations", {
+    method: "POST",
+    body: request,
+    auth: "required",
+  });
+  if (res.success) {
     updateTag(`network:locations:region:${request.regionIdxno}`);
     updateTag("network:regions");
-    return {
-      success: true,
-      message: (parsed.message as string) || "Location created successfully",
-      data: parsed.data as LocationResponse,
-      status: response.status,
-    };
-  } catch (error: unknown) {
-    return {
-      success: false,
-      message: error instanceof Error ? error.message : "Failed to create location",
-      data: null,
-      status: 500,
-    };
   }
+  return {
+    success: res.success,
+    message: res.message || (res.success ? "Location created successfully" : "Failed to create location"),
+    data: res.success ? res.data : null,
+    status: res.status,
+    timestamp: res.timestamp,
+  };
 };
 
 export const deleteLocation = async (
   id: number,
   regionIdxno: number
 ): Promise<AuthApiResponse<void>> => {
-  try {
-    const response = await fetch(BASE_URL + `network/locations/${id}`, {
-      method: "DELETE",
-      headers: await getAuthHeaders(),
-    });
-    const data = await response.json();
-    if (!response.ok) {
-      return {
-        success: false,
-        message: data.message || "Failed to delete location",
-        data: null,
-        status: response.status,
-      };
-    }
+  const res = await apiFetch<null>(`/network/locations/${id}`, {
+    method: "DELETE",
+    auth: "required",
+  });
+  if (res.success) {
     updateTag(`network:locations:region:${regionIdxno}`);
     updateTag("network:regions");
-    return {
-      success: true,
-      message: data.message || "Location deleted successfully",
-      data: undefined,
-      status: response.status,
-    };
-  } catch (error: unknown) {
-    return {
-      success: false,
-      message: error instanceof Error ? error.message : "Failed to delete location",
-      data: null,
-      status: 500,
-    };
   }
+  return {
+    success: res.success,
+    message: res.message || (res.success ? "Location deleted successfully" : "Failed to delete location"),
+    data: res.success ? undefined : null,
+    status: res.status,
+    timestamp: res.timestamp,
+  };
 };
 
 // ── Station actions ───────────────────────────────────────────────────────
 
 export const getStationsByLocation = async (locationIdxno: number): Promise<StationResponse[]> => {
-  try {
-    const params = await getRlsScopeParams();
-    const url = BASE_URL + `network/stations/location/${locationIdxno}?${params.toString()}`;
-    console.log("[getStationsByLocation] fetching:", url);
-    const response = await fetch(url, {
-      cache: "no-store",
-      headers: await getAuthHeaders(),
-    });
-    console.log("[getStationsByLocation] status:", response.status);
-    const { parsed, ok, error } = await safeJsonParse<unknown>(response, {});
-    if (!response.ok || !ok) {
-      console.error("[getStationsByLocation] failed — status:", response.status, "error:", error, "parsed:", parsed);
-      return [];
-    }
-    const result = resolveDataArray<StationResponse>(parsed);
-    console.log("[getStationsByLocation] resolved count:", result.length);
-    return result;
-  } catch (error) {
-    console.error("[getStationsByLocation] error:", error);
-    return [];
-  }
+  const params = await getRlsScopeParams();
+  const res = await apiFetch<StationResponse[]>(
+    `/network/stations/location/${locationIdxno}${params.toString() ? `?${params.toString()}` : ""}`,
+    { auth: "required", cache: "no-store" }
+  );
+  return res.success && Array.isArray(res.data) ? res.data : [];
 };
 
 export const createStation = async (
   request: StationRequest
 ): Promise<AuthApiResponse<StationResponse>> => {
-  try {
-    const response = await fetch(BASE_URL + "network/stations", {
-      method: "POST",
-      headers: await getAuthHeaders(),
-      body: JSON.stringify(request),
-    });
-
-    const textBody = await response.text();
-    let parsed: Record<string, unknown> = {};
-    try {
-      parsed = JSON.parse(textBody);
-    } catch {
-      if (response.ok) {
-        updateTag(`network:stations:location:${request.locationIdxno}`);
-        updateTag("network:regions");
-        return {
-          success: true,
-          message: "Station created successfully",
-          data: null,
-          status: response.status,
-        };
-      }
-    }
-
-    if (!response.ok) {
-      return {
-        success: false,
-        message: (parsed?.message as string) || `HTTP ${response.status}`,
-        data: null,
-        status: response.status,
-      };
-    }
-
+  const res = await apiFetch<StationResponse>("/network/stations", {
+    method: "POST",
+    body: request,
+    auth: "required",
+  });
+  if (res.success) {
     updateTag(`network:stations:location:${request.locationIdxno}`);
     updateTag("network:regions");
-    return {
-      success: true,
-      message: (parsed.message as string) || "Station created successfully",
-      data: parsed.data as StationResponse,
-      status: response.status,
-    };
-  } catch (error: unknown) {
-    return {
-      success: false,
-      message: error instanceof Error ? error.message : "Failed to create station",
-      data: null,
-      status: 500,
-    };
   }
+  return {
+    success: res.success,
+    message: res.message || (res.success ? "Station created successfully" : "Failed to create station"),
+    data: res.success ? res.data : null,
+    status: res.status,
+    timestamp: res.timestamp,
+  };
 };
 
 export const deleteStation = async (
   id: number,
   locationIdxno: number
 ): Promise<AuthApiResponse<void>> => {
-  try {
-    const response = await fetch(BASE_URL + `network/stations/${id}`, {
-      method: "DELETE",
-      headers: await getAuthHeaders(),
-    });
-    const data = await response.json();
-    if (!response.ok) {
-      return {
-        success: false,
-        message: data.message || "Failed to delete station",
-        data: null,
-        status: response.status,
-      };
-    }
+  const res = await apiFetch<null>(`/network/stations/${id}`, {
+    method: "DELETE",
+    auth: "required",
+  });
+  if (res.success) {
     updateTag(`network:stations:location:${locationIdxno}`);
     updateTag("network:regions");
-    return {
-      success: true,
-      message: data.message || "Station deleted successfully",
-      data: undefined,
-      status: response.status,
-    };
-  } catch (error: unknown) {
-    return {
-      success: false,
-      message: error instanceof Error ? error.message : "Failed to delete station",
-      data: null,
-      status: 500,
-    };
   }
+  return {
+    success: res.success,
+    message: res.message || (res.success ? "Station deleted successfully" : "Failed to delete station"),
+    data: res.success ? undefined : null,
+    status: res.status,
+    timestamp: res.timestamp,
+  };
 };
 
 export const validateRouterConnectivity = async (
@@ -761,36 +362,29 @@ export const getNetworkDeviceInterfaces = async (
   deviceId: number
 ): Promise<Record<string, unknown>[]> => {
   try {
-    const res = await fetch(buildApiUrl(`/network-devices/${deviceId}/interfaces`), {
-      headers: await getAuthHeaders(),
-      next: { revalidate: 0 },
-    });
-
-    if (!res.ok) return [];
-    const body: ApiResponse<Record<string, unknown>[] | null> = await res.json();
-    return Array.isArray(body.data) ? body.data : [];
+    const res = await apiFetch<Record<string, unknown>[]>(
+      `/network-devices/${deviceId}/interfaces`,
+      { auth: "required", revalidate: 0 }
+    );
+    return Array.isArray(res.data) ? res.data : [];
   } catch (error) {
     console.error(`getNetworkDeviceInterfaces Error for device ID ${deviceId}:`, error);
     return [];
   }
 };
 
-
-
 export const getStationLoad = async (
   stationId: number
 ): Promise<RouterCapacityResponse[]> => {
   try {
-    const headers = await getAuthHeaders();
-    const res = await fetch(`${BASE_URL}network/provisioning/station/${stationId}/load`, {
-      method: "GET",
-      headers,
-      next: { revalidate: 0 },
-    });
-
-    if (!res.ok) throw new Error(`Failed to calculate station capacity load. Status: ${res.status}`);
-    const body: ApiResponse<RouterCapacityResponse[]> = await res.json();
-    return body.data || [];
+    const res = await apiFetch<RouterCapacityResponse[]>(
+      `/network/provisioning/station/${stationId}/load`,
+      { auth: "required", revalidate: 0 }
+    );
+    if (!res.success) {
+      throw new Error(`Failed to calculate station capacity load. Status: ${res.status}`);
+    }
+    return res.data ?? [];
   } catch (error) {
     console.error(`getStationLoad Error for station ID ${stationId}:`, error);
     return [];
@@ -801,18 +395,16 @@ export const provisionSubscriber = async (
   request: SubscriberProvisioningRequest
 ): Promise<ApiResponse<void>> => {
   try {
-    const headers = await getAuthHeaders();
-    const res = await fetch(`${BASE_URL}network/provisioning/pppoe`, {
+    const res = await apiFetch<void>("/network/provisioning/pppoe", {
       method: "POST",
-      headers,
-      body: JSON.stringify(request),
+      body: request,
+      auth: "required",
     });
 
-    const body = await res.json();
-    if (body.success) {
+    if (res.success) {
       revalidateTag("network:regions", "max");
     }
-    return body;
+    return res;
   } catch (error: unknown) {
     return {
       status: 500,

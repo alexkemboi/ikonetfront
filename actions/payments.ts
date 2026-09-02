@@ -199,6 +199,7 @@ export async function emailReceipt(
   statementId: number | undefined,
   recipientEmail: string
 ): Promise<{ success: boolean; message: string }> {
+  void recipientEmail;
   const session = await auth();
   if (!session?.user?.apiToken) {
     return { success: false, message: "You must be signed in to email receipts." };
@@ -213,30 +214,14 @@ export async function emailReceipt(
       message: "This payment is not linked to a statement, so no receipt can be emailed.",
     };
   }
-  try {
-    const res = await fetch(buildApiUrl(`/statements/${statementId}/email`), {
-      method: "POST",
-      headers: { ...(await getAuthHeaders()), "Content-Type": "application/json" },
-      body: JSON.stringify({ recipientEmail }),
-    });
-    if (!res.ok) {
-      const body: { message?: string } | null = await res.json().catch(() => null);
-      return {
-        success: false,
-        message: body?.message || `Email failed (HTTP ${res.status}).`,
-      };
-    }
-    return {
-      success: true,
-      message: `Receipt emailed to ${recipientEmail}.`,
-    };
-  } catch (error) {
-    console.error("[Payments] emailReceipt error:", error);
-    return {
-      success: false,
-      message: "Failed to send receipt email.",
-    };
-  }
+
+  // GATED: `POST /statements/{id}/email` is absent from the live spec
+  // (api-docs.json, 170 ops). Readable 503 instead of a call into an absent route.
+  return {
+    success: false,
+    message:
+      "Emailing statements is pending the backend route (POST /statements/{id}/email is absent from the live spec).",
+  };
 }
 
 async function getAuthHeaders(): Promise<HeadersInit> {

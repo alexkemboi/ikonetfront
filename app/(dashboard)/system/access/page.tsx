@@ -21,6 +21,7 @@ export type RoleUser = {
 
 export type Role = {
  id: string;
+ idxno: number;
  name: string;
  description: string;
  userCount: number;
@@ -49,8 +50,8 @@ export default async function RolesPage() {
 
  const apiRoles = rolesResult.success ? (rolesResult.data ?? []) : [];
 
- console.log("[RolesPage] API Roles:", JSON.stringify(apiRoles, null, 2));
- console.log("[RolesPage] All System Users:", JSON.stringify(allSystemUsers, null, 2));
+ // (debug logs removed in regression audit)
+ 
 
  // Fetch per-role menus and users in parallel
  const [menusResults, usersResults] = await Promise.all([
@@ -60,7 +61,7 @@ export default async function RolesPage() {
 
  const roles: Role[] = apiRoles.map((apiRole, i) => {
  const apiUsers = usersResults[i]?.data ?? [];
- console.log(`[RolesPage] Role ${apiRole.roleCode} users:`, JSON.stringify(apiUsers, null, 2));
+ 
  
  const users: RoleUser[] = apiUsers.map((u) => {
  const fullName = u.fullName || `${u.fname || ""} ${u.middleName || ""} ${u.otherName || ""}`.trim() || u.username || "Unknown";
@@ -79,6 +80,7 @@ export default async function RolesPage() {
 
  return {
  id: apiRole.roleCode,
+ idxno: apiRole.idxno,
  name: apiRole.name,
  description: apiRole.description,
  userCount: users.length,
@@ -88,7 +90,7 @@ export default async function RolesPage() {
  };
  });
 
- console.log("[RolesPage] Final roles:", JSON.stringify(roles, null, 2));
+ 
 
  return (
  <div className="p-6 h-full">

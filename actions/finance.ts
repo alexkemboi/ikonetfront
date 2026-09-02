@@ -2,7 +2,8 @@
 
 import { updateTag } from "next/cache";
 import { auth } from "@/lib/auth";
-import { BASE_URL, buildApiUrl } from "@/lib/constants";
+import { buildApiUrl } from "@/lib/constants";
+import { apiFetch } from "@/lib/apiClient";
 import { timeoutSignal, unwrapPostings } from "@/lib/finance/ledger";
 import type { ApiResponse } from "@/lib/types/auth";
 import type {
@@ -44,52 +45,6 @@ function unwrapData<T>(json: unknown): T | null | undefined {
     return (json as { data?: T }).data;
   }
   return json as T;
-}
-
-// ── Finance response helper (mirrors customer.ts handleApiResponse + 204 skip) ──
-
-async function handleFinanceResponse<T>(
-  response: Response,
-  defaultMessage: string
-): Promise<ApiResponse<T>> {
-  if (response.status === 204) {
-    return { status: 204, success: true, message: "Deleted", data: null };
-  }
-
-  const contentType = response.headers.get("content-type");
-  let body: unknown;
-
-  if (contentType?.includes("application/json")) {
-    body = await response.json();
-  } else {
-    body = await response.text();
-  }
-
-  if (response.ok) {
-    if (typeof body === "object" && body !== null && "success" in body) {
-      return body as ApiResponse<T>;
-    }
-    return {
-      status: response.status,
-      success: true,
-      message: "Success",
-      data: body as T,
-      timestamp: new Date().toISOString(),
-    };
-  }
-
-  const message =
-    typeof body === "string"
-      ? body
-      : (body as { message?: string })?.message || defaultMessage;
-
-  return {
-    status: response.status,
-    success: false,
-    message,
-    data: null,
-    timestamp: new Date().toISOString(),
-  };
 }
 
 // ── CoA reads (raw /finance/coa* payloads — no envelope) ─────────────────────
@@ -348,90 +303,6 @@ export type ExpenseParams = {
   size?: number;
 };
 
-/**
- * Normalize ANY backend /expenses payload into the `ApiResponse<SpringPage>`
- * shape the UI consumes: bare page / bare array / `ApiResponse` envelope.
- * A raw-array response (as CoaController style backends return) previously
- * produced `expenses.content === undefined` and crashed on mount.
- */
-function normalizeExpensesResponse(
-  json: unknown,
-  size: number
-): ApiResponse<SpringPage<Expense>> {
-  const error = (message: string, status = 500): ApiResponse<SpringPage<Expense>> => ({
-    status,
-    success: false,
-    message,
-    data: EMPTY_PAGE(size),
-    timestamp: new Date().toISOString(),
-  });
-
-  if (typeof json !== "object" || json === null) {
-    return error("Failed to fetch expenses");
-  }
-  const body = json as Record<string, unknown>;
-
-  if (Array.isArray(json)) {
-    const list = json as Expense[];
-    return {
-      status: 200,
-      success: true,
-      message: "Success",
-      data: { ...EMPTY_PAGE(size), content: list, totalElements: list.length },
-      timestamp: new Date().toISOString(),
-    };
-  }
-
-  if (Array.isArray(body.content)) {
-    return {
-      status: 200,
-      success: true,
-      message: "Success",
-      data: body as unknown as SpringPage<Expense>,
-      timestamp: new Date().toISOString(),
-    };
-  }
-
-  if (body.success === false) {
-    return error(
-      typeof body.message === "string" ? body.message : "Failed to fetch expenses",
-      typeof body.status === "number" ? body.status : 500
-    );
-  }
-
-  const data = body.data;
-  if (typeof data === "object" && data !== null) {
-    if (Array.isArray((data as Record<string, unknown>).content)) {
-      return {
-        status: 200,
-        success: true,
-        message: "Success",
-        data: data as unknown as SpringPage<Expense>,
-        timestamp: new Date().toISOString(),
-      };
-    }
-    if (Array.isArray(data)) {
-      const list = data as Expense[];
-      return {
-        status: 200,
-        success: true,
-        message: "Success",
-        data: { ...EMPTY_PAGE(size), content: list, totalElements: list.length },
-        timestamp: new Date().toISOString(),
-      };
-    }
-    if ((data as Record<string, unknown>).success === false) {
-      return error(
-        typeof (data as Record<string, unknown>).message === "string"
-          ? String((data as Record<string, unknown>).message)
-          : "Failed to fetch expenses"
-      );
-    }
-  }
-
-  return error("Unexpected expenses payload");
-}
-
 export async function getExpenses(
   params: ExpenseParams = {}
 ): Promise<ApiResponse<SpringPage<Expense>>> {
@@ -445,17 +316,22 @@ export async function getExpenses(
     qs.append("endDate", params.endDate || today.toISOString().slice(0, 10));
     if (params.category) qs.append("category", params.category);
 
-    const res = await fetch(`${BASE_URL}expenses?${qs.toString()}`, {
-      headers: await getAuthHeaders(),
+    const res = await apiFetch<SpringPage<Expense>>(`/expenses?${qs.toString()}`, {
+      auth: "required",
       // Never cache user/company-scoped expense data in the shared Data Cache
       // (keyed by URL, not Authorization) — it would leak across tenants.
       cache: "no-store",
     });
-    if (!res.ok) {
-      const result = await handleFinanceResponse<SpringPage<Expense>>(res, "Failed to fetch expenses");
-      return { ...result, data: result.data ?? EMPTY_PAGE(params.size ?? 20) };
+    if (!res.success || !res.data) {
+      return {
+        status: res.status,
+        success: false,
+        message: res.message || "Failed to fetch expenses",
+        data: EMPTY_PAGE(params.size ?? 20),
+        timestamp: res.timestamp,
+      };
     }
-    return normalizeExpensesResponse(await res.json(), params.size ?? 20);
+    return res as ApiResponse<SpringPage<Expense>>;
   } catch (error) {
     console.error("[Finance] getExpenses error:", error);
     return {
@@ -487,22 +363,7 @@ function normalizeExpenseSummaryResponse(json: unknown): ApiResponse<ExpenseSumm
   if (typeof json !== "object" || json === null) {
     return error("Failed to fetch expense summary");
   }
-  const body = json as Record<string, unknown>;
-
-  if (body.success === false) {
-    return error(
-      typeof body.message === "string" ? body.message : "Failed to fetch expense summary",
-      typeof body.status === "number" ? body.status : 500
-    );
-  }
-
-  const raw = (body.success === true ? body.data : json) as
-    | Record<string, unknown>
-    | null
-    | undefined;
-  if (typeof raw !== "object" || raw === null) {
-    return error("Failed to fetch expense summary");
-  }
+  const raw = json as Record<string, unknown>;
 
   const categoryMap = raw.expensesByCategory ?? raw.byCategory;
   return {
@@ -544,12 +405,20 @@ export async function getExpenseSummary(
     qs.append("startDate", startDate || firstOfMonth.toISOString().slice(0, 10));
     qs.append("endDate", endDate || today.toISOString().slice(0, 10));
 
-    const res = await fetch(`${BASE_URL}expenses/summary?${qs.toString()}`, {
-      headers: await getAuthHeaders(),
+    const res = await apiFetch<Record<string, unknown>>(`/expenses/summary?${qs.toString()}`, {
+      auth: "required",
       cache: "no-store",
     });
-    if (!res.ok) return handleFinanceResponse(res, "Failed to fetch expense summary");
-    return normalizeExpenseSummaryResponse(await res.json());
+    if (!res.success || !res.data) {
+      return {
+        status: res.status,
+        success: false,
+        message: res.message || "Failed to fetch expense summary",
+        data: null,
+        timestamp: res.timestamp,
+      };
+    }
+    return normalizeExpenseSummaryResponse(res.data);
   } catch (error) {
     console.error("[Finance] getExpenseSummary error:", error);
     return {
@@ -572,15 +441,24 @@ export async function getCustomerStatements(
     qs.append("page", page.toString());
     qs.append("size", size.toString());
 
-    const res = await fetch(
-      `${BASE_URL}statements/customer/${customerId}?${qs.toString()}`,
+    const res = await apiFetch<SpringPage<Statement>>(
+      `/statements/customer/${customerId}?${qs.toString()}`,
       {
-        headers: await getAuthHeaders(),
-        next: { tags: ["statements"], revalidate: 30 },
+        auth: "required",
+        tags: ["statements"],
+        revalidate: 30,
       }
     );
-    if (!res.ok) return handleFinanceResponse(res, "Failed to fetch statements");
-    return res.json();
+    if (!res.success || !res.data) {
+      return {
+        status: res.status,
+        success: false,
+        message: res.message || "Failed to fetch statements",
+        data: EMPTY_PAGE(size),
+        timestamp: res.timestamp,
+      };
+    }
+    return res as ApiResponse<SpringPage<Statement>>;
   } catch (error) {
     console.error("[Finance] getCustomerStatements error:", error);
     return {
@@ -602,15 +480,23 @@ export async function getProfitAndLossDashboard(
     if (startDate) qs.append("startDate", startDate);
     if (endDate) qs.append("endDate", endDate);
 
-    const res = await fetch(
-      `${BASE_URL}analytics/profit-and-loss/dashboard?${qs.toString()}`,
+    const res = await apiFetch<ProfitAndLossSummary>(
+      `/analytics/profit-and-loss/dashboard${qs.toString() ? `?${qs.toString()}` : ""}`,
       {
-        headers: await getAuthHeaders(),
-        next: { tags: ["finance"], revalidate: 60 },
+        auth: "required",
+        tags: ["finance"],
+        revalidate: 60,
       }
     );
-    if (!res.ok) return handleFinanceResponse(res, "Failed to fetch P&L dashboard");
-    return res.json();
+    return res.success && res.data
+      ? res
+      : {
+          status: res.status,
+          success: false,
+          message: res.message || "Failed to fetch P&L dashboard",
+          data: null,
+          timestamp: res.timestamp,
+        };
   } catch (error) {
     console.error("[Finance] getProfitAndLossDashboard error:", error);
     return {
@@ -629,15 +515,13 @@ export async function createExpense(
   request: ExpenseRequest
 ): Promise<ApiResponse<Expense>> {
   try {
-    const res = await fetch(`${BASE_URL}expenses`, {
+    const res = await apiFetch<Expense>("/expenses", {
       method: "POST",
-      headers: { ...(await getAuthHeaders()), "Content-Type": "application/json" },
-      body: JSON.stringify(request),
+      body: request,
+      auth: "required",
     });
-    if (!res.ok) return handleFinanceResponse(res, "Failed to create expense");
-    const data: ApiResponse<Expense> = await res.json();
-    if (data.success) updateTag("expenses");
-    return data;
+    if (res.success) updateTag("expenses");
+    return res;
   } catch (error) {
     console.error("[Finance] createExpense error:", error);
     return {
@@ -652,13 +536,12 @@ export async function createExpense(
 
 export async function deleteExpense(id: string): Promise<ApiResponse<null>> {
   try {
-    const res = await fetch(`${BASE_URL}expenses/${encodeURIComponent(id)}`, {
+    const res = await apiFetch<null>(`/expenses/${encodeURIComponent(id)}`, {
       method: "DELETE",
-      headers: await getAuthHeaders(),
+      auth: "required",
     });
-    const result = await handleFinanceResponse<null>(res, "Failed to delete expense");
-    if (result.success) updateTag("expenses");
-    return result;
+    if (res.success) updateTag("expenses");
+    return res;
   } catch (error) {
     console.error("[Finance] deleteExpense error:", error);
     return {
@@ -675,15 +558,13 @@ export async function generateStatement(
   request: StatementRequest
 ): Promise<ApiResponse<Statement>> {
   try {
-    const res = await fetch(`${BASE_URL}statements/generate`, {
+    const res = await apiFetch<Statement>("/statements/generate", {
       method: "POST",
-      headers: { ...(await getAuthHeaders()), "Content-Type": "application/json" },
-      body: JSON.stringify(request),
+      body: request,
+      auth: "required",
     });
-    if (!res.ok) return handleFinanceResponse(res, "Failed to generate statement");
-    const data: ApiResponse<Statement> = await res.json();
-    if (data.success) updateTag("statements");
-    return data;
+    if (res.success) updateTag("statements");
+    return res;
   } catch (error) {
     console.error("[Finance] generateStatement error:", error);
     return {
@@ -700,7 +581,7 @@ export async function downloadStatementPdf(
   id: number
 ): Promise<ArrayBuffer | null> {
   try {
-    const res = await fetch(`${BASE_URL}statements/${id}/download`, {
+    const res = await fetch(buildApiUrl(`/statements/${id}/download`), {
       headers: await getAuthHeaders(),
     });
     if (
@@ -718,64 +599,24 @@ export async function downloadStatementPdf(
 }
 
 /**
- * Resolve a single statement by id. Prefers the direct `GET /statements/{id}`,
- * but never returns it without verifying ownership against the provided
- * customerId (defense-in-depth on top of backend RLS). If the direct lookup
- * 404s (only the customer-list endpoint is active), falls back to the
- * customer's statement list + `.find()`. Never queries with customerId = 0.
+ * Resolve a single statement by id — GATED.
+ *
+ * `GET /statements/{id}` is absent from the live spec (only `generate`,
+ * `customer/{customerId}` and `{id}/download` exist). Return a readable 503
+ * envelope instead of a direct lookup into a route that does not exist.
  */
 export async function getStatementById(
   statementId: number,
   customerId?: number
 ): Promise<ApiResponse<Statement | null>> {
-  try {
-    const direct = await fetch(`${BASE_URL}statements/${statementId}`, {
-      headers: await getAuthHeaders(),
-      next: { tags: ["statements"], revalidate: 30 },
-    });
-    if (direct.ok) {
-      const body: ApiResponse<Statement> = await direct.json();
-      if (body.success && body.data) {
-        if (
-          customerId &&
-          customerId > 0 &&
-          body.data.customerId !== customerId
-        ) {
-          console.warn(
-            `[Finance] Statement ${statementId} does not belong to customer ${customerId}; refusing cross-customer read.`
-          );
-          return {
-            status: 403,
-            success: false,
-            message: "Statement access denied.",
-            data: null,
-            timestamp: new Date().toISOString(),
-          };
-        }
-        return { ...body, data: body.data };
-      }
-    }
-
-    if (customerId && customerId > 0) {
-      const listRes = await getCustomerStatements(customerId, 0, 100);
-      if (listRes.success && listRes.data) {
-        const found = listRes.data.content.find((s) => s.id === statementId);
-        if (found) {
-          return {
-            status: 200,
-            success: true,
-            message: "Statement loaded.",
-            data: found,
-            timestamp: new Date().toISOString(),
-          };
-        }
-      }
-      return { status: 404, success: false, message: "Statement not found for the given customer.", data: null, timestamp: new Date().toISOString() };
-    }
-
-    return { status: 404, success: false, message: "Statement not found.", data: null, timestamp: new Date().toISOString() };
-  } catch (error) {
-    console.error("[Finance] getStatementById error:", error);
-    return { status: 500, success: false, message: "Failed to load statement.", data: null, timestamp: new Date().toISOString() };
-  }
+  void statementId;
+  void customerId;
+  return {
+    status: 503,
+    success: false,
+    message:
+      "Single-statement view is pending the backend route (GET /statements/{id} is absent from the live spec).",
+    data: null,
+    timestamp: new Date().toISOString(),
+  };
 }
