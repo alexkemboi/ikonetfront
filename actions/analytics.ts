@@ -1,11 +1,10 @@
 "use server";
 
-import { auth } from "@/lib/auth";
-import { BASE_URL } from "@/lib/constants";
 import type {
   NetworkAnalyticsOverview,
   AnalyticsTimeWindow,
 } from "@/lib/types/analytics";
+import { apiFetch } from "@/lib/apiClient";
 
 const FALLBACK_ANALYTICS: NetworkAnalyticsOverview = {
   kpis: {
@@ -132,62 +131,52 @@ const FALLBACK_ANALYTICS: NetworkAnalyticsOverview = {
 export async function getNetworkAnalyticsData(
   timeWindow: AnalyticsTimeWindow = "MONTHLY"
 ): Promise<NetworkAnalyticsOverview> {
-  const session = await auth();
-  const token = session?.user?.apiToken;
+  const res = await apiFetch<Record<string, unknown>>(
+    `/analytics/profit-and-loss/dashboard?window=${timeWindow}`,
+    {
+      auth: "required",
+      revalidate: 30,
+    }
+  );
 
-  if (!token) return FALLBACK_ANALYTICS;
-
-  try {
-    const res = await fetch(
-      `${BASE_URL}analytics/profit-and-loss/dashboard?window=${timeWindow}`,
-      {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        next: { revalidate: 30 },
-      }
-    );
-
-    if (!res.ok) return FALLBACK_ANALYTICS;
-
-    const data = await res.json();
-    const live = data && typeof data === "object" ? data : {};
-    const pickArray = <T,>(value: unknown, fallback: T[]): T[] =>
-      Array.isArray(value) ? (value as T[]) : fallback;
-    const pickObject = <T,>(value: unknown, fallback: T): T =>
-      value && typeof value === "object" && !Array.isArray(value)
-        ? (value as T)
-        : fallback;
-
-    return {
-      ...FALLBACK_ANALYTICS,
-      kpis: pickObject(live.kpis, FALLBACK_ANALYTICS.kpis),
-      paymentsTrend:
-        live.paymentsTrend &&
-        typeof live.paymentsTrend === "object" &&
-        Array.isArray(live.paymentsTrend.points)
-          ? live.paymentsTrend
-          : FALLBACK_ANALYTICS.paymentsTrend,
-      paymentsVsExpenses:
-        live.paymentsVsExpenses &&
-        typeof live.paymentsVsExpenses === "object" &&
-        Array.isArray(live.paymentsVsExpenses.points)
-          ? live.paymentsVsExpenses
-          : FALLBACK_ANALYTICS.paymentsVsExpenses,
-      topPackages: pickArray(live.topPackages, FALLBACK_ANALYTICS.topPackages),
-      topCustomers: pickArray(live.topCustomers, FALLBACK_ANALYTICS.topCustomers),
-      revenueMix: pickArray(live.revenueMix, FALLBACK_ANALYTICS.revenueMix),
-      paymentMethodsMix: pickArray(
-        live.paymentMethodsMix,
-        FALLBACK_ANALYTICS.paymentMethodsMix
-      ),
-      routerPerformance: pickArray(
-        live.routerPerformance,
-        FALLBACK_ANALYTICS.routerPerformance
-      ),
-    };
-  } catch {
+  if (!res.success || !res.data || typeof res.data !== "object") {
     return FALLBACK_ANALYTICS;
   }
+
+  const live = res.data;
+  const asRecord = (value: unknown): Record<string, unknown> | null =>
+    value && typeof value === "object" && !Array.isArray(value)
+      ? (value as Record<string, unknown>)
+      : null;
+  const pickArray = <T,>(value: unknown, fallback: T[]): T[] =>
+    Array.isArray(value) ? (value as T[]) : fallback;
+  const pickObject = <T,>(value: unknown, fallback: T): T =>
+    asRecord(value) ? (value as T) : fallback;
+
+  const paymentsTrendLive = asRecord(live.paymentsTrend);
+  const paymentsVsExpensesLive = asRecord(live.paymentsVsExpenses);
+
+  return {
+    ...FALLBACK_ANALYTICS,
+    kpis: pickObject(live.kpis, FALLBACK_ANALYTICS.kpis),
+    paymentsTrend:
+      paymentsTrendLive && Array.isArray(paymentsTrendLive.points)
+        ? (live.paymentsTrend as NetworkAnalyticsOverview["paymentsTrend"])
+        : FALLBACK_ANALYTICS.paymentsTrend,
+    paymentsVsExpenses:
+      paymentsVsExpensesLive && Array.isArray(paymentsVsExpensesLive.points)
+        ? (live.paymentsVsExpenses as NetworkAnalyticsOverview["paymentsVsExpenses"])
+        : FALLBACK_ANALYTICS.paymentsVsExpenses,
+    topPackages: pickArray(live.topPackages, FALLBACK_ANALYTICS.topPackages),
+    topCustomers: pickArray(live.topCustomers, FALLBACK_ANALYTICS.topCustomers),
+    revenueMix: pickArray(live.revenueMix, FALLBACK_ANALYTICS.revenueMix),
+    paymentMethodsMix: pickArray(
+      live.paymentMethodsMix,
+      FALLBACK_ANALYTICS.paymentMethodsMix
+    ),
+    routerPerformance: pickArray(
+      live.routerPerformance,
+      FALLBACK_ANALYTICS.routerPerformance
+    ),
+  };
 }

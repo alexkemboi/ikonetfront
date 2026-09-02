@@ -1,8 +1,7 @@
 "use server";
 
-import { auth } from "@/lib/auth";
-import { buildApiUrl } from "@/lib/constants";
 import type { ApiResponse } from "@/lib/types/auth";
+import { apiFetch } from "@/lib/apiClient";
 
 export type AuditLog = {
   idxno:             number;
@@ -16,30 +15,18 @@ export type AuditLog = {
   accessTo:          string;
 };
 
-async function getAuthHeaders(): Promise<HeadersInit> {
-  const session = await auth();
-  const headers: HeadersInit = { "Content-Type": "application/json" };
-  if (session?.user?.apiToken) {
-    (headers as Record<string, string>)["Authorization"] =
-      `Bearer ${session.user.apiToken}`;
-  }
-  return headers;
-}
-
 export async function getAuditLogsAction(): Promise<ApiResponse<AuditLog[]>> {
-  try {
-    const res = await fetch(
-      buildApiUrl("/systemsetup/audit-logs"),
-      { headers: await getAuthHeaders(), cache: "no-store" }
-    );
-    const data = await res.json();
-    return data;
-  } catch {
-    return {
-      status:  500,
-      success: false,
-      message: "Failed to fetch audit logs",
-      data:    [],
-    };
-  }
+  const res = await apiFetch<AuditLog[]>("/systemsetup/audit-logs", {
+    auth: "required",
+    cache: "no-store",
+  });
+  return res.success && Array.isArray(res.data)
+    ? res
+    : {
+        status: res.status,
+        success: false,
+        message: res.message || "Failed to fetch audit logs",
+        data: [],
+        timestamp: res.timestamp,
+      };
 }

@@ -1,8 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { auth } from "@/lib/auth";
 import type { ApiResponse } from "@/lib/types/auth";
+import { apiFetch } from "@/lib/apiClient";
 
 // ── Types ────────────────────────────────────────────────────────────────
 export type AlertProvider = {
@@ -31,50 +31,29 @@ export type AlertProviderPayload = {
   isActive:     boolean;
 };
 
-// ── Auth headers ─────────────────────────────────────────────────────────
-async function getAuthHeaders(): Promise<HeadersInit> {
-  const session = await auth();
-  const headers: HeadersInit = { "Content-Type": "application/json" };
-  if (session?.user?.apiToken) {
-    (headers as Record<string, string>)["Authorization"] =
-      `Bearer ${session.user.apiToken}`;
-  }
-  return headers;
-}
-
-const BASE = () => `${process.env.BASE_API_URL}notification-providers`;
-
 // ── GET all providers ────────────────────────────────────────────────────
 export async function getProvidersAction(): Promise<ApiResponse<AlertProvider[]>> {
-  try {
-    const res = await fetch(BASE(), {
-      headers: await getAuthHeaders(),
-      cache: "no-store",
-    });
-    const data = await res.json();
-    return data;
-  } catch {
-    return { status: 500, success: false, message: "Network error. Please try again.", data: [] as AlertProvider[], timestamp: "" };
-  }
+  const res = await apiFetch<AlertProvider[]>("/notification-providers", {
+    auth: "required",
+    cache: "no-store",
+  });
+  return res.success && Array.isArray(res.data)
+    ? res
+    : { status: res.status, success: false, message: res.message || "Network error. Please try again.", data: [], timestamp: res.timestamp };
 }
 
 // ── CREATE provider ──────────────────────────────────────────────────────
 export async function createProviderAction(
   payload: AlertProviderPayload
 ): Promise<ApiResponse<AlertProvider>> {
-  try {
-    const res = await fetch(BASE(), {
-      method:  "POST",
-      headers: await getAuthHeaders(),
-      body:    JSON.stringify(payload),
-      cache:   "no-store",
-    });
-    const data: ApiResponse<AlertProvider> = await res.json();
-    if (data.success) revalidatePath("/settings/alerts");
-    return data;
-  } catch {
-    return { status: 500, success: false, message: "Network error. Please try again.", data: {} as AlertProvider, timestamp: "" };
-  }
+  const res = await apiFetch<AlertProvider>("/notification-providers", {
+    method: "POST",
+    body: payload,
+    auth: "required",
+    cache: "no-store",
+  });
+  if (res.success) revalidatePath("/settings/alerts");
+  return res;
 }
 
 // ── UPDATE provider ──────────────────────────────────────────────────────
@@ -82,35 +61,25 @@ export async function updateProviderAction(
   id: number,
   payload: AlertProviderPayload
 ): Promise<ApiResponse<AlertProvider>> {
-  try {
-    const res = await fetch(`${BASE()}/${id}`, {
-      method:  "PUT",
-      headers: await getAuthHeaders(),
-      body:    JSON.stringify(payload),
-      cache:   "no-store",
-    });
-    const data: ApiResponse<AlertProvider> = await res.json();
-    if (data.success) revalidatePath("/settings/alerts");
-    return data;
-  } catch {
-    return { status: 500, success: false, message: "Network error. Please try again.", data: {} as AlertProvider, timestamp: "" };
-  }
+  const res = await apiFetch<AlertProvider>(`/notification-providers/${id}`, {
+    method: "PUT",
+    body: payload,
+    auth: "required",
+    cache: "no-store",
+  });
+  if (res.success) revalidatePath("/settings/alerts");
+  return res;
 }
 
 // ── DELETE provider ──────────────────────────────────────────────────────
 export async function deleteProviderAction(
   id: number
 ): Promise<ApiResponse<string>> {
-  try {
-    const res = await fetch(`${BASE()}/${id}`, {
-      method:  "DELETE",
-      headers: await getAuthHeaders(),
-      cache:   "no-store",
-    });
-    const data: ApiResponse<string> = await res.json();
-    if (data.success) revalidatePath("/settings/alerts");
-    return data;
-  } catch {
-    return { status: 500, success: false, message: "Network error. Please try again.", data: "", timestamp: "" };
-  }
+  const res = await apiFetch<string>(`/notification-providers/${id}`, {
+    method: "DELETE",
+    auth: "required",
+    cache: "no-store",
+  });
+  if (res.success) revalidatePath("/settings/alerts");
+  return res;
 }
