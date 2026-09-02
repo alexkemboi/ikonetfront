@@ -20,9 +20,12 @@ export type EmailTemplate = {
 
 export default async function BulkEmailPage() {
  const [templatesResult, segmentsResult] = await Promise.all([
- getEmailTemplates().catch(() => ({ success: false, data: [] })),
- getAudienceSegments().catch(() => ({ success: false, data: [] })),
+ getEmailTemplates().catch(() => ({ success: false, data: [], message: "Email templates unavailable." })),
+ getAudienceSegments().catch(() => ({ success: false, data: [], message: "Audience segments unavailable." })),
  ]);
+
+ const gatedMessage =
+  templatesResult?.message ?? segmentsResult?.message ?? undefined;
 
   const templates: EmailTemplate[] = (templatesResult?.data || []).map((t: {
     id?: unknown;
@@ -30,10 +33,10 @@ export default async function BulkEmailPage() {
     subject?: unknown;
     body?: unknown;
   }) => ({
-    id: t.id?.toString() || "",
-    name: t.name || "",
-    subject: t.subject || "",
-    body: t.body || "",
+    id: String(t.id ?? ""),
+    name: String(t.name ?? ""),
+    subject: String(t.subject ?? ""),
+    body: String(t.body ?? ""),
   }));
 
   const segments: AudienceSegment[] = (segmentsResult?.data || []).map((s: {
@@ -44,11 +47,11 @@ export default async function BulkEmailPage() {
     count?: unknown;
     icon?: unknown;
   }) => ({
-    id: s.id?.toString() || "",
-    label: s.label || s.name || "",
-    description: s.description || "",
-    count: s.count || 0,
-    icon: s.icon || "users",
+    id: String(s.id ?? ""),
+    label: String(s.label ?? s.name ?? ""),
+    description: String(s.description ?? ""),
+    count: typeof s.count === "number" ? s.count : 0,
+    icon: String(s.icon ?? "users"),
   }));
 
  return (
@@ -56,6 +59,7 @@ export default async function BulkEmailPage() {
  <BulkEmailWizard
  segments={segments}
  templates={templates}
+ gatedMessage={gatedMessage}
  />
  </div>
  );
