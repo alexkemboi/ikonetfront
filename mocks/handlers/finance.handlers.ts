@@ -1,6 +1,5 @@
 import { http, HttpResponse } from "msw";
 import { API_PREFIX, requireAuth } from "./auth-guard";
-import { envelope } from "@/contracts/catalog";
 import type {
   AccountBalanceProjection,
   AccountPosting,
@@ -297,15 +296,15 @@ export const financeHandlers = [
       ? transactionsPageFixture.content.filter((p) => p.accountCode === accountCode)
       : transactionsPageFixture.content;
     return HttpResponse.json(
-      envelope(
-        {
+      {
+        success: true,
+        data: {
           ...transactionsPageFixture,
           content,
           totalElements: content.length,
           empty: content.length === 0,
         },
-        "Transactions fetched successfully"
-      ),
+      },
       { status: 200 }
     );
   }),
@@ -319,18 +318,12 @@ export const financeHandlers = [
   http.get(`${API_PREFIX}/expenses`, (info) => {
     const forbidden = requireAuth(info.request);
     if (forbidden) return forbidden;
-    return HttpResponse.json(
-      envelope(expensesPageFixture, "Expenses fetched successfully"),
-      { status: 200 }
-    );
+    return HttpResponse.json({ success: true, data: expensesPageFixture }, { status: 200 });
   }),
 
   http.get(`${API_PREFIX}/expenses/summary`, (info) => {
     const forbidden = requireAuth(info.request);
     if (forbidden) return forbidden;
-    return HttpResponse.json(
-      envelope(expenseSummaryFixture, "Expense summary fetched successfully"),
-      { status: 200 }
-    );
+    return HttpResponse.json({ success: true, data: expenseSummaryFixture }, { status: 200 });
   }),
 ];

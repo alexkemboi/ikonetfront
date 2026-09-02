@@ -1,6 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { auth } from "@/lib/auth";
+import { BASE_URL } from "@/lib/constants";
 import {
   AddEquipmentRequest,
   EquipmentItem,
@@ -9,7 +11,6 @@ import {
 } from "@/lib/types/equipment";
 import { getMikrotikDevices } from "@/actions/mikrotik";
 import { getPermissionForRoute } from "@/lib/data/nav";
-import { apiFetch } from "@/lib/apiClient";
 
 const FALLBACK_EQUIPMENT_KPIS: EquipmentKpis = {
   inStockCount: 3,
@@ -47,6 +48,16 @@ const FALLBACK_EQUIPMENT_LIST: EquipmentItem[] = [
     createdAt: "2026-07-28",
   },
 ];
+
+async function getAuthHeaders(): Promise<HeadersInit> {
+  const session = await auth();
+  const headers: HeadersInit = { "Content-Type": "application/json" };
+  if (session?.user?.apiToken) {
+    (headers as Record<string, string>)["Authorization"] =
+      `Bearer ${session.user.apiToken}`;
+  }
+  return headers;
+}
 
 function mapDeviceType(deviceType: string | undefined | null): EquipmentType {
   const t = (deviceType ?? "").toLowerCase();
@@ -135,13 +146,13 @@ export async function createEquipment(
     return { success: false, message: "Not authorized to add equipment." };
   }
   try {
-    const res = await apiFetch("/network-devices", {
+    const response = await fetch(`${BASE_URL}network-devices`, {
       method: "POST",
-      body: request,
-      auth: "required",
+      headers: await getAuthHeaders(),
+      body: JSON.stringify(request),
     });
-    if (!res.success) {
-      const message = `HTTP ${res.status}: ${res.message || "Failed to create equipment record"}`;
+    if (!response.ok) {
+      const message = `HTTP ${response.status}: Failed to create equipment record`;
       console.warn(message);
       return { success: false, message };
     }

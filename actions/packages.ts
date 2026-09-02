@@ -1,8 +1,9 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { auth } from "@/lib/auth";
+import { buildApiUrl } from "@/lib/constants";
 import type { ApiResponse } from "@/lib/types/auth";
-import { apiFetch } from "@/lib/apiClient";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 export type InternetPackage = {
@@ -50,31 +51,51 @@ export type PackageUpdatePayload = PackagePayload & {
   isApproved?: boolean;
 };
 
+// ── Auth headers ──────────────────────────────────────────────────────────────
+async function getAuthHeaders(): Promise<HeadersInit> {
+  const session = await auth();
+  const headers: HeadersInit = { "Content-Type": "application/json" };
+  if (session?.user?.apiToken) {
+    (headers as Record<string, string>)["Authorization"] =
+      `Bearer ${session.user.apiToken}`;
+  }
+  return headers;
+}
+
+const BASE = () => buildApiUrl("/system/packages");
 const REVALIDATE = () => revalidatePath("/system/packages");
 
 // ── GET all packages ──────────────────────────────────────────────────────────
 export async function getPackagesAction(): Promise<ApiResponse<InternetPackage[]>> {
-  const res = await apiFetch<InternetPackage[]>("/system/packages", {
-    auth: "required",
-    cache: "no-store",
-  });
-  return res.success && Array.isArray(res.data)
-    ? res
-    : { status: res.status, success: false, message: res.message || "Failed to fetch packages", data: [], timestamp: res.timestamp };
+  try {
+    const res = await fetch(BASE(), {
+      headers: await getAuthHeaders(),
+      cache: "no-store",
+    });
+    const data = await res.json();
+    return data;
+  } catch {
+    return { status: 500, success: false, message: "Failed to fetch packages", data: [], timestamp: "" };
+  }
 }
 
 // ── CREATE package ────────────────────────────────────────────────────────────
 export async function createPackageAction(
   payload: PackagePayload
 ): Promise<ApiResponse<InternetPackage>> {
-  const res = await apiFetch<InternetPackage>("/system/packages", {
-    method: "POST",
-    body: payload,
-    auth: "required",
-    cache: "no-store",
-  });
-  if (res.success) REVALIDATE();
-  return res;
+  try {
+    const res = await fetch(BASE(), {
+      method:  "POST",
+      headers: await getAuthHeaders(),
+      body:    JSON.stringify(payload),
+      cache:   "no-store",
+    });
+    const data: ApiResponse<InternetPackage> = await res.json();
+    if (data.success) REVALIDATE();
+    return data;
+  } catch {
+    return { status: 500, success: false, message: "Network error. Please try again.", data: {} as InternetPackage, timestamp: "" };
+  }
 }
 
 // ── UPDATE package ────────────────────────────────────────────────────────────
@@ -82,38 +103,53 @@ export async function updatePackageAction(
   id: number,
   payload: PackageUpdatePayload
 ): Promise<ApiResponse<InternetPackage>> {
-  const res = await apiFetch<InternetPackage>(`/system/packages/${id}`, {
-    method: "PATCH",
-    body: payload,
-    auth: "required",
-    cache: "no-store",
-  });
-  if (res.success) REVALIDATE();
-  return res;
+  try {
+    const res = await fetch(`${BASE()}/${id}`, {
+      method:  "PATCH",
+      headers: await getAuthHeaders(),
+      body:    JSON.stringify(payload),
+      cache:   "no-store",
+    });
+    const data: ApiResponse<InternetPackage> = await res.json();
+    if (data.success) REVALIDATE();
+    return data;
+  } catch {
+    return { status: 500, success: false, message: "Network error. Please try again.", data: {} as InternetPackage, timestamp: "" };
+  }
 }
 
 // ── DELETE package ────────────────────────────────────────────────────────────
 export async function deletePackageAction(
   id: number
 ): Promise<ApiResponse<string>> {
-  const res = await apiFetch<string>(`/system/packages/${id}`, {
-    method: "DELETE",
-    auth: "required",
-    cache: "no-store",
-  });
-  if (res.success) REVALIDATE();
-  return res;
+  try {
+    const res = await fetch(`${BASE()}/${id}`, {
+      method:  "DELETE",
+      headers: await getAuthHeaders(),
+      cache:   "no-store",
+    });
+    const data: ApiResponse<string> = await res.json();
+    if (data.success) REVALIDATE();
+    return data;
+  } catch {
+    return { status: 500, success: false, message: "Network error. Please try again.", data: "", timestamp: "" };
+  }
 }
 
 // ── DEACTIVATE package ────────────────────────────────────────────────────────
 export async function deactivatePackageAction(
   id: number
 ): Promise<ApiResponse<InternetPackage>> {
-  const res = await apiFetch<InternetPackage>(`/system/packages/${id}/deactivate`, {
-    method: "PATCH",
-    auth: "required",
-    cache: "no-store",
-  });
-  if (res.success) REVALIDATE();
-  return res;
+  try {
+    const res = await fetch(`${BASE()}/${id}/deactivate`, {
+      method:  "PATCH",
+      headers: await getAuthHeaders(),
+      cache:   "no-store",
+    });
+    const data: ApiResponse<InternetPackage> = await res.json();
+    if (data.success) REVALIDATE();
+    return data;
+  } catch {
+    return { status: 500, success: false, message: "Network error. Please try again.", data: {} as InternetPackage, timestamp: "" };
+  }
 }

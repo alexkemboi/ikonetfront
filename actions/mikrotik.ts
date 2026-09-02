@@ -9,6 +9,7 @@ import {
   AddMikrotikDevicePayload,
   ApiResponse,
 } from "@/lib/types/mikrotik";
+import { BASE_URL } from "@/lib/constants";
 import { auth } from "@/lib/auth";
 import { apiFetch } from "@/lib/apiClient";
 
@@ -20,6 +21,19 @@ async function getRlsScopeParams(): Promise<URLSearchParams> {
   if (session?.user?.locationId) params.append("locationId", session.user.locationId.toString());
   return params;
 }
+
+
+async function getAuthHeaders(): Promise<HeadersInit> {
+  const session = await auth();
+  const headers: HeadersInit = { "Content-Type": "application/json" };
+  if (session?.user?.apiToken) {
+    (headers as Record<string, string>)["Authorization"] =
+      `Bearer ${session.user.apiToken}`;
+  }
+  return headers;
+}
+
+
 
 export async function getMikrotikDevices(): Promise<
   ApiResponse<MikrotikDevice[]>
@@ -47,24 +61,28 @@ export async function addMikrotikDevice(
   payload: AddMikrotikDevicePayload
 ): Promise<ApiResponse<MikrotikDevice | null>> {
   try {
-    const res = await apiFetch<MikrotikDevice>("/network-devices", {
+    const response = await fetch(`${BASE_URL}network-devices`, {
       method: "POST",
-      body: payload,
-      auth: "required",
+      headers: await getAuthHeaders(),
+      body: JSON.stringify(payload),
     });
 
-    if (!res.success) {
+    
+
+    if (!response.ok) {
+      const errorData: unknown = await response.json();
       return {
-        status: res.status,
+        status: response.status,
         success: false,
-        message: res.message || "Failed to add MikroTik device",
+        message: (errorData as { message?: string })?.message || "Failed to add MikroTik device",
         data: null,
-        timestamp: res.timestamp,
+        timestamp: new Date().toISOString(),
       };
     }
 
+    const data: ApiResponse<MikrotikDevice> = await response.json();
     revalidatePath("/network/mikrotik"); // Revalidate the page to show the new device
-    return res;
+    return data;
   } catch (error: unknown) {
     console.error("Error adding MikroTik device:", error);
     return {

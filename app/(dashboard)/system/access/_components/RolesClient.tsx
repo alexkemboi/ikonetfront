@@ -712,10 +712,8 @@ export default function RolesClient({
  setTimeout(() => editInputRef.current?.focus(), 50);
  }
 
- function handleSaveEdit() {
- const role = selectedRole;
- if (!role) return;
- const result = renameRoleAction(role.idxno, role.id, editName, role.description);
+ function handleSaveEdit(roleId: string) {
+ const result = renameRoleAction(roleId, editName, selectedRole?.description ?? "");
  result.then((res) => {
  if (res.success) {
  toast.success("Role renamed successfully");
@@ -796,14 +794,14 @@ export default function RolesClient({
  value={editName}
  onChange={(e) => setEditName(e.target.value)}
  onKeyDown={(e) => {
- if (e.key === "Enter") handleSaveEdit();
+ if (e.key === "Enter") handleSaveEdit(selectedRole.id);
  if (e.key === "Escape") dispatch(stopEditingRole());
  }}
  className="text-lg font-bold bg-transparent border-b-2 border-primary outline-none text-foreground w-48"
  />
  <button
  type="button"
- onClick={()=>handleSaveEdit()}
+ onClick={()=>handleSaveEdit(selectedRole.id)}
  className="text-success hover:text-success/80 transition-colors"
  >
  <Check className="w-4 h-4" />

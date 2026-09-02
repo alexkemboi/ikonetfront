@@ -1,7 +1,8 @@
 "use server";
 
+import { auth } from "@/lib/auth";
+import { BASE_URL } from "@/lib/constants";
 import { DashboardOverviewData } from "@/lib/types/dashboard";
-import { apiFetch } from "@/lib/apiClient";
 
 const FALLBACK_DASHBOARD: DashboardOverviewData = {
   tenantName: "ADRINOLD NETWORK",
@@ -66,17 +67,30 @@ const FALLBACK_DASHBOARD: DashboardOverviewData = {
 };
 
 export async function getDashboardOverview(): Promise<DashboardOverviewData> {
-  const res = await apiFetch<Record<string, unknown>>(
-    "/analytics/profit-and-loss/dashboard",
-    {
-      auth: "required",
-      cache: "no-store",
-    }
-  );
+  const session = await auth();
+  const token = session?.user?.apiToken;
 
-  if (!res.success || !res.data || typeof res.data !== "object") {
+  if (!token) {
     return FALLBACK_DASHBOARD;
   }
 
-  return { ...FALLBACK_DASHBOARD, ...res.data };
+  try {
+    const res = await fetch(`${BASE_URL}analytics/profit-and-loss/dashboard`, {
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      cache: "no-store",
+    });
+
+    if (!res.ok) {
+      return FALLBACK_DASHBOARD;
+    }
+
+    const data = await res.json();
+    return { ...FALLBACK_DASHBOARD, ...data };
+  } catch (error) {
+    console.warn("Failed to fetch live dashboard telemetry. Using active baseline:", error);
+    return FALLBACK_DASHBOARD;
+  }
 }
