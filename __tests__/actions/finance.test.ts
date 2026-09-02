@@ -2,7 +2,6 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { server } from "@/mocks/server";
 import { http, HttpResponse } from "msw";
 import { API_PREFIX } from "@/mocks/handlers/auth-guard";
-import { envelope } from "@/contracts/catalog";
 import {
   getChartOfAccountsTree,
   getAccountBalances,
@@ -13,7 +12,6 @@ import {
   deleteExpense,
 } from "@/actions/finance";
 import type { AccountPosting, SpringPage } from "@/lib/types/finance";
-import { EMPTY_PAGE } from "@/lib/types/finance";
 
 const TOKEN = "mock-valid-bearer-token";
 
@@ -219,49 +217,12 @@ describe("CoA bearer wiring", () => {
   });
 });
 
-describe("getExpenses envelope contract (ApiResponse<Page<ExpenseResponse>>)", () => {
-  it("returns the SpringPage from a full ApiResponse envelope", async () => {
+describe("getExpenses normalization (crash vector #1)", () => {
+  it("wraps a bare-array response into a SpringPage", async () => {
     server.use(
       http.get(`${API_PREFIX}/expenses`, ({ request }) => {
         expect(request.headers.get("authorization")).toBe(`Bearer ${TOKEN}`);
-        return HttpResponse.json(
-          envelope(
-            {
-              content: [
-                {
-                  id: "0c5d80f1-3b9a-4c6e-8f2a-7d1e9b3a4c55",
-                  amount: 12000,
-                  description: "Backhaul router replacement",
-                  category: "EQUIPMENT",
-                  expenseDate: "2026-08-10",
-                  createdAt: "2026-08-10T09:00:00",
-                  updatedAt: "2026-08-10T09:00:00",
-                },
-              ],
-              totalElements: 1,
-              totalPages: 1,
-              size: 20,
-              number: 0,
-              first: true,
-              last: true,
-              empty: false,
-            },
-            "Expenses fetched successfully"
-          ),
-          { status: 200 }
-        );
-      })
-    );
-    const res = await getExpenses({ page: 0, size: 20 });
-    expect(res.success).toBe(true);
-    expect(res.data?.content).toHaveLength(1);
-    expect(res.data?.content[0].id).toBe("0c5d80f1-3b9a-4c6e-8f2a-7d1e9b3a4c55");
-  });
-
-  it("rejects a bare-array body (live spec requires the ApiResponse envelope)", async () => {
-    server.use(
-      http.get(`${API_PREFIX}/expenses`, () =>
-        HttpResponse.json([
+        return HttpResponse.json([
           {
             id: "bare-array-uuid-1",
             amount: 100,
@@ -273,12 +234,14 @@ describe("getExpenses envelope contract (ApiResponse<Page<ExpenseResponse>>)", (
             createdAt: "2026-08-01T08:00:00",
             updatedAt: "2026-08-01T08:00:00",
           },
-        ])
-      )
+        ]);
+      })
     );
     const res = await getExpenses({ page: 0, size: 20 });
-    expect(res.success).toBe(false);
-    expect(res.data).toEqual(EMPTY_PAGE(20));
+    expect(res.success).toBe(true);
+    expect(res.data?.content).toHaveLength(1);
+    expect(res.data?.totalElements).toBe(1);
+    expect(res.data?.content[0].id).toBe("bare-array-uuid-1");
   });
 
   it("passes the contract envelope through with string UUID ids", async () => {

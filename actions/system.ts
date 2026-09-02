@@ -1,9 +1,20 @@
 "use server";
 
+import { auth } from "@/lib/auth";
+import { buildApiUrl } from "@/lib/constants";
 import { revalidatePath } from "next/cache";
 import type { ApiRoleUser } from "@/lib/types/roles";
 import type { ApiResponse } from "@/lib/types/auth";
-import { apiFetch } from "@/lib/apiClient";
+
+async function getAuthHeaders(): Promise<HeadersInit> {
+  const session = await auth();
+  const headers: HeadersInit = { "Content-Type": "application/json" };
+  if (session?.user?.apiToken) {
+    (headers as Record<string, string>)["Authorization"] =
+      `Bearer ${session.user.apiToken}`;
+  }
+  return headers;
+}
 
 function normalizeUserRecord(raw: unknown): ApiRoleUser {
   const r = (raw ?? {}) as Record<string, unknown>;
@@ -30,6 +41,16 @@ function normalizeUserRecord(raw: unknown): ApiRoleUser {
   };
 }
 
+function extractUsersPayload(payload: unknown): unknown[] {
+  if (Array.isArray(payload)) return payload;
+  const obj = payload as Record<string, unknown> | null;
+  if (obj?.data && Array.isArray(obj.data)) return obj.data;
+  if (obj?.items && Array.isArray(obj.items)) return obj.items;
+  if (obj?.users && Array.isArray(obj.users)) return obj.users;
+  if (obj?.content && Array.isArray(obj.content)) return obj.content;
+  return [];
+}
+
 export type UserData = {
   username:    string;
   password:    string;
@@ -41,10 +62,6 @@ export type UserData = {
   phoneNumber: string;
 };
 
-/**
- * Create a system user. Live spec: `POST /system-setup/user/register`
- * (`RegisterRequest`, bearer) — the ONLY live registration route.
- */
 export async function addSystemUser(
   userData: UserData
 ): Promise<ApiResponse<ApiRoleUser>> {
@@ -54,44 +71,121 @@ export async function addSystemUser(
     role: userData.role,
   };
 
-  const res = await apiFetch<ApiRoleUser>("/system-setup/user/register", {
-    method: "POST",
-    body: payload,
-    auth: "required",
-    cache: "no-store",
-  });
+  const candidateUrls = [
+    "/system-setup/user/register",
+    "/system-setup/register-user",
+    "/system/users/register",
+    "/system/users/staff",
+  ];
 
-  if (!res.success) {
-    return {
-      status: res.status,
-      success: false,
-      message: res.message || "User creation failed",
-      data: null as unknown as ApiRoleUser,
-      timestamp: res.timestamp,
-    };
+  let lastError: unknown = null;
+
+  for (const url of candidateUrls) {
+    try {
+      const response = await fetch(buildApiUrl(url), {
+        method: "POST",
+        headers: await getAuthHeaders(),
+        body: JSON.stringify(payload),
+        cache: "no-store",
+      });
+
+      const text = await response.text();
+      const result = text ? JSON.parse(text) : null;
+
+      if (response.ok) {
+        if (result?.success === false) {
+          const errorMessage = result?.message || "User creation failed";
+          return {
+            status: response.status,
+            success: false,
+            message: errorMessage,
+            data: null as unknown as ApiRoleUser,
+            timestamp: new Date().toISOString(),
+          };
+        }
+
+        if (result?.success || result?.data || result?.message) {
+          revalidatePath("/system/users");
+          return {
+            status: response.status,
+            success: true,
+            message: result?.message || "User created successfully",
+            data: normalizeUserRecord(result?.data ?? payload),
+            timestamp: new Date().toISOString(),
+          };
+        }
+      }
+
+      lastError = new Error(result?.message || `Request failed with status ${response.status}`);
+    } catch (error) {
+      lastError = error;
+    }
   }
 
-  revalidatePath("/system/users");
   return {
-    status: res.status,
-    success: true,
-    message: res.message || "User created successfully",
-    data: normalizeUserRecord(res.data),
-    timestamp: res.timestamp,
+    status: 500,
+    success: false,
+    message: lastError instanceof Error ? lastError.message : "Unexpected error while creating system user",
+    data: null as unknown as ApiRoleUser,
+    timestamp: new Date().toISOString(),
   };
 }
 
-/**
- * Fetch staff/system users. Live spec: `GET /system/users/staff` (bearer) —
- * the ONLY live listing route.
- */
 export async function getSystemUsers(): Promise<ApiRoleUser[]> {
-  const res = await apiFetch<ApiRoleUser[]>("/system/users/staff", {
-    auth: "required",
-    cache: "no-store",
-  });
-  if (!res.success || !Array.isArray(res.data)) {
-    return [];
+  const candidateUrls = [
+    "/system/users/staff",
+    "/system/users",
+    "/system-setup/03/users",
+    "/system-setup/all-users",
+  ];
+
+  let lastError: unknown = null;
+  const attempts: { url: string; status?: number; error?: string }[] = [];
+
+  console.log("[System Users] BASE_API_URL:", process.env.BASE_API_URL);
+  const headers = await getAuthHeaders();
+  console.log("[System Users] Auth headers:", headers);
+
+  for (const url of candidateUrls) {
+    try {
+      const fullUrl = buildApiUrl(url);
+      console.log(`[System Users] Attempting fetch from: ${fullUrl}`);
+      const response = await fetch(fullUrl, {
+        headers,
+        cache: "no-store",
+      });
+
+      if (!response.ok) {
+        attempts.push({ url: fullUrl, status: response.status });
+        lastError = new Error(`Request failed with status ${response.status}`);
+        continue;
+      }
+
+      const text = await response.text();
+      const result = text ? JSON.parse(text) : null;
+      const users = extractUsersPayload(result);
+
+      if (Array.isArray(users)) {
+        console.log(`[System Users] Fetched from ${fullUrl}:`, users.length, "users");
+        return users.map(normalizeUserRecord);
+      }
+
+      if (result?.success === false) {
+        attempts.push({ url: fullUrl, error: result?.message });
+        throw new Error(result?.message || "Failed to fetch system users");
+      }
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      attempts.push({ url, error: msg });
+      lastError = error;
+    }
   }
-  return res.data.map(normalizeUserRecord);
+
+  console.error(
+    "[System Users] Failed to load users. Attempted URLs:",
+    JSON.stringify(attempts, null, 2),
+    "Last error:",
+    lastError instanceof Error ? lastError.message : lastError
+  );
+  return [];
 }

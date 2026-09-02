@@ -16,11 +16,5 @@ export default async function VouchersPage() {
  if (!pagePerms.canView) redirect("/dashboard");
 
  const data = await getVouchersData();
- return (
-  <VouchersClient
-   initialKpis={data.kpis}
-   initialVouchers={data.vouchers}
-   gatedMessage={data.available ? undefined : data.message}
-  />
- );
+ return <VouchersClient initialKpis={data.kpis} initialVouchers={data.vouchers} />;
 }

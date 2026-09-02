@@ -1,6 +1,7 @@
 "use server";
 
 import { auth } from "@/lib/auth";
+import { BASE_URL } from "@/lib/constants";
 import { getCustomers } from "@/actions/customer";
 import { getIpMappings } from "@/actions/network";
 import type { Customer } from "@/lib/types/customer";
@@ -308,11 +309,31 @@ export async function submitOutageCompensation(
     };
   }
 
-  // GATED: `POST /network/outages/compensate` is absent from the live spec
-  // (api-docs.json, 170 ops). No speculative call — readable 503 instead.
-  return {
-    success: false,
-    message:
-      "Outage compensation is pending the backend route (POST /network/outages/compensate absent from the live spec).",
-  };
+  try {
+    const res = await fetch(`${BASE_URL}network/outages/compensate`, {
+      method: "POST",
+      cache: "no-store",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(request),
+    });
+
+    const body = (await res.json().catch(() => ({}))) as { message?: string };
+    if (!res.ok) {
+      return {
+        success: false,
+        message: body.message || `Compensation failed (HTTP ${res.status})`,
+      };
+    }
+
+    return { success: true, message: body.message || "Compensation submitted" };
+  } catch (error) {
+    console.warn("Failed to submit outage compensation:", error);
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : "Failed to submit compensation",
+    };
+  }
 }

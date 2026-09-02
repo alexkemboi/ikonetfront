@@ -12,7 +12,6 @@ import type { ApiMenuItem, PermissionFlags, PermissionMap } from "@/lib/types/ro
 import { ROLE_NAME, roleNameToCode, normalizeRole } from "@/lib/types/roles";
 import type { NavGroup, NavItem, MenuNode } from "@/lib/nav";
 import { auth } from "@/lib/auth";
-import { buildApiUrl } from "@/lib/constants";
 import { adminNavGroups }      from "@/config/nav-admin";
 import { managementNavGroups } from "@/config/nav-management";
 import { staffNavGroups }      from "@/config/nav-staff";
@@ -56,7 +55,7 @@ export async function fetchRoleMenusRaw(
 
   try {
     const res = await fetch(
-      buildApiUrl(`/system-setup/${roleCode}/menus`),
+      `${process.env.BASE_API_URL}system-setup/${roleCode}/menus`,
       {
         headers: {
           "Content-Type": "application/json",

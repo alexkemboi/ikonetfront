@@ -9,6 +9,7 @@ import {
   CustomerFilters,
 } from "@/lib/types/customer";
 import type { ApiResponse, PageResponse } from "@/lib/types/api";
+import { BASE_URL } from "@/lib/constants";
 import { auth } from "@/lib/auth";
 import { apiFetch } from "@/lib/apiClient";
 
@@ -21,6 +22,16 @@ async function getRlsScopeParams(): Promise<URLSearchParams> {
   return params;
 }
 
+
+async function getAuthHeaders(): Promise<HeadersInit> {
+  const session = await auth();
+  const headers: HeadersInit = { "Content-Type": "application/json" };
+  if (session?.user?.apiToken) {
+    (headers as Record<string, string>)["Authorization"] =
+      `Bearer ${session.user.apiToken}`;
+  }
+  return headers;
+}
 
 function emptyCustomerPage(page = 0, size = 0): PageResponse<never> {
   return {
@@ -44,6 +55,53 @@ function emptyCustomerPage(page = 0, size = 0): PageResponse<never> {
     empty: true,
   };
 }
+
+
+
+const handleApiResponse = async(
+  response: Response,
+  defaultErrorMessage: string
+)=> {
+  const contentType = response.headers.get("content-type");
+  let errorData: unknown;
+
+  if (contentType && contentType.includes("application/json")) {
+    errorData = await response.json();
+  } else {
+    errorData = await response.text();
+  }
+
+  return {
+    status: response.status,
+    success: false,
+    message:
+      typeof errorData === "string"
+        ? errorData
+        : (errorData as { message?: string }).message  || defaultErrorMessage,
+    data: {
+      content: [],
+      pageable: {
+        pageNumber: 0,
+        pageSize: 0,
+        sort: { unsorted: true, sorted: false, empty: true },
+        offset: 0,
+        unpaged: false,
+        paged: false,
+      },
+      totalElements: 0,
+      totalPages: 0,
+      last: true,
+      first: true,
+      numberOfElements: 0,
+      size: 0,
+      number: 0,
+      sort: { unsorted: true, sorted: false, empty: true },
+      empty: true,
+    },
+    timestamp: new Date().toISOString(),
+    error: (errorData as { message?: string })?.message || String(errorData) || "An unknown error occurred",
+  };
+};
 
 export async function getCustomers(
   page: number = 0,
@@ -156,43 +214,91 @@ export async function updateCustomer(
   id: number,
   payload: UpdateCustomerPayload
 ){
-  const res = await apiFetch<Customer>(`/customers/${id}`, {
-    method: "PUT",
-    body: payload,
-    auth: "required",
-  });
-  if (res.success) {
+  try {
+    const response = await fetch(`${BASE_URL}customers/${id}`, {
+      method: "PUT",
+      headers: await getAuthHeaders(),
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      return handleApiResponse(response, "Failed to update customer");
+    }
+
+    const data= await response.json();
     revalidatePath("/customers/all");
     revalidatePath(`/customers/${id}`);
+    return data;
+  } catch (error: unknown) {
+    console.error(`Error updating customer ${id}:`, error);
+    return {
+      status: 500,
+      success: false,
+      message: (error instanceof Error ? error.message : String(error)) || "An unexpected error occurred",
+      data: {} as Customer,
+      timestamp: new Date().toISOString(),
+    };
   }
-  return res;
 }
 
 export async function deleteCustomer(
   id: number
 ){
-  const res = await apiFetch<null>(`/customers/${id}`, {
-    method: "DELETE",
-    auth: "required",
-  });
-  if (res.success) {
+  try {
+    const response = await fetch(`${BASE_URL}customers/${id}`, {
+      method: "DELETE",
+      headers: await getAuthHeaders(),
+    });
+
+    if (!response.ok) {
+      return handleApiResponse(response, "Failed to delete customer");
+    }
+
+    const data = await response.json();
     revalidatePath("/customers/all");
+    return data;
+  } catch (error: unknown) {
+    console.error(`Error deleting customer ${id}:`, error);
+    return {
+      status: 500,
+      success: false,
+      message: (error instanceof Error ? error.message : String(error)) || "An unexpected error occurred",
+      data: null, // data is null for delete
+      timestamp: new Date().toISOString(),
+    };
   }
-  return res;
 }
 
 export async function toggleCustomerActiveStatus(
   id: number
 ){
-  const res = await apiFetch<Customer>(`/customers/${id}/toggle-active`, {
-    method: "PATCH",
-    auth: "required",
-  });
-  if (res.success) {
+  try {
+    const response = await fetch(`${BASE_URL}customers/${id}/toggle-active`, {
+      method: "PATCH",
+      headers: await getAuthHeaders(),
+    });
+
+    if (!response.ok) {
+      return handleApiResponse(
+        response,
+        "Failed to toggle customer active status"
+      );
+    }
+
+    const data = await response.json();
     revalidatePath("/customers/all");
     revalidatePath(`/customers/${id}`);
+    return data;
+  } catch (error: unknown) {
+    console.error(`Error toggling active status for customer ${id}:`, error);
+    return {
+      status: 500,
+      success: false,
+      message: (error instanceof Error ? error.message : String(error)) || "An unexpected error occurred",
+      data: null,
+      timestamp: new Date().toISOString(),
+    };
   }
-  return res;
 }
 
 export async function renewCustomerSubscription(
@@ -200,34 +306,64 @@ export async function renewCustomerSubscription(
   duration: number,
   unit: string
 ){
-  const res = await apiFetch<Customer>(
-    `/customers/${id}/renew?duration=${duration}&unit=${unit}`,
-    {
-      method: "PATCH",
-      auth: "required",
+  try {
+    const response = await fetch(
+      `${BASE_URL}customers/${id}/renew?duration=${duration}&unit=${unit}`,
+      {
+        method: "PATCH",
+        headers: await getAuthHeaders(),
+      }
+    );
+
+    if (!response.ok) {
+      return handleApiResponse(response, "Failed to renew customer subscription");
     }
-  );
-  if (res.success) {
+
+    const data = await response.json();
     revalidatePath("/customers/all");
     revalidatePath(`/customers/${id}`);
+    return data;
+  } catch (error: unknown) {
+    console.error(`Error renewing subscription for customer ${id}:`, error);
+    return {
+      status: 500,
+      success: false,
+      message: (error instanceof Error ? error.message : String(error)) || "An unexpected error occurred",
+      data: null,
+      timestamp: new Date().toISOString(),
+    };
   }
-  return res;
 }
 
 export async function changeCustomerPassword(
   id: number,
   newPassword: string
 ) {
-  const res = await apiFetch<string>(
-    `/customers/${id}/change-password?newPassword=${encodeURIComponent(newPassword)}`,
-    {
-      method: "PATCH",
-      auth: "required",
+  try {
+    const response = await fetch(
+      `${BASE_URL}customers/${id}/change-password?newPassword=${newPassword}`,
+      {
+        method: "PATCH",
+        headers: await getAuthHeaders(),
+      }
+    );
+
+    if (!response.ok) {
+      return handleApiResponse(response, "Failed to change customer password");
     }
-  );
-  if (res.success) {
+
+    const data: CustomerApiResponse<null> = await response.json();
     revalidatePath("/customers/all");
     revalidatePath(`/customers/${id}`);
+    return data;
+  } catch (error: unknown) {
+    console.error(`Error changing password for customer ${id}:`, error);
+    return {
+      status: 500,
+      success: false,
+      message: (error instanceof Error ? error.message : String(error)) || "An unexpected error occurred",
+      data: null,
+      timestamp: new Date().toISOString(),
+    };
   }
-  return res;
 }

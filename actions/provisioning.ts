@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
-import { buildApiUrl } from "@/lib/constants";
+import { BASE_URL, buildApiUrl } from "@/lib/constants";
 import {
   NasRouterItem,
   NasRouterKpis,
@@ -11,7 +11,6 @@ import {
 } from "@/lib/types/provisioning";
 import { getMikrotikDevices, getMikrotikDeviceStatus } from "@/actions/mikrotik";
 import { getPermissionForRoute } from "@/lib/data/nav";
-import { apiFetch } from "@/lib/apiClient";
 
 const FALLBACK_NAS_KPIS: NasRouterKpis = {
   totalRoutersCount: 2,
@@ -42,6 +41,16 @@ const FALLBACK_NAS_ROUTERS: NasRouterItem[] = [
     lastOnlineText: "Jul 17, 09:44 AM",
   },
 ];
+
+async function getAuthHeaders(): Promise<HeadersInit> {
+  const session = await auth();
+  const headers: HeadersInit = { "Content-Type": "application/json" };
+  if (session?.user?.apiToken) {
+    (headers as Record<string, string>)["Authorization"] =
+      `Bearer ${session.user.apiToken}`;
+  }
+  return headers;
+}
 
 function mapDeviceToNasRouter(device: {
   id: number;
@@ -105,22 +114,23 @@ export async function createBootstrapToken(payload: Record<string, unknown> = {}
   if (!session?.user?.apiToken) return null;
 
   try {
-    const res = await apiFetch<{ token?: string } | null>("/provision/bootstrap-tokens", {
+    const res = await fetch(buildApiUrl("/provision/bootstrap-tokens"), {
       method: "POST",
-      auth: "required",
-      body: {
+      headers: await getAuthHeaders(),
+      body: JSON.stringify({
         identity: payload.identity ?? "router",
         routerName: payload.routerName ?? payload.identity ?? "router",
         ...payload,
-      },
+      }),
     });
 
-    if (!res.success) {
+    if (!res.ok) {
       console.warn("Bootstrap token minting failed:", res.status);
       return null;
     }
 
-    const token = res.data?.token;
+    const body = (await res.json()) as { data?: { token?: string } | null; token?: string };
+    const token = body.data?.token ?? body.token;
     return token ? { token } : null;
   } catch (error: unknown) {
     console.warn("Failed to mint bootstrap token:", error);
@@ -159,17 +169,21 @@ export async function generateZtpScript(
   let routerId = "";
   if (token) {
     try {
-      const createRes = await apiFetch<{ id?: string | number } | null>("/network-devices", {
+      const createRes = await fetch(buildApiUrl("/network-devices"), {
         method: "POST",
-        auth: "required",
-        body: {
+        headers: await getAuthHeaders(),
+        body: JSON.stringify({
           name: identity,
           deviceType: "ROUTER",
           active: true,
-        },
+        }),
       });
-      if (createRes.success && createRes.data) {
-        const createdId = String(createRes.data.id ?? "");
+      if (createRes.ok) {
+        const created = (await createRes.json()) as {
+          data?: { id?: string | number } | null;
+          id?: string | number;
+        };
+        const createdId = String(created?.data?.id ?? created?.id ?? "");
         if (/^\d+$/.test(createdId)) routerId = createdId;
       }
     } catch (error: unknown) {
@@ -230,15 +244,18 @@ export async function finalizeZtpServices(
     return { success: false, message: "Not authorized to configure routers." };
   }
   try {
-    const response = await apiFetch(`/network-routers/${request.routerId}`, {
-      method: "PATCH",
-      auth: "required",
-      body: {
-        hotspotEnabled: request.enableHotspot,
-        pppoeEnabled: request.enablePppoe,
-      },
-    });
-    if (!response.success) {
+    const response = await fetch(
+      `${BASE_URL}network-routers/${request.routerId}`,
+      {
+        method: "PATCH",
+        headers: await getAuthHeaders(),
+        body: JSON.stringify({
+          hotspotEnabled: request.enableHotspot,
+          pppoeEnabled: request.enablePppoe,
+        }),
+      }
+    );
+    if (!response.ok) {
       console.warn(
         `Backend rejected router config PATCH (HTTP ${response.status}); recorded locally.`
       );
