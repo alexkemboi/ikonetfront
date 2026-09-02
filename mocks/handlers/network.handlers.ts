@@ -28,7 +28,7 @@ export const networkHandlers = [
   http.post(`${API_PREFIX}/network/routers/onboard`, (info) => {
     const forbidden = requireAuth(info.request);
     if (forbidden) return forbidden;
-    return HttpResponse.json(onboardFixture(), { status: 201 });
+    return HttpResponse.json(onboardFixture(), { status: 200 });
   }),
 
   http.get(`${API_PREFIX}/network-routers/topology`, (info) => {
