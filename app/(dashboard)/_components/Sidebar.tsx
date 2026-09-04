@@ -64,6 +64,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
  "database": Database,
  "activity": Activity,
  "globe": Globe,
+ "rotate-cw": RotateCcw,
 
  // ── Material Design names (API menus endpoint) ──────────────────────
  "dashboard": LayoutDashboard,
