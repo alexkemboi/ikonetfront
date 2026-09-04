@@ -22,6 +22,7 @@ import type {
   InvestorBillingSnapshot,
   InvestorMoneyFlowData,
   InvestorRevenueSummary,
+  InvestorRouterListItem,
 } from "@/lib/types/investor";
 
 /** Tolerant auth headers — {} when unauthenticated (mirrors actions/finance.ts). */
@@ -152,4 +153,32 @@ export async function getInvestorMoneyFlowData(
     allAvailable: revenue !== null && snapshots.length > 0 && agreements.length > 0,
     anyAvailable,
   };
+}
+
+/**
+ * Read-only router inventory for the investor scope — `GET /investor/routers`
+ * (bare array). Strictly view-only: no provisioning/management actions exposed.
+ */
+export async function getInvestorRouters(): Promise<{
+  routers: InvestorRouterListItem[];
+  message: string;
+}> {
+  const headers = await getAuthHeaders();
+  try {
+    const res = await fetch(buildApiUrl("/investor/routers"), {
+      headers,
+      cache: "no-store",
+    });
+    if (!res.ok) {
+      return { routers: [], message: `Investor routers unavailable (HTTP ${res.status}).` };
+    }
+    const raw = unwrapData<InvestorRouterListItem[]>(await res.json());
+    if (!Array.isArray(raw)) {
+      return { routers: [], message: "Investor routers returned an unexpected shape." };
+    }
+    return { routers: raw, message: "" };
+  } catch (error) {
+    console.error("[Investor] getInvestorRouters error:", error);
+    return { routers: [], message: "Failed to reach the investor routers endpoint." };
+  }
 }
