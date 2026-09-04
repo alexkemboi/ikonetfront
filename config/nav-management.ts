@@ -19,18 +19,6 @@ export const managementNavGroups: NavGroup[] = [
     ],
   },
   {
-    label: "Network",
-    items: [
-      { href: "/network/routers", label: "Routers (Edge)", icon: "server" },
-      { href: "/network/routers", label: "Router Monitoring", icon: "activity" },
-      { href: "/network/routers/setup", label: "Link MikroTik", icon: "router" },
-      { href: "/network/equipment", label: "Equipment", icon: "package" },
-      { href: "/network/ip-pools", label: "IP Pools", icon: "database" },
-      { href: "/network/ip-mappings", label: "IP Mappings", icon: "network" },
-      { href: "/network/live-sessions", label: "Live Sessions", icon: "activity" },
-    ],
-  },
-  {
     label: "Finance",
     items: [
       { href: "/finance", label: "Executive Dashboard", icon: "bar-chart-3" },
@@ -38,6 +26,7 @@ export const managementNavGroups: NavGroup[] = [
       { href: "/finance/expenses", label: "Expenses", icon: "receipt" },
       { href: "/finance/statements", label: "Statements", icon: "file-text" },
       { href: "/finance/vouchers", label: "Vouchers", icon: "credit-card" },
+      { href: "/finance/reconciliation", label: "M-Pesa Reconciliation", icon: "rotate-cw" },
       {
         href: "/finance/billing",
         label: "Billing",

@@ -14,7 +14,7 @@ export const investorNavGroups: NavGroup[] = [
   {
     label: "Infrastructure",
     items: [
-      { href: "/network/routers", label: "Assigned Routers", icon: "router" },
+      { href: "/finance/investor/routers", label: "Assigned Routers", icon: "router" },
     ],
   },
 ];
