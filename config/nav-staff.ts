@@ -3,7 +3,7 @@ import type { NavGroup } from "@/lib/nav";
 export const staffNavGroups: NavGroup[] = [
   {
     items: [
-      { href: "/dashboard", label: "Dashboard", icon: "layout-dashboard", exact: true },
+      { href: "/customers", label: "Dashboard", icon: "layout-dashboard", exact: true },
     ],
   },
   {
