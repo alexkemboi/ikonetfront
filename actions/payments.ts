@@ -12,7 +12,7 @@ import type {
   InvoiceItem,
   InvoiceKpis,
   ServiceType,
-  DarajaPullTriggerResponse,
+  DarajaReconciliationSummary,
   DarajaReconciliationEntry,
   ReconciliationOutcomeCounts,
 } from "@/lib/types/payments";
@@ -268,10 +268,13 @@ function isValidDateString(value: string | undefined): value is string {
 /**
  * Run the Daraja PullTransactions sweep for a target date (backend auto-heals
  * orphaned PaymentIntents best-effort). Role-gated on the reconciliation route.
+ *
+ * Real backend contract: `POST /api/v1/payments/mpesa/reconciliation/trigger?date=YYYY-MM-DD`
+ * returns the bare `ReconciliationSummary` record — NOT a wrapped/paged payload.
  */
 export async function triggerDarajaPull(
   input: { targetDate?: string } = {}
-): Promise<{ success: boolean; data?: DarajaPullTriggerResponse; message: string }> {
+): Promise<{ success: boolean; data?: DarajaReconciliationSummary; message: string }> {
   const session = await auth();
   if (!session?.user?.apiToken) {
     return { success: false, message: "You must be signed in to run the Daraja pull." };
@@ -281,18 +284,26 @@ export async function triggerDarajaPull(
     return { success: false, message: "You don't have permission to run reconciliation." };
   }
   try {
-    const qs = isValidDateString(input.targetDate) ? `?targetDate=${input.targetDate}` : "";
-    const res = await fetch(buildApiUrl(`/payments/mpesa/pull/trigger${qs}`), {
-      method: "POST",
-      headers: await getAuthHeaders(),
-      cache: "no-store",
-    });
+    const qs = isValidDateString(input.targetDate) ? `?date=${input.targetDate}` : "";
+    const res = await fetch(
+      buildApiUrl(`/payments/mpesa/reconciliation/trigger${qs}`),
+      {
+        method: "POST",
+        headers: await getAuthHeaders(),
+        cache: "no-store",
+      }
+    );
     const json = await res.json().catch(() => null);
     if (!res.ok) {
       return { success: false, message: `Daraja pull failed (HTTP ${res.status}).` };
     }
-    const data = unwrapData<DarajaPullTriggerResponse>(json);
-    if (!data || typeof data.healedCount !== "number" || !data.summary) {
+    const data = unwrapData<DarajaReconciliationSummary>(json);
+    if (
+      !data ||
+      typeof data.matched !== "number" ||
+      typeof data.unmatchedInDaraja !== "number" ||
+      typeof data.autoHealedCount !== "number"
+    ) {
       return { success: false, message: "Daraja pull returned an unexpected shape." };
     }
     return { success: true, data, message: "" };
