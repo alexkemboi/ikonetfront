@@ -67,6 +67,37 @@ export interface InvestorAgreement {
   createdAt: string;
 }
 
+/** Latest telemetry snapshot attached to a router (`RouterHealthSnapshot`). */
+export interface RouterHealthSnapshot {
+  idxno: number;
+  routerId: number;
+  cpuUsage: number;
+  totalMemory: number;
+  freeMemory: number;
+  temperature: number | null;
+  activePppoeSessions: number;
+  activeHotspotSessions: number;
+  uptime: string;
+  latencyMs: number;
+  createdAt: string;
+}
+
+/**
+ * Read-only router inventory row (`InvestorRouterListItem`) — strictly no
+ * provisioning/management actions are exposed to investor scope.
+ */
+export interface InvestorRouterListItem {
+  routerId: number;
+  routerName: string | null;
+  model: string | null;
+  ipAddress: string | null;
+  stationName: string | null;
+  status: boolean | null;
+  lastOnline: string | null;
+  uptime: string | null;
+  snapshotTraits: RouterHealthSnapshot | null;
+}
+
 /** Request shape accepted by `getInvestorMoneyFlowData`. */
 export interface InvestorPeriodInput {
   /** `YYYY-MM`; defaults to the current calendar month. */
