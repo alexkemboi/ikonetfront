@@ -73,7 +73,7 @@ export interface DarajaReconciliationEntry {
   updatedAt: string | null;
 }
 
-/** `ReconciliationSummary` returned by the trigger sweep. */
+/** `ReconciliationSummary` returned by the trigger sweep and the pull endpoint. */
 export interface DarajaReconciliationSummary {
   day: string;
   totalDaraja: number;
@@ -83,13 +83,6 @@ export interface DarajaReconciliationSummary {
   unmatchedInDaraja: number;
   ambiguous: number;
   autoHealedCount: number;
-}
-
-/** Success data from `POST /payments/mpesa/pull/trigger`. */
-export interface DarajaPullTriggerResponse {
-  targetDate: string;
-  healedCount: number;
-  summary: DarajaReconciliationSummary;
 }
 
 /** Outcome-count map returned by `GET /payments/mpesa/reconciliation`. */
