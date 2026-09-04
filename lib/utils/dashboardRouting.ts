@@ -1,9 +1,12 @@
 /**
  * Central role-to-dashboard routing configuration.
- * All roles resolve to /dashboard — the single page renders role-appropriate content.
+ * Every role resolves to its canonical landing route via the shared
+ * `getLandingRouteForRole` helper — the same helper the strict `/dashboard`
+ * dispatcher uses, so legacy dashboard routes never diverge.
  */
 
-export function resolveDashboardPathForRole(_roleCode: string | undefined | null): string {
-  void _roleCode;
-  return "/dashboard";
+import { getLandingRouteForRole } from "@/lib/types/roles";
+
+export function resolveDashboardPathForRole(roleCode: string | undefined | null): string {
+  return getLandingRouteForRole(roleCode ?? undefined);
 }

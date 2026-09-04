@@ -53,6 +53,7 @@ export const adminNavGroups: NavGroup[] = [
       { href: "/finance/expenses", label: "Expenses", icon: "receipt" },
       { href: "/finance/statements", label: "Statements", icon: "file-text" },
       { href: "/finance/vouchers", label: "Vouchers", icon: "credit-card" },
+      { href: "/finance/reconciliation", label: "M-Pesa Reconciliation", icon: "rotate-cw" },
       {
         href: "/finance/billing",
         label: "Billing",

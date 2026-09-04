@@ -3,6 +3,7 @@
 import { auth } from "@/lib/auth";
 import { buildApiUrl } from "@/lib/constants";
 import { getPermissionForRoute } from "@/lib/data/nav";
+import { todayEatIso } from "@/lib/dates";
 import { timeoutSignal, unwrapPostings } from "@/lib/finance/ledger";
 import type { AccountPosting } from "@/lib/types/finance";
 import type {
@@ -11,6 +12,9 @@ import type {
   InvoiceItem,
   InvoiceKpis,
   ServiceType,
+  DarajaPullTriggerResponse,
+  DarajaReconciliationEntry,
+  ReconciliationOutcomeCounts,
 } from "@/lib/types/payments";
 
 // Zero-safe KPIs — the ledger never fabricates numbers when Account 1110 has
@@ -247,4 +251,99 @@ async function getAuthHeaders(): Promise<HeadersInit> {
       `Bearer ${session.user.apiToken}`;
   }
   return headers;
+}
+
+/** Defensive unwrap: bare payloads pass through; wrapped `{ data }` is unwrapped. */
+function unwrapData<T>(json: unknown): T | null {
+  if (typeof json === "object" && json !== null && "data" in json) {
+    return (json as { data?: T }).data ?? null;
+  }
+  return json as T;
+}
+
+function isValidDateString(value: string | undefined): value is string {
+  return !!value && /^\d{4}-\d{2}-\d{2}$/.test(value);
+}
+
+/**
+ * Run the Daraja PullTransactions sweep for a target date (backend auto-heals
+ * orphaned PaymentIntents best-effort). Role-gated on the reconciliation route.
+ */
+export async function triggerDarajaPull(
+  input: { targetDate?: string } = {}
+): Promise<{ success: boolean; data?: DarajaPullTriggerResponse; message: string }> {
+  const session = await auth();
+  if (!session?.user?.apiToken) {
+    return { success: false, message: "You must be signed in to run the Daraja pull." };
+  }
+  const perms = await getPermissionForRoute("/finance/reconciliation");
+  if (!perms.canView) {
+    return { success: false, message: "You don't have permission to run reconciliation." };
+  }
+  try {
+    const qs = isValidDateString(input.targetDate) ? `?targetDate=${input.targetDate}` : "";
+    const res = await fetch(buildApiUrl(`/payments/mpesa/pull/trigger${qs}`), {
+      method: "POST",
+      headers: await getAuthHeaders(),
+      cache: "no-store",
+    });
+    const json = await res.json().catch(() => null);
+    if (!res.ok) {
+      return { success: false, message: `Daraja pull failed (HTTP ${res.status}).` };
+    }
+    const data = unwrapData<DarajaPullTriggerResponse>(json);
+    if (!data || typeof data.healedCount !== "number" || !data.summary) {
+      return { success: false, message: "Daraja pull returned an unexpected shape." };
+    }
+    return { success: true, data, message: "" };
+  } catch (error) {
+    console.error("[Payments] triggerDarajaPull error:", error);
+    return { success: false, message: "Failed to reach the Daraja pull endpoint." };
+  }
+}
+
+/**
+ * Fetch the daily reconciliation entries + outcome counts. Bare payload —
+ * `GET /payments/mpesa/reconciliation?date=` returns `{ date, entries, summary }`.
+ */
+export async function getDarajaReconciliation(
+  date?: string
+): Promise<{
+  entries: DarajaReconciliationEntry[];
+  summary: ReconciliationOutcomeCounts;
+  message: string;
+}> {
+  const session = await auth();
+  if (!session?.user?.apiToken) {
+    return { entries: [], summary: {}, message: "You must be signed in." };
+  }
+  const perms = await getPermissionForRoute("/finance/reconciliation");
+  if (!perms.canView) {
+    return { entries: [], summary: {}, message: "You don't have permission to view reconciliation." };
+  }
+  const targetDate = isValidDateString(date) ? date : todayEatIso();
+  try {
+    const res = await fetch(
+      buildApiUrl(`/payments/mpesa/reconciliation?date=${targetDate}`),
+      {
+        headers: await getAuthHeaders(),
+        cache: "no-store",
+      }
+    );
+    if (!res.ok) {
+      return { entries: [], summary: {}, message: `Reconciliation unavailable (HTTP ${res.status}).` };
+    }
+    const json = (await res.json()) as Record<string, unknown>;
+    const entries = Array.isArray(json.entries)
+      ? (json.entries as DarajaReconciliationEntry[])
+      : [];
+    const summary =
+      typeof json.summary === "object" && json.summary !== null
+        ? (json.summary as ReconciliationOutcomeCounts)
+        : {};
+    return { entries, summary, message: "" };
+  } catch (error) {
+    console.error("[Payments] getDarajaReconciliation error:", error);
+    return { entries: [], summary: {}, message: "Failed to reach the reconciliation endpoint." };
+  }
 }

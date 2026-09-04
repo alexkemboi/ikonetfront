@@ -16,14 +16,7 @@ import { adminNavGroups }      from "@/config/nav-admin";
 import { managementNavGroups } from "@/config/nav-management";
 import { staffNavGroups }      from "@/config/nav-staff";
 import { customerNavGroups }   from "@/config/nav-customer";
-
-// Old role-specific dashboard routes that no longer exist — normalize to /dashboard
-const OLD_DASHBOARD_ROUTES = new Set([
-  "/dashboard/admin",
-  "/dashboard/management",
-  "/dashboard/staff",
-  "/dashboard/customer",
-]);
+import { investorNavGroups }   from "@/config/nav-investor";
 
 export const NAV_MENUS_TAG = "nav-menus";
 
@@ -31,6 +24,36 @@ export const NAV_MENUS_TAG = "nav-menus";
 export const NO_PERMISSIONS: PermissionFlags = {
   canView: false, canCreate: false, canEdit: false, canDelete: false,
 };
+
+export function normalizeMenuRoute(route: string): string {
+  const clean = route?.trim();
+  if (!clean) return "/dashboard/overview";
+
+  const routeMap: Record<string, string> = {
+    "/finance/packages": "/system/packages",
+    "/packages": "/system/packages",
+    "/system/internet-packages": "/system/packages",
+    "/dashboard/admin": "/dashboard/overview",
+    "/dashboard/management": "/analytics",
+    "/dashboard/staff": "/customers",
+    "/dashboard/customer": "/portal/pppoe",
+    "/customers/active": "/customers/all",
+    "/customers/directory": "/customers/all",
+    "/customers/ip-bindings": "/customers/bindings",
+    "/network/ip-mapping": "/customers/bindings",
+    "/customers/pppoe": "/portal/pppoe",
+    "/network/microtick": "/network/mikrotik",
+    "/network-routers": "/network/routers",
+    "/routers": "/network/routers",
+    "/finance/coa": "/finance/ledger",
+    "/finance/chart-of-accounts": "/finance/ledger",
+    "/finance/payments": "/finance/billing/payments",
+    "/finance/invoices": "/finance/billing/invoices",
+    "/investor/dashboard": "/finance/investor",
+  };
+
+  return routeMap[clean] ?? clean;
+}
 
 /**
  * Fetch the menu/permission tree for a given role.
@@ -88,7 +111,7 @@ export function apiMenusToNavGroups(menus: ApiMenuItem[]): NavGroup[] {
     .slice()
     .sort((a, b) => a.sortOrder - b.sortOrder)
     .map((menu) => ({
-      href:      OLD_DASHBOARD_ROUTES.has(menu.route) ? "/dashboard" : menu.route,
+      href:      normalizeMenuRoute(menu.route),
       label:     menu.label,
       icon:      menu.icon,
       canView:   menu.canView,
@@ -100,7 +123,7 @@ export function apiMenusToNavGroups(menus: ApiMenuItem[]): NavGroup[] {
             .slice()
             .sort((a, b) => a.sortOrder - b.sortOrder)
             .map((child) => ({
-              href:      OLD_DASHBOARD_ROUTES.has(child.route) ? "/dashboard" : child.route,
+              href:      normalizeMenuRoute(child.route),
               label:     child.label,
               icon:      child.icon,
               canView:   child.canView,
@@ -125,6 +148,7 @@ export function getStaticNavForRole(role: string): NavGroup[] {
     case ROLE_NAME.ADMIN:      return adminNavGroups;
     case ROLE_NAME.MANAGEMENT: return managementNavGroups;
     case ROLE_NAME.STAFF:      return staffNavGroups;
+    case ROLE_NAME.INVESTOR:   return investorNavGroups;
     case ROLE_NAME.CUSTOMER:   return customerNavGroups;
     default:                   return staffNavGroups;
   }
@@ -140,27 +164,33 @@ export function apiMenusToMenuTree(menus: ApiMenuItem[]): MenuNode[] {
   return menus
     .slice()
     .sort((a, b) => a.sortOrder - b.sortOrder)
-    .map((menu) => ({
+    .map((menu) => {
+      const route = normalizeMenuRoute(menu.route);
+      return ({
       idxno:      parseInt(menu.idxno.toString()) || 0,
-      id:         menu.route,
+      id:         route,
       menuItemId: menu.idxno,
-      route:      menu.route,
+      route,
       label:      menu.label,
       icon:       menu.icon,
       children: menu.children?.length
         ? menu.children
             .slice()
             .sort((a, b) => a.sortOrder - b.sortOrder)
-            .map((child) => ({
+            .map((child) => {
+              const childRoute = normalizeMenuRoute(child.route);
+              return ({
               idxno:      parseInt(child.idxno.toString()),
-              id:         child.route,
+              id:         childRoute,
               menuItemId: child.idxno,
-              route:      child.route,
+              route:      childRoute,
               label:      child.label,
               icon:       child.icon,
-            }))
+            });
+            })
         : undefined,
-    }));
+    });
+    });
 }
 
 /**
@@ -172,14 +202,14 @@ export function apiMenusToMenuTree(menus: ApiMenuItem[]): MenuNode[] {
 export function extractPermissions(menus: ApiMenuItem[]): PermissionMap {
   const map: PermissionMap = {};
   for (const menu of menus) {
-    map[menu.route] = {
+    map[normalizeMenuRoute(menu.route)] = {
       canView:   menu.canView,
       canCreate: menu.canCreate,
       canEdit:   menu.canEdit,
       canDelete: menu.canDelete,
     };
-    for (const child of menu.children) {
-      map[child.route] = {
+    for (const child of menu.children ?? []) {
+      map[normalizeMenuRoute(child.route)] = {
         canView:   child.canView,
         canCreate: child.canCreate,
         canEdit:   child.canEdit,
@@ -200,7 +230,7 @@ export function staticNavToPermissions(groups: NavGroup[]): PermissionMap {
   const visit = (items: NavGroup["items"]) => {
     for (const item of items) {
       if (item.href) {
-        map[item.href] = {
+        map[normalizeMenuRoute(item.href)] = {
           canView: true, canCreate: true, canEdit: true, canDelete: true,
         };
       }
@@ -244,12 +274,13 @@ export async function getCurrentUserPermissions(): Promise<PermissionMap> {
 export async function getPermissionForRoute(
   route: string
 ): Promise<PermissionFlags> {
+  const normalizedRoute = normalizeMenuRoute(route);
   const session = await auth();
   if (!session?.user?.role || !session?.user?.apiToken) return NO_PERMISSIONS;
   const menus = await fetchRoleMenusRaw(session.user.role, session.user.apiToken);
   if (menus.length > 0) {
     const map = extractPermissions(menus);
-    return map[route] ?? staticNavToPermissions(getStaticNavForRole(session.user.role))[route] ?? NO_PERMISSIONS;
+    return map[normalizedRoute] ?? staticNavToPermissions(getStaticNavForRole(session.user.role))[normalizedRoute] ?? NO_PERMISSIONS;
   }
-  return staticNavToPermissions(getStaticNavForRole(session.user.role))[route] ?? NO_PERMISSIONS;
+  return staticNavToPermissions(getStaticNavForRole(session.user.role))[normalizedRoute] ?? NO_PERMISSIONS;
 }
