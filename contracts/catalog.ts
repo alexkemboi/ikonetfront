@@ -24,6 +24,7 @@ import type {
   RouterHealthSnapshot,
   RouterValidationResponse,
   RouterResponse,
+  RegionResponse,
 } from "@/lib/types/network";
 import type { TopologyNode } from "@/lib/types/network-router";
 import type { MikrotikDeviceStatus } from "@/lib/types/mikrotik";
@@ -55,6 +56,25 @@ export function errorEnvelope(status: number, message: string): ApiResponse<null
 
 // ── Auth ─────────────────────────────────────────────────────────────────────
 
+/**
+ * Build a structurally-decodable mock JWT carrying a `role` claim. Used by the
+ * login fixture so the hardened MSW `requireAuth` can reproduce real backend
+ * 403s for role-gated routes (SYSADMIN/ADMIN/01). Signature is a static mock —
+ * providers verify shape/type via Pact matchers, never this literal value.
+ */
+export function buildRoleJwt(role: string, subject = "1"): string {
+  const b64u = (input: string) =>
+    (typeof btoa === "function"
+      ? btoa(input)
+      : Buffer.from(input, "utf8").toString("base64")
+    ).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  const header = b64u(JSON.stringify({ alg: "HS256", typ: "JWT" }));
+  const payload = b64u(
+    JSON.stringify({ sub: subject, role, iat: 1_700_000_000 })
+  );
+  return `${header}.${payload}.mock-signature`;
+}
+
 export interface LoginFixtureData {
   token: string;
   username: string;
@@ -65,7 +85,7 @@ export interface LoginFixtureData {
 export function loginFixture(overrides: Partial<LoginFixtureData> = {}): ApiResponse<LoginFixtureData> {
   return envelope(
     {
-      token: "eyJhbGciOiJIUzI1NiJ9.verified-login-token",
+      token: buildRoleJwt("SYSADMIN"),
       username: "admin",
       role: "SYSADMIN",
       refreshToken: "login-time-refresh-token",
@@ -76,7 +96,7 @@ export function loginFixture(overrides: Partial<LoginFixtureData> = {}): ApiResp
 }
 
 export function refreshTokenFixture(): ApiResponse<{ token: string }> {
-  return envelope({ token: "eyJhbGciOiJIUzI1NiJ9.refreshed-access-token" }, "Token refreshed");
+  return envelope({ token: buildRoleJwt("SYSADMIN") }, "Token refreshed");
 }
 
 export function logoutFixture(): ApiResponse<{ message: string }> {
@@ -277,6 +297,46 @@ export function routersFixture(): ApiResponse<RouterResponse[]> {
       },
     ],
     "Routers fetched successfully"
+  );
+}
+
+export function regionsTreeFixture(): ApiResponse<RegionResponse[]> {
+  return envelope(
+    [
+      {
+        idxno: 1,
+        regionCode: "REG-KE-COAST",
+        name: "Coast Region",
+        description: "Coastal region of Kenya",
+        isActive: true,
+        createdAt: "2026-01-01T00:00:00.000Z",
+        locations: [
+          {
+            idxno: 1,
+            regionIdxno: 1,
+            regionName: "Coast Region",
+            name: "Mombasa Central",
+            latitude: -4.0435,
+            longitude: 39.6682,
+            isActive: true,
+            createdAt: "2026-01-01T00:00:00.000Z",
+            stations: [
+              {
+                idxno: 1,
+                locationIdxno: 1,
+                locationName: "Mombasa Central",
+                name: "Mombasa Station 01",
+                powerType: "Grid",
+                backhaulType: "Fiber",
+                isActive: true,
+                createdAt: "2026-01-01T00:00:00.000Z",
+              },
+            ],
+          },
+        ],
+      },
+    ],
+    "Regions tree retrieved"
   );
 }
 
@@ -657,6 +717,15 @@ export const customerInteractions: Interaction[] = [
 ];
 
 export const networkInteractions: Interaction[] = [
+  {
+    name: "GET /api/v1/network/regions (tree)",
+    method: "GET",
+    path: "/api/v1/network/regions",
+    query: { tree: "true" },
+    auth: "bearer",
+    status: 200,
+    responseBody: regionsTreeFixture(),
+  },
   {
     name: "GET /api/v1/network/routers",
     method: "GET",
