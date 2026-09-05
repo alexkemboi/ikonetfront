@@ -191,6 +191,19 @@ describe("permission map + menu tree normalization", () => {
     const groups = getStaticNavForRole("04");
     expect(groups.flatMap((g) => g.items).map((i) => i.href)).toContain("/finance/investor");
   });
+
+  it("staff nav no longer exposes admin-only router/onboarding surfaces (Trap 3)", () => {
+    const groups = getStaticNavForRole("03");
+    const hrefs = groups.flatMap((g) => g.items).map((i) => i.href);
+    expect(hrefs).not.toContain("/network/routers");
+    expect(hrefs).not.toContain("/network/routers/onboard");
+    expect(hrefs).not.toContain("/network/routers/setup");
+    expect(hrefs).not.toContain("/network/ip-pools");
+    expect(hrefs).not.toContain("/network/ip-mappings");
+    // Read-only monitoring surfaces remain for staff.
+    expect(hrefs).toContain("/network/live-sessions");
+    expect(hrefs).toContain("/network/mikrotik");
+  });
 });
 
 describe("getPermissionForRoute alias tolerance", () => {
