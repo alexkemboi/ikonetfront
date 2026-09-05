@@ -1,7 +1,8 @@
 import { http, HttpResponse } from "msw";
-import { API_PREFIX, requireAuth } from "./auth-guard";
+import { API_PREFIX, ADMIN_ROLES, requireAuth } from "./auth-guard";
 import {
   routersFixture,
+  regionsTreeFixture,
   validateConnectivityFixture,
   onboardFixture,
   topologyFixture,
@@ -13,20 +14,28 @@ import {
 } from "@/contracts/catalog";
 
 export const networkHandlers = [
-  http.get(`${API_PREFIX}/network/routers`, (info) => {
+  http.get(`${API_PREFIX}/network/regions`, (info) => {
     const forbidden = requireAuth(info.request);
+    if (forbidden) return forbidden;
+    // Tree-shaped (and flat-compatible) region topology keeps both the
+    // onboarding cascades (`tree=true`) and the stations/regions pages working.
+    return HttpResponse.json(regionsTreeFixture(), { status: 200 });
+  }),
+
+  http.get(`${API_PREFIX}/network/routers`, (info) => {
+    const forbidden = requireAuth(info.request, ADMIN_ROLES);
     if (forbidden) return forbidden;
     return HttpResponse.json(routersFixture(), { status: 200 });
   }),
 
   http.post(`${API_PREFIX}/network/routers/validate-connectivity`, (info) => {
-    const forbidden = requireAuth(info.request);
+    const forbidden = requireAuth(info.request, ADMIN_ROLES);
     if (forbidden) return forbidden;
     return HttpResponse.json(validateConnectivityFixture(), { status: 200 });
   }),
 
   http.post(`${API_PREFIX}/network/routers/onboard`, (info) => {
-    const forbidden = requireAuth(info.request);
+    const forbidden = requireAuth(info.request, ADMIN_ROLES);
     if (forbidden) return forbidden;
     return HttpResponse.json(onboardFixture(), { status: 201 });
   }),
@@ -74,7 +83,7 @@ export const networkHandlers = [
   }),
 
   http.get(`${API_PREFIX}/network/ip-pools`, (info) => {
-    const forbidden = requireAuth(info.request);
+    const forbidden = requireAuth(info.request, ADMIN_ROLES);
     if (forbidden) return forbidden;
     return HttpResponse.json(ipPoolsFixture(), { status: 200 });
   }),

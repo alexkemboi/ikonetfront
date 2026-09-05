@@ -22,7 +22,7 @@
           "data": {
             "refreshToken": "login-time-refresh-token",
             "role": "SYSADMIN",
-            "token": "eyJhbGciOiJIUzI1NiJ9.verified-login-token",
+            "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwicm9sZSI6IlNZU0FETUlOIiwiaWF0IjoxNzAwMDAwMDAwfQ.mock-signature",
             "username": "admin"
           },
           "message": "Login successful",
@@ -139,7 +139,7 @@
       "response": {
         "body": {
           "data": {
-            "token": "eyJhbGciOiJIUzI1NiJ9.refreshed-access-token"
+            "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwicm9sZSI6IlNZU0FETUlOIiwiaWF0IjoxNzAwMDAwMDAwfQ.mock-signature"
           },
           "message": "Token refreshed",
           "status": 200,
@@ -2415,6 +2415,343 @@
               ]
             },
             "$.data.username": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.message": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.status": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.success": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.timestamp": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            }
+          }
+        },
+        "status": 200
+      }
+    },
+    {
+      "description": "GET /api/v1/network/regions (tree)",
+      "providerStates": [
+        {
+          "name": "seed for GET /api/v1/network/regions (tree)"
+        }
+      ],
+      "request": {
+        "headers": {
+          "Authorization": "Bearer test-access-token"
+        },
+        "method": "GET",
+        "path": "/api/v1/network/regions",
+        "query": {
+          "tree": [
+            "true"
+          ]
+        }
+      },
+      "response": {
+        "body": {
+          "data": [
+            {
+              "createdAt": "2026-01-01T00:00:00.000Z",
+              "description": "Coastal region of Kenya",
+              "idxno": 1,
+              "isActive": true,
+              "locations": [
+                {
+                  "createdAt": "2026-01-01T00:00:00.000Z",
+                  "idxno": 1,
+                  "isActive": true,
+                  "latitude": -4.0435,
+                  "longitude": 39.6682,
+                  "name": "Mombasa Central",
+                  "regionIdxno": 1,
+                  "regionName": "Coast Region",
+                  "stations": [
+                    {
+                      "backhaulType": "Fiber",
+                      "createdAt": "2026-01-01T00:00:00.000Z",
+                      "idxno": 1,
+                      "isActive": true,
+                      "locationIdxno": 1,
+                      "locationName": "Mombasa Central",
+                      "name": "Mombasa Station 01",
+                      "powerType": "Grid"
+                    }
+                  ]
+                }
+              ],
+              "name": "Coast Region",
+              "regionCode": "REG-KE-COAST"
+            }
+          ],
+          "message": "Regions tree retrieved",
+          "status": 200,
+          "success": true,
+          "timestamp": "2026-08-26T00:00:00.000Z"
+        },
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "matchingRules": {
+          "body": {
+            "$": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type",
+                  "min": 1
+                }
+              ]
+            },
+            "$.data[*]": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data[*].createdAt": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data[*].description": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data[*].idxno": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data[*].isActive": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data[*].locations": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type",
+                  "min": 1
+                }
+              ]
+            },
+            "$.data[*].locations[*]": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data[*].locations[*].createdAt": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data[*].locations[*].idxno": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data[*].locations[*].isActive": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data[*].locations[*].latitude": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data[*].locations[*].longitude": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data[*].locations[*].name": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data[*].locations[*].regionIdxno": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data[*].locations[*].regionName": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data[*].locations[*].stations": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type",
+                  "min": 1
+                }
+              ]
+            },
+            "$.data[*].locations[*].stations[*]": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data[*].locations[*].stations[*].backhaulType": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data[*].locations[*].stations[*].createdAt": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data[*].locations[*].stations[*].idxno": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data[*].locations[*].stations[*].isActive": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data[*].locations[*].stations[*].locationIdxno": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data[*].locations[*].stations[*].locationName": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data[*].locations[*].stations[*].name": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data[*].locations[*].stations[*].powerType": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data[*].name": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data[*].regionCode": {
               "combine": "AND",
               "matchers": [
                 {

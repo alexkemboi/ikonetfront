@@ -26,7 +26,7 @@ export const adminNavGroups: NavGroup[] = [
       { href: "/network/stations",  label: "Stations/POPs", icon: "database" },
       { href: "/network/routers",  label: "Routers (Edge)", icon: "server" },
       { href: "/network/routers", label: "Router Monitoring", icon: "activity" },
-      { href: "/network/routers/setup", label: "Link MikroTik", icon: "router" },
+      { href: "/network/routers/onboard", label: "Link MikroTik", icon: "router" },
       { href: "/network/equipment", label: "Equipment", icon: "package" },
       { href: "/network/ip-pools", label: "IP Pools", icon: "database" },
       { href: "/network/ip-mappings", label: "IP Mappings", icon: "network" },

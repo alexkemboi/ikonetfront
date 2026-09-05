@@ -1,5 +1,5 @@
 import { http, HttpResponse } from "msw";
-import { API_PREFIX, requireAuth } from "./auth-guard";
+import { API_PREFIX, ADMIN_ROLES, requireAuth } from "./auth-guard";
 import { customerDeviceFixture, ipMappingsPageFixture } from "@/contracts/catalog";
 
 export const sessionHandlers = [
@@ -12,7 +12,7 @@ export const sessionHandlers = [
 
   // Bearer (SYSADMIN/ADMIN/01) — Page envelope, NOT a bare array.
   http.get(`${API_PREFIX}/network/ip-mappings`, (info) => {
-    const forbidden = requireAuth(info.request);
+    const forbidden = requireAuth(info.request, ADMIN_ROLES);
     if (forbidden) return forbidden;
     return HttpResponse.json(ipMappingsPageFixture(), { status: 200 });
   }),

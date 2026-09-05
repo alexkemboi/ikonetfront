@@ -191,13 +191,22 @@ export async function generateZtpScript(
     }
   }
 
-  const mintedToken = token ? (await createBootstrapToken({ identity, routerName: identity }))?.token : null;
-  const rawToken = mintedToken || buildLocalToken(JSON.stringify({ routerId, identity }));
+  if (!token) {
+    throw new Error("Not authenticated. One-time setup requires a signed-in session with a backend API token.");
+  }
+
+  const mintedToken = (await createBootstrapToken({ identity, routerName: identity }))?.token;
+  if (!mintedToken) {
+    // Fail loudly instead of silently producing a client-side fake token that
+    // points at the unmapped legacy /network/provisioning/{token} route.
+    throw new Error("Failed to mint ZTP bootstrap token from the backend provisioning controller.");
+  }
+
   return {
     routerId: routerId || "0",
     identity,
-    token: rawToken,
-    fetchCommand: buildFetchCommand(rawToken),
+    token: mintedToken,
+    fetchCommand: buildFetchCommand(mintedToken),
     deviceModeRequired: true,
   };
 }
@@ -270,10 +279,6 @@ export async function finalizeZtpServices(
   }
   revalidatePath("/network/routers");
   return { success: true, message: "Router successfully provisioned and linked to IBS control plane." };
-}
-
-function buildLocalToken(identity: string): string {
-  return btoa(JSON.stringify({ identity, timestamp: Date.now() }));
 }
 
 function buildFetchCommand(token: string): string {

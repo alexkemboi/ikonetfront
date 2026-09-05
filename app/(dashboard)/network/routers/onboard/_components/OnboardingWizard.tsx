@@ -11,7 +11,8 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
-import { Cpu, Server, MapPin, Settings, CheckCircle2, ChevronRight, ChevronLeft, ShieldCheck, Loader2 } from "lucide-react";
+import { Cpu, Server, MapPin, Settings, CheckCircle2, ChevronRight, ChevronLeft, ShieldCheck, Loader2, AlertTriangle, Plus } from "lucide-react";
+import Link from "next/link";
 
 interface OnboardingWizardProps {
  regionsTree: RegionResponse[];
@@ -268,11 +269,31 @@ export function OnboardingWizard({ regionsTree }: OnboardingWizardProps) {
  <p className="text-sm text-muted-foreground">Assign this router to a physical geographic Point of Presence (POP).</p>
  </div>
 
+ {!hasRegions && (
+ <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-5">
+ <div className="flex items-start gap-3">
+ <AlertTriangle className="h-5 w-5 text-amber-400 shrink-0 mt-0.5" />
+ <div className="space-y-1">
+ <h4 className="font-semibold text-sm">No ISP Station POPs configured</h4>
+ <p className="text-xs text-muted-foreground leading-relaxed">
+ A MikroTik router must be assigned to an active Station POP for billing and revenue attribution. Create a Region → Location → Station before onboarding a router.
+ </p>
+ <Link
+ href="/network/stations"
+ className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-semibold text-black hover:bg-amber-400 transition"
+ >
+ <Plus className="h-3.5 w-3.5" /> Create Station POP
+ </Link>
+ </div>
+ </div>
+ </div>
+ )}
+
  <div className="space-y-2">
  <Label htmlFor="regionIdxno">Geographic Region</Label>
  <Field as="select" id="regionIdxno" name="regionIdxno" disabled={!hasRegions} className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
  <option value="">
- {hasRegions ? "Select Region..." : "No regions available — create one first"}
+ {hasRegions ? "Select Region..." : "No stations available — create a Region → Location → Station first"}
  </option>
  {regionsTree.map(r => <option key={r.idxno} value={r.idxno}>{r.name}</option>)}
  </Field>

@@ -12,6 +12,7 @@ import {
   getRouterMonitoringLatest,
   getIpPools,
   createIpMappingAction,
+  getRegions,
 } from "@/actions/network";
 import { getMikrotikDeviceStatus } from "@/actions/mikrotik";
 import { revalidateTag } from "next/cache";
@@ -74,6 +75,20 @@ describe("IP pools", () => {
     expect(names).toContain("pppoe-pool-residential");
     expect(names).toContain("wireguard-tunnel-pool");
     expect(pools.every((p) => p.serviceType)).toBe(true);
+  });
+});
+
+describe("regions tree (onboarding topology precondition)", () => {
+  it("GET /network/regions?tree=true resolves the cascading Region → Location → Station tree", async () => {
+    const regions = await getRegions(true);
+    expect(regions.length).toBeGreaterThan(0);
+    const coast = regions.find((r) => r.regionCode === "REG-KE-COAST");
+    expect(coast?.name).toBe("Coast Region");
+    expect(coast?.locations?.[0]?.name).toBe("Mombasa Central");
+    // Trap-2 coverage: Station idxno 1 = Mombasa Station 01 must be reachable,
+    // fixing the silent Step-3 stall in mock-driven runs.
+    expect(coast?.locations?.[0]?.stations?.[0]?.idxno).toBe(1);
+    expect(coast?.locations?.[0]?.stations?.[0]?.name).toBe("Mombasa Station 01");
   });
 });
 
