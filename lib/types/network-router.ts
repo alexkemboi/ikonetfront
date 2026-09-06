@@ -5,11 +5,18 @@ export type RouterNodeStatus = "ACTIVE" | "PASSIVE" | "UNREGISTERED" | "OFFLINE"
 export type RouterAction =
   | "REBOOT"
   | "RESET"
-  | "DISCONNECT"
   | "ENABLE"
   | "DISABLE"
+  | "DISCONNECT"
+  | "RECONNECT"
+  | "PING"
   | "REFRESH"
-  | "PING";
+  | "HEALTH_CHECK"
+  | "START_DISCOVERY"
+  | "STOP_DISCOVERY"
+  | "BACKUP_CONFIG"
+  | "RESTORE_CONFIG"
+  | "UPDATE_FIRMWARE";
 
 // Topology tree node — recursive
 export interface TopologyNode {
@@ -53,14 +60,20 @@ export interface RouterConfigRequest {
 
 export interface RouterActionRequest {
   action: RouterAction;
-  notes: string;
+  notes?: string;
 }
 
+/** Mirrors the backend `RouterActionResponse` (`PATCH /api/v1/network-routers/{id}/action`). */
 export interface RouterActionResponse {
-  action: RouterAction;
-  success: boolean;
+  routerId: number;
+  routerName: string;
+  ipAddress: string;
+  action: string;
+  nodeStatus: string;
+  executionStatus: string;
   message: string;
-  output?: string;
+  error?: string;
+  timestamp: string;
 }
 
 export type ApiResponse<T> = BaseApiResponse<T> & { error?: unknown };

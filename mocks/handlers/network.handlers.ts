@@ -11,6 +11,7 @@ import {
   routerLiveStreamFixture,
   deviceStatusFixture,
   ipPoolsFixture,
+  routerActionFixture,
 } from "@/contracts/catalog";
 
 export const networkHandlers = [
@@ -86,5 +87,15 @@ export const networkHandlers = [
     const forbidden = requireAuth(info.request, ADMIN_ROLES);
     if (forbidden) return forbidden;
     return HttpResponse.json(ipPoolsFixture(), { status: 200 });
+  }),
+
+  http.patch(`${API_PREFIX}/network-routers/:id/action`, async (info) => {
+    const forbidden = requireAuth(info.request, ADMIN_ROLES);
+    if (forbidden) return forbidden;
+    const body = (await info.request.json().catch(() => ({}))) as { action?: string };
+    return HttpResponse.json(
+      routerActionFixture({ action: body.action ?? "REFRESH" }),
+      { status: 200 }
+    );
   }),
 ];
