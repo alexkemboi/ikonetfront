@@ -23,6 +23,7 @@ export function OnboardingWizard({ regionsTree }: OnboardingWizardProps) {
   const [step, setStep] = useState(1);
   const [hardwareProfile, setHardwareProfile] = useState<RouterValidationResponse | null>(null);
   const [isVerifying, setIsVerifying] = useState(false);
+  const [isOnboarding, setIsOnboarding] = useState(false);
   const [filteredLocations, setFilteredLocations] = useState<LocationResponse[]>([]);
   const [filteredStations, setFilteredStations] = useState<StationResponse[]>([]);
 
@@ -70,31 +71,43 @@ export function OnboardingWizard({ regionsTree }: OnboardingWizardProps) {
  }
  };
 
- const handleOnboard = async () => {
- try {
- const payload: RouterOnboardRequest = {
- ipAddress: wizardData.ipAddress,
- port: Number(wizardData.port),
- username: wizardData.username,
- password: wizardData.password,
- stationIdxno: Number(wizardData.stationIdxno),
- routerRole: wizardData.routerRole,
- pppoeEnabled: wizardData.pppoeEnabled,
- hotspotEnabled: wizardData.hotspotEnabled,
- monitoringEnabled: wizardData.monitoringEnabled,
- };
+const handleOnboard = async () => {
+    // Busy-lock: prevent duplicate router allocation/onboarding POSTs when an
+    // operator double-clicks during server-action latency.
+    if (isOnboarding) return;
 
- const res = await onboardRouter(payload);
- if (res.success) {
- toast.success("Router onboarded and linked successfully!");
- router.push("/network/stations");
- } else {
- toast.error(res.message || "Onboarding failed.");
- }
-} catch {
-  toast.error("Unexpected failure saving profile.");
-  }
- };
+    setIsOnboarding(true);
+    try {
+      const payload: RouterOnboardRequest = {
+        ipAddress: wizardData.ipAddress.trim(),
+        port: Number(wizardData.port) || 8728,
+        username: wizardData.username.trim(),
+        password: wizardData.password,
+        stationIdxno: Number(wizardData.stationIdxno),
+        routerRole: wizardData.routerRole,
+        pppoeEnabled: Boolean(wizardData.pppoeEnabled),
+        hotspotEnabled: Boolean(wizardData.hotspotEnabled),
+        monitoringEnabled: Boolean(wizardData.monitoringEnabled),
+      };
+
+      const res = await onboardRouter(payload);
+      if (res.success) {
+        toast.success("Router onboarded and linked successfully!");
+        router.push("/network/stations");
+      } else {
+        // Surfaces server-action errors, including the apiFetch token
+        // short-circuit (401 returned without any backend dispatch).
+        toast.error(res.message || "Failed to onboard router. Please verify your session.");
+        if (res.status === 401) {
+          toast.error("Session expired. Please sign out and sign back in.");
+        }
+      }
+    } catch {
+      toast.error("Unexpected failure saving profile.");
+    } finally {
+      setIsOnboarding(false);
+    }
+  };
 
  return (
  <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -436,12 +449,25 @@ export function OnboardingWizard({ regionsTree }: OnboardingWizardProps) {
  <div><span className="text-muted-foreground block text-xs">Hotspot Captive Portal</span> {wizardData.hotspotEnabled ? "Yes" : "No"}</div>
  </div>
 
- <div className="flex justify-between pt-4">
- <Button variant="outline" onClick={() => setStep(4)}><ChevronLeft className="h-4 w-4" /> Back</Button>
- <Button onClick={handleOnboard} className="flex items-center gap-2">
- <CheckCircle2 className="h-4 w-4" /> Complete Onboarding
- </Button>
- </div>
+<div className="flex justify-between pt-4">
+  <Button variant="outline" onClick={() => setStep(4)}><ChevronLeft className="h-4 w-4" /> Back</Button>
+  <Button
+  type="button"
+  onClick={handleOnboard}
+  disabled={isOnboarding}
+  className="flex items-center gap-2"
+  >
+  {isOnboarding ? (
+  <>
+  <Loader2 className="h-4 w-4 animate-spin" /> Onboarding Router...
+  </>
+  ) : (
+  <>
+  <CheckCircle2 className="h-4 w-4" /> Complete Onboarding
+  </>
+  )}
+  </Button>
+  </div>
  </div>
  )}
 
