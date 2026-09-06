@@ -340,6 +340,41 @@ export function regionsTreeFixture(): ApiResponse<RegionResponse[]> {
   );
 }
 
+/** `PATCH /api/v1/network-routers/{id}/action` response — mirrors backend `RouterActionResponse`. */
+export function routerActionFixture(request: {
+  action?: string;
+  routerId?: number;
+  routerName?: string;
+  ipAddress?: string;
+  nodeStatus?: string;
+  executionStatus?: "SUCCESS" | "FAILED";
+  message?: string;
+}): ApiResponse<{
+  routerId: number;
+  routerName: string;
+  ipAddress: string;
+  action: string;
+  nodeStatus: string;
+  executionStatus: string;
+  message: string;
+  error?: string;
+  timestamp: string;
+}> {
+  return envelope(
+    {
+      routerId: request.routerId ?? 1,
+      routerName: request.routerName ?? "RTR-BDK-MSA-001",
+      ipAddress: request.ipAddress ?? "10.8.1.10",
+      action: request.action ?? "REFRESH",
+      nodeStatus: request.nodeStatus ?? "ONLINE",
+      executionStatus: request.executionStatus ?? "SUCCESS",
+      message: request.message ?? "Router action executed successfully",
+      timestamp: new Date().toISOString(),
+    },
+    "Router action executed successfully"
+  );
+}
+
 export function validateConnectivityFixture(): ApiResponse<RouterValidationResponse> {
   return envelope(
     {
