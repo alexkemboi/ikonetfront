@@ -12,6 +12,7 @@ import {
 import { getMikrotikDevices, getMikrotikDeviceStatus } from "@/actions/mikrotik";
 import { getRouterMonitoringLatest, getRouters } from "@/actions/network";
 import type { RouterHealthSnapshot, RouterResponse } from "@/lib/types/network";
+import { isRouterOnline } from "@/lib/utils/router-status";
 import { getPermissionForRoute } from "@/lib/data/nav";
 
 const FALLBACK_NAS_KPIS: NasRouterKpis = {
@@ -72,6 +73,7 @@ function mapDeviceToNasRouter(device: {
     name: device.name,
     model: device.deviceType ?? "—",
     status: device.online ? "ONLINE" : "OFFLINE",
+    online: device.online ?? false,
     activeSessions: 0,
     winboxTunnelAddress: `winbox.centipidbilling.com:${20000 + device.id}`,
     managementIp: device.ipAddress ?? "—",
@@ -88,8 +90,27 @@ function mapDeviceToNasRouter(device: {
 /** Merge the latest RouterHealthSnapshot into a NAS row (best-effort, non-fatal). */
 function enrichWithLatestSnapshot(row: NasRouterItem, snapshot: RouterHealthSnapshot | null): NasRouterItem {
   if (!snapshot) return row;
+  // A fresh telemetry snapshot is authoritative proof the router is reachable —
+  // the device.online flag (set by the ARP discovery scheduler) can lag behind
+  // the telemetry worker, which is what caused "live RAM/uptime next to an
+  // Offline badge". Elevate status when the snapshot is recent (< 5 min old).
+  let status = row.status;
+  let snapshotAt = null;
+  try {
+    const ts = new Date(snapshot.createdAt ?? snapshot.idxno).getTime();
+    if (Number.isFinite(ts)) {
+      snapshotAt = new Date(ts).toISOString();
+      if (Date.now() - ts < 5 * 60 * 1000) {
+        status = "ONLINE";
+      }
+    }
+  } catch {
+    // unparseable timestamp — keep the device-row derived status
+  }
   return {
     ...row,
+    status,
+    snapshotAt,
     cpuUsage: snapshot.cpuUsage ?? row.cpuUsage,
     freeMemory: snapshot.freeMemory ?? row.freeMemory,
     totalMemory: snapshot.totalMemory ?? row.totalMemory,
@@ -100,7 +121,7 @@ function enrichWithLatestSnapshot(row: NasRouterItem, snapshot: RouterHealthSnap
 }
 
 function deriveNasKpis(routers: NasRouterItem[]): NasRouterKpis {
-  const online = routers.filter((r) => r.status === "ONLINE").length;
+  const online = routers.filter(isRouterOnline).length;
   const live = routers.reduce((sum, r) => sum + r.activeSessions, 0);
   return {
     totalRoutersCount: routers.length,
