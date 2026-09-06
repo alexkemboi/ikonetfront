@@ -18,8 +18,10 @@ import { RouterTelemetryDrawer } from "./RouterTelemetryDrawer";
 import type { RouterAction } from "@/lib/types/network-router";
 
 export interface RouterActionsRow {
-  /** Router/device id (numeric where onboarded). */
+  /** network_device.id (string) — used for interfaces + delete. */
   id: string;
+  /** network_routers.idxno — used for telemetry + remote actions. */
+  routerId?: number;
   name: string;
   model?: string;
   status?: string;
@@ -63,7 +65,8 @@ export function RouterActionsDropdown({
   const menuRef = useRef<HTMLDivElement>(null);
   const didClampRef = useRef(false);
 
-  const numericId = Number(router.id);
+  const deviceId = Number(router.id);
+  const actionRouterId = Number(router.routerId) || Number(router.id);
   const winboxHref = router.winboxTunnelAddress
     ? `http://${router.winboxTunnelAddress}`
     : router.managementIp
@@ -155,14 +158,14 @@ export function RouterActionsDropdown({
   };
 
   const runAction = async (action: RouterAction) => {
-    if (!Number.isFinite(numericId) || numericId <= 0) {
+    if (!Number.isFinite(actionRouterId) || actionRouterId <= 0) {
       toast.error("This row is a local placeholder — no backend router id to act on.");
       closeMenu();
       return;
     }
     setBusyAction(action);
     try {
-      const res = await executeRouterAction(numericId, { action });
+      const res = await executeRouterAction(actionRouterId, { action });
       if (res.success && res.data) {
         toast[res.data.executionStatus === "FAILED" ? "error" : "success"](
           res.data.message || `${action} executed on ${router.name}`
@@ -191,7 +194,7 @@ export function RouterActionsDropdown({
   };
 
   const handleDelete = async () => {
-    if (!Number.isFinite(numericId) || numericId <= 0) {
+    if (!Number.isFinite(deviceId) || deviceId <= 0) {
       toast.error("This row is a local placeholder — no backend device id to delete.");
       closeMenu();
       return;
@@ -207,7 +210,7 @@ export function RouterActionsDropdown({
 
     setBusyAction("DELETE");
     try {
-      const res = await deleteNetworkDevice(numericId);
+      const res = await deleteNetworkDevice(deviceId);
       if (res.success) {
         toast.success(res.message || `${router.name} deleted successfully.`);
         closeMenu();
