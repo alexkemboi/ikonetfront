@@ -24,8 +24,10 @@ import type { MikrotikInterface } from "@/lib/types/mikrotik";
 type Tab = "vitals" | "interfaces" | "sessions";
 
 interface TelemetryRouter {
-  /** String id as stored in the NAS table (numeric device id as a string in the live path). */
+  /** network_device.id — used for the interfaces fetch. */
   id: string | number;
+  /** network_routers.idxno — used for the telemetry latest/live fetch. */
+  routerId?: number;
   name: string;
   managementIp?: string;
   vpnIp?: string;
@@ -58,8 +60,10 @@ export function RouterTelemetryDrawer({
   const [interfaces, setInterfaces] = useState<MikrotikInterface[]>([]);
   const [loadingInterfaces, setLoadingInterfaces] = useState(false);
 
-  const numericId = Number(router.id);
-  const hasNumericRouter = Number.isFinite(numericId) && numericId > 0;
+  const deviceId = Number(router.id);
+  const telemetryRouterId = Number(router.routerId) || deviceId;
+  const hasNumericDevice = Number.isFinite(deviceId) && deviceId > 0;
+  const hasNumericRouter = Number.isFinite(telemetryRouterId) && telemetryRouterId > 0;
 
   // ── Live telemetry: SSE via the same-origin relay, fall back to /latest polling ──
   useEffect(() => {
@@ -86,7 +90,7 @@ export function RouterTelemetryDrawer({
       if (cancelled || inFlight) return;
       inFlight = true;
       try {
-        const snap = await getRouterMonitoringLatest(numericId);
+        const snap = await getRouterMonitoringLatest(telemetryRouterId);
         if (!cancelled) {
           if (snap) {
             apply(snap);
@@ -132,7 +136,7 @@ export function RouterTelemetryDrawer({
       }
       setMode("streaming");
       stopTimers();
-      source = new EventSource(`/api/monitoring/router/${numericId}/live`);
+      source = new EventSource(`/api/monitoring/router/${telemetryRouterId}/live`);
 
       connectTimer = setTimeout(() => {
         if (source && source.readyState === EventSource.CONNECTING) {
@@ -159,19 +163,19 @@ export function RouterTelemetryDrawer({
       source?.close();
       stopTimers();
     };
-  }, [hasNumericRouter, numericId]);
+  }, [hasNumericRouter, telemetryRouterId]);
 
   // ── Interfaces (fetched on demand; refresh button re-fetches) ──
   const loadInterfaces = useCallback(async () => {
-    if (!hasNumericRouter) return;
+    if (!hasNumericDevice) return;
     setLoadingInterfaces(true);
     try {
-      const rows = await getNetworkDeviceInterfaces(numericId);
+      const rows = await getNetworkDeviceInterfaces(deviceId);
       setInterfaces(rows as unknown as MikrotikInterface[]);
     } finally {
       setLoadingInterfaces(false);
     }
-  }, [hasNumericRouter, numericId]);
+  }, [hasNumericDevice, deviceId]);
 
   useEffect(() => {
     if (tab === "interfaces") loadInterfaces();
@@ -338,11 +342,11 @@ export function RouterTelemetryDrawer({
             </div>
           )}
 
-          {hasNumericRouter && tab === "interfaces" && (
+          {hasNumericDevice && tab === "interfaces" && (
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <p className="text-xs text-muted-foreground font-medium">
-                  Interfaces on device#{numericId}
+                  Interfaces on device#{deviceId}
                 </p>
                 <button
                   onClick={loadInterfaces}

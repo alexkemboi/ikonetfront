@@ -10,8 +10,8 @@ import {
   RouterServicesConfigRequest,
 } from "@/lib/types/provisioning";
 import { getMikrotikDevices, getMikrotikDeviceStatus } from "@/actions/mikrotik";
-import { getRouterMonitoringLatest } from "@/actions/network";
-import type { RouterHealthSnapshot } from "@/lib/types/network";
+import { getRouterMonitoringLatest, getRouters } from "@/actions/network";
+import type { RouterHealthSnapshot, RouterResponse } from "@/lib/types/network";
 import { getPermissionForRoute } from "@/lib/data/nav";
 
 const FALLBACK_NAS_KPIS: NasRouterKpis = {
@@ -24,21 +24,21 @@ const FALLBACK_NAS_KPIS: NasRouterKpis = {
 const FALLBACK_NAS_ROUTERS: NasRouterItem[] = [
   {
     id: "rtr-1",
-    name: "Adrinold Ukunda",
+    name: "Beedak LKN",
     model: "RouterOS RB5009UG+S+",
     status: "ONLINE",
     activeSessions: 18,
-    winboxTunnelAddress: "winbox.centipidbilling.com:54910",
+    winboxTunnelAddress: "winbox.beesmartbedak.com:54910",
     managementIp: "10.9.189.88",
     lastOnlineText: "Jul 20, 03:34 AM",
   },
   {
     id: "rtr-2",
-    name: "ADRNOLDNETWORKS",
+    name: "Beedak Consolata",
     model: "RouterOS RB5009UG+S+",
     status: "ONLINE",
     activeSessions: 32,
-    winboxTunnelAddress: "winbox.centipidbilling.com:56021",
+    winboxTunnelAddress: "winbox.beesmartbedak.com:56021",
     managementIp: "10.9.86.246",
     lastOnlineText: "Jul 17, 09:44 AM",
   },
@@ -62,11 +62,13 @@ function mapDeviceToNasRouter(device: {
   ipAddress?: string;
   uptime?: string | null;
   cpuLoad?: string | null;
-}): NasRouterItem {
+}, routerIdxno?: number): NasRouterItem {
   return {
     // id/name/status/managementIp from the real network-devices row;
     // activeSessions/winboxTunnel=address/lastOnline=uptime are synthesized placeholders
     id: String(device.id),
+    deviceId: device.id,
+    routerId: routerIdxno,
     name: device.name,
     model: device.deviceType ?? "—",
     status: device.online ? "ONLINE" : "OFFLINE",
@@ -118,14 +120,30 @@ export async function getNasRoutersData(): Promise<{
       return { kpis: FALLBACK_NAS_KPIS, routers: FALLBACK_NAS_ROUTERS };
     }
 
+    // Join network_device → network_routers by IP address. The telemetry and
+    // router-action endpoints key off `network_routers.idxno`, while the list
+    // itself comes from `network_device`. Threading both ids lets the UI send
+    // the right one per call (routerId for monitoring/actions, deviceId for
+    // interfaces/delete).
+    const inventory = await getRouters().catch(() => [] as RouterResponse[]);
+    const routerByIp = new Map<string, number>();
+    for (const r of inventory) {
+      if (r.ipAddress) routerByIp.set(r.ipAddress.toLowerCase(), r.id);
+    }
+
     // Enrich each row with the live RouterHealthSnapshot (CPU %, memory bytes,
     // active PPPoE+Hotspot sessions) so the table shows operational telemetry
     // at a glance. Best-effort: a failed snapshot simply leaves placeholders.
     const routers = await Promise.all(
       res.data.map(async (device) => {
-        const base = mapDeviceToNasRouter(device);
+        const routerIdxno = device.ipAddress
+          ? routerByIp.get(device.ipAddress.toLowerCase())
+          : undefined;
+        const base = mapDeviceToNasRouter(device, routerIdxno);
         if (!device.id || device.id <= 0) return base;
-        const snapshot = await getRouterMonitoringLatest(device.id).catch(() => null);
+        // Telemetry snapshots store routerId = network_routers.idxno.
+        const snapshotRouterId = routerIdxno ?? device.id;
+        const snapshot = await getRouterMonitoringLatest(snapshotRouterId).catch(() => null);
         return enrichWithLatestSnapshot(base, snapshot);
       })
     );

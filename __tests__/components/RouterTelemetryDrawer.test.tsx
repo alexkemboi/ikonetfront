@@ -106,4 +106,26 @@ describe("RouterTelemetryDrawer", () => {
     await user.click(screen.getByRole("button", { name: /close telemetry drawer/i }));
     expect(onClose).toHaveBeenCalled();
   });
+
+  it("uses routerId (network_routers.idxno) for telemetry and device id for interfaces", async () => {
+    const splitRouter = { ...router, id: "99", routerId: 7 };
+    mockInterfaces.mockResolvedValue([]);
+    const user = userEvent.setup();
+
+    render(
+      <RouterTelemetryDrawer router={splitRouter} defaultTab="vitals" onClose={() => {}} />
+    );
+
+    // Telemetry /latest must be polled against the router idxno (7), not the device id (99).
+    await waitFor(() => {
+      expect(mockLatest).toHaveBeenCalledWith(7);
+    });
+    expect(mockLatest).not.toHaveBeenCalledWith(99);
+
+    // Interfaces must hit the device id (99).
+    await user.click(screen.getByRole("tab", { name: /interfaces/i }));
+    await waitFor(() => {
+      expect(mockInterfaces).toHaveBeenCalledWith(99);
+    });
+  });
 });

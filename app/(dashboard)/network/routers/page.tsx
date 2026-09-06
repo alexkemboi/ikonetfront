@@ -173,6 +173,7 @@ export default async function NasRoutersPage() {
   <RouterActionsDropdown
   router={{
   id: r.id,
+  routerId: r.routerId,
   name: r.name,
   model: r.model,
   status: r.status,
