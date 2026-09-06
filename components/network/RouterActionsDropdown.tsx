@@ -48,10 +48,8 @@ const MENU_WIDTH = 232; // px; keeps right-edge alignment consistent
  */
 export function RouterActionsDropdown({
   router,
-  onRouterDeleted,
 }: {
   router: RouterActionsRow;
-  onRouterDeleted?: () => void | Promise<void>;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [coords, setCoords] = useState<{ top: number; left: number } | null>(null);
@@ -186,7 +184,9 @@ export function RouterActionsDropdown({
         toast.success(res.message || `${router.name} deleted successfully.`);
         closeMenu();
         setDrawerTab(null);
-        await onRouterDeleted?.();
+        // The routers page is a force-dynamic Server Component — a full
+        // refresh re-fetches the inventory (no client callback needed).
+        window.setTimeout(() => window.location.reload(), 450);
       } else {
         toast.error(res.message || `Failed to delete ${router.name}.`);
         closeMenu();
