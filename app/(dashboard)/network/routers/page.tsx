@@ -179,10 +179,6 @@ export default async function NasRoutersPage() {
   managementIp: r.managementIp,
   winboxTunnelAddress: r.winboxTunnelAddress,
   }}
-  onRouterDeleted={() => {
-  // force-dynamic RSC page — a full refresh re-fetches inventory.
-  window.location.reload();
-  }}
   />
   </td>
   </tr>

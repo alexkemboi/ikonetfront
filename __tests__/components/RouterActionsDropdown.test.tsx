@@ -162,21 +162,19 @@ describe("RouterActionsDropdown", () => {
     expect(mockExecute).not.toHaveBeenCalled();
   });
 
-  it("deletes the router after confirmation and calls onRouterDeleted", async () => {
-    const onDeleted = vi.fn();
+  it("deletes the router after confirmation", async () => {
     const user = userEvent.setup();
     vi.spyOn(window, "confirm").mockReturnValue(true);
 
-    render(
-      <RouterActionsDropdown router={router} onRouterDeleted={onDeleted} />
-    );
+    render(<RouterActionsDropdown router={router} />);
 
     await user.click(screen.getByRole("button", { name: /router actions/i }));
     await user.click(screen.getByText("Delete Router"));
 
+    // The delete runs the server action; the follow-up reload is scheduled via
+    // setTimeout (450ms) so it's not asserted synchronously — delete success is.
     await waitFor(() => {
       expect(mockDelete).toHaveBeenCalledWith(1);
-      expect(onDeleted).toHaveBeenCalled();
     });
     vi.restoreAllMocks();
   });
