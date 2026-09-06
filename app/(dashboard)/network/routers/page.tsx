@@ -104,64 +104,95 @@ export default async function NasRoutersPage() {
  </div>
  </div>
 
- <div className="mt-4 overflow-x-auto">
- <table className="w-full text-left text-xs">
- <thead>
- <tr className="border-b border-border text-[11px] font-mono tracking-wider text-muted-foreground uppercase">
- <th className="py-3 px-3">ROUTER</th>
- <th className="py-3 px-3">STATUS</th>
- <th className="py-3 px-3">SESSIONS</th>
- <th className="py-3 px-3">WINBOX</th>
- <th className="py-3 px-3">LAST ONLINE</th>
- <th className="py-3 px-3 text-right" />
- </tr>
- </thead>
- <tbody className="divide-y divide-zinc-800/50 font-mono">
- {routers.map((r) => (
- <tr key={r.id} className="hover:bg-zinc-800/30 transition">
- <td className="py-3.5 px-3 font-sans">
- <div className="font-semibold text-foreground">{r.name}</div>
- <div className="text-[11px] text-muted-foreground font-mono">{r.model}</div>
- </td>
- <td className="py-3.5 px-3">
- <span className="inline-flex items-center rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-[11px] font-medium text-emerald-400">
- {r.status === "ONLINE" ? "Online" : "Offline"}
- </span>
- </td>
- <td className="py-3.5 px-3 text-foreground font-bold">{r.activeSessions}</td>
- <td className="py-3.5 px-3">
- {r.winboxTunnelAddress ? (
- <a
- href={`#`}
- className="inline-flex items-center gap-1 text-teal-400 hover:underline"
- >
- {r.winboxTunnelAddress}
- <ExternalLink className="h-3 w-3" />
- </a>
- ) : (
- "—"
- )}
- </td>
- <td className="py-3.5 px-3 text-muted-foreground">{r.lastOnlineText}</td>
-<td className="py-3.5 px-3 text-right">
+<div className="mt-4 overflow-x-auto rounded-2xl border border-border">
+  <table className="w-full text-left text-xs">
+  <thead className="border-b border-border bg-muted/40">
+  <tr className="text-[11px] font-mono tracking-wider text-muted-foreground uppercase">
+  <th className="py-4 px-6 font-semibold">Router / Model</th>
+  <th className="py-4 px-6 font-semibold">IP (Tunnel)</th>
+  <th className="py-4 px-6 font-semibold">Status</th>
+  <th className="py-4 px-6 font-semibold">CPU Load</th>
+  <th className="py-4 px-6 font-semibold">RAM Usage</th>
+  <th className="py-4 px-6 font-semibold">Sessions</th>
+  <th className="py-4 px-6 font-semibold">Uptime</th>
+  <th className="py-4 px-6 font-semibold text-right">Actions</th>
+  </tr>
+  </thead>
+  <tbody className="divide-y divide-border font-mono">
+  {routers.map((r) => {
+  const cpu = Number.isFinite(Number(r.cpuUsage)) ? Number(r.cpuUsage) : null;
+  const freeMemMB = r.freeMemory ? Math.round(r.freeMemory / (1024 * 1024)) : null;
+  return (
+  <tr key={r.id} className="hover:bg-zinc-800/30 transition">
+  <td className="py-4 px-6 font-sans">
+  <div className="font-semibold text-foreground">{r.name}</div>
+  <div className="text-[11px] text-muted-foreground font-mono">{r.model}</div>
+  </td>
+  <td className="py-4 px-6">
+  <span className="text-foreground font-mono text-xs">{r.managementIp}</span>
+  {r.winboxTunnelAddress ? (
+  <div className="text-[11px] text-teal-400/80 font-mono mt-0.5">{r.winboxTunnelAddress}</div>
+  ) : null}
+  </td>
+  <td className="py-4 px-6">
+  {r.status === "ONLINE" ? (
+  <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-[11px] font-medium text-emerald-400">
+  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+  Online
+  </span>
+  ) : (
+  <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground">
+  <span className="w-1.5 h-1.5 rounded-full bg-gray-500" />
+  Offline
+  </span>
+  )}
+  </td>
+  <td className="py-4 px-6">
+  {cpu != null ? (
+  <div className="flex items-center gap-2">
+  <span className="text-xs font-mono text-foreground">{cpu}%</span>
+  <div className="w-16 bg-muted h-1.5 rounded-full overflow-hidden">
+  <div
+  className="bg-emerald-500 h-full transition-all"
+  style={{ width: `${Math.min(Math.max(cpu, 4), 100)}%` }}
+  />
+  </div>
+  </div>
+  ) : (
+  <span className="text-muted-foreground">—</span>
+  )}
+  </td>
+  <td className="py-4 px-6 text-xs font-mono text-foreground">
+  {freeMemMB != null ? `${freeMemMB} MB free` : "—"}
+  </td>
+  <td className="py-4 px-6 font-mono font-bold text-foreground">{r.activeSessions}</td>
+  <td className="py-4 px-6 text-xs text-muted-foreground font-mono">
+  {r.uptime || r.lastOnlineText || "—"}
+  </td>
+  <td className="py-4 px-6 text-right">
   <RouterActionsDropdown
-    router={{
-      id: r.id,
-      name: r.name,
-      model: r.model,
-      status: r.status,
-      managementIp: r.managementIp,
-      winboxTunnelAddress: r.winboxTunnelAddress,
-    }}
+  router={{
+  id: r.id,
+  name: r.name,
+  model: r.model,
+  status: r.status,
+  managementIp: r.managementIp,
+  winboxTunnelAddress: r.winboxTunnelAddress,
+  }}
+  onRouterDeleted={() => {
+  // force-dynamic RSC page — a full refresh re-fetches inventory.
+  window.location.reload();
+  }}
   />
   </td>
- </tr>
- ))}
- </tbody>
- </table>
- </div>
- </div>
- </div>
- </div>
- );
+  </tr>
+  );
+  })}
+  </tbody>
+  </table>
+  </div>
+  </div>
+  </div>
+  </div>
+  );
 }

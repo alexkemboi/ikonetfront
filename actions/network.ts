@@ -775,6 +775,59 @@ export const getNetworkDeviceInterfaces = async (
   }
 };
 
+/**
+ * Delete a network device (the authoritative `network_device` row).
+ *
+ * Contract (verified 2026-09-06): `DELETE /api/v1/network-devices/{id}`.
+ * The backend refuses hard-delete when hotspot sessions or PPPoE accounts are
+ * still homed on the router (returns 409 with a preserved-audit message),
+ * and recommends `PUT /network-devices/{id}/deactivate` instead. The returned
+ * `message` is surfaced verbatim so operators know why a delete can fail.
+ */
+export const deleteNetworkDevice = async (
+  id: number
+): Promise<AuthApiResponse<{ id: number; name: string; ipAddress: string }>> => {
+  try {
+    const response = await fetch(buildApiUrl(`/network-devices/${id}`), {
+      method: "DELETE",
+      headers: await getAuthHeaders(),
+    });
+    const data = (await response.json().catch(() => ({}))) as ApiResponse<unknown>;
+
+    if (!response.ok) {
+      return {
+        success: false,
+        message:
+          data.message ||
+          `Failed to delete network device (HTTP ${response.status}).`,
+        data: null,
+        status: response.status,
+        timestamp: new Date().toISOString(),
+      };
+    }
+
+    revalidateTag("mikrotik-devices", "max");
+    revalidateTag("network:regions", "max");
+    revalidateTag("network:routers", "max");
+    return {
+      success: true,
+      message: data.message || "Network device deleted successfully",
+      data: (data.data as { id: number; name: string; ipAddress: string }) ?? null,
+      status: response.status,
+      timestamp: new Date().toISOString(),
+    };
+  } catch (error: unknown) {
+    console.error("Error deleting network device:", error);
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : "Failed to delete network device",
+      data: null,
+      status: 500,
+      timestamp: new Date().toISOString(),
+    };
+  }
+};
+
 
 
 export const getStationLoad = async (

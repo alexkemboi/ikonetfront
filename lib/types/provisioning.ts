@@ -9,6 +9,11 @@ export interface NasRouterItem {
   winboxTunnelAddress: string; // e.g. "winbox.centipidbilling.com:54910"
   managementIp: string; // e.g. "10.9.86.246"
   lastOnlineText: string; // e.g. "Jul 20, 03:34 AM"
+  /** Telemetry enrichment — filled from the latest RouterHealthSnapshot when available. */
+  cpuUsage?: number | null;
+  freeMemory?: number | null;
+  totalMemory?: number | null;
+  uptime?: string | null;
 }
 
 export interface NasRouterKpis {
