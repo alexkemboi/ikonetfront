@@ -52,7 +52,11 @@ export function RouterActionsDropdown({
   router: RouterActionsRow;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
-  const [coords, setCoords] = useState<{ top: number; left: number } | null>(null);
+  const [coords, setCoords] = useState<{
+    top: number;
+    left: number;
+    openUpwards: boolean;
+  } | null>(null);
   const [drawerTab, setDrawerTab] = useState<Tab | null>(null);
   const [busyAction, setBusyAction] = useState<RouterAction | "DELETE" | null>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -75,25 +79,49 @@ export function RouterActionsDropdown({
     }
     const rect = buttonRef.current.getBoundingClientRect();
     const left = rect.right - MENU_WIDTH;
+
+    // ── Smart vertical flip ──
+    // Estimate the open menu's height (7 items + dividers). If there isn't
+    // enough viewport space below the anchor and there IS room above, flip
+    // upward so the menu never gets cut off at the bottom of the window.
+    const vh = window.innerHeight;
+    const menuHeight = Math.min(280, vh * 0.85);
+    const spaceBelow = vh - rect.bottom;
+    const openUpwards = spaceBelow < menuHeight && rect.top > menuHeight;
+
+    const top = openUpwards ? Math.max(8, rect.top - menuHeight - 6) : rect.bottom + 6;
+
     didClampRef.current = false;
-    setCoords({ top: rect.bottom + 6, left });
+    setCoords({ top, left, openUpwards });
     setMenuOpen(true);
   };
 
-  // After the menu renders (portal), clamp horizontal coords so it stays on screen.
+  // After the menu renders (portal), clamp coords so it stays on screen.
   // Runs once per open (guarded by didClampRef) so coords updates don't loop.
   useLayoutEffect(() => {
     if (!menuOpen || !coords || !menuRef.current) return;
     if (didClampRef.current) return;
     const menuRect = menuRef.current.getBoundingClientRect();
+    const vh = window.innerHeight;
     let nextLeft = coords.left;
     if (menuRect.right > window.innerWidth - 8) {
       nextLeft -= menuRect.right - window.innerWidth + 8;
     }
     if (nextLeft < 8) nextLeft = 8;
-    if (nextLeft !== coords.left) {
+
+    let nextTop = coords.top;
+    if (menuRect.bottom > vh - 8) {
+      // Even after flip (or when flipped up it still overflowed the top),
+      // shift so the menu's bottom stays visible.
+      nextTop -= menuRect.bottom - vh + 8;
+    }
+    if (nextTop < 8) nextTop = 8;
+
+    if (nextLeft !== coords.left || nextTop !== coords.top) {
       didClampRef.current = true;
-      setCoords((c) => (c ? { ...c, left: nextLeft } : c));
+      setCoords((c) =>
+        c ? { ...c, left: nextLeft, top: nextTop } : c
+      );
     }
     didClampRef.current = true;
   }, [menuOpen, coords]);
@@ -210,7 +238,11 @@ export function RouterActionsDropdown({
         width: MENU_WIDTH,
         zIndex: 9999,
       }}
-      className="rounded-xl border border-border bg-popover shadow-2xl py-1 text-sm text-popover-foreground"
+      className={`rounded-xl border border-border bg-popover shadow-2xl py-1 text-sm text-popover-foreground max-h-[85vh] overflow-y-auto ${
+        coords.openUpwards
+          ? "origin-bottom-right animate-in slide-in-from-bottom-2 duration-150"
+          : "origin-top-right animate-in slide-in-from-top-2 duration-150"
+      }`}
       onClick={(event) => event.stopPropagation()}
     >
       <button
