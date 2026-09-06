@@ -9,6 +9,10 @@ export interface NasRouterItem {
   winboxTunnelAddress: string; // e.g. "winbox.centipidbilling.com:54910"
   managementIp: string; // e.g. "10.9.86.246"
   lastOnlineText: string; // e.g. "Jul 20, 03:34 AM"
+  /** network_routers.idxno — the id the telemetry/action endpoints expect. */
+  routerId?: number;
+  /** network_device.id — the id the interfaces/delete endpoints expect. */
+  deviceId?: number;
   /** Telemetry enrichment — filled from the latest RouterHealthSnapshot when available. */
   cpuUsage?: number | null;
   freeMemory?: number | null;
