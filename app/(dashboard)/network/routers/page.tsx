@@ -2,6 +2,7 @@ import React from "react";
 import Link from "next/link";
 import { Plus, Search, ExternalLink } from "lucide-react";
 import { getNasRoutersData } from "@/actions/provisioning";
+import { isRouterOnline } from "@/lib/utils/router-status";
 import { getPermissionForRoute } from "@/lib/data/nav";
 import { redirect } from "next/navigation";
 import { RouterActionsDropdown } from "@/components/network/RouterActionsDropdown";
@@ -135,7 +136,7 @@ export default async function NasRoutersPage() {
   ) : null}
   </td>
   <td className="py-4 px-6">
-  {r.status === "ONLINE" ? (
+  {isRouterOnline(r) ? (
   <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-[11px] font-medium text-emerald-400">
   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
   Online
