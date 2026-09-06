@@ -80,6 +80,10 @@ export interface RouterOnboardRequest {
   pppoeEnabled: boolean;
   hotspotEnabled: boolean;
   monitoringEnabled: boolean;
+  /** Optional operator-supplied asset code (e.g. "RTR-BDK-MSA-001"); backend derives when omitted. */
+  routerName?: string;
+  /** Optional company code (e.g. "BDK", "BSM"); backend defaults when omitted. */
+  companyCode?: string;
 }
 
 export interface RouterHealthSnapshot {

@@ -32,12 +32,23 @@ export default async function NasRoutersPage() {
  </p>
  </div>
 
-<Link
-  href="/network/routers/onboard"
-  className="inline-flex items-center gap-2 rounded-xl bg-amber-500 px-5 py-2.5 text-xs font-semibold text-black hover:bg-amber-400 transition shadow-lg shadow-amber-500/20"
+<div className="flex flex-wrap items-center gap-3">
+  {/* Option A: Direct API Link — pre-assigned IP / LAN reached router */}
+  <Link
+    href="/network/routers/onboard"
+    className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-card px-4 py-2.5 text-xs font-semibold text-foreground hover:bg-muted transition"
   >
-  <Plus className="h-4 w-4 stroke-[3]" /> Link MikroTik
+    <ExternalLink className="h-4 w-4" /> Direct API Link
   </Link>
+
+  {/* Option B: Zero-Touch Provisioning (ZTP one-liner) */}
+  <Link
+    href="/network/routers/setup"
+    className="inline-flex items-center gap-2 rounded-xl bg-amber-500 px-5 py-2.5 text-xs font-semibold text-black hover:bg-amber-400 transition shadow-lg shadow-amber-500/20"
+  >
+    <Plus className="h-4 w-4 stroke-[3]" /> Link MikroTik (ZTP)
+  </Link>
+  </div>
  </div>
 
  {/* KPI Cards */}

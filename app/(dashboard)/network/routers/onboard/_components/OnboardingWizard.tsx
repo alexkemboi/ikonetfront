@@ -88,6 +88,7 @@ const handleOnboard = async () => {
         pppoeEnabled: Boolean(wizardData.pppoeEnabled),
         hotspotEnabled: Boolean(wizardData.hotspotEnabled),
         monitoringEnabled: Boolean(wizardData.monitoringEnabled),
+        routerName: hardwareProfile?.identity?.trim() || undefined,
       };
 
       const res = await onboardRouter(payload);
