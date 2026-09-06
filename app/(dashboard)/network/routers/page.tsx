@@ -1,9 +1,10 @@
 import React from "react";
 import Link from "next/link";
-import { Plus, Search, ExternalLink, MoreHorizontal } from "lucide-react";
+import { Plus, Search, ExternalLink } from "lucide-react";
 import { getNasRoutersData } from "@/actions/provisioning";
 import { getPermissionForRoute } from "@/lib/data/nav";
 import { redirect } from "next/navigation";
+import { RouterActionsDropdown } from "@/components/network/RouterActionsDropdown";
 
 export const metadata = {
  title: "NAS & Routers — IBS",
@@ -142,11 +143,18 @@ export default async function NasRoutersPage() {
  )}
  </td>
  <td className="py-3.5 px-3 text-muted-foreground">{r.lastOnlineText}</td>
- <td className="py-3.5 px-3 text-right">
- <button className="text-muted-foreground hover:text-accent-foreground">
- <MoreHorizontal className="h-4 w-4" />
- </button>
- </td>
+<td className="py-3.5 px-3 text-right">
+  <RouterActionsDropdown
+    router={{
+      id: r.id,
+      name: r.name,
+      model: r.model,
+      status: r.status,
+      managementIp: r.managementIp,
+      winboxTunnelAddress: r.winboxTunnelAddress,
+    }}
+  />
+  </td>
  </tr>
  ))}
  </tbody>
