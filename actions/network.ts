@@ -267,7 +267,7 @@ export const executeRouterAction = async (
     const response = await fetch(BASE_URL + `network-routers/${id}/action`, {
       method: "PATCH",
       headers: await getAuthHeaders(),
-      body: JSON.stringify(body),
+      body: JSON.stringify({ action: body.action, notes: body.notes ?? "" }),
     });
 
     const data = await response.json();
