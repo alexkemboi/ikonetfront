@@ -10,6 +10,8 @@ import {
   RouterServicesConfigRequest,
 } from "@/lib/types/provisioning";
 import { getMikrotikDevices, getMikrotikDeviceStatus } from "@/actions/mikrotik";
+import { getRouterMonitoringLatest } from "@/actions/network";
+import type { RouterHealthSnapshot } from "@/lib/types/network";
 import { getPermissionForRoute } from "@/lib/data/nav";
 
 const FALLBACK_NAS_KPIS: NasRouterKpis = {
@@ -59,6 +61,7 @@ function mapDeviceToNasRouter(device: {
   online?: boolean;
   ipAddress?: string;
   uptime?: string | null;
+  cpuLoad?: string | null;
 }): NasRouterItem {
   return {
     // id/name/status/managementIp from the real network-devices row;
@@ -71,6 +74,26 @@ function mapDeviceToNasRouter(device: {
     winboxTunnelAddress: `winbox.centipidbilling.com:${20000 + device.id}`,
     managementIp: device.ipAddress ?? "—",
     lastOnlineText: device.uptime ?? "—",
+    // Surface the device row's own raw telemetry; `getNasRoutersData` layers the
+    // latest RouterHealthSnapshot on top (CPU %, memory bytes, live sessions).
+    cpuUsage: device.cpuLoad ? Number.parseInt(device.cpuLoad, 10) || null : null,
+    uptime: device.uptime ?? null,
+    freeMemory: null,
+    totalMemory: null,
+  };
+}
+
+/** Merge the latest RouterHealthSnapshot into a NAS row (best-effort, non-fatal). */
+function enrichWithLatestSnapshot(row: NasRouterItem, snapshot: RouterHealthSnapshot | null): NasRouterItem {
+  if (!snapshot) return row;
+  return {
+    ...row,
+    cpuUsage: snapshot.cpuUsage ?? row.cpuUsage,
+    freeMemory: snapshot.freeMemory ?? row.freeMemory,
+    totalMemory: snapshot.totalMemory ?? row.totalMemory,
+    uptime: snapshot.uptime ?? row.uptime,
+    activeSessions:
+      snapshot.activePppoeSessions + snapshot.activeHotspotSessions || row.activeSessions,
   };
 }
 
@@ -94,7 +117,19 @@ export async function getNasRoutersData(): Promise<{
     if (!res.success || !Array.isArray(res.data) || res.data.length === 0) {
       return { kpis: FALLBACK_NAS_KPIS, routers: FALLBACK_NAS_ROUTERS };
     }
-    const routers = res.data.map(mapDeviceToNasRouter);
+
+    // Enrich each row with the live RouterHealthSnapshot (CPU %, memory bytes,
+    // active PPPoE+Hotspot sessions) so the table shows operational telemetry
+    // at a glance. Best-effort: a failed snapshot simply leaves placeholders.
+    const routers = await Promise.all(
+      res.data.map(async (device) => {
+        const base = mapDeviceToNasRouter(device);
+        if (!device.id || device.id <= 0) return base;
+        const snapshot = await getRouterMonitoringLatest(device.id).catch(() => null);
+        return enrichWithLatestSnapshot(base, snapshot);
+      })
+    );
+
     return { kpis: deriveNasKpis(routers), routers };
   } catch (error: unknown) {
     console.error("Error fetching NAS routers:", error);
