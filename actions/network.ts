@@ -880,16 +880,28 @@ export const provisionSubscriber = async (
 export const getRouters = async (): Promise<RouterResponse[]> => {
   try {
     const params = await getRlsScopeParams();
-    const res = await apiFetch<RouterResponse[]>(`/network/routers?${params.toString()}`, {
-      auth: "required",
-      tags: ["network:routers"],
-    });
+    // The backend controller returns the raw `NetworkRouter` JPA entity, whose
+    // PK serializes as `idxno` (not `id`). Normalize it into `id` so callers
+    // get a stable identifier for the monitoring/action endpoints.
+    const res = await apiFetch<Array<Partial<RouterResponse> & { idxno?: number }>>(
+      `/network/routers?${params.toString()}`,
+      { auth: "required", tags: ["network:routers"] }
+    );
 
     if (!res.success) {
       console.error(`getRouters failed — status: ${res.status}, message: ${res.message}`);
       return [];
     }
-    return res.data ?? [];
+    return (res.data ?? [])
+      .map((r) => ({
+        ...r,
+        id: Number(r.id ?? r.idxno ?? 0),
+        name: r.name ?? "",
+        ipAddress: r.ipAddress ?? "",
+        model: r.model ?? "",
+        status: r.status ?? false,
+      }))
+      .filter((r) => r.id > 0) as RouterResponse[];
   } catch (error) {
     console.error("getRouters Error:", error);
     return [];
