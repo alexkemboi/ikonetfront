@@ -234,4 +234,43 @@ describe("RouterActionsDropdown", () => {
     const td = menu.closest("td");
     expect(td).toBeNull();
   });
+
+  it("flips the menu upward when the anchor is near the bottom of the viewport", async () => {
+    const user = userEvent.setup();
+    // Mock a viewport where the button sits near the bottom (space below < 280px).
+    Object.defineProperty(window, "innerHeight", {
+      configurable: true,
+      value: 600,
+    });
+    vi.spyOn(window, "innerWidth", "get").mockReturnValue(1280);
+
+    render(<RouterActionsDropdown router={router} />);
+    const trigger = screen.getByRole("button", { name: /router actions/i });
+    // Button bottom at y=520, top at y=500 → space below = 80px < 280px, and
+    // space above (rect.top=500) > 280px, so it must open upward.
+    const mockRect = {
+      x: 1100,
+      y: 500,
+      top: 500,
+      bottom: 520,
+      left: 1100,
+      right: 1124,
+      width: 24,
+      height: 20,
+      toJSON: () => ({}),
+    } as DOMRect;
+    trigger.getBoundingClientRect = vi.fn(() => mockRect);
+
+    await user.click(trigger);
+    const menu = screen.getByRole("menu", { name: /actions for/i });
+
+    // Opened upward → coords.openUpwards true → the menu's element class
+    // includes slide-in-from-bottom (the flip-up animation variant),
+    // and top is clamped so the menu (max 280px tall) fits above the anchor.
+    expect(menu.className).toContain("slide-in-from-bottom-2");
+    // top should be ≤ 500 (above the anchor at 520) and ≥ 8.
+    const top = Number.parseFloat(menu.style.top);
+    expect(top).toBeGreaterThanOrEqual(8);
+    expect(top).toBeLessThanOrEqual(520);
+  });
 });
