@@ -98,4 +98,18 @@ export const networkHandlers = [
       { status: 200 }
     );
   }),
+
+  http.delete(`${API_PREFIX}/network-devices/:id`, (info) => {
+    const forbidden = requireAuth(info.request, ADMIN_ROLES);
+    if (forbidden) return forbidden;
+    return HttpResponse.json(
+      {
+        status: 200,
+        success: true,
+        message: "Device deleted successfully",
+        data: { id: Number(info.params.id), name: "RTR-BDK-MSA-001", ipAddress: "10.8.1.10" },
+      },
+      { status: 200 }
+    );
+  }),
 ];
