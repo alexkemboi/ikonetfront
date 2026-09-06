@@ -6,7 +6,9 @@ import { RouterActionsDropdown } from "@/components/network/RouterActionsDropdow
 import type { RouterActionsRow } from "@/components/network/RouterActionsDropdown";
 
 const router: RouterActionsRow = {
+  // device id and router idxno are deliberately different (two tables).
   id: "1",
+  routerId: 7,
   name: "RTR-BDK-MSA-001",
   model: "RB5009UG+S+",
   status: "ONLINE",
@@ -131,7 +133,7 @@ describe("RouterActionsDropdown", () => {
     await user.click(screen.getByText("Reboot Device"));
 
     await waitFor(() => {
-      expect(mockExecute).toHaveBeenCalledWith(1, { action: "REBOOT" });
+      expect(mockExecute).toHaveBeenCalledWith(7, { action: "REBOOT" });
     });
     vi.restoreAllMocks();
   });
@@ -144,7 +146,7 @@ describe("RouterActionsDropdown", () => {
     await user.click(screen.getByText("Refresh Telemetry"));
 
     await waitFor(() => {
-      expect(mockExecute).toHaveBeenCalledWith(1, { action: "REFRESH" });
+      expect(mockExecute).toHaveBeenCalledWith(7, { action: "REFRESH" });
     });
   });
 
@@ -152,7 +154,7 @@ describe("RouterActionsDropdown", () => {
     const user = userEvent.setup();
     render(
       <RouterActionsDropdown
-        router={{ ...router, id: "rtr-1" }}
+        router={{ ...router, id: "rtr-1", routerId: undefined }}
       />
     );
 
@@ -272,5 +274,26 @@ describe("RouterActionsDropdown", () => {
     const top = Number.parseFloat(menu.style.top);
     expect(top).toBeGreaterThanOrEqual(8);
     expect(top).toBeLessThanOrEqual(520);
+  });
+
+  it("uses routerId for actions and device id for delete (split id spaces)", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    render(<RouterActionsDropdown router={{ ...router, id: "1", routerId: 7 }} />);
+
+    // Remote actions → network_routers.idxno (7).
+    await user.click(screen.getByRole("button", { name: /router actions/i }));
+    await user.click(screen.getByText("Refresh Telemetry"));
+    await waitFor(() => {
+      expect(mockExecute).toHaveBeenCalledWith(7, { action: "REFRESH" });
+    });
+
+    // Delete → network_device.id (1).
+    await user.click(screen.getByRole("button", { name: /router actions/i }));
+    await user.click(screen.getByText("Delete Router"));
+    await waitFor(() => {
+      expect(mockDelete).toHaveBeenCalledWith(1);
+    });
+    vi.restoreAllMocks();
   });
 });
