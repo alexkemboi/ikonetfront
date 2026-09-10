@@ -17,6 +17,7 @@ declare module "next-auth" {
     stationId?: number;
     locationId?: number;
     investorScope?: string;
+    companyScope?: string;
   }
 
   interface Session {
@@ -36,6 +37,7 @@ declare module "next-auth" {
       stationId?: number;
       locationId?: number;
       investorScope?: string;
+      companyScope?: string;
     } & DefaultSession["user"];
   }
 }
@@ -57,5 +59,6 @@ declare module "next-auth/jwt" {
     stationId?: number;
     locationId?: number;
     investorScope?: string;
+    companyScope?: string;
   }
 }
