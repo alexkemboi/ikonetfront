@@ -159,6 +159,8 @@ export function initiatePaymentFixture(): ApiResponse<HotspotSessionResponse> {
       dataUploadedBytes: 0,
       dataDownloadedBytes: 0,
       ipAddress: "172.16.0.11",
+      stationId: "STN-001",
+      companyId: "CMP-BSM-001",
     },
     "Hotspot session initiated successfully",
     201
