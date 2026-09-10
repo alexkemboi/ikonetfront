@@ -1,5 +1,6 @@
 import { getRegions } from "@/actions/network";
 import { getPermissionForRoute } from "@/lib/data/nav";
+import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { OnboardingWizard } from "./_components/OnboardingWizard";
 
@@ -12,10 +13,15 @@ export const dynamic = "force-dynamic";
 
 export default async function OnboardRouterPage() {
   // Strict RBAC: the backend gates validate-connectivity + onboard behind
-  // SYSADMIN/ADMIN/01. Reflect that on the UI so staff/investor/customer
+  // SYSADMIN/ADMIN/01/02. Reflect that on the UI so staff/investor/customer
   // never sees a wizard that would 403.
   const pagePerms = await getPermissionForRoute("/network/routers/onboard");
   if (!pagePerms.canView) redirect("/dashboard");
+
+  const session = await auth();
+  const role = session?.user?.role;
+  const isPlatformAdmin = role === "SYSADMIN" || role === "ADMIN";
+  const companyScope = session?.user?.companyScope;
 
   const regionsTree = await getRegions(true);
 
@@ -28,7 +34,11 @@ export default async function OnboardRouterPage() {
         </p>
       </div>
 
-      <OnboardingWizard regionsTree={regionsTree} />
+      <OnboardingWizard
+        regionsTree={regionsTree}
+        companyScope={companyScope}
+        isPlatformAdmin={isPlatformAdmin}
+      />
     </div>
   );
 }
