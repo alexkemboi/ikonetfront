@@ -755,6 +755,7 @@
           "data": {
             "amountPaid": 1500,
             "clientPhone": "0726837210",
+            "companyId": "CMP-BSM-001",
             "concurrentUserLimit": 1,
             "dataDownloadedBytes": 0,
             "dataUploadedBytes": 0,
@@ -769,6 +770,7 @@
             "sessionId": "HS-20260826-001",
             "sessionStatus": "ACTIVE",
             "startedAt": "2026-08-26T08:00:00+03:00",
+            "stationId": "STN-001",
             "voucherCode": ""
           },
           "message": "Hotspot session initiated successfully",
@@ -806,6 +808,14 @@
               ]
             },
             "$.data.clientPhone": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.companyId": {
               "combine": "AND",
               "matchers": [
                 {
@@ -918,6 +928,14 @@
               ]
             },
             "$.data.startedAt": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.stationId": {
               "combine": "AND",
               "matchers": [
                 {
