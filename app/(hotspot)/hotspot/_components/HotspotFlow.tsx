@@ -29,18 +29,6 @@ export default function HotspotFlow({
       {/* Tab navigation */}
       <div className="flex gap-1 mb-6 border-b border-border">
         <button
-          onClick={() => setActiveTab("activate")}
-          className={`pb-3 px-4 font-medium text-sm transition-colors relative ${activeTab === "activate"
-            ? "text-primary"
-            : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          Activate Voucher
-          {activeTab === "activate" && (
-            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />
-          )}
-        </button>
-        <button
           onClick={() => setActiveTab("buy")}
           className={`pb-3 px-4 font-medium text-sm transition-colors relative ${activeTab === "buy"
             ? "text-primary"
@@ -49,6 +37,18 @@ export default function HotspotFlow({
         >
           Buy Packages
           {activeTab === "buy" && (
+            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />
+          )}
+        </button>
+        <button
+          onClick={() => setActiveTab("activate")}
+          className={`pb-3 px-4 font-medium text-sm transition-colors relative ${activeTab === "activate"
+            ? "text-primary"
+            : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          Activate Voucher
+          {activeTab === "activate" && (
             <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />
           )}
         </button>
