@@ -29,6 +29,8 @@ export type JwtPayload = {
   stationId?: number;
   locationId?: number;
   investorScope?: string;
+  companyScope?: string;
+  companyId?: string;
   iat?: number;
   exp?: number;
 };
