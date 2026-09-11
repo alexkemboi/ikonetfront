@@ -44,6 +44,8 @@ export interface HotspotSessionResponse {
   dataUploadedBytes?: number;
   dataDownloadedBytes?: number;
   ipAddress?: string;
+  stationId?: string;
+  companyId?: string;
 }
 
 export type InitiatePaymentResponse = ApiResponse<HotspotSessionResponse>;

@@ -8,13 +8,15 @@ import CheckoutModal from "./CheckoutModal";
 
 
 interface BuyTabProps {
- packages: HotspotPackage[];
- onBack: () => void;
+  packages: HotspotPackage[];
+  companyCode?: string | null;
+  onCompanyResolved?: (companyCode?: string | null) => void;
+  onBack: () => void;
 }
 
 type SortBy = "price-asc" | "price-desc" | "data-asc" | "data-desc";
 
-export default function BuyTab({ packages, onBack }: BuyTabProps) {
+export default function BuyTab({ packages, companyCode, onCompanyResolved, onBack }: BuyTabProps) {
  const [searchQuery, setSearchQuery] = useState("");
  const [sortBy, setSortBy] = useState<SortBy>("price-asc");
  const [selectedPackage, setSelectedPackage] = useState<HotspotPackage | null>(null);
@@ -127,21 +129,23 @@ export default function BuyTab({ packages, onBack }: BuyTabProps) {
  )}
  </div>
 
- {/* Checkout Modal */}
- {showCheckout && selectedPackage && (
- <CheckoutModal
- package={selectedPackage}
- onClose={() => {
- setShowCheckout(false);
- setSelectedPackage(null);
- }}
- onConfirm={() => {
- // Handle purchase confirmation
- setShowCheckout(false);
- setSelectedPackage(null);
- }}
- />
- )}
+{/* Checkout Modal */}
+  {showCheckout && selectedPackage && (
+    <CheckoutModal
+      package={selectedPackage}
+      companyCode={companyCode}
+      onCompanyResolved={onCompanyResolved}
+      onClose={() => {
+        setShowCheckout(false);
+        setSelectedPackage(null);
+      }}
+      onConfirm={() => {
+        // Handle purchase confirmation
+        setShowCheckout(false);
+        setSelectedPackage(null);
+      }}
+    />
+  )}
  </div>
  );
 }

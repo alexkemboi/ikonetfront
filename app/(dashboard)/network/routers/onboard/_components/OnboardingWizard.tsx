@@ -15,10 +15,18 @@ import { Cpu, Server, MapPin, Settings, CheckCircle2, ChevronRight, ChevronLeft,
 import Link from "next/link";
 
 interface OnboardingWizardProps {
- regionsTree: RegionResponse[];
+  regionsTree: RegionResponse[];
+  companyScope?: string | null;
+  isPlatformAdmin?: boolean;
 }
 
-export function OnboardingWizard({ regionsTree }: OnboardingWizardProps) {
+const COMPANY_OPTIONS = [
+  { code: "CMP-BSM-001", label: "Beesmart" },
+  { code: "CMP-BDK-001", label: "Bedak" },
+  { code: "CMP-ADR-001", label: "Adrinold" },
+];
+
+export function OnboardingWizard({ regionsTree, companyScope, isPlatformAdmin }: OnboardingWizardProps) {
   const router = useRouter();
   const [step, setStep] = useState(1);
   const [hardwareProfile, setHardwareProfile] = useState<RouterValidationResponse | null>(null);
@@ -27,19 +35,20 @@ export function OnboardingWizard({ regionsTree }: OnboardingWizardProps) {
   const [filteredLocations, setFilteredLocations] = useState<LocationResponse[]>([]);
   const [filteredStations, setFilteredStations] = useState<StationResponse[]>([]);
 
- const [wizardData, setWizardData] = useState({
- ipAddress: "",
- port: 8728,
- username: "",
- password: "",
- regionIdxno: "",
- locationIdxno: "",
- stationIdxno: "",
- routerRole: "PPPOE",
- pppoeEnabled: true,
- hotspotEnabled: false,
- monitoringEnabled: true,
- });
+  const [wizardData, setWizardData] = useState({
+    ipAddress: "",
+    port: 8728,
+    username: "",
+    password: "",
+    regionIdxno: "",
+    locationIdxno: "",
+    stationIdxno: "",
+    routerRole: "PPPOE",
+    pppoeEnabled: true,
+    hotspotEnabled: false,
+    monitoringEnabled: true,
+    companyCode: companyScope || "CMP-BDK-001",
+  });
 
   const validateStep1 = async (values: {
   ipAddress: string;
@@ -88,6 +97,7 @@ const handleOnboard = async () => {
         pppoeEnabled: Boolean(wizardData.pppoeEnabled),
         hotspotEnabled: Boolean(wizardData.hotspotEnabled),
         monitoringEnabled: Boolean(wizardData.monitoringEnabled),
+        companyCode: wizardData.companyCode,
         routerName: hardwareProfile?.identity?.trim() || undefined,
       };
 
@@ -278,12 +288,31 @@ const handleOnboard = async () => {
 
  return (
  <Form className="space-y-4">
- <div className="space-y-1">
- <h3 className="text-lg font-bold">3. Network Assignment</h3>
- <p className="text-sm text-muted-foreground">Assign this router to a physical geographic Point of Presence (POP).</p>
- </div>
+<div className="space-y-1">
+  <h3 className="text-lg font-bold">3. Network Assignment</h3>
+  <p className="text-sm text-muted-foreground">Assign this router to a physical geographic Point of Presence (POP).</p>
+  </div>
 
- {!hasRegions && (
+  <div className="space-y-2">
+  <Label htmlFor="companyCode">Operating Company</Label>
+  {isPlatformAdmin ? (
+  <Field as="select" id="companyCode" name="companyCode" className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+  {COMPANY_OPTIONS.map(c => <option key={c.code} value={c.code}>{c.label}</option>)}
+  </Field>
+  ) : (
+  <div className="flex h-10 w-full items-center rounded-md border border-input bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
+  {COMPANY_OPTIONS.find(c => c.code === wizardData.companyCode)?.label ?? wizardData.companyCode}
+  <span className="ml-2 text-xs">— locked to your login scope</span>
+  </div>
+  )}
+  <p className="text-xs text-muted-foreground">
+  {isPlatformAdmin
+  ? "Super-admin override. The router is bound to this company for naming, billing, and M-Pesa paybill resolution."
+  : "Your account is scoped to this company. Routers you onboard are automatically bound to it."}
+  </p>
+  </div>
+
+  {!hasRegions && (
  <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-5">
  <div className="flex items-start gap-3">
  <AlertTriangle className="h-5 w-5 text-amber-400 shrink-0 mt-0.5" />
@@ -441,14 +470,16 @@ const handleOnboard = async () => {
  <p className="text-sm text-muted-foreground">Verify connection parameters and hardware signatures before finalizing alignment.</p>
  </div>
 
- <div className="grid grid-cols-2 gap-4 border p-4 bg-muted/20 rounded-lg text-sm">
- <div><span className="text-muted-foreground block text-xs">Device IP Endpoint</span> {wizardData.ipAddress}:{wizardData.port}</div>
- <div><span className="text-muted-foreground block text-xs">Interrogation User</span> {wizardData.username}</div>
- <div><span className="text-muted-foreground block text-xs">Device Role Constraint</span> {wizardData.routerRole}</div>
- <div><span className="text-muted-foreground block text-xs">Assigned Station POP</span> Station ID #{wizardData.stationIdxno}</div>
- <div><span className="text-muted-foreground block text-xs">PPPoE Enabled</span> {wizardData.pppoeEnabled ? "Yes" : "No"}</div>
- <div><span className="text-muted-foreground block text-xs">Hotspot Captive Portal</span> {wizardData.hotspotEnabled ? "Yes" : "No"}</div>
- </div>
+<div className="grid grid-cols-2 gap-4 border p-4 bg-muted/20 rounded-lg text-sm">
+  <div><span className="text-muted-foreground block text-xs">Device IP Endpoint</span> {wizardData.ipAddress}:{wizardData.port}</div>
+  <div><span className="text-muted-foreground block text-xs">Interrogation User</span> {wizardData.username}</div>
+  <div><span className="text-muted-foreground block text-xs">Device Role Constraint</span> {wizardData.routerRole}</div>
+  <div><span className="text-muted-foreground block text-xs">Assigned Station POP</span> Station ID #{wizardData.stationIdxno}</div>
+  <div><span className="text-muted-foreground block text-xs">Operating Company</span> {COMPANY_OPTIONS.find(c => c.code === wizardData.companyCode)?.label ?? wizardData.companyCode}</div>
+  <div><span className="text-muted-foreground block text-xs">Asset Tag (auto)</span> <span className="font-mono">RTR-{wizardData.companyCode === "CMP-BSM-001" ? "BSM" : wizardData.companyCode === "CMP-ADR-001" ? "ADR" : "BDK"}-A</span></div>
+  <div><span className="text-muted-foreground block text-xs">PPPoE Enabled</span> {wizardData.pppoeEnabled ? "Yes" : "No"}</div>
+  <div><span className="text-muted-foreground block text-xs">Hotspot Captive Portal</span> {wizardData.hotspotEnabled ? "Yes" : "No"}</div>
+  </div>
 
 <div className="flex justify-between pt-4">
   <Button variant="outline" onClick={() => setStep(4)}><ChevronLeft className="h-4 w-4" /> Back</Button>
