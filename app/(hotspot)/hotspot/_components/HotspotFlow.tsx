@@ -11,9 +11,17 @@ interface HotspotFlowProps {
   packages: HotspotPackage[];
   companyCode?: string | null;
   onCompanyResolved?: (companyCode?: string | null) => void;
+  clientMac?: string;
+  clientIp?: string;
 }
 
-export default function HotspotFlow({ packages, companyCode, onCompanyResolved }: HotspotFlowProps) {
+export default function HotspotFlow({
+  packages,
+  companyCode,
+  onCompanyResolved,
+  clientMac,
+  clientIp,
+}: HotspotFlowProps) {
   const [activeTab, setActiveTab] = useState<Tab>("activate");
 
   return (
@@ -55,6 +63,8 @@ export default function HotspotFlow({ packages, companyCode, onCompanyResolved }
             companyCode={companyCode}
             onCompanyResolved={onCompanyResolved}
             onBack={() => setActiveTab("activate")}
+            clientMac={clientMac}
+            clientIp={clientIp}
           />
         )}
       </div>

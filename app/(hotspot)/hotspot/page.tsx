@@ -11,7 +11,7 @@ export const metadata = {
 export const dynamic = "force-dynamic"; // Ensure the page is always rendered on the server
 
 interface HotspotPageProps {
-  searchParams: Promise<{ company?: string; router?: string }>;
+  searchParams: Promise<{ company?: string; router?: string; mac?: string; ip?: string }>;
 }
 
 export default async function HotspotPage({ searchParams }: HotspotPageProps) {
@@ -19,6 +19,13 @@ export default async function HotspotPage({ searchParams }: HotspotPageProps) {
   const initialCompanyCode =
     normalizeCompanyCode(params?.company) ??
     resolveCompanyFromRouterTag(params?.router);
+
+  // The MikroTik redirect carries the client device's real identity from
+  // `$(mac)` / `$(ip)`. Without it, the backend defaults to 00:00:00:00:00:00 +
+  // empty IP, which FreeRADIUS/MikroTik cannot match to a physical phone —
+  // payment succeeds but the device never gets internet.
+  const clientMac = params?.mac?.trim() || "";
+  const clientIp = params?.ip?.trim() || "";
 
   const packagesResponse = await getPublicHotspotPackagesAction();
   const packages: HotspotPackage[] = packagesResponse.success
@@ -85,7 +92,12 @@ export default async function HotspotPage({ searchParams }: HotspotPageProps) {
       <div className="w-full lg:w-1/2 flex flex-col px-4 sm:px-6 lg:px-12 py-8 lg:py-12">
         {/* Package Flow */}
         <div className="flex-1 w-full max-w-2xl">
-          <HotspotShell packages={packages} initialCompanyCode={initialCompanyCode} />
+          <HotspotShell
+            packages={packages}
+            initialCompanyCode={initialCompanyCode}
+            clientMac={clientMac}
+            clientIp={clientIp}
+          />
         </div>
       </div>
     </main>

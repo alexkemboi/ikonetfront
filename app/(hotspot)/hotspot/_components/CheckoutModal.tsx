@@ -13,6 +13,8 @@ interface CheckoutModalProps {
   onCompanyResolved?: (companyCode?: string | null) => void;
   onClose: () => void;
   onConfirm: () => void;
+  clientMac?: string;
+  clientIp?: string;
 }
 
 export default function CheckoutModal({
@@ -21,10 +23,12 @@ export default function CheckoutModal({
   onCompanyResolved,
   onClose,
   onConfirm,
+  clientMac,
+  clientIp,
 }: CheckoutModalProps) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [phoneNumber, setPhoneNumber] = useState("");
-  const defaultMacAddress = "00:00:00:00:00:00";
+  const fallbackMac = "00:00:00:00:00:00";
   const brand = getCustomerFacingBrand(companyCode);
 
   const handleConfirm = async () => {
@@ -38,9 +42,13 @@ export default function CheckoutModal({
         packageId: pkg.idxno,
         phone: phoneNumber.trim(),
         paymentMode: "MPESA",
-        macAddress: defaultMacAddress,
-        clientMac: defaultMacAddress,
-        clientIp: "",
+        // Use the REAL client MAC/IP from the MikroTik redirect when present.
+        // The zero MAC fallback only applies when the page was opened outside
+        // a router redirect (e.g. admin preview) — for captive-portal users the
+        // real MAC is mandatory, otherwise FreeRADIUS can't match the device.
+        macAddress: clientMac || fallbackMac,
+        clientMac: clientMac || fallbackMac,
+        clientIp: clientIp || "",
       });
 
       if (!result.success) {
