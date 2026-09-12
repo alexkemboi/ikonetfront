@@ -12,11 +12,13 @@ interface BuyTabProps {
   companyCode?: string | null;
   onCompanyResolved?: (companyCode?: string | null) => void;
   onBack: () => void;
+  clientMac?: string;
+  clientIp?: string;
 }
 
 type SortBy = "price-asc" | "price-desc" | "data-asc" | "data-desc";
 
-export default function BuyTab({ packages, companyCode, onCompanyResolved, onBack }: BuyTabProps) {
+export default function BuyTab({ packages, companyCode, onCompanyResolved, onBack, clientMac, clientIp }: BuyTabProps) {
  const [searchQuery, setSearchQuery] = useState("");
  const [sortBy, setSortBy] = useState<SortBy>("price-asc");
  const [selectedPackage, setSelectedPackage] = useState<HotspotPackage | null>(null);
@@ -135,6 +137,8 @@ export default function BuyTab({ packages, companyCode, onCompanyResolved, onBac
       package={selectedPackage}
       companyCode={companyCode}
       onCompanyResolved={onCompanyResolved}
+      clientMac={clientMac}
+      clientIp={clientIp}
       onClose={() => {
         setShowCheckout(false);
         setSelectedPackage(null);
