@@ -7,6 +7,13 @@ import { HotspotPackage } from "@/lib/types/hotspot";
 
 type Tab = "activate" | "buy";
 
+function resolveInitialTab(): Tab {
+  if (typeof window === "undefined") return "buy";
+
+  const params = new URLSearchParams(window.location.search);
+  return params.get("tab") === "activate" ? "activate" : "buy";
+}
+
 interface HotspotFlowProps {
   packages: HotspotPackage[];
   companyCode?: string | null;
@@ -14,14 +21,31 @@ interface HotspotFlowProps {
 }
 
 export default function HotspotFlow({ packages, companyCode, onCompanyResolved }: HotspotFlowProps) {
-  const [activeTab, setActiveTab] = useState<Tab>("buy");
+  const [activeTab, setActiveTab] = useState<Tab>(resolveInitialTab);
+
+  const handleTabChange = (nextTab: Tab) => {
+    setActiveTab(nextTab);
+
+    if (typeof window === "undefined") return;
+
+    const params = new URLSearchParams(window.location.search);
+    if (nextTab === "activate") {
+      params.set("tab", "activate");
+    } else {
+      params.delete("tab");
+    }
+
+    const queryString = params.toString();
+    const nextUrl = `${window.location.pathname}${queryString ? `?${queryString}` : ""}${window.location.hash}`;
+    window.history.replaceState({}, "", nextUrl);
+  };
 
   return (
     <div className="w-full">
       {/* Tab navigation */}
       <div className="flex gap-1 mb-6 border-b border-border">
         <button
-          onClick={() => setActiveTab("buy")}
+          onClick={() => handleTabChange("buy")}
           className={`pb-3 px-4 font-medium text-sm transition-colors relative ${activeTab === "buy"
             ? "text-primary"
             : "text-muted-foreground hover:text-foreground"
@@ -33,7 +57,7 @@ export default function HotspotFlow({ packages, companyCode, onCompanyResolved }
           )}
         </button>
         <button
-          onClick={() => setActiveTab("activate")}
+          onClick={() => handleTabChange("activate")}
           className={`pb-3 px-4 font-medium text-sm transition-colors relative ${activeTab === "activate"
             ? "text-primary"
             : "text-muted-foreground hover:text-foreground"
@@ -54,7 +78,7 @@ export default function HotspotFlow({ packages, companyCode, onCompanyResolved }
             packages={packages}
             companyCode={companyCode}
             onCompanyResolved={onCompanyResolved}
-            onBack={() => setActiveTab("activate")}
+            onBack={() => handleTabChange("activate")}
           />
         )}
       </div>
