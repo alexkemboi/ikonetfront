@@ -1,0 +1,12 @@
+The CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.
+
+[7m[1m[36m RUN [39m[22m[27m [36mv1.6.1[39m [90mC:/Users/dev/Desktop/internet-billing-systemf[39m
+
+ [32mΓ£ô[39m __tests__/components/HotspotFlow.test.tsx[2m > [22mHotspotFlow[2m > [22mdefaults to Buy Packages when no tab is explicitly requested[33m 389[2mms[22m[39m
+ [32mΓ£ô[39m __tests__/components/HotspotFlow.test.tsx[2m > [22mHotspotFlow[2m > [22mrespects an explicit activate tab from the URL
+
+[2m Test Files [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[32m2 passed[39m[22m[90m (2)[39m
+[2m   Start at [22m 10:05:42
+[2m   Duration [22m 13.97s[2m (transform 803ms, setup 2.66s, collect 6.14s, tests 501ms, environment 2.68s, prepare 572ms)[22m
+
