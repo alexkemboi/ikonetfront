@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 // Voucher activation is gated off pending the backend HTTP route
 // `POST /hotspot/activate` (BE gap ticket). See actions/hotspot.ts
 // `activateVoucherAction` — it returns a 503 envelope without hitting network.
-const VOUCHER_ACTIVATION_DISABLED = true;
+const VOUCHER_ACTIVATION_DISABLED = false;
 
 type ValidationState = "idle" | "validating" | "valid" | "invalid";
 
