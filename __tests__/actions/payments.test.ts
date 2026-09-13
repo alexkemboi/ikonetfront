@@ -50,7 +50,7 @@ beforeEach(() => {
 });
 
 describe("getPaymentsLedgerData — Account 1110 binding", () => {
-  it("requests accountCode=1110 (page 0, size 50) from /finance/transactions", async () => {
+  it("requests accountCode=1110 (page 0, size 50) from /finance/transactions and reports source GL", async () => {
     server.use(
       http.get(`${API_PREFIX}/finance/transactions`, ({ request }) => {
         expect(request.headers.get("authorization")).toBe(`Bearer ${TOKEN}`);
@@ -61,7 +61,8 @@ describe("getPaymentsLedgerData — Account 1110 binding", () => {
         return HttpResponse.json(withPage([postingFixture({ id: 2, amount: -45000 })]));
       })
     );
-    const { kpis, payments } = await getPaymentsLedgerData();
+    const { kpis, payments, source } = await getPaymentsLedgerData();
+    expect(source).toBe("GL");
     expect(payments).toHaveLength(1);
     expect(kpis.totalRecordedCount).toBe(1);
   });
@@ -158,11 +159,73 @@ describe("getPaymentsLedgerData — KPIs from real postings", () => {
 });
 
 describe("getPaymentsLedgerData — zero-dummy mandate", () => {
-  it("returns [] + zero KPIs when Account 1110 has no postings", async () => {
+  it("falls back to confirmed gateway payments when Account 1110 has no postings", async () => {
+    const today = localIso(new Date());
     server.use(
       http.get(`${API_PREFIX}/finance/transactions`, () => HttpResponse.json(withPage([])))
     );
-    const { kpis, payments } = await getPaymentsLedgerData();
+    server.use(
+      http.get(`${API_PREFIX}/payments`, () =>
+        HttpResponse.json({
+          success: true,
+          data: [
+            {
+              id: "3f1b9c2e-6a4d-4b5a-9c3e-2f8d1a4b6c77",
+              packageId: 12,
+              packageName: "Daily Hotspot",
+              customerNumber: "0712345678",
+              paymentmode: "mpesa",
+              issuccessfull: true,
+              datecreated: today,
+              voucherCode: null,
+              checkoutRequestId: "ws_CO_0919090909091919191",
+              status: "COMPLETED",
+              amount: 750,
+              mpesaReceipt: "UIC1234567X",
+              updatedAt: "2026-09-13T09:31:00",
+            },
+            {
+              id: "5c2d4e8f-7b8c-4d6e-8a1f-9e3b2c5d7e88",
+              packageId: 5,
+              packageName: "Weekend Bundle",
+              customerNumber: "254712345678",
+              paymentmode: "mpesa",
+              issuccessfull: true,
+              datecreated: today,
+              checkoutRequestId: "ws_CO_0918090909091818181",
+              status: "COMPLETED",
+              amount: 300,
+              mpesaReceipt: "UIC7654321Z",
+              updatedAt: "2026-09-12T14:06:00",
+            },
+          ],
+        })
+      )
+    );
+    const { kpis, payments, source } = await getPaymentsLedgerData();
+    expect(source).toBe("GATEWAY");
+    expect(payments).toHaveLength(2);
+    expect(payments[0].subscriberCode).toBe("0712345678");
+    expect(payments[0].subscriberPhone).toBe("0712345678");
+    expect(payments[0].receiptNumber).toBe("UIC1234567X");
+    expect(payments[0].amount).toBe(750);
+    expect(payments[0].paymentMethod).toBe("M-Pesa");
+    expect(payments[1].subscriberCode).toBe("254712345678");
+    expect(kpis.totalRecordedCount).toBe(2);
+    expect(kpis.todayAmount).toBe(1050);
+  });
+
+  it("returns [] + zero KPIs when Account 1110 has no postings and the gateway has none either", async () => {
+    server.use(
+      http.get(`${API_PREFIX}/finance/transactions`, () => HttpResponse.json(withPage([])))
+    );
+    server.use(
+      http.get(`${API_PREFIX}/payments`, () =>
+        HttpResponse.json({ success: true, data: [] })
+      )
+    );
+    const { kpis, payments, source } = await getPaymentsLedgerData();
+    expect(source).toBe("GATEWAY");
     expect(payments).toEqual([]);
     expect(kpis).toEqual({
       todayAmount: 0,
@@ -179,7 +242,10 @@ describe("getPaymentsLedgerData — zero-dummy mandate", () => {
         new HttpResponse(null, { status: 500 })
       )
     );
-    const { kpis, payments } = await getPaymentsLedgerData();
+    // `/payments` is deliberately NOT stubbed here → MSW 404 → the gateway
+    // fallback catch path returns zeros (guards against fabricating a ledger).
+    const { kpis, payments, source } = await getPaymentsLedgerData();
+    expect(source).toBe("GATEWAY");
     expect(payments).toEqual([]);
     expect(kpis.totalRecordedCount).toBe(0);
   });

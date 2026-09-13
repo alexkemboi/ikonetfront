@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { ReconciliationView } from "@/components/finance/ReconciliationView";
 
 interface Props {
   initialDate: string;
@@ -251,55 +252,12 @@ export function DarajaPullTrigger({ initialDate, initialEntries, initialSummary 
         <CardHeader>
           <CardTitle className="text-base">Day entries</CardTitle>
         </CardHeader>
-        <CardContent className="overflow-x-auto">
-          {entries.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              No reconciliation entries for this date yet.
-            </p>
-          ) : (
-            <table className="w-full text-sm">
-              <thead className="border-b text-left text-muted-foreground">
-                <tr>
-                  <th className="py-2 pr-4 font-medium">Receipt</th>
-                  <th className="py-2 pr-4 font-medium">Amount</th>
-                  <th className="py-2 pr-4 font-medium">Outcome</th>
-                  <th className="py-2 font-medium">Notes</th>
-                </tr>
-              </thead>
-              <tbody>
-                {entries.map((entry) => (
-                  <tr key={entry.id} className="border-b">
-                    <td className="py-2 pr-4 font-mono text-xs">{entry.receiptNo}</td>
-                    <td className="py-2 pr-4">
-                      {Number(entry.amount).toLocaleString("en-KE", {
-                        style: "currency",
-                        currency: "KES",
-                        maximumFractionDigits: 0,
-                      })}
-                    </td>
-                    <td className="py-2 pr-4">
-                      <Badge
-                        variant={
-                          entry.outcome === "MATCHED" || entry.outcome === "AUTO_HEALED"
-                            ? "default"
-                            : entry.outcome === "UNMATCHED_IN_DARAJA"
-                              ? "outline"
-                              : entry.outcome === "AMBIGUOUS"
-                                ? "outline"
-                                : "destructive"
-                        }
-                      >
-                        {entry.outcome.replace(/_/g, " ")}
-                      </Badge>
-                    </td>
-                    <td className="py-2 text-muted-foreground">
-                      {entry.resolutionNotes || "—"}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
+        <CardContent>
+          <ReconciliationView
+            entries={entries}
+            date={date}
+            onRefresh={() => refresh(date)}
+          />
         </CardContent>
       </Card>
     </div>
