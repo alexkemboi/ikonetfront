@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import type { PaymentLedgerKpis, PaymentLedgerItem } from "@/lib/types/payments";
 import { PaymentsKpiCards } from "@/components/payments/PaymentsKpiCards";
 import { PaymentsDataTable } from "@/components/payments/PaymentsDataTable";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -18,9 +19,10 @@ import {
 interface Props {
   kpis: PaymentLedgerKpis;
   payments: PaymentLedgerItem[];
+  source: "GL" | "GATEWAY";
 }
 
-export function PaymentsLedgerView({ kpis, payments }: Props) {
+export function PaymentsLedgerView({ kpis, payments, source }: Props) {
   const router = useRouter();
   const [recordOpen, setRecordOpen] = useState(false);
 
@@ -35,10 +37,21 @@ export function PaymentsLedgerView({ kpis, payments }: Props) {
             <h1 className="text-3xl font-serif font-semibold text-foreground">
               Payments ledger.
             </h1>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Postings against Account 1110 (M-Pesa Clearing), confirmed from the
-              general ledger. {kpis.totalRecordedCount.toLocaleString()} recorded.
-            </p>
+            {kpis.totalRecordedCount === 0 ? (
+              <p className="mt-1 text-xs text-muted-foreground">
+                No confirmed M-Pesa payments are posted to Account 1110 yet.
+                Confirmed gateway payments will appear here automatically.
+              </p>
+            ) : source === "GATEWAY" && payments.length > 0 ? (
+              <Badge variant="outline" className="mt-1.5 text-amber-600">
+                Showing confirmed gateway payments — GL 1110 backfill pending
+              </Badge>
+            ) : (
+              <p className="mt-1 text-xs text-muted-foreground">
+                Postings against Account 1110 (M-Pesa Clearing), confirmed from the
+                general ledger. {kpis.totalRecordedCount.toLocaleString()} recorded.
+              </p>
+            )}
           </div>
 
           <button

@@ -55,22 +55,19 @@ export type ReconciliationOutcome =
   | "AMBIGUOUS"
   | "AUTO_HEALED";
 
-/** One row of the daily reconciliation (`MpesaReconciliationEntry`). */
+/** One row of the daily reconciliation (`ReconciliationEntryDto`). */
 export interface DarajaReconciliationEntry {
   id: string;
-  reconciliationDate: string;
-  receiptNo: string;
-  checkoutRequestId: string | null;
+  receiptNumber: string;
   amount: number;
+  phoneNumber: string | null;
+  customerName: string | null;
   transactionDate: string | null;
-  safaricomExists: boolean;
-  pppoeExists: boolean;
-  hotspotExists: boolean;
+  checkoutRequestId: string | null;
+  serviceType: "HOTSPOT" | "PPPOE" | "UNKNOWN" | null;
   outcome: ReconciliationOutcome;
-  resolved: boolean;
-  resolutionNotes: string | null;
-  createdAt: string;
-  updatedAt: string | null;
+  notes: string | null;
+  canForceReconcile: boolean;
 }
 
 /** `ReconciliationSummary` returned by the trigger sweep and the pull endpoint. */

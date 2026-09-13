@@ -12,5 +12,5 @@ export const metadata: Metadata = {
 export default async function PaymentsLedgerPage() {
  const data = await getPaymentsLedgerData();
 
- return <PaymentsLedgerView kpis={data.kpis} payments={data.payments} />;
+ return <PaymentsLedgerView kpis={data.kpis} payments={data.payments} source={data.source} />;
 }
