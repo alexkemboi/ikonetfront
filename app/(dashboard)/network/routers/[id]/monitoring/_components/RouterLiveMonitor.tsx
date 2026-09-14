@@ -195,7 +195,7 @@ export function RouterLiveMonitor({ routerId, initialHistory }: RouterLiveMonito
  <div className="p-3 bg-red-500/10 rounded-lg text-red-500"><Cpu className="h-6 w-6" /></div>
  <div>
  <p className="text-xs text-muted-foreground font-medium">CPU Resource Load</p>
- <h3 className="text-2xl font-bold font-mono">{latest ? `${latest.cpuUsage}%` : "0%"}</h3>
+ <h3 className="text-2xl font-normal font-sans tabular-nums">{latest ? `${latest.cpuUsage}%` : "0%"}</h3>
  </div>
  </CardContent>
  </Card>
@@ -205,7 +205,7 @@ export function RouterLiveMonitor({ routerId, initialHistory }: RouterLiveMonito
  <div className="p-3 bg-blue-500/10 rounded-lg text-blue-500"><Database className="h-6 w-6" /></div>
  <div>
  <p className="text-xs text-muted-foreground font-medium">Available Memory</p>
- <h3 className="text-2xl font-bold font-mono">{latest ? formatRAM(latest.freeMemory) : "0 MB"}</h3>
+ <h3 className="text-2xl font-normal font-sans tabular-nums">{latest ? formatRAM(latest.freeMemory) : "0 MB"}</h3>
  </div>
  </CardContent>
  </Card>
@@ -215,7 +215,7 @@ export function RouterLiveMonitor({ routerId, initialHistory }: RouterLiveMonito
  <div className="p-3 bg-green-500/10 rounded-lg text-green-500"><Wifi className="h-6 w-6" /></div>
  <div>
  <p className="text-xs text-muted-foreground font-medium">Active PPPoE Sessions</p>
- <h3 className="text-2xl font-bold font-mono">{latest ? latest.activePppoeSessions : "0"}</h3>
+ <h3 className="text-2xl font-normal font-sans tabular-nums">{latest ? latest.activePppoeSessions : "0"}</h3>
  </div>
  </CardContent>
  </Card>
@@ -225,7 +225,7 @@ export function RouterLiveMonitor({ routerId, initialHistory }: RouterLiveMonito
  <div className="p-3 bg-yellow-500/10 rounded-lg text-yellow-500"><Clock className="h-6 w-6" /></div>
  <div>
  <p className="text-xs text-muted-foreground font-medium">Hardware Uptime</p>
- <h3 className="text-lg font-bold font-mono truncate">{latest ? latest.uptime : "00:00:00"}</h3>
+ <h3 className="text-lg font-normal font-sans tabular-nums truncate">{latest ? latest.uptime : "00:00:00"}</h3>
  </div>
  </CardContent>
  </Card>
@@ -239,7 +239,7 @@ export function RouterLiveMonitor({ routerId, initialHistory }: RouterLiveMonito
  <ResponsiveContainer width="100%" height="100%">
  <LineChart data={dataStream} margin={{ left: -10, right: 10, top: 10, bottom: 5 }}>
  <CartesianGrid strokeDasharray="3 3" stroke="rgba(51, 51, 51, 0.1)" />
- <XAxis dataKey="createdAt" tickFormatter={formatTime} className="text-xs font-mono" />
+ <XAxis dataKey="createdAt" tickFormatter={formatTime} className="text-xs font-sans tabular-nums" />
  <YAxis yAxisId="left" className="text-xs" />
  <YAxis yAxisId="right" orientation="right" className="text-xs" unit="ms" />
  <Tooltip labelFormatter={formatTime} />
@@ -257,7 +257,7 @@ export function RouterLiveMonitor({ routerId, initialHistory }: RouterLiveMonito
  <ResponsiveContainer width="100%" height="100%">
  <LineChart data={dataStream} margin={{ left: -10, right: 10, top: 10, bottom: 5 }}>
  <CartesianGrid strokeDasharray="3 3" stroke="rgba(51, 51, 51, 0.1)" />
- <XAxis dataKey="createdAt" tickFormatter={formatTime} className="text-xs font-mono" />
+ <XAxis dataKey="createdAt" tickFormatter={formatTime} className="text-xs font-sans tabular-nums" />
  <YAxis className="text-xs" allowDecimals={false} />
  <Tooltip labelFormatter={formatTime} />
  <Legend />

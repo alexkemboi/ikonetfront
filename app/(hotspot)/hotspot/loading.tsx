@@ -10,7 +10,7 @@ export default function HotspotLoading() {
  <Wifi className="w-7 h-7 text-primary-foreground" />
  </div>
  <div>
- <h1 className="text-2xl font-bold tracking-tight text-foreground">
+ <h1 className="text-2xl font-normal tracking-normal text-foreground">
  IKONEX Hotspot
  </h1>
  <p className="text-xs text-muted-foreground mt-1">

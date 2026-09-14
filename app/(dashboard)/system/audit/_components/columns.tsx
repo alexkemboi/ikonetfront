@@ -32,7 +32,7 @@ export const auditColumns: ColumnDef<AuditLog>[] = [
  return (
  <div className="flex flex-col min-w-0">
  <span className="text-xs font-medium text-foreground whitespace-nowrap">{date}</span>
- <span className="text-[11px] font-mono text-muted-foreground flex items-center gap-1 mt-0.5">
+ <span className="text-[11px] font-sans tabular-nums text-muted-foreground flex items-center gap-1 mt-0.5">
  <Clock className="w-2.5 h-2.5 shrink-0" />
  {time}
  </span>
@@ -95,7 +95,7 @@ export const auditColumns: ColumnDef<AuditLog>[] = [
  header: ({ column }) => <DataTableColumnHeader column={column} title="Endpoint" />,
  cell: ({ row }) => (
  <span
- className="font-mono text-[11px] text-muted-foreground truncate block max-w-[160px]"
+ className="font-sans tabular-nums text-[11px] text-muted-foreground truncate block max-w-[160px]"
  title={row.getValue("accessTo")}
  >
  {row.getValue("accessTo")}

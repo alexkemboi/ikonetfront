@@ -140,7 +140,7 @@ export function PaymentsDataTable({ payments }: Props) {
  value={search}
  onChange={(e) => setSearch(e.target.value)}
  placeholder="Search by Receipt, phone, user..."
- className="h-9 w-full rounded-lg border border-border bg-muted pl-9 pr-4 text-xs text-foreground placeholder-zinc-500 focus:border-amber-500 focus:outline-none font-mono"
+ className="h-9 w-full rounded-lg border border-border bg-muted pl-9 pr-4 text-xs text-foreground placeholder-zinc-500 focus:border-amber-500 focus:outline-none font-sans tabular-nums"
  />
  </div>
  </div>
@@ -148,7 +148,7 @@ export function PaymentsDataTable({ payments }: Props) {
  <div className="mt-4 overflow-x-auto">
  <table className="w-full text-left text-xs min-w-[920px]">
  <thead>
-<tr className="border-b border-border text-[11px] font-mono tracking-wider text-muted-foreground uppercase">
+<tr className="border-b border-border text-[11px] font-sans tabular-nums tracking-wider text-muted-foreground uppercase">
     <th className="py-3 px-3 w-10">
       <Checkbox
         checked={someFilteredSelected && !allFilteredSelected ? "indeterminate" : allFilteredSelected}
@@ -167,7 +167,7 @@ export function PaymentsDataTable({ payments }: Props) {
  <th className="py-3 px-3 text-right" />
  </tr>
  </thead>
-<tbody className="divide-y divide-zinc-800/50 font-mono">
+<tbody className="divide-y divide-zinc-800/50 font-sans tabular-nums">
     {filtered.length === 0 ? (
       <tr>
         <td
@@ -202,7 +202,7 @@ export function PaymentsDataTable({ payments }: Props) {
 
           <td className="py-3.5 px-3 font-sans">
             <div className="font-semibold text-foreground">{p.subscriberCode}</div>
-            <div className="text-[11px] text-muted-foreground font-mono">
+            <div className="text-[11px] text-muted-foreground font-sans tabular-nums">
               {p.subscriberPhone}
             </div>
           </td>
@@ -235,7 +235,7 @@ export function PaymentsDataTable({ payments }: Props) {
 
  <td className="py-3.5 px-3 text-muted-foreground">
  <span>{p.dateFormatted}</span>
- <span className="ml-2 text-[10px] text-muted-foreground font-mono">
+ <span className="ml-2 text-[10px] text-muted-foreground font-sans tabular-nums">
  {p.latencyText}
  </span>
  </td>
@@ -288,7 +288,7 @@ export function PaymentsDataTable({ payments }: Props) {
  </table>
  </div>
 
-<div className="mt-2 border-t border-border pt-3 text-xs font-mono text-muted-foreground">
+<div className="mt-2 border-t border-border pt-3 text-xs font-sans tabular-nums text-muted-foreground">
     Showing {filtered.length} of {payments.length} payments
     {selectedIds.size > 0 && (
       <span className="text-amber-400"> · {selectedIds.size} selected</span>
@@ -305,7 +305,7 @@ export function PaymentsDataTable({ payments }: Props) {
  </DialogDescription>
  </DialogHeader>
  {viewTarget && (
- <div className="space-y-3 font-mono text-xs">
+ <div className="space-y-3 font-sans tabular-nums text-xs">
  <div className="flex justify-between border-b border-border pb-2">
  <span className="text-muted-foreground">Subscriber</span>
  <span className="text-foreground">{viewTarget.subscriberCode} · {viewTarget.subscriberPhone}</span>
@@ -355,7 +355,7 @@ export function PaymentsDataTable({ payments }: Props) {
  </DialogDescription>
  </DialogHeader>
  <div className="space-y-2">
- <label className="text-xs font-mono text-muted-foreground">Recipient email</label>
+ <label className="text-xs font-sans tabular-nums text-muted-foreground">Recipient email</label>
  <Input
  type="email"
  value={email}

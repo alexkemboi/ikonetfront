@@ -81,7 +81,7 @@ export default function CheckoutModal({
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-border">
           <div>
-            <h3 className="text-lg font-semibold text-foreground">Confirm Purchase</h3>
+            <h3 className="text-lg font-normal text-foreground">Confirm Purchase</h3>
             <p className="text-xs text-muted-foreground">{brand}</p>
           </div>
           <button

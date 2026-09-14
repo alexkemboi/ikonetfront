@@ -43,13 +43,13 @@ export function AddEquipmentForm() {
  {/* Pane 1: Item Identification */}
  <div className="rounded-2xl border border-border bg-card p-6 shadow-xl">
  <div className="border-b border-border pb-3">
- <h2 className="text-base font-semibold text-foreground">Item</h2>
+ <h2 className="text-base font-normal text-foreground">Item</h2>
  <p className="text-xs text-muted-foreground">What it is and how to identify it.</p>
  </div>
 
  <div className="mt-4 space-y-4">
  <div>
- <label className="text-xs font-mono text-muted-foreground">Name *</label>
+ <label className="text-xs font-sans tabular-nums text-muted-foreground">Name *</label>
  <input
  type="text"
  required
@@ -60,7 +60,7 @@ export function AddEquipmentForm() {
  </div>
 
  <div>
- <label className="text-xs font-mono text-muted-foreground">Type</label>
+ <label className="text-xs font-sans tabular-nums text-muted-foreground">Type</label>
  <select
  value={type}
  onChange={(e) => setType(e.target.value as EquipmentType)}
@@ -76,7 +76,7 @@ export function AddEquipmentForm() {
  </div>
 
  <div>
- <label className="text-xs font-mono text-muted-foreground">Model</label>
+ <label className="text-xs font-sans tabular-nums text-muted-foreground">Model</label>
  <input
  type="text"
  value={model}
@@ -86,7 +86,7 @@ export function AddEquipmentForm() {
  </div>
 
  <div>
- <label className="text-xs font-mono text-muted-foreground">Serial</label>
+ <label className="text-xs font-sans tabular-nums text-muted-foreground">Serial</label>
  <input
  type="text"
  value={serial}
@@ -96,7 +96,7 @@ export function AddEquipmentForm() {
  </div>
 
  <div>
- <label className="text-xs font-mono text-muted-foreground">Notes</label>
+ <label className="text-xs font-sans tabular-nums text-muted-foreground">Notes</label>
  <textarea
  rows={3}
  value={notes}
@@ -110,13 +110,13 @@ export function AddEquipmentForm() {
  {/* Pane 2: Assignment & Pricing */}
  <div className="rounded-2xl border border-border bg-card p-6 shadow-xl">
  <div className="border-b border-border pb-3">
- <h2 className="text-base font-semibold text-foreground">Assignment</h2>
+ <h2 className="text-base font-normal text-foreground">Assignment</h2>
  <p className="text-xs text-muted-foreground">Who&apos;s holding it, status and pricing.</p>
  </div>
 
  <div className="mt-4 space-y-4">
  <div>
- <label className="text-xs font-mono text-muted-foreground">Subscriber <span className="text-muted-foreground font-sans">(Optional — leave blank if still in stock)</span></label>
+ <label className="text-xs font-sans tabular-nums text-muted-foreground">Subscriber <span className="text-muted-foreground font-sans">(Optional — leave blank if still in stock)</span></label>
  <input
  type="text"
  placeholder="Select subscriber..."
@@ -125,7 +125,7 @@ export function AddEquipmentForm() {
  </div>
 
  <div>
- <label className="text-xs font-mono text-muted-foreground">Status</label>
+ <label className="text-xs font-sans tabular-nums text-muted-foreground">Status</label>
  <select
  value={status}
  onChange={(e) => setStatus(e.target.value as EquipmentStatus)}
@@ -140,7 +140,7 @@ export function AddEquipmentForm() {
  </div>
 
  <div>
- <label className="text-xs font-mono text-muted-foreground">Price (Ksh)</label>
+ <label className="text-xs font-sans tabular-nums text-muted-foreground">Price (Ksh)</label>
  <input
  type="number"
  value={price}
@@ -150,7 +150,7 @@ export function AddEquipmentForm() {
  </div>
 
  <div>
- <label className="text-xs font-mono text-muted-foreground">Paid so far (Ksh)</label>
+ <label className="text-xs font-sans tabular-nums text-muted-foreground">Paid so far (Ksh)</label>
  <input
  type="number"
  value={paid}

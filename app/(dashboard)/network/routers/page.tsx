@@ -25,10 +25,10 @@ export default async function NasRoutersPage() {
  {/* Header & Link Button */}
  <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
  <div>
- <span className="text-[11px] font-mono tracking-wider text-muted-foreground uppercase">
+ <span className="text-[11px] font-sans tabular-nums tracking-wider text-muted-foreground uppercase">
  NETWORK — ROUTERS
  </span>
- <h1 className="text-3xl font-serif font-semibold text-foreground">NAS & routers.</h1>
+ <h1 className="text-3xl font-sans font-normal text-foreground">NAS & routers.</h1>
  <p className="mt-1 text-xs text-muted-foreground">
  Link a router, paste the script, go live with PPPoE or Hotspot.
  </p>
@@ -56,26 +56,26 @@ export default async function NasRoutersPage() {
  {/* KPI Cards */}
  <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
  <div className="rounded-2xl border border-border bg-card p-5 shadow-lg">
- <span className="text-[11px] font-mono tracking-wider text-muted-foreground uppercase">ROUTERS</span>
- <div className="mt-2 text-3xl font-mono font-bold text-foreground">{kpis.totalRoutersCount}</div>
+ <span className="text-[11px] font-sans tabular-nums tracking-wider text-muted-foreground uppercase">ROUTERS</span>
+ <div className="mt-2 text-3xl font-sans tabular-nums font-bold text-foreground">{kpis.totalRoutersCount}</div>
  <p className="mt-1 text-xs text-muted-foreground">registered NAS devices</p>
  </div>
 
  <div className="rounded-2xl border border-border bg-card p-5 shadow-lg">
- <span className="text-[11px] font-mono tracking-wider text-muted-foreground uppercase">ONLINE</span>
- <div className="mt-2 text-3xl font-mono font-bold text-emerald-400">{kpis.onlineCount}</div>
+ <span className="text-[11px] font-sans tabular-nums tracking-wider text-muted-foreground uppercase">ONLINE</span>
+ <div className="mt-2 text-3xl font-sans tabular-nums font-bold text-emerald-400">{kpis.onlineCount}</div>
  <p className="mt-1 text-xs text-muted-foreground">reachable via monitoring</p>
  </div>
 
  <div className="rounded-2xl border border-border bg-card p-5 shadow-lg">
- <span className="text-[11px] font-mono tracking-wider text-muted-foreground uppercase">OFFLINE</span>
- <div className="mt-2 text-3xl font-mono font-bold text-muted-foreground">{kpis.offlineCount}</div>
+ <span className="text-[11px] font-sans tabular-nums tracking-wider text-muted-foreground uppercase">OFFLINE</span>
+ <div className="mt-2 text-3xl font-sans tabular-nums font-bold text-muted-foreground">{kpis.offlineCount}</div>
  <p className="mt-1 text-xs text-muted-foreground">not responding</p>
  </div>
 
  <div className="rounded-2xl border border-border bg-card p-5 shadow-lg">
- <span className="text-[11px] font-mono tracking-wider text-muted-foreground uppercase">LIVE SESSIONS</span>
- <div className="mt-2 text-3xl font-mono font-bold text-amber-500">{kpis.liveSessionsCount}</div>
+ <span className="text-[11px] font-sans tabular-nums tracking-wider text-muted-foreground uppercase">LIVE SESSIONS</span>
+ <div className="mt-2 text-3xl font-sans tabular-nums font-bold text-amber-500">{kpis.liveSessionsCount}</div>
  <p className="mt-1 text-xs text-muted-foreground">subscribers online now</p>
  </div>
  </div>
@@ -85,13 +85,13 @@ export default async function NasRoutersPage() {
  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-border pb-4">
  <div className="flex items-center gap-1 rounded-full bg-muted p-1 border border-border">
  <button className="rounded-full bg-secondary px-4 py-1.5 text-xs font-medium text-foreground">
- All <span className="font-mono text-muted-foreground">{routers.length}</span>
+ All <span className="font-sans tabular-nums text-muted-foreground">{routers.length}</span>
  </button>
  <button className="rounded-full px-4 py-1.5 text-xs font-medium text-muted-foreground hover:text-accent-foreground">
- Online <span className="font-mono text-muted-foreground">{kpis.onlineCount}</span>
+ Online <span className="font-sans tabular-nums text-muted-foreground">{kpis.onlineCount}</span>
  </button>
  <button className="rounded-full px-4 py-1.5 text-xs font-medium text-muted-foreground hover:text-accent-foreground">
- Offline <span className="font-mono text-muted-foreground">{kpis.offlineCount}</span>
+ Offline <span className="font-sans tabular-nums text-muted-foreground">{kpis.offlineCount}</span>
  </button>
  </div>
 
@@ -108,7 +108,7 @@ export default async function NasRoutersPage() {
 <div className="mt-4 overflow-x-auto rounded-2xl border border-border">
   <table className="w-full text-left text-xs">
   <thead className="border-b border-border bg-muted/40">
-  <tr className="text-[11px] font-mono tracking-wider text-muted-foreground uppercase">
+  <tr className="text-[11px] font-sans tabular-nums tracking-wider text-muted-foreground uppercase">
   <th className="py-4 px-6 font-semibold">Router / Model</th>
   <th className="py-4 px-6 font-semibold">IP (Tunnel)</th>
   <th className="py-4 px-6 font-semibold">Status</th>
@@ -119,7 +119,7 @@ export default async function NasRoutersPage() {
   <th className="py-4 px-6 font-semibold text-right">Actions</th>
   </tr>
   </thead>
-  <tbody className="divide-y divide-border font-mono">
+  <tbody className="divide-y divide-border font-sans tabular-nums">
   {routers.map((r) => {
   const cpu = Number.isFinite(Number(r.cpuUsage)) ? Number(r.cpuUsage) : null;
   const freeMemMB = r.freeMemory ? Math.round(r.freeMemory / (1024 * 1024)) : null;
@@ -127,12 +127,12 @@ export default async function NasRoutersPage() {
   <tr key={r.id} className="hover:bg-zinc-800/30 transition">
   <td className="py-4 px-6 font-sans">
   <div className="font-semibold text-foreground">{r.name}</div>
-  <div className="text-[11px] text-muted-foreground font-mono">{r.model}</div>
+  <div className="text-[11px] text-muted-foreground font-sans tabular-nums">{r.model}</div>
   </td>
   <td className="py-4 px-6">
-  <span className="text-foreground font-mono text-xs">{r.managementIp}</span>
+  <span className="text-foreground font-sans tabular-nums text-xs">{r.managementIp}</span>
   {r.winboxTunnelAddress ? (
-  <div className="text-[11px] text-teal-400/80 font-mono mt-0.5">{r.winboxTunnelAddress}</div>
+  <div className="text-[11px] text-teal-400/80 font-sans tabular-nums mt-0.5">{r.winboxTunnelAddress}</div>
   ) : null}
   </td>
   <td className="py-4 px-6">
@@ -151,7 +151,7 @@ export default async function NasRoutersPage() {
   <td className="py-4 px-6">
   {cpu != null ? (
   <div className="flex items-center gap-2">
-  <span className="text-xs font-mono text-foreground">{cpu}%</span>
+  <span className="text-xs font-sans tabular-nums text-foreground">{cpu}%</span>
   <div className="w-16 bg-muted h-1.5 rounded-full overflow-hidden">
   <div
   className="bg-emerald-500 h-full transition-all"
@@ -163,11 +163,11 @@ export default async function NasRoutersPage() {
   <span className="text-muted-foreground">—</span>
   )}
   </td>
-  <td className="py-4 px-6 text-xs font-mono text-foreground">
+  <td className="py-4 px-6 text-xs font-sans tabular-nums text-foreground">
   {freeMemMB != null ? `${freeMemMB} MB free` : "—"}
   </td>
-  <td className="py-4 px-6 font-mono font-bold text-foreground">{r.activeSessions}</td>
-  <td className="py-4 px-6 text-xs text-muted-foreground font-mono">
+  <td className="py-4 px-6 font-sans tabular-nums font-bold text-foreground">{r.activeSessions}</td>
+  <td className="py-4 px-6 text-xs text-muted-foreground font-sans tabular-nums">
   {r.uptime || r.lastOnlineText || "—"}
   </td>
   <td className="py-4 px-6 text-right">

@@ -22,10 +22,10 @@ export function VouchersClient({ initialKpis, initialVouchers }: Props) {
  <div className="mx-auto max-w-7xl space-y-6">
  <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
  <div>
- <span className="text-[11px] font-mono tracking-widest text-amber-500 uppercase">
+ <span className="text-[11px] font-sans tabular-nums tracking-widest text-amber-500 uppercase">
  Finance · Prepaid
  </span>
- <h1 className="mt-1 text-2xl font-bold tracking-tight text-foreground">
+ <h1 className="mt-1 text-2xl font-normal tracking-normal text-foreground">
  Vouchers &amp; Prepaid Codes
  </h1>
  <p className="text-sm text-muted-foreground">

@@ -5,10 +5,10 @@ export function SubscriberKpiCards({ kpis }: { kpis: SubscriberKpis }) {
  <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
  {/* 1. All Users */}
  <div className="rounded-2xl border border-border bg-card p-5 shadow-lg">
- <span className="text-[11px] font-mono tracking-wider text-muted-foreground uppercase">
+ <span className="text-[11px] font-sans tabular-nums tracking-wider text-muted-foreground uppercase">
  ALL USERS
  </span>
- <div className="mt-2 text-3xl font-mono font-bold text-foreground">
+ <div className="mt-2 text-3xl font-sans tabular-nums font-bold text-foreground">
  {kpis.allUsersCount.toLocaleString()}
  </div>
  <p className="mt-2 text-xs text-muted-foreground">registered accounts</p>
@@ -16,10 +16,10 @@ export function SubscriberKpiCards({ kpis }: { kpis: SubscriberKpis }) {
 
  {/* 2. Expiring in 7 Days */}
  <div className="rounded-2xl border border-border bg-card p-5 shadow-lg">
- <span className="text-[11px] font-mono tracking-wider text-muted-foreground uppercase">
+ <span className="text-[11px] font-sans tabular-nums tracking-wider text-muted-foreground uppercase">
  EXPIRING IN 7 DAYS
  </span>
- <div className="mt-2 text-3xl font-mono font-bold text-amber-400">
+ <div className="mt-2 text-3xl font-sans tabular-nums font-bold text-amber-400">
  {kpis.expiringIn7DaysCount}
  </div>
  <p className="mt-2 text-xs text-muted-foreground">renewals due next week</p>
@@ -27,14 +27,14 @@ export function SubscriberKpiCards({ kpis }: { kpis: SubscriberKpis }) {
 
  {/* 3. Online Now */}
  <div className="rounded-2xl border border-border bg-card p-5 shadow-lg">
- <span className="text-[11px] font-mono tracking-wider text-muted-foreground uppercase">
+ <span className="text-[11px] font-sans tabular-nums tracking-wider text-muted-foreground uppercase">
  ONLINE NOW
  </span>
  <div className="mt-2 flex items-baseline gap-2">
- <span className="text-3xl font-mono font-bold text-emerald-400">
+ <span className="text-3xl font-sans tabular-nums font-bold text-emerald-400">
  {kpis.onlineCount}
  </span>
- <span className="text-sm font-mono font-semibold text-emerald-500/80">
+ <span className="text-sm font-sans tabular-nums font-semibold text-emerald-500/80">
  {kpis.onlinePercentage}%
  </span>
  </div>
@@ -50,10 +50,10 @@ export function SubscriberKpiCards({ kpis }: { kpis: SubscriberKpis }) {
 
  {/* 4. New This Week */}
  <div className="rounded-2xl border border-border bg-card p-5 shadow-lg">
- <span className="text-[11px] font-mono tracking-wider text-muted-foreground uppercase">
+ <span className="text-[11px] font-sans tabular-nums tracking-wider text-muted-foreground uppercase">
  NEW THIS WEEK
  </span>
- <div className="mt-2 text-3xl font-mono font-bold text-foreground">
+ <div className="mt-2 text-3xl font-sans tabular-nums font-bold text-foreground">
  {kpis.newThisWeekCount}
  </div>
  <p className="mt-2 text-xs text-muted-foreground">joined in last 7 days</p>
@@ -61,10 +61,10 @@ export function SubscriberKpiCards({ kpis }: { kpis: SubscriberKpis }) {
 
  {/* 5. At Risk */}
  <div className="rounded-2xl border border-border bg-card p-5 shadow-lg">
- <span className="text-[11px] font-mono tracking-wider text-muted-foreground uppercase">
+ <span className="text-[11px] font-sans tabular-nums tracking-wider text-muted-foreground uppercase">
  AT RISK
  </span>
- <div className="mt-2 text-3xl font-mono font-bold text-amber-400">
+ <div className="mt-2 text-3xl font-sans tabular-nums font-bold text-amber-400">
  {kpis.atRiskCount}
  </div>
  <p className="mt-2 text-xs text-muted-foreground">stale or no subscription</p>

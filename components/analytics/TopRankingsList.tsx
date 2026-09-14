@@ -11,13 +11,13 @@ export function TopRankingsList({ packages, customers }: Props) {
  <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
  <div className="rounded-2xl border border-border bg-card p-6 shadow-xl">
  <div className="flex items-center justify-between border-b border-border pb-4">
- <h2 className="text-base font-semibold text-foreground">Top packages · Monthly</h2>
+ <h2 className="text-base font-normal text-foreground">Top packages · Monthly</h2>
  <button className="rounded-lg bg-zinc-800/80 px-3 py-1 text-xs font-medium text-muted-foreground hover:bg-zinc-700">
  View top 50
  </button>
  </div>
 
- <div className="mt-6 space-y-4 font-mono text-xs">
+ <div className="mt-6 space-y-4 font-sans tabular-nums text-xs">
  {packages.map((pkg) => (
  <div key={pkg.id}>
  <div className="flex items-center justify-between mb-1.5">
@@ -45,7 +45,7 @@ export function TopRankingsList({ packages, customers }: Props) {
  <div className="rounded-2xl border border-border bg-card p-6 shadow-xl">
  <div className="flex items-center justify-between border-b border-border pb-4">
  <div>
- <h2 className="text-base font-semibold text-foreground">Top customers · Monthly</h2>
+ <h2 className="text-base font-normal text-foreground">Top customers · Monthly</h2>
  <p className="text-[11px] text-muted-foreground">
  Highest-paying subscribers — your value rank list
  </p>
@@ -55,7 +55,7 @@ export function TopRankingsList({ packages, customers }: Props) {
  </button>
  </div>
 
- <div className="mt-6 space-y-4 font-mono text-xs">
+ <div className="mt-6 space-y-4 font-sans tabular-nums text-xs">
  {customers.map((c) => (
  <div key={c.subscriberCode}>
  <div className="flex items-center justify-between mb-1.5">

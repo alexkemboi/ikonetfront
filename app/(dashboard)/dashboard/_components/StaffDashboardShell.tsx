@@ -49,7 +49,7 @@ export function StaffDashboardShell({
  <div className="flex items-center gap-2">
  <Badge className="bg-success text-foreground text-xs">Staff</Badge>
  </div>
- <h1 className="text-2xl font-bold tracking-tight mt-1">{greeting}</h1>
+ <h1 className="text-2xl font-normal tracking-normal mt-1">{greeting}</h1>
  <p className="text-sm text-muted-foreground">Your daily work overview</p>
  </motion.div>
 
@@ -128,7 +128,7 @@ export function StaffDashboardShell({
  >
  <div className="min-w-0">
  <p className="text-sm font-medium truncate">{customer.fullName}</p>
- <p className="text-xs text-muted-foreground font-mono">
+ <p className="text-xs text-muted-foreground font-sans tabular-nums">
  @{customer.username}
  </p>
  </div>

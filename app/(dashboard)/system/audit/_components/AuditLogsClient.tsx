@@ -92,7 +92,7 @@ export default function AuditLogsClient({ logs, methods, modules }: Props) {
  <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
  <Activity className="w-4.5 h-4.5 text-primary" />
  </div>
- <h1 className="text-2xl font-bold tracking-tight text-foreground">Audit Logs</h1>
+ <h1 className="text-2xl font-normal tracking-normal text-foreground">Audit Logs</h1>
  </div>
  <p className="text-sm text-muted-foreground mt-1 ml-0.5">
  {logs.length.toLocaleString()} total events

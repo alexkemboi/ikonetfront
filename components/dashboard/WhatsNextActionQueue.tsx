@@ -13,9 +13,9 @@ export function WhatsNextActionQueue({ items }: Props) {
  return (
  <div className="rounded-2xl border border-border bg-card p-6 shadow-xl">
  <div className="flex items-center justify-between border-b border-border pb-4">
- <h2 className="text-lg font-semibold text-foreground">What&apos;s next?</h2>
+ <h2 className="text-lg font-normal text-foreground">What&apos;s next?</h2>
  {urgentCount > 0 && (
- <span className="rounded-full bg-rose-500/15 px-2.5 py-0.5 text-xs font-mono font-bold text-rose-400">
+ <span className="rounded-full bg-rose-500/15 px-2.5 py-0.5 text-xs font-sans tabular-nums font-bold text-rose-400">
  {urgentCount} urgent
  </span>
  )}
@@ -39,7 +39,7 @@ export function WhatsNextActionQueue({ items }: Props) {
  <div className="flex items-center gap-2">
  <span className="text-sm font-semibold text-foreground">{item.title}</span>
  {item.isUrgent && (
- <span className="rounded bg-rose-500/20 px-1.5 py-0.5 text-[10px] font-mono font-bold text-rose-400 uppercase">
+ <span className="rounded bg-rose-500/20 px-1.5 py-0.5 text-[10px] font-sans tabular-nums font-bold text-rose-400 uppercase">
  URGENT
  </span>
  )}

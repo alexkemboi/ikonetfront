@@ -111,7 +111,7 @@ export function NetworkStatusPanel({
  </div>
  </div>
  <div className="shrink-0 text-right ml-2">
- <p className="font-mono text-xs text-muted-foreground">
+ <p className="font-sans tabular-nums text-xs text-muted-foreground">
  {device.ipAddress}
  </p>
  {device.cpuLoad && (

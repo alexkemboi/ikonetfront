@@ -171,7 +171,7 @@ const handleOnboard = async () => {
  {({ errors, touched }) => (
  <Form className="space-y-4">
  <div className="space-y-1">
- <h3 className="text-lg font-bold">1. Device Connectivity</h3>
+ <h3 className="text-lg font-normal">1. Device Connectivity</h3>
  <p className="text-sm text-muted-foreground">Enter connection parameters to establish a raw TCP RouterOS API socket connection.</p>
  </div>
 
@@ -220,7 +220,7 @@ const handleOnboard = async () => {
  {step === 2 && hardwareProfile && (
  <div className="space-y-4">
  <div className="space-y-1">
- <h3 className="text-lg font-bold text-green-500 flex items-center gap-2">
+ <h3 className="text-lg font-normal text-green-500 flex items-center gap-2">
  <CheckCircle2 className="h-5 w-5" /> Hardware Discovered & Verified
  </h3>
  <p className="text-sm text-muted-foreground">The platform queried RouterOS and successfully read these parameters.</p>
@@ -289,7 +289,7 @@ const handleOnboard = async () => {
  return (
  <Form className="space-y-4">
 <div className="space-y-1">
-  <h3 className="text-lg font-bold">3. Network Assignment</h3>
+  <h3 className="text-lg font-normal">3. Network Assignment</h3>
   <p className="text-sm text-muted-foreground">Assign this router to a physical geographic Point of Presence (POP).</p>
   </div>
 
@@ -317,7 +317,7 @@ const handleOnboard = async () => {
  <div className="flex items-start gap-3">
  <AlertTriangle className="h-5 w-5 text-amber-400 shrink-0 mt-0.5" />
  <div className="space-y-1">
- <h4 className="font-semibold text-sm">No ISP Station POPs configured</h4>
+ <h4 className="font-normal text-sm">No ISP Station POPs configured</h4>
  <p className="text-xs text-muted-foreground leading-relaxed">
  A MikroTik router must be assigned to an active Station POP for billing and revenue attribution. Create a Region → Location → Station before onboarding a router.
  </p>
@@ -414,7 +414,7 @@ const handleOnboard = async () => {
  {() => (
  <Form className="space-y-4">
  <div className="space-y-1">
- <h3 className="text-lg font-bold">4. Device Role & Capabilities</h3>
+ <h3 className="text-lg font-normal">4. Device Role & Capabilities</h3>
  <p className="text-sm text-muted-foreground">Select device performance constraints and core services to provision.</p>
  </div>
 
@@ -466,7 +466,7 @@ const handleOnboard = async () => {
  {step === 5 && (
  <div className="space-y-4">
  <div className="space-y-1">
- <h3 className="text-lg font-bold">5. Topology Registration Confirmation</h3>
+ <h3 className="text-lg font-normal">5. Topology Registration Confirmation</h3>
  <p className="text-sm text-muted-foreground">Verify connection parameters and hardware signatures before finalizing alignment.</p>
  </div>
 
@@ -476,7 +476,7 @@ const handleOnboard = async () => {
   <div><span className="text-muted-foreground block text-xs">Device Role Constraint</span> {wizardData.routerRole}</div>
   <div><span className="text-muted-foreground block text-xs">Assigned Station POP</span> Station ID #{wizardData.stationIdxno}</div>
   <div><span className="text-muted-foreground block text-xs">Operating Company</span> {COMPANY_OPTIONS.find(c => c.code === wizardData.companyCode)?.label ?? wizardData.companyCode}</div>
-  <div><span className="text-muted-foreground block text-xs">Asset Tag (auto)</span> <span className="font-mono">RTR-{wizardData.companyCode === "CMP-BSM-001" ? "BSM" : wizardData.companyCode === "CMP-ADR-001" ? "ADR" : "BDK"}-A</span></div>
+  <div><span className="text-muted-foreground block text-xs">Asset Tag (auto)</span> <span className="font-sans tabular-nums">RTR-{wizardData.companyCode === "CMP-BSM-001" ? "BSM" : wizardData.companyCode === "CMP-ADR-001" ? "ADR" : "BDK"}-A</span></div>
   <div><span className="text-muted-foreground block text-xs">PPPoE Enabled</span> {wizardData.pppoeEnabled ? "Yes" : "No"}</div>
   <div><span className="text-muted-foreground block text-xs">Hotspot Captive Portal</span> {wizardData.hotspotEnabled ? "Yes" : "No"}</div>
   </div>

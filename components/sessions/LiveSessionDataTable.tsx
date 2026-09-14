@@ -111,7 +111,7 @@ export function LiveSessionDataTable({
  {label}
  <span
  className={cn(
- "ml-1.5 font-mono",
+ "ml-1.5 font-sans tabular-nums",
  active ? "text-muted-foreground" : "text-muted-foreground"
  )}
  >
@@ -138,25 +138,25 @@ export function LiveSessionDataTable({
  <table className="w-full min-w-[920px] text-left">
  <thead>
  <tr className="border-b border-border">
- <th className="px-4 py-3 text-[11px] font-mono uppercase tracking-wider text-muted-foreground">
+ <th className="px-4 py-3 text-[11px] font-sans tabular-nums uppercase tracking-wider text-muted-foreground">
  Subscriber
  </th>
- <th className="px-4 py-3 text-[11px] font-mono uppercase tracking-wider text-muted-foreground">
+ <th className="px-4 py-3 text-[11px] font-sans tabular-nums uppercase tracking-wider text-muted-foreground">
  Traffic
  </th>
- <th className="px-4 py-3 text-[11px] font-mono uppercase tracking-wider text-muted-foreground">
+ <th className="px-4 py-3 text-[11px] font-sans tabular-nums uppercase tracking-wider text-muted-foreground">
  Device
  </th>
- <th className="px-4 py-3 text-[11px] font-mono uppercase tracking-wider text-muted-foreground">
+ <th className="px-4 py-3 text-[11px] font-sans tabular-nums uppercase tracking-wider text-muted-foreground">
  Router
  </th>
- <th className="px-4 py-3 text-[11px] font-mono uppercase tracking-wider text-muted-foreground">
+ <th className="px-4 py-3 text-[11px] font-sans tabular-nums uppercase tracking-wider text-muted-foreground">
  Duration
  </th>
- <th className="px-4 py-3 text-[11px] font-mono uppercase tracking-wider text-muted-foreground">
+ <th className="px-4 py-3 text-[11px] font-sans tabular-nums uppercase tracking-wider text-muted-foreground">
  Expiry
  </th>
- <th className="px-4 py-3 text-right text-[11px] font-mono uppercase tracking-wider text-muted-foreground">
+ <th className="px-4 py-3 text-right text-[11px] font-sans tabular-nums uppercase tracking-wider text-muted-foreground">
  Action
  </th>
  </tr>
@@ -192,7 +192,7 @@ export function LiveSessionDataTable({
 
  {/* Traffic */}
  <td className="px-4 py-3">
- <p className="whitespace-nowrap font-mono text-sm font-semibold text-amber-400">
+ <p className="whitespace-nowrap font-sans tabular-nums text-sm font-semibold text-amber-400">
  {session.downloadFormatted} · {session.uploadFormatted}
  </p>
  <p className="text-[11px] text-muted-foreground">down · up</p>
@@ -200,10 +200,10 @@ export function LiveSessionDataTable({
 
  {/* Device */}
  <td className="px-4 py-3">
- <p className="font-mono text-sm text-zinc-200">
+ <p className="font-sans tabular-nums text-sm text-zinc-200">
  {session.deviceMac}
  </p>
- <p className="font-mono text-[11px] text-muted-foreground">
+ <p className="font-sans tabular-nums text-[11px] text-muted-foreground">
  {session.assignedIp}
  </p>
  </td>
@@ -213,7 +213,7 @@ export function LiveSessionDataTable({
  <p className="max-w-[160px] truncate text-sm text-zinc-200">
  {session.routerName}
  </p>
- <p className="font-mono text-[11px] text-muted-foreground">
+ <p className="font-sans tabular-nums text-[11px] text-muted-foreground">
  {session.routerManagementIp || "—"}
  </p>
  </td>
@@ -262,7 +262,7 @@ export function LiveSessionDataTable({
  <span>
  Showing {filtered.length} of {items.length} sessions
  </span>
- <span className="font-mono">RFC 5176 CoA · LIVE</span>
+ <span className="font-sans tabular-nums">RFC 5176 CoA · LIVE</span>
  </div>
  </div>
  );

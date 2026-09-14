@@ -28,7 +28,7 @@ export default async function OnboardRouterPage() {
   return (
     <div className="space-y-6 p-6 max-w-4xl mx-auto">
       <div className="flex flex-col gap-2">
-        <h1 className="text-3xl font-bold tracking-tight">Onboard Edge Device</h1>
+        <h1 className="text-3xl font-normal tracking-normal">Onboard Edge Device</h1>
         <p className="text-muted-foreground">
           Connect, validate, locate, and automatically provision a new MikroTik RouterOS device.
         </p>

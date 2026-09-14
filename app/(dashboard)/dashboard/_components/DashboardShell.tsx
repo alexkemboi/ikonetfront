@@ -163,7 +163,7 @@ export function DashboardShell({
  ease: "easeOut",
  }}
  >
- <h1 className="text-2xl font-bold tracking-tight">
+ <h1 className="text-2xl font-normal tracking-normal">
  Dashboard
  </h1>
 
@@ -371,7 +371,7 @@ export function DashboardShell({
  <div className="flex items-center gap-2 mb-4">
  <ShieldAlert className="h-4 w-4 text-warning" />
 
- <h2 className="text-sm font-semibold">
+ <h2 className="text-sm font-normal">
  Critical Alerts
  </h2>
  </div>
@@ -436,7 +436,7 @@ export function DashboardShell({
  >
  <div className="mb-4 flex items-center justify-between">
  <div>
- <h3 className="text-sm font-semibold">
+ <h3 className="text-sm font-normal">
  Revenue Trends
  </h3>
 
@@ -538,7 +538,7 @@ export function DashboardShell({
  >
  <div className="mb-4 flex items-center justify-between">
  <div>
- <h3 className="text-sm font-semibold">
+ <h3 className="text-sm font-normal">
  Subscriber Growth
  </h3>
 
@@ -612,7 +612,7 @@ export function DashboardShell({
  <div className="flex items-center gap-2 mb-4">
  <Wallet className="h-4 w-4 text-muted-foreground" />
 
- <h2 className="text-sm font-semibold">
+ <h2 className="text-sm font-normal">
  Revenue Analytics
  </h2>
  </div>

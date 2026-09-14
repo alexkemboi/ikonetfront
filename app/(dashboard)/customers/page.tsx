@@ -23,10 +23,10 @@ export default async function SubscribersPage() {
  {/* Header */}
  <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
  <div>
- <p className="text-[11px] font-mono uppercase tracking-widest text-muted-foreground">
+ <p className="text-[11px] font-sans tabular-nums uppercase tracking-widest text-muted-foreground">
  Customers — Subscribers
  </p>
- <h1 className="mt-1 text-3xl font-bold tracking-tight text-foreground">
+ <h1 className="mt-1 text-3xl font-normal tracking-normal text-foreground">
  Your subscribers.
  </h1>
  <p className="mt-1 text-sm text-muted-foreground">

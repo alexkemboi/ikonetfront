@@ -42,7 +42,7 @@ export function RegionClient({ initialRegions }: RegionClientProps) {
  {
  accessorKey: "regionCode",
  header: "Region Code",
- cell: ({ row }) => <span className="font-mono font-semibold">{row.original.regionCode}</span>,
+ cell: ({ row }) => <span className="font-sans tabular-nums font-semibold">{row.original.regionCode}</span>,
  },
  {
  accessorKey: "name",
@@ -90,7 +90,7 @@ export function RegionClient({ initialRegions }: RegionClientProps) {
  {perms.canCreate && (
  <Dialog open={isDialogOpen} onOpenChange={setIsOpen}>
 <DialogTrigger asChild>
-          <Button className="inline-flex items-center gap-2 rounded-xl bg-amber-500 px-5 py-2.5 text-xs font-semibold text-black hover:bg-amber-400 transition shadow-lg shadow-amber-500/20">
+          <Button className="inline-flex items-center gap-2 rounded-xl bg-amber-500 px-5 py-2.5 text-black hover:bg-amber-400 transition shadow-lg shadow-amber-500/20">
             <Plus className="h-4 w-4" /> Add Region
           </Button>
           </DialogTrigger>

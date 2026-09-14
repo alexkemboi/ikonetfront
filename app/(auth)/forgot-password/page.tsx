@@ -20,7 +20,7 @@ export default function ForgotPasswordPage() {
 
  {/* Heading */}
  <div className="space-y-1.5">
- <h2 className="text-2xl font-bold tracking-tight text-foreground">
+ <h2 className="text-2xl font-normal tracking-normal text-foreground">
  Reset Password
  </h2>
  <p className="text-sm text-muted-foreground">

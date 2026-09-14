@@ -97,7 +97,7 @@ export default async function FinancePage({ searchParams }: FinancePageProps) {
           <Badge className="bg-primary/10 text-primary border-primary/20 text-xs mb-1" variant="outline">
             Finance
           </Badge>
-          <h1 className="text-2xl font-bold tracking-tight">Executive Dashboard</h1>
+          <h1 className="text-2xl font-normal tracking-normal">Executive Dashboard</h1>
           <p className="text-sm text-muted-foreground">
             Profit &amp; Loss · M-Pesa Clearing · Trial Balance · Live Ledger
           </p>
@@ -246,7 +246,7 @@ export default async function FinancePage({ searchParams }: FinancePageProps) {
               <Button
                 variant="outline"
                 size="sm"
-                className="h-8 text-xs w-full"
+                className="h-8 w-full"
                 asChild
               >
                 <a href="/finance/payments">Open payments ledger</a>
@@ -297,10 +297,10 @@ export default async function FinancePage({ searchParams }: FinancePageProps) {
                       key={p.id}
                       className="transition-colors hover:bg-muted/30 border-b border-border last:border-0"
                     >
-                      <td className="px-5 py-3 font-mono text-xs text-muted-foreground">
+                      <td className="px-5 py-3 font-sans tabular-nums text-xs text-muted-foreground">
                         {p.occurredAt.replace("T", " ").slice(0, 16)}
                       </td>
-                      <td className="px-4 py-3 font-mono font-semibold text-amber-500 text-xs">
+                      <td className="px-4 py-3 font-sans tabular-nums font-semibold text-amber-500 text-xs">
                         {p.accountCode}
                       </td>
                       <td className="px-4 py-3 text-xs text-muted-foreground">{p.sourceType}</td>

@@ -19,10 +19,10 @@ export default async function LiveSessionsPage() {
  <div className="mx-auto max-w-7xl space-y-6">
  {/* Header */}
  <div>
- <p className="text-[11px] font-mono uppercase tracking-widest text-muted-foreground">
+ <p className="text-[11px] font-sans tabular-nums uppercase tracking-widest text-muted-foreground">
  Network — Live Sessions
  </p>
- <h1 className="mt-1 text-3xl font-bold tracking-tight text-foreground">
+ <h1 className="mt-1 text-3xl font-normal tracking-normal text-foreground">
  Currently online.
  </h1>
  <p className="mt-1 text-sm text-muted-foreground">

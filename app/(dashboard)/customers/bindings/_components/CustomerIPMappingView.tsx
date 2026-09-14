@@ -134,7 +134,7 @@ function PoolBar({ pool }: { pool: IPPool }) {
           <Router className="w-3.5 h-3.5 text-muted-foreground" />
           {pool.poolName}
         </div>
-        <span className="text-muted-foreground font-mono text-[11px]">{pool.subnet}</span>
+        <span className="text-muted-foreground font-sans tabular-nums text-[11px]">{pool.subnet}</span>
       </div>
       <div className="relative h-2.5 rounded-full bg-muted overflow-hidden">
         <div className={`absolute left-0 top-0 h-full rounded-full transition-all ${color}`} style={{ width: `${usedPct}%` }} />
@@ -143,7 +143,7 @@ function PoolBar({ pool }: { pool: IPPool }) {
       <div className="flex gap-3 text-[11px] text-muted-foreground">
         <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-success inline-block" />{used} used</span>
         <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-muted-foreground/30 inline-block" />{free} free</span>
-        <span className="ml-auto font-mono">{usedPct}%</span>
+        <span className="ml-auto font-sans tabular-nums">{usedPct}%</span>
       </div>
     </div>
   );
@@ -164,8 +164,8 @@ function MappingRow({ m }: { m: IPMapping }) {
       </div>
       <ChevronRight className="w-4 h-4 text-muted-foreground/40 shrink-0" />
       <div className="min-w-0">
-        <p className="font-mono text-sm font-semibold text-foreground tracking-tight">{m.ipAddress}</p>
-        <p className="font-mono text-[11px] text-muted-foreground tracking-wide">
+        <p className="font-sans tabular-nums text-sm font-semibold text-foreground tracking-tight">{m.ipAddress}</p>
+        <p className="font-sans tabular-nums text-[11px] text-muted-foreground tracking-wide">
           {m.macAddress && m.macAddress !== "00:00:00:00:00:00" ? m.macAddress : "—"}
         </p>
       </div>
@@ -194,13 +194,7 @@ function MappingRow({ m }: { m: IPMapping }) {
  <Button
  variant="ghost"
  size="icon"
- className="
- h-8 w-8 rounded-lg
- text-muted-foreground
- hover:bg-muted
- hover:text-foreground
- transition-colors
-"
+ className="h-8 w-8 rounded-lg\n text-muted-foreground\n hover:bg-muted\n hover:text-foreground\n transition-colors"
  >
  <MoreHorizontal className="h-4 w-4" />
  </Button>
@@ -394,7 +388,7 @@ function MapIPSheet({
  value={formik.values.ipAddress}
  onChange={formik.handleChange}
  onBlur={formik.handleBlur}
- className={`font-mono ${formik.touched.ipAddress && formik.errors.ipAddress ? "border-destructive" : ""}`}
+ className={`font-sans tabular-nums ${formik.touched.ipAddress && formik.errors.ipAddress ? "border-destructive" : ""}`}
  />
  <FieldError msg={formik.touched.ipAddress ? formik.errors.ipAddress : undefined} />
  </div>
@@ -407,7 +401,7 @@ function MapIPSheet({
  value={formik.values.macAddress}
  onChange={(e) => formik.setFieldValue("macAddress", e.target.value.toUpperCase())}
  onBlur={formik.handleBlur}
- className={`font-mono ${formik.touched.macAddress && formik.errors.macAddress ? "border-destructive" : ""}`}
+ className={`font-sans tabular-nums ${formik.touched.macAddress && formik.errors.macAddress ? "border-destructive" : ""}`}
  />
  <FieldError msg={formik.touched.macAddress ? formik.errors.macAddress : undefined} />
  </div>
@@ -583,10 +577,10 @@ export default function CustomerIPMappingView({ mappings, pools, customers, pack
 {/* Header */}
   <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
     <div>
-      <p className="text-[11px] font-mono tracking-wider text-muted-foreground uppercase">
+      <p className="text-[11px] font-sans tabular-nums tracking-wider text-muted-foreground uppercase">
         Customers — Bindings
       </p>
-      <h1 className="text-3xl font-serif font-semibold text-foreground">Customer IP Bindings.</h1>
+      <h1 className="text-3xl font-sans font-normal text-foreground">Customer IP Bindings.</h1>
       <p className="mt-1 text-xs text-muted-foreground">
         Track which customer owns which IP across all routers
       </p>
@@ -599,7 +593,7 @@ export default function CustomerIPMappingView({ mappings, pools, customers, pack
       {perms.canCreate && (
         <Button
           size="sm"
-          className="gap-1.5 rounded-xl bg-amber-500 text-xs font-semibold text-black hover:bg-amber-400 transition shadow-lg shadow-amber-500/20"
+          className="gap-1.5 rounded-xl bg-amber-500 text-black hover:bg-amber-400 transition shadow-lg shadow-amber-500/20"
           onClick={() => setSheetOpen(true)}
         >
           <Plus className="w-4 h-4" />

@@ -163,7 +163,7 @@ export function GenerateVouchersModal({ isOpen, onClose }: Props) {
  <div className="space-y-4 py-2">
  {step === 1 ? (
  <div>
- <label className="text-xs font-mono text-muted-foreground">
+ <label className="text-xs font-sans tabular-nums text-muted-foreground">
  Package *
  </label>
  <select
@@ -189,7 +189,7 @@ export function GenerateVouchersModal({ isOpen, onClose }: Props) {
  ) : (
  <div className="space-y-4">
  <div>
- <label className="text-xs font-mono text-muted-foreground">
+ <label className="text-xs font-sans tabular-nums text-muted-foreground">
  Quantity *
  </label>
  <input
@@ -204,7 +204,7 @@ export function GenerateVouchersModal({ isOpen, onClose }: Props) {
  </div>
  <div className="grid grid-cols-2 gap-3">
  <div>
- <label className="text-xs font-mono text-muted-foreground">
+ <label className="text-xs font-sans tabular-nums text-muted-foreground">
  Code length
  </label>
  <input
@@ -217,7 +217,7 @@ export function GenerateVouchersModal({ isOpen, onClose }: Props) {
  />
  </div>
  <div>
- <label className="text-xs font-mono text-muted-foreground">
+ <label className="text-xs font-sans tabular-nums text-muted-foreground">
  Prefix
  </label>
  <input
@@ -231,7 +231,7 @@ export function GenerateVouchersModal({ isOpen, onClose }: Props) {
  </div>
  </div>
  <div>
- <label className="text-xs font-mono text-muted-foreground">
+ <label className="text-xs font-sans tabular-nums text-muted-foreground">
  Expiry date{" "}
  <span className="font-sans text-muted-foreground">
  (optional — backend default applied)
@@ -246,7 +246,7 @@ export function GenerateVouchersModal({ isOpen, onClose }: Props) {
  </div>
  <p className="text-[11px] text-muted-foreground">
  Ambiguous characters{" "}
- <span className="font-mono text-muted-foreground">I L O 0 1</span> are
+ <span className="font-sans tabular-nums text-muted-foreground">I L O 0 1</span> are
  stripped from prefixes and never used in codes.
  </p>
  </div>

@@ -30,7 +30,7 @@ export default function PackageCard({ pkg, onSelect }: PackageCardProps) {
 			<div className="px-4 py-3 flex items-center justify-between gap-4">
 				{/* Left: Package info (compact) */}
 				<div className="flex-1 min-w-0">
-					<h3 className="text-sm font-semibold text-foreground truncate">
+					<h3 className="text-sm font-normal text-foreground truncate">
 						{pkg.packageName}
 					</h3>
 					<div className="text-xs text-muted-foreground mt-4.5 md:mt-0.5 flex items-center gap-2">

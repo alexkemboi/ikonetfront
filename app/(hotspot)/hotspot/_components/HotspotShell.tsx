@@ -1,13 +1,19 @@
 "use client";
 
 import { useState } from "react";
-import { Wifi, Phone } from "lucide-react";
+import { Wifi, Phone, Tv } from "lucide-react";
 import HotspotFlow from "./HotspotFlow";
+import TvDeviceSetup from "./TvDeviceSetup";
+import type { TvPackage } from "@/lib/types/tv";
+import type { TvDeviceDetails } from "@/lib/validation/tv-device";
 import { HotspotPackage } from "@/lib/types/hotspot";
 import { getCustomerFacingBrand } from "@/lib/brand";
 
 interface HotspotShellProps {
   packages: HotspotPackage[];
+  initialTvDevice: TvDeviceDetails;
+  tvPackages: TvPackage[];
+  tvPackagesError?: string;
   initialCompanyCode?: string | null;
   clientMac?: string;
   clientIp?: string;
@@ -22,10 +28,11 @@ interface HotspotShellProps {
  * `companyId`, which re-hydrates the brand here — updating the header/footer,
  * not just the checkout modal.
  */
-export default function HotspotShell({ packages, initialCompanyCode, clientMac, clientIp }: HotspotShellProps) {
+export default function HotspotShell({ packages, initialCompanyCode, clientMac, clientIp, initialTvDevice, tvPackages, tvPackagesError }: HotspotShellProps) {
   const [companyCode, setCompanyCode] = useState<string | null>(
     initialCompanyCode ?? null
   );
+  const [service, setService] = useState<"hotspot" | "tv">("hotspot");
   const brand = getCustomerFacingBrand(companyCode);
 
   const handleCompanyResolved = (code?: string | null) => {
@@ -41,7 +48,7 @@ export default function HotspotShell({ packages, initialCompanyCode, clientMac, 
             <Wifi className="w-5 h-5 text-primary-foreground" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-foreground">{brand}</h1>
+            <h1 className="text-2xl font-normal text-foreground">{brand}</h1>
             <p className="text-xs text-muted-foreground">Fast Internet Access</p>
           </div>
         </div>
@@ -49,14 +56,31 @@ export default function HotspotShell({ packages, initialCompanyCode, clientMac, 
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col">
-        <h2 className="text-2xl lg:text-3xl font-bold text-foreground mb-2">
-          Choose Your Plan
+        <h2 className="text-2xl lg:text-3xl font-normal text-foreground mb-2">
+          {service === "tv" ? "Set up a TV or streaming device" : "Choose Your Plan"}
         </h2>
         <p className="text-sm text-muted-foreground mb-8">
-          Select the perfect hotspot package for your connectivity needs
+          {service === "tv" ? "Connect your TV or streaming device in a few simple steps." : "Select the perfect hotspot package for your connectivity needs"}
         </p>
 
-        <div className="flex-1 w-full max-w-2xl">
+        <div role="group" aria-label="Choose internet service" className="grid grid-cols-2 gap-3 mb-6">
+          {([
+            { id: "hotspot", label: "Hotspot", description: "Internet for this device", Icon: Wifi },
+            { id: "tv", label: "TV & Streaming device", description: "Set up your TV using your phone", Icon: Tv },
+          ] as const).map(({ id, label, description, Icon }) => (
+            <button key={id} type="button" aria-pressed={service === id} aria-controls={`${id}-service-panel`}
+              onClick={() => setService(id)}
+              className={`rounded-lg border p-4 text-left focus-visible:outline-2 focus-visible:outline-ring ${service === id ? "border-warning bg-warning text-warning-foreground" : "border-border bg-card text-foreground"}`}>
+              <Icon className="size-5 mb-2" aria-hidden="true" />
+              <span className="block font-medium">{label}</span>
+              <span className="block text-xs mt-1">{description}</span>
+            </button>
+          ))}
+        </div>
+        <div id="tv-service-panel" hidden={service !== "tv"}>
+          <TvDeviceSetup brand={brand} initialDevice={initialTvDevice} packages={tvPackages} packagesError={tvPackagesError} />
+        </div>
+        <div id="hotspot-service-panel" hidden={service !== "hotspot"} className="flex-1 w-full max-w-2xl">
           <HotspotFlow
             packages={packages}
             companyCode={companyCode}

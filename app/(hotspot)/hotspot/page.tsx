@@ -1,3 +1,4 @@
+import { getTvPackagesAction } from "@/actions/tv";
 import HotspotShell from "./_components/HotspotShell";
 import { Wifi, Zap, Shield, Clock } from "lucide-react";
 import { getPublicHotspotPackagesAction } from "@/actions/hotspot";
@@ -27,7 +28,10 @@ export default async function HotspotPage({ searchParams }: HotspotPageProps) {
   const clientMac = params?.mac?.trim() || "";
   const clientIp = params?.ip?.trim() || "";
 
-  const packagesResponse = await getPublicHotspotPackagesAction();
+  const [packagesResponse, tvPackagesResult] = await Promise.all([
+    getPublicHotspotPackagesAction(),
+    getTvPackagesAction(),
+  ]);
   const packages: HotspotPackage[] = packagesResponse.success
     ? packagesResponse.data || []
     : [];
@@ -46,7 +50,7 @@ export default async function HotspotPage({ searchParams }: HotspotPageProps) {
             <Wifi className="w-5 h-5 text-warning" />
           </div>
 
-          <h1 className="text-4xl font-bold text-primary-foreground leading-tight mb-4">
+          <h1 className="text-4xl font-normal text-primary-foreground leading-tight mb-4">
             Ultra-Fast Hotspot Connectivity
           </h1>
 
@@ -94,6 +98,9 @@ export default async function HotspotPage({ searchParams }: HotspotPageProps) {
         <div className="flex-1 w-full max-w-2xl">
           <HotspotShell
             packages={packages}
+            tvPackages={tvPackagesResult.packages}
+            tvPackagesError={tvPackagesResult.error}
+            initialTvDevice={{ macAddress: "" }}
             initialCompanyCode={initialCompanyCode}
             clientMac={clientMac}
             clientIp={clientIp}

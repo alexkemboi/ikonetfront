@@ -24,10 +24,10 @@ export default async function EquipmentHubPage() {
  <div className="mx-auto max-w-7xl space-y-6">
  <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
  <div>
- <span className="text-[11px] font-mono tracking-wider text-muted-foreground uppercase">
+ <span className="text-[11px] font-sans tabular-nums tracking-wider text-muted-foreground uppercase">
  NETWORK — EQUIPMENT
  </span>
- <h1 className="text-3xl font-serif font-semibold text-foreground">Hardware inventory.</h1>
+ <h1 className="text-3xl font-sans font-normal text-foreground">Hardware inventory.</h1>
  <p className="mt-1 text-xs text-muted-foreground">
  Track every router, modem, and cable from stockroom to subscriber to bin.
  </p>

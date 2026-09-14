@@ -13,10 +13,10 @@ return (
     <div className="min-h-screen p-4 text-foreground sm:p-6 lg:p-8">
       <div className="mx-auto max-w-7xl space-y-6">
         <div>
-          <p className="text-[11px] font-mono tracking-wider text-muted-foreground uppercase">
+          <p className="text-[11px] font-sans tabular-nums tracking-wider text-muted-foreground uppercase">
             Network — Regions
           </p>
-          <h1 className="text-3xl font-serif font-semibold text-foreground">Regions.</h1>
+          <h1 className="text-3xl font-sans font-normal text-foreground">Regions.</h1>
           <p className="mt-1 text-xs text-muted-foreground">
             Define and manage your high-level geographic ISP operation boundaries.
           </p>

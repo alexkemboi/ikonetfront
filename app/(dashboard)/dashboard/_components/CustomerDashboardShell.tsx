@@ -55,12 +55,12 @@ export function CustomerDashboardShell({ customer }: CustomerDashboardShellProps
  >
  <div>
  <Badge className="bg-primary text-foreground text-xs mb-1">My Account</Badge>
- <h1 className="text-2xl font-bold tracking-tight">
+ <h1 className="text-2xl font-normal tracking-normal">
  Welcome, {customer.firstname}
  </h1>
  <p className="text-sm text-muted-foreground">
  Account No:{" "}
- <span className="font-mono font-semibold text-foreground">
+ <span className="font-sans tabular-nums font-semibold text-foreground">
  {customer.acno ?? "N/A"}
  </span>
  </p>
@@ -175,7 +175,7 @@ export function CustomerDashboardShell({ customer }: CustomerDashboardShellProps
  <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">
  {label}
  </p>
- <p className={`text-sm font-semibold ${mono ? "font-mono" : ""}`}>
+ <p className={`text-sm font-semibold ${mono ? "font-sans tabular-nums" : ""}`}>
  {value}
  </p>
  </div>

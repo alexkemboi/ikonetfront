@@ -143,7 +143,7 @@ function CustomerSearchSelect({ customers, loading, value, onChange, error }: Cu
  </div>
  <div className="min-w-0">
  <p className="font-medium truncate">{c.fullName}</p>
- <p className="text-[11px] text-muted-foreground font-mono truncate">
+ <p className="text-[11px] text-muted-foreground font-sans tabular-nums truncate">
  {c.username}{c.acno ? ` · ${c.acno}` : ""}
  </p>
  </div>

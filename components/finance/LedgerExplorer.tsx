@@ -160,7 +160,7 @@ export default function LedgerExplorer({
             ) : (
               <AlertTriangle className="h-4 w-4 text-muted-foreground" />
             )}
-            <span className="text-[11px] font-mono tracking-wider text-muted-foreground uppercase">
+            <span className="text-[11px] font-sans tabular-nums tracking-wider text-muted-foreground uppercase">
               {initialTrialBalance
                 ? initialTrialBalance.isBalanced
                   ? "Balanced Invariant"
@@ -170,7 +170,7 @@ export default function LedgerExplorer({
           </div>
           <div
             className={cn(
-              "mt-2 text-2xl font-mono font-bold",
+              "mt-2 text-2xl font-sans tabular-nums font-bold",
               initialTrialBalance ? "text-foreground" : "text-muted-foreground"
             )}
           >
@@ -182,12 +182,12 @@ export default function LedgerExplorer({
         </div>
 
         <div className="rounded-2xl border border-border bg-card p-5 shadow-lg">
-          <span className="text-[11px] font-mono tracking-wider text-muted-foreground uppercase">
+          <span className="text-[11px] font-sans tabular-nums tracking-wider text-muted-foreground uppercase">
             Total Debits
           </span>
           <div
             className={cn(
-              "mt-2 text-2xl font-mono font-bold",
+              "mt-2 text-2xl font-sans tabular-nums font-bold",
               initialTrialBalance ? "text-foreground" : "text-muted-foreground"
             )}
           >
@@ -197,12 +197,12 @@ export default function LedgerExplorer({
         </div>
 
         <div className="rounded-2xl border border-border bg-card p-5 shadow-lg">
-          <span className="text-[11px] font-mono tracking-wider text-muted-foreground uppercase">
+          <span className="text-[11px] font-sans tabular-nums tracking-wider text-muted-foreground uppercase">
             Total Credits
           </span>
           <div
             className={cn(
-              "mt-2 text-2xl font-mono font-bold",
+              "mt-2 text-2xl font-sans tabular-nums font-bold",
               initialTrialBalance ? "text-foreground" : "text-muted-foreground"
             )}
           >
@@ -212,10 +212,10 @@ export default function LedgerExplorer({
         </div>
 
         <div className="rounded-2xl border border-border bg-card p-5 shadow-lg">
-          <span className="text-[11px] font-mono tracking-wider text-muted-foreground uppercase">
+          <span className="text-[11px] font-sans tabular-nums tracking-wider text-muted-foreground uppercase">
             Active COA Accounts
           </span>
-          <div className="mt-2 text-2xl font-mono font-bold text-amber-500">{allAccounts.length}</div>
+          <div className="mt-2 text-2xl font-sans tabular-nums font-bold text-amber-500">{allAccounts.length}</div>
           <p className="mt-1 text-xs text-muted-foreground">posting-enabled accounts</p>
         </div>
       </div>
@@ -227,10 +227,10 @@ export default function LedgerExplorer({
           <div className="rounded-2xl border border-border bg-card p-6 shadow-lg">
             <div className="flex items-center justify-between border-b border-border pb-4">
               <div>
-                <p className="text-[11px] font-mono tracking-wider text-muted-foreground uppercase">
+                <p className="text-[11px] font-sans tabular-nums tracking-wider text-muted-foreground uppercase">
                   Chart of Accounts
                 </p>
-                <p className="mt-1 text-2xl font-serif font-semibold text-foreground">GAAP tree.</p>
+                <p className="mt-1 text-2xl font-sans font-semibold text-foreground">GAAP tree.</p>
               </div>
               <span className="text-xs text-muted-foreground">{categoryKeys.length} categories</span>
             </div>
@@ -261,11 +261,11 @@ export default function LedgerExplorer({
                         ) : (
                           <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
                         )}
-                        <span className="text-[11px] font-mono tracking-wider text-muted-foreground uppercase">
+                        <span className="text-[11px] font-sans tabular-nums tracking-wider text-muted-foreground uppercase">
                           {key}
                         </span>
                       </span>
-                      <span className="font-mono text-xs tabular-nums text-muted-foreground">
+                      <span className="font-sans tabular-nums text-xs tabular-nums text-muted-foreground">
                         {categoryCounts[key] ?? 0}
                       </span>
                     </button>
@@ -301,15 +301,15 @@ export default function LedgerExplorer({
           <div className="rounded-2xl border border-border bg-card p-6 shadow-lg">
             <div className="flex flex-col gap-4 border-b border-border pb-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <p className="text-[11px] font-mono tracking-wider text-muted-foreground uppercase">
+                <p className="text-[11px] font-sans tabular-nums tracking-wider text-muted-foreground uppercase">
                   Postings
                 </p>
                 <div className="mt-1 flex items-center gap-2">
-                  <h2 className="text-2xl font-serif font-semibold text-foreground">Ledger entries.</h2>
+                  <h2 className="text-2xl font-sans font-normal text-foreground">Ledger entries.</h2>
                   {selectedCode && (
                     <button
                       onClick={() => handleSelect(selectedCode)}
-                      className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-3 py-1 text-[11px] font-mono font-semibold text-amber-500"
+                      className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-3 py-1 text-[11px] font-sans tabular-nums font-semibold text-amber-500"
                     >
                       {selectedCode}
                       <FilterX className="h-3 w-3" />
@@ -347,7 +347,7 @@ export default function LedgerExplorer({
             <div className="mt-4 overflow-x-auto">
               <table className="w-full text-left text-xs">
                 <thead>
-                  <tr className="border-b border-border text-[11px] font-mono tracking-wider text-muted-foreground uppercase">
+                  <tr className="border-b border-border text-[11px] font-sans tabular-nums tracking-wider text-muted-foreground uppercase">
                     <th className="py-3 pr-3">Date</th>
                     <th className="py-3 pr-3">Account</th>
                     <th className="py-3 pr-3">Source</th>
@@ -362,16 +362,16 @@ export default function LedgerExplorer({
                       const negative = p.amount < 0;
                       return (
                         <tr key={p.id} className="transition hover:bg-muted/40">
-                          <td className="py-3 pr-3 font-mono text-muted-foreground">
+                          <td className="py-3 pr-3 font-sans tabular-nums text-muted-foreground">
                             {p.occurredAt.replace("T", " ").slice(0, 16)}
                           </td>
-                          <td className="py-3 pr-3 font-mono font-semibold text-amber-500">
+                          <td className="py-3 pr-3 font-sans tabular-nums font-semibold text-amber-500">
                             {p.accountCode}
                           </td>
                           <td className="py-3 pr-3 text-muted-foreground">{p.sourceType}</td>
                           <td
                             className={cn(
-                              "py-3 pr-3 text-right font-mono font-bold tabular-nums",
+                              "py-3 pr-3 text-right font-sans tabular-nums font-bold tabular-nums",
                               negative ? "text-emerald-400" : "text-foreground"
                             )}
                           >
@@ -383,7 +383,7 @@ export default function LedgerExplorer({
                               {p.serviceType || "—"}
                             </span>
                           </td>
-                          <td className="py-3 text-right font-mono text-[11px] text-muted-foreground">
+                          <td className="py-3 text-right font-sans tabular-nums text-[11px] text-muted-foreground">
                             {p.companyId ?? "—"} · Rtr: {p.routerId ?? "—"}
                           </td>
                         </tr>
@@ -450,12 +450,12 @@ function AccountTreeRow({
           ) : (
             <span className="h-3 w-3 shrink-0" />
           )}
-          <span className="truncate font-mono text-xs">{node.code}</span>
+          <span className="truncate font-sans tabular-nums text-xs">{node.code}</span>
           <span className="truncate">{node.name}</span>
         </span>
         <span
           className={cn(
-            "font-mono text-xs tabular-nums",
+            "font-sans tabular-nums text-xs tabular-nums",
             selectedCode === node.code
               ? "text-black"
               : hasBalance

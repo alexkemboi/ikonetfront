@@ -46,15 +46,15 @@ export function CustomerProfileHeader({ customer }: CustomerProfileHeaderProps) 
  </Avatar>
 
  <div>
- <h1 className="text-2xl font-bold tracking-tight">
+ <h1 className="text-2xl font-normal tracking-normal">
  {customer.fullName}
  </h1>
  <div className="flex flex-wrap items-center gap-2 mt-1">
- <span className="font-mono text-sm text-muted-foreground">
+ <span className="font-sans tabular-nums text-sm text-muted-foreground">
  @{customer.username}
  </span>
  {customer.acno && (
- <Badge variant="outline" className="font-mono text-xs">
+ <Badge variant="outline" className="font-sans tabular-nums text-xs">
  ACNO: {customer.acno}
  </Badge>
  )}

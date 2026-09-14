@@ -190,7 +190,7 @@ export default function StatementExplorer() {
  >
  <div>
  <Badge className="bg-primary/10 text-primary border-primary/20 text-xs mb-1" variant="outline">Finance</Badge>
- <h1 className="text-2xl font-bold tracking-tight">Customer Statements</h1>
+ <h1 className="text-2xl font-normal tracking-normal">Customer Statements</h1>
  <p className="text-sm text-muted-foreground">View, generate, and download statements</p>
  </div>
  <div className="flex items-center gap-2">
@@ -239,7 +239,7 @@ export default function StatementExplorer() {
  <div className="flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/5 p-3 text-sm text-destructive">
  <AlertCircle className="w-4 h-4 shrink-0" />
  <span>{error}</span>
- <Button variant="outline" size="sm" className="ml-auto h-7 text-xs" onClick={handleSearch}>Retry</Button>
+ <Button variant="outline" size="sm" className="ml-auto h-7" onClick={handleSearch}>Retry</Button>
  </div>
  )}
 

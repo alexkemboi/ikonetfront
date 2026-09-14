@@ -252,7 +252,7 @@ export default function BulkEmailWizard({ segments, templates }: Props) {
  <div className="w-20 h-20 rounded-full bg-[oklch(0.97_0.03_155)] flex items-center justify-center">
  <CheckCircle2 className="w-10 h-10 text-[oklch(0.52_0.16_155)]" />
  </div>
- <h2 className="text-2xl font-bold text-foreground">Campaign Sent!</h2>
+ <h2 className="text-2xl font-normal text-foreground">Campaign Sent!</h2>
  <p className="text-sm text-muted-foreground text-center max-w-xs">
  Your email has been queued for delivery to{" "}
  <strong>{selectedSegment?.count.toLocaleString()} recipients</strong> in the{" "}
@@ -278,7 +278,7 @@ export default function BulkEmailWizard({ segments, templates }: Props) {
  <div className="max-w-3xl mx-auto space-y-8">
  {/* Header */}
  <div>
- <h1 className="text-2xl font-bold text-foreground">Bulk Email</h1>
+ <h1 className="text-2xl font-normal text-foreground">Bulk Email</h1>
  <p className="text-sm text-muted-foreground mt-0.5">
  Reach customers at scale — renewals, promos, and notices in a few clicks
  </p>
@@ -294,7 +294,7 @@ export default function BulkEmailWizard({ segments, templates }: Props) {
  {step === 1 && (
  <div className="space-y-4">
  <div>
- <h2 className="text-base font-semibold text-foreground">
+ <h2 className="text-base font-normal text-foreground">
  Who will receive this email?
  </h2>
  <p className="text-xs text-muted-foreground mt-0.5">
@@ -318,7 +318,7 @@ export default function BulkEmailWizard({ segments, templates }: Props) {
  {step === 2 && (
  <div className="space-y-5">
  <div>
- <h2 className="text-base font-semibold text-foreground">Compose your email</h2>
+ <h2 className="text-base font-normal text-foreground">Compose your email</h2>
  <p className="text-xs text-muted-foreground mt-0.5">
  Start from a template or write your own. Use{" "}
  <code className="font-mono bg-muted px-1 rounded text-[11px]">{"{{customer_name}}"}</code>{" "}
@@ -371,7 +371,7 @@ export default function BulkEmailWizard({ segments, templates }: Props) {
  placeholder="Write your message here..."
  value={body}
  onChange={(e) => setBody(e.target.value)}
- className="w-full rounded-lg border border-input bg-background px-3 py-2.5 text-sm font-mono resize-none focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary placeholder:text-muted-foreground"
+ className="w-full rounded-lg border border-input bg-background px-3 py-2.5 text-sm font-sans tabular-nums resize-none focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary placeholder:text-muted-foreground"
  />
  <p className="text-[11px] text-muted-foreground text-right">
  {body.length} characters
@@ -384,7 +384,7 @@ export default function BulkEmailWizard({ segments, templates }: Props) {
  {step === 3 && (
  <div className="space-y-4">
  <div>
- <h2 className="text-base font-semibold text-foreground">Review before sending</h2>
+ <h2 className="text-base font-normal text-foreground">Review before sending</h2>
  <p className="text-xs text-muted-foreground mt-0.5">
  This is how your email will appear. Check subject, body, and recipient count carefully.
  </p>
@@ -402,7 +402,7 @@ export default function BulkEmailWizard({ segments, templates }: Props) {
  {step === 4 && (
  <div className="space-y-6">
  <div>
- <h2 className="text-base font-semibold text-foreground">Ready to send?</h2>
+ <h2 className="text-base font-normal text-foreground">Ready to send?</h2>
  <p className="text-xs text-muted-foreground mt-0.5">
  Double-check the summary below. Once sent, this cannot be undone.
  </p>

@@ -59,7 +59,7 @@ export default function BuyTab({ packages, companyCode, onCompanyResolved, onBac
  {/* Header with back button */}
  <div className="flex items-center justify-between">
  <div>
- <h2 className="text-lg font-semibold text-foreground">Available Packages</h2>
+ <h2 className="text-lg font-normal text-foreground">Available Packages</h2>
  <p className="text-xs text-muted-foreground mt-0.5">
  {filteredAndSorted.length} package{filteredAndSorted.length !== 1 ? "s" : ""} available
  </p>

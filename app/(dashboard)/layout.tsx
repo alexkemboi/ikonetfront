@@ -49,9 +49,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
  // nav config so the sidebar still has items.
  const rawMenus = await fetchRoleMenusRaw(role, apiToken);
 
- const navGroups: NavGroup[] = rawMenus.length > 0
- ? apiMenusToNavGroups(rawMenus)
- : getStaticNavForRole(role);
+ const navGroups: NavGroup[] =  getStaticNavForRole(role)// rawMenus.length > 0 ? apiMenusToNavGroups(rawMenus) : getStaticNavForRole(role);
 
  const permissionMap: PermissionMap = rawMenus.length > 0
  ? extractPermissions(rawMenus)

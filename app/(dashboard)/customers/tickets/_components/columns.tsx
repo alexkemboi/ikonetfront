@@ -85,7 +85,7 @@ export function createTicketColumns(dispatch: AppDispatch, perms: PermissionFlag
  accessorKey: "ticketNumber",
  header: ({ column }) => <DataTableColumnHeader column={column} title="Ticket #" />,
  cell: ({ row }) => (
- <span className="font-mono text-[11px] font-medium text-primary bg-primary/5 px-1.5 py-0.5 rounded whitespace-nowrap">
+ <span className="font-sans tabular-nums text-[11px] font-medium text-primary bg-primary/5 px-1.5 py-0.5 rounded whitespace-nowrap">
  {row.getValue("ticketNumber")}
  </span>
  ),
@@ -167,7 +167,7 @@ export function createTicketColumns(dispatch: AppDispatch, perms: PermissionFlag
  <span className="text-xs text-foreground whitespace-nowrap">
  {d.toLocaleDateString("en-KE", { day: "2-digit", month: "short", year: "numeric" })}
  </span>
- <span className="text-[11px] text-muted-foreground flex items-center gap-1 mt-0.5 font-mono">
+ <span className="text-[11px] text-muted-foreground flex items-center gap-1 mt-0.5 font-sans tabular-nums">
  <Clock className="w-2.5 h-2.5 shrink-0" />
  {d.toLocaleTimeString("en-KE", { hour: "2-digit", minute: "2-digit", hour12: false })}
  </span>

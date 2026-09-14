@@ -195,10 +195,10 @@ export function RouterTelemetryDrawer({
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-border">
           <div>
-            <h2 className="text-lg font-bold flex items-center gap-2">
+            <h2 className="text-lg font-normal flex items-center gap-2">
               {router.name}
               <span
-                className={`text-[11px] font-mono px-2 py-0.5 rounded-full border ${
+                className={`text-[11px] font-sans tabular-nums px-2 py-0.5 rounded-full border ${
                   mode === "offline"
                     ? "bg-destructive/10 text-destructive border-destructive/20"
                     : "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
@@ -211,7 +211,7 @@ export function RouterTelemetryDrawer({
                     : "OFFLINE"}
               </span>
             </h2>
-            <p className="text-xs text-muted-foreground mt-0.5 font-mono">
+            <p className="text-xs text-muted-foreground mt-0.5 font-sans tabular-nums">
               {router.managementIp || router.vpnIp || "—"}
             </p>
           </div>
@@ -260,7 +260,7 @@ export function RouterTelemetryDrawer({
                   <span className="flex items-center gap-1.5">
                     <Cpu className="h-4 w-4 text-emerald-500" /> CPU Load
                   </span>
-                  <span className="font-mono text-foreground font-bold">
+                  <span className="font-sans tabular-nums text-foreground font-bold">
                     {latest?.cpuUsage ?? "—"}%
                   </span>
                 </div>
@@ -277,7 +277,7 @@ export function RouterTelemetryDrawer({
                   <span className="flex items-center gap-1.5">
                     <HardDrive className="h-4 w-4 text-blue-500" /> RAM Usage
                   </span>
-                  <span className="font-mono text-foreground font-bold">{memPct}%</span>
+                  <span className="font-sans tabular-nums text-foreground font-bold">{memPct}%</span>
                 </div>
                 <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
                   <div
@@ -285,7 +285,7 @@ export function RouterTelemetryDrawer({
                     style={{ width: `${memPct}%` }}
                   />
                 </div>
-                <p className="mt-1.5 text-[11px] text-muted-foreground font-mono">
+                <p className="mt-1.5 text-[11px] text-muted-foreground font-sans tabular-nums">
                   {latest ? formatBytes(latest.freeMemory) : "—"} free
                 </p>
               </div>
@@ -296,7 +296,7 @@ export function RouterTelemetryDrawer({
                 </div>
                 <div>
                   <div className="text-xs text-muted-foreground">Board Temp</div>
-                  <div className="text-lg font-bold font-mono">
+                  <div className="text-lg font-bold font-sans tabular-nums">
                     {latest?.temperature != null ? `${latest.temperature}°C` : "—"}
                   </div>
                 </div>
@@ -308,7 +308,7 @@ export function RouterTelemetryDrawer({
                 </div>
                 <div>
                   <div className="text-xs text-muted-foreground">Uptime</div>
-                  <div className="text-sm font-bold font-mono">{latest?.uptime ?? "—"}</div>
+                  <div className="text-sm font-bold font-sans tabular-nums">{latest?.uptime ?? "—"}</div>
                 </div>
               </div>
 
@@ -319,7 +319,7 @@ export function RouterTelemetryDrawer({
                   </div>
                   <div>
                     <div className="text-xs text-muted-foreground">Active PPPoE</div>
-                    <div className="text-lg font-bold font-mono">
+                    <div className="text-lg font-bold font-sans tabular-nums">
                       {latest?.activePppoeSessions ?? 0}
                     </div>
                   </div>
@@ -333,7 +333,7 @@ export function RouterTelemetryDrawer({
                   </div>
                   <div>
                     <div className="text-xs text-muted-foreground">Active Hotspot</div>
-                    <div className="text-lg font-bold font-mono">
+                    <div className="text-lg font-bold font-sans tabular-nums">
                       {latest?.activeHotspotSessions ?? 0}
                     </div>
                   </div>
@@ -378,12 +378,12 @@ export function RouterTelemetryDrawer({
                         )}
                         {iface.name}
                       </div>
-                      <div className="text-[11px] text-muted-foreground font-mono mt-0.5">
+                      <div className="text-[11px] text-muted-foreground font-sans tabular-nums mt-0.5">
                         {iface.type}
                         {iface["mac-address"] ? ` · ${iface["mac-address"]}` : ""}
                       </div>
                     </div>
-                    <div className="text-right font-mono">
+                    <div className="text-right font-sans tabular-nums">
                       <div className="text-emerald-600">▲ {formatBytes(iface["tx-byte"] ?? 0)}</div>
                       <div className="text-blue-600">▼ {formatBytes(iface["rx-byte"] ?? 0)}</div>
                     </div>
@@ -403,7 +403,7 @@ export function RouterTelemetryDrawer({
                     </div>
                     <div>
                       <div className="text-xs text-muted-foreground">PPPoE Clients</div>
-                      <div className="text-lg font-bold font-mono">
+                      <div className="text-lg font-bold font-sans tabular-nums">
                         {latest?.activePppoeSessions ?? 0}
                       </div>
                     </div>
@@ -416,7 +416,7 @@ export function RouterTelemetryDrawer({
                     </div>
                     <div>
                       <div className="text-xs text-muted-foreground">Hotspot Clients</div>
-                      <div className="text-lg font-bold font-mono">
+                      <div className="text-lg font-bold font-sans tabular-nums">
                         {latest?.activeHotspotSessions ?? 0}
                       </div>
                     </div>

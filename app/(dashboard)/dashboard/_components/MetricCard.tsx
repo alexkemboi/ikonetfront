@@ -175,8 +175,8 @@ export function MetricCard({
  className={`
  mt-1.5
  text-lg lg:text-xl
- font-bold
- tracking-tight
+ font-normal
+ tracking-normal
  leading-none
  ${colors.title}
  `}

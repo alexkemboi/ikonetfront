@@ -20,7 +20,7 @@ export function VoucherPrintSheet({
  return (
  <div className="flex min-h-screen items-center justify-center bg-white p-8">
  <div className="text-center">
- <h1 className="text-lg font-bold text-zinc-900">
+ <h1 className="text-lg font-normal text-zinc-900">
  No un-issued vouchers to print
  </h1>
  <p className="mt-1 text-sm text-muted-foreground">
@@ -82,7 +82,7 @@ export function VoucherPrintSheet({
  </p>
  </div>
  <div>
- <p className="font-mono text-2xl font-bold tracking-[0.18em] text-black">
+ <p className="font-sans tabular-nums text-2xl font-bold tracking-[0.18em] text-black">
  {v.code}
  </p>
  <p className="mt-2 text-[10px] leading-tight text-muted-foreground">

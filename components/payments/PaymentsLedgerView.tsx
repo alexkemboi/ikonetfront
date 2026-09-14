@@ -31,10 +31,10 @@ export function PaymentsLedgerView({ kpis, payments, source }: Props) {
       <div className="mx-auto max-w-7xl space-y-6">
         <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
           <div>
-            <span className="text-[11px] font-mono tracking-wider text-muted-foreground uppercase">
+            <span className="text-[11px] font-sans tabular-nums tracking-wider text-muted-foreground uppercase">
               BILLING — LEDGER
             </span>
-            <h1 className="text-3xl font-serif font-semibold text-foreground">
+            <h1 className="text-3xl font-sans font-normal text-foreground">
               Payments ledger.
             </h1>
             {kpis.totalRecordedCount === 0 ? (
@@ -77,7 +77,7 @@ export function PaymentsLedgerView({ kpis, payments, source }: Props) {
               Manual M-Pesa capture is not available yet.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-3 font-mono text-xs text-muted-foreground">
+          <div className="space-y-3 font-sans tabular-nums text-xs text-muted-foreground">
             <p>
               Paying in a mobile-money movement by hand needs a backend
               payment-recording endpoint, which is not part of the current API
