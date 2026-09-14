@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { server } from "@/mocks/server";
 import { http, HttpResponse } from "msw";
 import { API_PREFIX } from "@/mocks/handlers/auth-guard";
@@ -127,7 +127,16 @@ describe("getPaymentsLedgerData — Account 1110 binding", () => {
 });
 
 describe("getPaymentsLedgerData — KPIs from real postings", () => {
-  it("computes today / this-week / this-month windows from occurredAt", async () => {
+  afterEach(() => vi.useRealTimers());
+
+  it.each([
+    { date: "2026-09-14T12:00:00", today: 800, month: 800 }, // Monday: both payments are today.
+    { date: "2026-09-16T12:00:00", today: 500, month: 800 }, // Wednesday.
+    { date: "2026-09-01T12:00:00", today: 500, month: 500 }, // Monday falls in August.
+  ])("computes calendar windows on $date", async ({ date, today, month }) => {
+    // Freeze Date only; MSW/network timers must continue running normally.
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date(date));
     const now = new Date();
     const monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - ((now.getDay() + 6) % 7));
     const priorMonth = new Date(now.getFullYear(), now.getMonth() - 1, 15);
@@ -143,16 +152,9 @@ describe("getPaymentsLedgerData — KPIs from real postings", () => {
     );
     const { kpis } = await getPaymentsLedgerData();
 
-    const expectedMonthTotal = postings
-      .filter((p) => {
-        const d = new Date(p.occurredAt);
-        return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
-      })
-      .reduce((sum, p) => sum + Math.abs(p.amount), 0);
-
-    expect(kpis.todayAmount).toBe(500);
+    expect(kpis.todayAmount).toBe(today);
     expect(kpis.thisWeekAmount).toBe(800);
-    expect(kpis.mobileMoneyMonthAmount).toBe(expectedMonthTotal);
+    expect(kpis.mobileMoneyMonthAmount).toBe(month);
     expect(kpis.voucherMonthAmount).toBe(0);
     expect(kpis.totalRecordedCount).toBe(3);
   });
