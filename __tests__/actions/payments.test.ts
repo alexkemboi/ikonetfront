@@ -127,7 +127,9 @@ describe("getPaymentsLedgerData — Account 1110 binding", () => {
 });
 
 describe("getPaymentsLedgerData — KPIs from real postings", () => {
-  afterEach(() => vi.useRealTimers());
+  afterEach(() => {
+    vi.useRealTimers();
+  });
 
   it.each([
     { date: "2026-09-14T12:00:00", today: 800, month: 800 }, // Monday: both payments are today.
