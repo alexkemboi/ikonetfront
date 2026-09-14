@@ -35,10 +35,10 @@ export function LiveSessionHeaderCards({ kpis }: { kpis: LiveSessionKpis }) {
  key={label}
  className="rounded-2xl border border-border bg-card p-5 shadow-lg"
  >
- <span className="text-[11px] font-mono tracking-wider text-muted-foreground uppercase">
+ <span className="text-[11px] font-sans tabular-nums tracking-wider text-muted-foreground uppercase">
  {label}
  </span>
- <div className={`mt-2 text-3xl font-mono font-bold ${color}`}>
+ <div className={`mt-2 text-3xl font-sans tabular-nums font-bold ${color}`}>
  {typeof value === "number" ? value.toLocaleString() : value}
  </div>
  <p className="mt-2 text-xs text-muted-foreground">{footer}</p>

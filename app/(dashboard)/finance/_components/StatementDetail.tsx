@@ -141,7 +141,7 @@ export default function StatementDetail({
  </Button>
  <div>
  <Badge className="bg-primary/10 text-primary border-primary/20 text-xs mb-1" variant="outline">Statement #{statement.id}</Badge>
- <h1 className="text-2xl font-bold tracking-tight">
+ <h1 className="text-2xl font-normal tracking-normal">
  Statement for Customer #{statement.customerId}
  </h1>
  <p className="text-sm text-muted-foreground">

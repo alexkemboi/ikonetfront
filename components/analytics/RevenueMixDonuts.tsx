@@ -50,10 +50,10 @@ function Donut({ segments }: { segments: DonutSegment[] }) {
  ))}
  </svg>
  <div className="absolute text-center">
- <span className="block font-mono text-xs font-bold text-foreground">
+ <span className="block font-sans tabular-nums text-xs font-bold text-foreground">
  Ksh {compactCurrency(total)}
  </span>
- <span className="text-[9px] font-mono text-muted-foreground uppercase">TOTAL</span>
+ <span className="text-[9px] font-sans tabular-nums text-muted-foreground uppercase">TOTAL</span>
  </div>
  </div>
  );
@@ -61,7 +61,7 @@ function Donut({ segments }: { segments: DonutSegment[] }) {
 
 function Breakdown({ segments }: { segments: DonutSegment[] }) {
  return (
- <div className="flex-1 space-y-3 font-mono text-xs">
+ <div className="flex-1 space-y-3 font-sans tabular-nums text-xs">
  {segments.map((s, i) => {
  const color = ARC_COLORS[i % ARC_COLORS.length];
  const dominant = s.percentage >= 100;
@@ -99,8 +99,8 @@ function DonutCard({
  return (
  <div className="rounded-2xl border border-border bg-card p-6 shadow-xl">
  <div className="flex items-center justify-between border-b border-border pb-3">
- <h2 className="text-base font-semibold text-foreground">{title}</h2>
- <span className="font-mono text-xs text-muted-foreground">
+ <h2 className="text-base font-normal text-foreground">{title}</h2>
+ <span className="font-sans tabular-nums text-xs text-muted-foreground">
  Ksh{" "}
  {segments
  .reduce((sum, s) => sum + Math.abs(s.amount), 0)

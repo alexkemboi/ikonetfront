@@ -110,8 +110,8 @@
 }
 
 @theme inline {
-  --font-sans: 'Inter', 'Inter Fallback', ui-sans-serif, system-ui, sans-serif;
-  --font-mono: 'JetBrains Mono', 'JetBrains Mono Fallback', ui-monospace, monospace;
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, monospace;
 
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -143,7 +143,7 @@
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
-  --radius-sm: calc(var(--radius) - 4px);  /* 8px – buttons */
+  --radius-sm: calc(var(--radius) - 6px);  /* 6px – inputs */
   --radius-md: calc(var(--radius) - 2px);  /* 10px */
   --radius-lg: var(--radius);              /* 12px – containers */
   --radius-xl: calc(var(--radius) + 4px);  /* 16px – modals */
@@ -168,9 +168,18 @@
     -moz-osx-font-smoothing: grayscale;
   }
 
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+    font-weight: 400;
+    letter-spacing: 0;
+    line-height: 1.2;
+    text-wrap: pretty;
+  }
+
   body {
     @apply bg-background text-foreground;
-    font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+    font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+    font-size: 0.875rem;
     line-height: 1.5;
   }
 }
@@ -191,7 +200,7 @@
   }
 
   .font-mono-tech {
-    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-family: var(--font-jetbrains-mono), ui-monospace, monospace;
     font-variant-numeric: lining-nums tabular-nums;
     font-feature-settings: 'tnum' 1, 'lnum' 1;
   }

@@ -16,9 +16,9 @@ export function Step4Done({ identity }: Props) {
  </div>
 
  <div>
- <h2 className="text-2xl font-serif font-semibold text-foreground">Router Linked Successfully!</h2>
+ <h2 className="text-2xl font-sans font-normal text-foreground">Router Linked Successfully!</h2>
  <p className="mt-2 text-sm text-muted-foreground">
- <strong className="text-foreground font-mono">{identity}</strong> is now online, connected via WireGuard VPN, and managed by the IBS Control Plane.
+ <strong className="text-foreground font-sans tabular-nums">{identity}</strong> is now online, connected via WireGuard VPN, and managed by the IBS Control Plane.
  </p>
  </div>
 

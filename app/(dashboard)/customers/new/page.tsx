@@ -7,7 +7,7 @@ const NewCustomerPage = async () => {
  // console.log("Fetched packages:", packages);
  return (
  <div className="container mx-auto py-10">
- {/* <h1 className="text-3xl font-bold mb-6">Create New Customer</h1> */}
+ {/* <h1 className="text-3xl font-normal mb-6">Create New Customer</h1> */}
  <Suspense fallback={<div>Loading packages...</div>}>
  <MultiStepCustomerForm packages={packages.data ?? []} />
  </Suspense>

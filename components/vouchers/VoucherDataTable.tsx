@@ -94,7 +94,7 @@ export function VoucherDataTable({ vouchers }: Props) {
  }`}
  >
  {s === "ALL" ? "All" : s.charAt(0) + s.slice(1).toLowerCase()}{" "}
- <span className="font-mono text-muted-foreground">
+ <span className="font-sans tabular-nums text-muted-foreground">
  {s === "ALL" ? vouchers.length : vouchers.filter((v) => v.status === s).length}
  </span>
  </button>
@@ -133,7 +133,7 @@ export function VoucherDataTable({ vouchers }: Props) {
  <div className="mt-4 overflow-x-auto">
  <table className="w-full text-left text-xs">
  <thead>
- <tr className="border-b border-border text-[11px] font-mono tracking-wider text-muted-foreground uppercase">
+ <tr className="border-b border-border text-[11px] font-sans tabular-nums tracking-wider text-muted-foreground uppercase">
  <th className="px-3 py-3">CODE</th>
  <th className="px-3 py-3">PACKAGE</th>
  <th className="px-3 py-3">STATUS</th>
@@ -146,21 +146,21 @@ export function VoucherDataTable({ vouchers }: Props) {
  <tbody className="divide-y divide-zinc-800/50">
  {filtered.length === 0 ? (
  <tr>
- <td colSpan={7} className="py-12 text-center font-mono text-muted-foreground">
+ <td colSpan={7} className="py-12 text-center font-sans tabular-nums text-muted-foreground">
  No vouchers match this filter.
  </td>
  </tr>
  ) : (
  filtered.map((v) => (
  <tr key={v.id} className="transition hover:bg-zinc-800/30">
- <td className="px-3 py-3.5 font-mono font-semibold tracking-wider text-amber-400">
+ <td className="px-3 py-3.5 font-sans tabular-nums font-semibold tracking-wider text-amber-400">
  {v.code}
  </td>
  <td className="px-3 py-3.5 font-sans">
  <div className="font-semibold text-foreground">
  {v.packageName || "—"}
  </div>
- <div className="font-mono text-[11px] text-muted-foreground">
+ <div className="font-sans tabular-nums text-[11px] text-muted-foreground">
  {v.planSpeed || "—"}
  {v.durationText ? ` · ${v.durationText}` : ""}
  {v.planPrice ? ` · ${v.planPrice}` : ""}
@@ -180,13 +180,13 @@ export function VoucherDataTable({ vouchers }: Props) {
  )}
  </div>
  </td>
- <td className="px-3 py-3.5 font-mono text-muted-foreground">
+ <td className="px-3 py-3.5 font-sans tabular-nums text-muted-foreground">
  {v.expiresText || "—"}
  </td>
- <td className="px-3 py-3.5 font-mono text-muted-foreground">
+ <td className="px-3 py-3.5 font-sans tabular-nums text-muted-foreground">
  {v.createdAt || "—"}
  </td>
- <td className="px-3 py-3.5 font-mono text-muted-foreground">
+ <td className="px-3 py-3.5 font-sans tabular-nums text-muted-foreground">
  {v.redeemedByPhone ?? v.redeemedByMac ?? "—"}
  </td>
  <td className="px-3 py-3.5 text-right">

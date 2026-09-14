@@ -9,17 +9,17 @@ export function RouterPerformanceTable({ routers }: Props) {
  return (
  <div className="rounded-2xl border border-border bg-card p-6 shadow-xl">
  <div className="border-b border-border pb-4">
- <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
+ <span className="text-[10px] font-sans tabular-nums uppercase tracking-wider text-muted-foreground">
  MIKROTIK
  </span>
- <h2 className="text-lg font-semibold text-foreground">
+ <h2 className="text-lg font-normal text-foreground">
  MikroTik performance · Monthly
  </h2>
  <p className="text-xs text-muted-foreground">Revenue, sessions, and data per router</p>
  </div>
 
  <div className="mt-4 overflow-x-auto">
- <table className="w-full text-left text-xs font-mono min-w-[720px]">
+ <table className="w-full text-left text-xs font-sans tabular-nums min-w-[720px]">
  <thead>
  <tr className="border-b border-border text-[11px] tracking-wider text-muted-foreground uppercase">
  <th className="py-3 px-3">ROUTER</th>

@@ -147,10 +147,11 @@ function NavLeaf({
     return (
       <Link
         href={item.href}
+        aria-current={isActive ? "page" : undefined}
         className={cn(
           "group flex items-center justify-center rounded-lg p-2.5 transition-colors duration-150 border-l-2 border-transparent",
           isActive
-            ? "bg-sidebar-accent text-foreground border-l-warning"
+            ? "bg-sidebar-accent text-warning border-l-warning"
             : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
         )}
         title={item.label}
@@ -164,11 +165,12 @@ function NavLeaf({
   return (
     <Link
       href={item.href}
+        aria-current={isActive ? "page" : undefined}
       className={cn(
         "group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors duration-150",
         isChild && "ml-4 py-2 text-[13px]",
         isActive
-          ? "bg-sidebar-accent text-foreground border-l-2 border-warning pl-2.5"
+          ? "bg-sidebar-accent text-warning border-l-2 border-warning pl-2.5"
           : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground border-l-2 border-transparent pl-2.5"
       )}
     >
@@ -225,7 +227,7 @@ function NavParent({ item }: { item: NavItem }) {
             className={cn(
               "w-full flex items-center justify-center rounded-lg p-2.5 text-sm font-medium transition-colors duration-150 border-l-2 border-transparent",
               isAnyChildActive
-                ? "text-sidebar-foreground bg-sidebar-accent/30 border-l-warning"
+                ? "text-warning bg-sidebar-accent/30 border-l-warning"
                 : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
             )}
             title={item.label}
@@ -245,10 +247,11 @@ function NavParent({ item }: { item: NavItem }) {
               <DropdownMenuItem key={`${child.href}-${child.label}`} asChild className="focus:bg-sidebar-accent focus:text-sidebar-foreground">
                 <Link
                   href={child.href}
+                  aria-current={isChildActive ? "page" : undefined}
                   className={cn(
                     "w-full flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-colors",
                     isChildActive
-                      ? "bg-sidebar-accent text-foreground font-semibold"
+                      ? "bg-sidebar-accent text-warning font-semibold"
                       : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50"
                   )}
                 >
@@ -277,7 +280,7 @@ function NavParent({ item }: { item: NavItem }) {
         className={cn(
           "w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors duration-150 border-l-2 border-transparent pl-2.5",
           isAnyChildActive || open
-            ? "text-sidebar-foreground bg-sidebar-accent/30 border-l-warning"
+            ? "text-warning bg-sidebar-accent/30 border-l-warning"
             : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
         )}
       >
@@ -466,7 +469,7 @@ export function SidebarInner({
                         <p className="text-xs text-sidebar-foreground/50">
                           {user.email || user.username}
                         </p>
-                        <p className="text-[10px] text-sidebar-foreground/45 mt-0.5 leading-none font-mono uppercase">
+                        <p className="text-[10px] text-sidebar-foreground/45 mt-0.5 leading-none font-sans tabular-nums uppercase">
                           Role: {user.role}
                         </p>
                       </div>

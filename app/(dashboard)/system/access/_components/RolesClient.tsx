@@ -369,7 +369,7 @@ function AssignUserSheet({
  <p className="text-sm font-medium text-foreground truncate">{u.fullName}</p>
  <p className="text-xs text-muted-foreground truncate">{u.email}</p>
  </div>
- <Button size="sm" variant="outline" className="shrink-0 h-7 text-xs"
+ <Button size="sm" variant="outline" className="shrink-0 h-7"
  onClick={async () => {
  const result = await assignUserToRoleAction(roleCode, u.idxno.toString());
  if (result.success) {
@@ -587,7 +587,7 @@ function PermissionsTab({
  <Button
  size="sm"
  variant="outline"
- className="h-7 text-xs gap-1"
+ className="h-7 gap-1"
  disabled={isSaving}
  onClick={() => dispatch(discardChanges(role.id))}
  >
@@ -596,7 +596,7 @@ function PermissionsTab({
  </Button>
  <Button
  size="sm"
- className="h-7 text-xs gap-1"
+ className="h-7 gap-1"
  disabled={isSaving}
  onClick={handleSave}
  >
@@ -732,7 +732,7 @@ export default function RolesClient({
  {/* Page header */}
  <div className="flex items-center justify-between mb-6">
  <div>
- <h1 className="text-xl font-bold text-foreground">Roles & Permissions</h1>
+ <h1 className="text-xl font-normal text-foreground">Roles & Permissions</h1>
  <p className="text-sm text-muted-foreground mt-0.5">
  Manage staff roles and control access to each module.
  </p>
@@ -816,7 +816,7 @@ export default function RolesClient({
  </div>
  ) : (
  <div className="flex items-center gap-2 group/title">
- <h2 className="text-lg font-bold text-foreground">{selectedRole.name}</h2>
+ <h2 className="text-lg font-normal text-foreground">{selectedRole.name}</h2>
  <button
  type="button"
  onClick={() => handleStartEdit(selectedRole)}

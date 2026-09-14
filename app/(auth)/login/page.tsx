@@ -30,7 +30,7 @@ export default async function LoginPage({
  <div className="space-y-8">
  <div className="space-y-1.5">
  <div className="w-8 h-1 rounded-full bg-warning mb-4" />
- <h2 className="text-2xl font-bold tracking-tight text-foreground">
+ <h2 className="text-2xl font-normal tracking-normal text-foreground">
  Welcome back
  </h2>
  <p className="text-sm text-muted-foreground">

@@ -26,7 +26,7 @@ export function ShiftGreetingBanner({
  <div className="flex flex-col justify-between gap-6 lg:flex-row lg:items-center">
  <div>
  {/* Top metadata strip */}
- <div className="flex items-center gap-2 text-xs font-mono tracking-wider text-muted-foreground uppercase">
+ <div className="flex items-center gap-2 text-xs font-sans tabular-nums tracking-wider text-muted-foreground uppercase">
  <span>{tenantName}</span>
  <span className="text-muted-foreground">—</span>
  <span className="font-semibold text-amber-400">{onlineCount} ONLINE RIGHT NOW</span>
@@ -35,7 +35,7 @@ export function ShiftGreetingBanner({
  </div>
 
  {/* Warm Editorial Heading */}
- <h1 className="mt-2 text-3xl font-serif tracking-tight text-foreground sm:text-4xl">
+ <h1 className="mt-2 text-3xl font-sans tracking-normal text-foreground sm:text-4xl">
  Good morning,{" "}
  <span className="text-amber-500 font-sans font-medium lowercase">
  {tenantName.replace(/\s+/g, "")}.
@@ -61,7 +61,7 @@ export function ShiftGreetingBanner({
 
  {/* Live Traffic Last Hour Sparkline */}
  <div className="flex flex-col items-end justify-center rounded-xl border border-border bg-muted px-6 py-4">
- <span className="text-[11px] font-mono tracking-wider text-muted-foreground uppercase">
+ <span className="text-[11px] font-sans tabular-nums tracking-wider text-muted-foreground uppercase">
  TRAFFIC · LAST HOUR
  </span>
  <div className="mt-2 flex items-baseline gap-3">
@@ -75,7 +75,7 @@ export function ShiftGreetingBanner({
  strokeLinecap="round"
  />
  </svg>
- <span className="text-lg font-mono font-semibold text-foreground">
+ <span className="text-lg font-sans tabular-nums font-semibold text-foreground">
  {lastHourTrafficGb.toFixed(1)} GB <span className="text-xs text-muted-foreground font-normal">moved</span>
  </span>
  </div>

@@ -41,7 +41,7 @@ export function EquipmentDataTable({ items }: Props) {
  }`}
  >
  {s.replace("_", " ")}{" "}
- <span className="font-mono text-muted-foreground">
+ <span className="font-sans tabular-nums text-muted-foreground">
  {s === "ALL" ? items.length : items.filter((i) => i.status === s).length}
  </span>
  </button>
@@ -65,7 +65,7 @@ export function EquipmentDataTable({ items }: Props) {
  <div className="mt-4 overflow-x-auto">
  <table className="w-full text-left text-xs">
  <thead>
- <tr className="border-b border-border text-[11px] font-mono tracking-wider text-muted-foreground uppercase">
+ <tr className="border-b border-border text-[11px] font-sans tabular-nums tracking-wider text-muted-foreground uppercase">
  <th className="py-3 px-3">ITEM</th>
  <th className="py-3 px-3">TYPE</th>
  <th className="py-3 px-3">ASSIGNED TO</th>
@@ -75,7 +75,7 @@ export function EquipmentDataTable({ items }: Props) {
  <th className="py-3 px-3 text-right" />
  </tr>
  </thead>
- <tbody className="divide-y divide-zinc-800/50 font-mono">
+ <tbody className="divide-y divide-zinc-800/50 font-sans tabular-nums">
  {filtered.length === 0 ? (
  <tr>
  <td colSpan={7} className="py-12 text-center text-muted-foreground">
@@ -87,7 +87,7 @@ export function EquipmentDataTable({ items }: Props) {
  <tr key={item.id} className="hover:bg-zinc-800/30 transition">
  <td className="py-3.5 px-3 font-sans">
  <div className="font-semibold text-foreground">{item.name}</div>
- <div className="text-[11px] text-muted-foreground font-mono">
+ <div className="text-[11px] text-muted-foreground font-sans tabular-nums">
  {item.model || "—"} {item.serialNumber ? `· S/N: ${item.serialNumber}` : ""}
  </div>
  </td>

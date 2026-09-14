@@ -136,7 +136,7 @@ const breadcrumbs = useBreadcrumb();
  <p className="text-xs font-medium text-foreground leading-none">
  {user.fname || user.username}
  </p>
- <p className="text-[10px] text-muted-foreground mt-0.5 leading-none font-mono">
+ <p className="text-[10px] text-muted-foreground mt-0.5 leading-none font-sans tabular-nums">
  {user.role}
  </p>
  </div>
@@ -149,7 +149,7 @@ const breadcrumbs = useBreadcrumb();
  <p className="text-sm font-semibold leading-none">
  {user.fname || user.username}
  </p>
- <p className="text-xs text-muted-foreground font-mono">
+ <p className="text-xs text-muted-foreground font-sans tabular-nums">
  {user.email || user.username}
  </p>
  <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 mt-1">

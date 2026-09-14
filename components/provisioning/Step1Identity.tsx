@@ -20,12 +20,12 @@ export function Step1Identity({ onContinue, onCancel }: Props) {
  return (
  <form onSubmit={handleSubmit} className="rounded-2xl border border-border bg-card p-6 shadow-xl space-y-6">
  <div className="border-b border-border pb-3">
- <h2 className="text-base font-semibold text-foreground">Router identity</h2>
+ <h2 className="text-base font-normal text-foreground">Router identity</h2>
  <p className="text-xs text-muted-foreground">The identity shown in Winbox under System → Identity.</p>
  </div>
 
  <div>
- <label className="text-xs font-mono text-muted-foreground">MikroTik identity *</label>
+ <label className="text-xs font-sans tabular-nums text-muted-foreground">MikroTik identity *</label>
  <input
  type="text"
  required

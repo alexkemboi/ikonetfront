@@ -34,7 +34,7 @@ export function Step3Services({ routerId, onComplete }: Props) {
  return (
  <div className="rounded-2xl border border-border bg-card p-6 shadow-xl space-y-6">
  <div className="border-b border-border pb-3">
- <h2 className="text-base font-semibold text-foreground">Select Services</h2>
+ <h2 className="text-base font-normal text-foreground">Select Services</h2>
  <p className="text-xs text-muted-foreground">Choose which access networks to enable on this router.</p>
  </div>
 

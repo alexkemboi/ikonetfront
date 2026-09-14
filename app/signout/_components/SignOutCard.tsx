@@ -37,7 +37,7 @@ export default function SignOutCard() {
 
  {/* Copy */}
  <div className="text-center space-y-2">
- <h1 className="text-xl font-bold text-foreground tracking-tight">
+ <h1 className="text-xl font-normal text-foreground tracking-normal">
  Sign out
  </h1>
  <p className="text-sm text-muted-foreground leading-relaxed">

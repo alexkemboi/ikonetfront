@@ -23,11 +23,11 @@ export function OverviewKpiCards({
  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
  {/* Card 1: Revenue Today */}
  <div className="rounded-2xl border border-border bg-card p-5 shadow-lg">
- <span className="text-[11px] font-mono tracking-wider text-muted-foreground uppercase">
+ <span className="text-[11px] font-sans tabular-nums tracking-wider text-muted-foreground uppercase">
  REVENUE TODAY
  </span>
  <div className="mt-2 flex items-baseline gap-2">
- <span className="text-3xl font-mono font-bold text-foreground">
+ <span className="text-3xl font-sans tabular-nums font-bold text-foreground">
  {(revenueToday / 1000).toFixed(1)}k
  </span>
  </div>
@@ -36,17 +36,17 @@ export function OverviewKpiCards({
  {revenueChangePercent >= 0 ? `+${revenueChangePercent}%` : `${revenueChangePercent}%`} Ksh, since midnight
  </span>
  </div>
- <div className="mt-3 rounded-lg bg-muted px-2.5 py-1.5 text-[11px] font-mono text-muted-foreground">
+ <div className="mt-3 rounded-lg bg-muted px-2.5 py-1.5 text-[11px] font-sans tabular-nums text-muted-foreground">
  Mobile money: Ksh {(mobileMoneyToday / 1000).toFixed(1)}k
  </div>
  </div>
 
  {/* Card 2: Active Subscriptions */}
  <div className="rounded-2xl border border-border bg-card p-5 shadow-lg">
- <span className="text-[11px] font-mono tracking-wider text-muted-foreground uppercase">
+ <span className="text-[11px] font-sans tabular-nums tracking-wider text-muted-foreground uppercase">
  ACTIVE SUBSCRIPTIONS
  </span>
- <div className="mt-2 text-3xl font-mono font-bold text-foreground">
+ <div className="mt-2 text-3xl font-sans tabular-nums font-bold text-foreground">
  {activeSubscriptions}
  </div>
  <p className="mt-2 text-xs text-muted-foreground">currently valid</p>
@@ -57,10 +57,10 @@ export function OverviewKpiCards({
 
  {/* Card 3: Online Now */}
  <div className="rounded-2xl border border-border bg-card p-5 shadow-lg">
- <span className="text-[11px] font-mono tracking-wider text-muted-foreground uppercase">
+ <span className="text-[11px] font-sans tabular-nums tracking-wider text-muted-foreground uppercase">
  ONLINE NOW
  </span>
- <div className="mt-2 text-3xl font-mono font-bold text-foreground">
+ <div className="mt-2 text-3xl font-sans tabular-nums font-bold text-foreground">
  {onlinePercentage}%
  </div>
  <p className="mt-2 text-xs text-muted-foreground">
@@ -78,10 +78,10 @@ export function OverviewKpiCards({
 
  {/* Card 4: SMS Credits */}
  <div className="rounded-2xl border border-border bg-card p-5 shadow-lg">
- <span className="text-[11px] font-mono tracking-wider text-muted-foreground uppercase">
+ <span className="text-[11px] font-sans tabular-nums tracking-wider text-muted-foreground uppercase">
  SMS CREDITS
  </span>
- <div className="mt-2 text-3xl font-mono font-bold text-foreground">
+ <div className="mt-2 text-3xl font-sans tabular-nums font-bold text-foreground">
  {smsCredits}
  </div>
  <p className="mt-2 text-xs font-medium text-rose-400">

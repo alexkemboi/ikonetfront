@@ -77,8 +77,8 @@ export function StationCapacityIndicator({ stationId }: StationCapacityIndicator
  return (
  <div className="space-y-4">
  <div className="flex items-center justify-between">
- <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">POP Router Capacity Profiles</h4>
- <span className="text-[10px] text-muted-foreground font-mono">Dynamic Weighted Load-Balancing</span>
+ <h4 className="text-xs font-normal uppercase tracking-wider text-muted-foreground">POP Router Capacity Profiles</h4>
+ <span className="text-[10px] text-muted-foreground font-sans tabular-nums">Dynamic Weighted Load-Balancing</span>
  </div>
 
  <div className="space-y-3">
@@ -99,7 +99,7 @@ export function StationCapacityIndicator({ stationId }: StationCapacityIndicator
  <div className="flex items-center justify-between text-sm">
  <div className="flex flex-col">
  <span className="font-semibold text-card-foreground">{router.name}</span>
- <span className="text-[11px] text-muted-foreground font-mono">{router.ipAddress}</span>
+ <span className="text-[11px] text-muted-foreground font-sans tabular-nums">{router.ipAddress}</span>
  </div>
  <Badge variant={badgeVariant} className="text-[10px] font-semibold py-0.5">
  {router.healthStatus} (Score: {router.loadFactor})

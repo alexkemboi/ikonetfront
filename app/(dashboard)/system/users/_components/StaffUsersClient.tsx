@@ -319,7 +319,7 @@ export default function StaffUsersClient({ users, roles }: StaffUsersClientProps
  <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
  <Users className="w-4.5 h-4.5 text-primary" />
  </div>
- <h1 className="text-2xl font-bold tracking-tight">System Users</h1>
+ <h1 className="text-2xl font-normal tracking-normal">System Users</h1>
  </div>
  <p className="text-sm text-muted-foreground mt-1">
  {users.length} {users.length === 1 ? "user" : "users"} &middot;{" "}

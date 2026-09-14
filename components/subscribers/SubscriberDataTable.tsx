@@ -98,7 +98,7 @@ export function SubscriberDataTable({
  {label}
  <span
  className={cn(
- "ml-1.5 font-mono",
+ "ml-1.5 font-sans tabular-nums",
  active ? "text-muted-foreground" : "text-muted-foreground"
  )}
  >
@@ -123,7 +123,7 @@ export function SubscriberDataTable({
  <Button
  variant="outline"
  size="sm"
- className="h-8 gap-1.5 border-border bg-muted text-xs text-muted-foreground hover:text-accent-foreground"
+ className="h-8 gap-1.5 border-border bg-muted text-muted-foreground hover:text-accent-foreground"
  >
  <Filter className="h-3.5 w-3.5" />
  Filter
@@ -136,28 +136,28 @@ export function SubscriberDataTable({
  <table className="w-full min-w-[900px] text-left">
  <thead>
  <tr className="border-b border-border">
- <th className="px-4 py-3 text-[11px] font-mono uppercase tracking-wider text-muted-foreground">
+ <th className="px-4 py-3 text-[11px] font-sans tabular-nums uppercase tracking-wider text-muted-foreground">
  <span className="inline-flex items-center gap-1">
  <ArrowUpDown className="h-3 w-3" />
  Contact
  </span>
  </th>
- <th className="px-4 py-3 text-[11px] font-mono uppercase tracking-wider text-muted-foreground">
+ <th className="px-4 py-3 text-[11px] font-sans tabular-nums uppercase tracking-wider text-muted-foreground">
  Phone {`&`} Email
  </th>
- <th className="px-4 py-3 text-[11px] font-mono uppercase tracking-wider text-muted-foreground">
+ <th className="px-4 py-3 text-[11px] font-sans tabular-nums uppercase tracking-wider text-muted-foreground">
  Plan
  </th>
- <th className="px-4 py-3 text-[11px] font-mono uppercase tracking-wider text-muted-foreground">
+ <th className="px-4 py-3 text-[11px] font-sans tabular-nums uppercase tracking-wider text-muted-foreground">
  Expiry
  </th>
- <th className="px-4 py-3 text-[11px] font-mono uppercase tracking-wider text-muted-foreground">
+ <th className="px-4 py-3 text-[11px] font-sans tabular-nums uppercase tracking-wider text-muted-foreground">
  Status
  </th>
- <th className="px-4 py-3 text-[11px] font-mono uppercase tracking-wider text-muted-foreground">
+ <th className="px-4 py-3 text-[11px] font-sans tabular-nums uppercase tracking-wider text-muted-foreground">
  NAS
  </th>
- <th className="w-12 px-4 py-3 text-right text-[11px] font-mono uppercase tracking-wider text-muted-foreground">
+ <th className="w-12 px-4 py-3 text-right text-[11px] font-sans tabular-nums uppercase tracking-wider text-muted-foreground">
  Actions
  </th>
  </tr>
@@ -193,7 +193,7 @@ export function SubscriberDataTable({
  </span>
  )}
  </div>
- <p className="truncate font-mono text-[11px] text-muted-foreground">
+ <p className="truncate font-sans tabular-nums text-[11px] text-muted-foreground">
  {subscriber.code}
  {subscriber.macAddress
  ? ` · ${subscriber.macAddress}`
@@ -205,7 +205,7 @@ export function SubscriberDataTable({
 
  {/* Phone & Email */}
  <td className="px-4 py-3">
- <p className="font-mono text-sm text-zinc-200">
+ <p className="font-sans tabular-nums text-sm text-zinc-200">
  {subscriber.phone}
  </p>
  <p className="max-w-[180px] truncate text-[11px] text-muted-foreground">
@@ -288,7 +288,7 @@ export function SubscriberDataTable({
  <span>
  Showing {filtered.length} of {subscribers.length} subscribers
  </span>
- <span className="font-mono">LIVE DATA</span>
+ <span className="font-sans tabular-nums">LIVE DATA</span>
  </div>
  </div>
  );

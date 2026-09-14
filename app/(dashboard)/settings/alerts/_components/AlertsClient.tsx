@@ -450,7 +450,7 @@ export default function AlertsClient({
  {/* Page header */}
  <div className="flex items-center justify-between mb-8">
  <div>
- <h1 className="text-xl font-bold text-foreground">Alert Channels</h1>
+ <h1 className="text-xl font-normal text-foreground">Alert Channels</h1>
  <p className="text-sm text-muted-foreground mt-0.5">
  Configure notification providers and select which channels to use for alerts.
  </p>
@@ -466,7 +466,7 @@ export default function AlertsClient({
  {/* Notification categories */}
  <section className="mb-8">
  <div className="mb-4">
- <h2 className="text-sm font-semibold text-foreground">Message Categories</h2>
+ <h2 className="text-sm font-normal text-foreground">Message Categories</h2>
  <p className="text-xs text-muted-foreground mt-0.5">
  Control which types of messages are sent. Service alerts and transactions are always on.
  Mark promotions as opt-in to reduce spam and improve customer satisfaction.
@@ -489,7 +489,7 @@ export default function AlertsClient({
  {/* Channel selection */}
  <section className="mb-8">
  <div className="mb-4">
- <h2 className="text-sm font-semibold text-foreground">Active Channels</h2>
+ <h2 className="text-sm font-normal text-foreground">Active Channels</h2>
  <p className="text-xs text-muted-foreground mt-0.5">Select which channels the system will use to send alerts.</p>
  </div>
  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -533,7 +533,7 @@ export default function AlertsClient({
  <section>
  <div className="flex items-center justify-between mb-4">
  <div>
- <h2 className="text-sm font-semibold text-foreground">Configured Providers</h2>
+ <h2 className="text-sm font-normal text-foreground">Configured Providers</h2>
  <p className="text-xs text-muted-foreground mt-0.5">Manage your notification provider credentials.</p>
  </div>
  <span className="text-xs text-muted-foreground font-medium billing-table">
@@ -549,7 +549,7 @@ export default function AlertsClient({
  <p className="text-sm font-medium text-foreground">No providers configured</p>
  <p className="text-xs text-muted-foreground mt-1">Add your first provider to start sending alerts.</p>
  {perms.canCreate && (
- <Button className="mt-4 gap-2 h-8 text-xs" onClick={handleAdd}>
+ <Button className="mt-4 gap-2 h-8" onClick={handleAdd}>
  <Plus className="w-3.5 h-3.5" /> Add Provider
  </Button>
  )}

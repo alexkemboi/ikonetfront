@@ -17,10 +17,10 @@ export default async function InvoicesLedgerPage() {
  <div className="mx-auto max-w-7xl space-y-6">
  <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
  <div>
- <span className="text-[11px] font-mono tracking-wider text-muted-foreground uppercase">
+ <span className="text-[11px] font-sans tabular-nums tracking-wider text-muted-foreground uppercase">
  BILLING — INVOICES
  </span>
- <h1 className="text-3xl font-serif font-semibold text-foreground">Invoice ledger.</h1>
+ <h1 className="text-3xl font-sans font-normal text-foreground">Invoice ledger.</h1>
  <p className="mt-1 text-xs text-muted-foreground">
  {kpis.allInvoicesCount} paid · {kpis.pendingCount} pending · Ksh{" "}
  {kpis.pendingAmount} outstanding.
@@ -34,40 +34,40 @@ export default async function InvoicesLedgerPage() {
 
  <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
  <div className="rounded-2xl border border-border bg-card p-5 shadow-lg">
- <span className="text-[11px] font-mono tracking-wider text-muted-foreground uppercase">
+ <span className="text-[11px] font-sans tabular-nums tracking-wider text-muted-foreground uppercase">
  ALL INVOICES
  </span>
- <div className="mt-2 text-3xl font-mono font-bold text-foreground">
+ <div className="mt-2 text-3xl font-sans tabular-nums font-bold text-foreground">
  {kpis.allInvoicesCount}
  </div>
  <p className="mt-1 text-xs text-muted-foreground">total raised</p>
  </div>
 
  <div className="rounded-2xl border border-border bg-card p-5 shadow-lg">
- <span className="text-[11px] font-mono tracking-wider text-muted-foreground uppercase">
+ <span className="text-[11px] font-sans tabular-nums tracking-wider text-muted-foreground uppercase">
  PENDING
  </span>
- <div className="mt-2 text-3xl font-mono font-bold text-foreground">
+ <div className="mt-2 text-3xl font-sans tabular-nums font-bold text-foreground">
  Ksh {kpis.pendingAmount}
  </div>
  <p className="mt-1 text-xs text-muted-foreground">{kpis.pendingCount} unpaid</p>
  </div>
 
  <div className="rounded-2xl border border-border bg-card p-5 shadow-lg">
- <span className="text-[11px] font-mono tracking-wider text-muted-foreground uppercase">
+ <span className="text-[11px] font-sans tabular-nums tracking-wider text-muted-foreground uppercase">
  OVERDUE
  </span>
- <div className="mt-2 text-3xl font-mono font-bold text-rose-400">
+ <div className="mt-2 text-3xl font-sans tabular-nums font-bold text-rose-400">
  {kpis.overdueCount}
  </div>
  <p className="mt-1 text-xs text-muted-foreground">past due date</p>
  </div>
 
  <div className="rounded-2xl border border-border bg-card p-5 shadow-lg">
- <span className="text-[11px] font-mono tracking-wider text-muted-foreground uppercase">
+ <span className="text-[11px] font-sans tabular-nums tracking-wider text-muted-foreground uppercase">
  COLLECTED
  </span>
- <div className="mt-2 text-3xl font-mono font-bold text-emerald-400">
+ <div className="mt-2 text-3xl font-sans tabular-nums font-bold text-emerald-400">
  Ksh {kpis.collectedAmount}
  </div>
  <p className="mt-1 text-xs text-muted-foreground">0 settled</p>
@@ -86,7 +86,7 @@ export default async function InvoicesLedgerPage() {
  ) : (
  <div className="rounded-2xl border border-border bg-card shadow-xl">
  <div className="overflow-x-auto">
- <table className="w-full text-left text-xs font-mono min-w-[720px]">
+ <table className="w-full text-left text-xs font-sans tabular-nums min-w-[720px]">
  <thead>
  <tr className="border-b border-border text-[11px] tracking-wider text-muted-foreground uppercase">
  <th className="py-3 px-3">NUMBER</th>

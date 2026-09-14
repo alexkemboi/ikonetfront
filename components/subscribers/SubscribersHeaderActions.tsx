@@ -68,7 +68,7 @@ export function SubscribersHeaderActions({
  variant="outline"
  size="sm"
  onClick={() => exportCsv(subscribers)}
- className="gap-1.5 border-border bg-muted text-xs text-muted-foreground hover:text-accent-foreground"
+ className="gap-1.5 border-border bg-muted text-muted-foreground hover:text-accent-foreground"
  >
  <Download className="h-3.5 w-3.5" />
  Export CSV
@@ -77,7 +77,7 @@ export function SubscribersHeaderActions({
  variant="outline"
  size="sm"
  onClick={() => setCompensateOpen(true)}
- className="gap-1.5 border-amber-500/30 bg-amber-500/5 text-xs text-amber-300 hover:bg-amber-500/10 hover:text-amber-200"
+ className="gap-1.5 border-amber-500/30 bg-amber-500/5 text-amber-300 hover:bg-amber-500/10 hover:text-amber-200"
  >
  <HandCoins className="h-3.5 w-3.5" />
  Compensate

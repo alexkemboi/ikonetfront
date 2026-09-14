@@ -241,7 +241,7 @@ export function TicketDetailSheet({ ticket, staffList, onClose }: TicketDetailSh
  <div className="flex items-start gap-3">
  <div className="flex-1 min-w-0">
  <div className="flex items-center gap-2 mb-1 flex-wrap">
- <span className="font-mono text-[11px] font-medium text-primary bg-primary/5 px-1.5 py-0.5 rounded">
+ <span className="font-sans tabular-nums text-[11px] font-medium text-primary bg-primary/5 px-1.5 py-0.5 rounded">
  {ticket.ticketNumber}
  </span>
  <Badge variant="outline" className={cn("text-[10px] px-1.5 py-0 font-semibold uppercase tracking-wide", PRIORITY_BADGE[ticket.priority])}>

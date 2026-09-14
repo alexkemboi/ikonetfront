@@ -16,7 +16,7 @@ const STEPS = [
 
 export function ProvisioningStepper({ currentStep }: Props) {
  return (
- <div className="flex items-center gap-6 text-xs font-mono uppercase tracking-wider">
+ <div className="flex items-center gap-6 text-xs font-sans tabular-nums uppercase tracking-wider">
  {STEPS.map((s) => {
  const isPassed = s.step < currentStep;
  const isCurrent = s.step === currentStep;

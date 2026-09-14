@@ -452,7 +452,7 @@ export default function PackagesClient({
  <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
  <Wifi className="w-4 h-4 text-primary" />
  </div>
- <h1 className="text-2xl font-bold tracking-tight text-foreground">Internet Packages</h1>
+ <h1 className="text-2xl font-normal tracking-normal text-foreground">Internet Packages</h1>
  </div>
  <p className="text-sm text-muted-foreground mt-1">
  {packages.length} package{packages.length !== 1 ? "s" : ""} &middot; {activeCount} active

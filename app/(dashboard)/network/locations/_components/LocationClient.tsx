@@ -54,7 +54,7 @@ export function LocationClient({ regionsTree }: LocationClientProps) {
  header: "Coordinates (Lat/Lon)",
  cell: ({ row }) =>
  row.original.latitude != null && row.original.longitude != null ? (
- <span className="font-mono text-xs">
+ <span className="font-sans tabular-nums text-xs">
  {row.original.latitude}, {row.original.longitude}
  </span>
  ) : (
@@ -84,7 +84,7 @@ export function LocationClient({ regionsTree }: LocationClientProps) {
  {perms.canCreate && (
  <Dialog open={isDialogOpen} onOpenChange={setIsOpen}>
 <DialogTrigger asChild>
-          <Button className="inline-flex items-center gap-2 rounded-xl bg-amber-500 px-5 py-2.5 text-xs font-semibold text-black hover:bg-amber-400 transition shadow-lg shadow-amber-500/20">
+          <Button className="inline-flex items-center gap-2 rounded-xl bg-amber-500 px-5 py-2.5 text-black hover:bg-amber-400 transition shadow-lg shadow-amber-500/20">
             <Plus className="h-4 w-4" /> Add Location
           </Button>
           </DialogTrigger>

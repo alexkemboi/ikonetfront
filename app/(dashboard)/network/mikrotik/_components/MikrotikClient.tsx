@@ -573,7 +573,7 @@ export function MikrotikClient({ initialDevices }: MikrotikClientProps) {
  </div>
  </div>
  <Separator className="my-4" />
- <h3 className="text-lg font-semibold">Neighbors</h3>
+ <h3 className="text-lg font-normal">Neighbors</h3>
  {selectedDeviceStatus?.neighbors?.length > 0 ? (
  <ScrollArea className="h-[200px] w-full rounded-md border p-4">
  {selectedDeviceStatus?.neighbors.map((neighbor, index) => (
@@ -613,7 +613,7 @@ export function MikrotikClient({ initialDevices }: MikrotikClientProps) {
  <ScrollArea className="h-[500px] w-full rounded-md border p-4">
  {selectedDeviceInterfaces?.map((iface, index) => (
  <div key={iface[".id"] || `${iface.name}-${iface["mac-address"]}-${index}`} className="mb-4 last:mb-0">
- <h4 className="font-semibold">{iface.name} ({iface.type})</h4>
+ <h4 className="font-normal">{iface.name} ({iface.type})</h4>
  <p><strong>MAC Address:</strong> {iface["mac-address"]}</p>
  <p><strong>MTU:</strong> {iface.mtu} (Actual: {iface["actual-mtu"]})</p>
  <p><strong>Running:</strong> <Badge variant={iface.running === "true" ? "default" : "destructive"}>{iface.running === "true" ? "Yes" : "No"}</Badge></p>

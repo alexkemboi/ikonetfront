@@ -22,7 +22,7 @@ export default async function RouterMonitoringPage({ params }: MonitoringPagePro
  return (
  <div className="space-y-6 p-6">
  <div className="flex flex-col gap-2">
- <h1 className="text-3xl font-bold tracking-tight">NOC Telemetry Console</h1>
+ <h1 className="text-3xl font-normal tracking-normal">NOC Telemetry Console</h1>
  <p className="text-muted-foreground">
  Real-time interface statistics, CPU load averages, and session metrics streams over WireGuard.
  </p>

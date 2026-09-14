@@ -33,7 +33,7 @@ export function useStaffUserColumns(): ColumnDef<ApiRoleUser>[] {
  </div>
  <div className="min-w-0">
  <p className="text-sm font-medium text-foreground truncate">{user.fullName}</p>
- <p className="text-[11px] text-muted-foreground font-mono truncate">{user.username}</p>
+ <p className="text-[11px] text-muted-foreground font-sans tabular-nums truncate">{user.username}</p>
  </div>
  </div>
  );
@@ -56,7 +56,7 @@ export function useStaffUserColumns(): ColumnDef<ApiRoleUser>[] {
  <DataTableColumnHeader column={column} title="Phone" />
  ),
  cell: ({ row }) => (
- <span className="text-sm font-mono">{row.getValue("phoneNumber")}</span>
+ <span className="text-sm font-sans tabular-nums">{row.getValue("phoneNumber")}</span>
  ),
  },
  {

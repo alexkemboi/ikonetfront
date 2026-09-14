@@ -77,7 +77,7 @@ export function TicketsClient({ initialTickets, staffList }: TicketsClientProps)
  <Headphones className="h-5 w-5 text-primary" />
  </div>
  <div>
- <h1 className="text-xl font-semibold text-foreground">Support Tickets</h1>
+ <h1 className="text-xl font-normal text-foreground">Support Tickets</h1>
  <p className="text-sm text-muted-foreground">
  {initialTickets.length} total
  {openCount > 0 && <> · <span className="text-blue-600">{openCount} open</span></>}

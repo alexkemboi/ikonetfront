@@ -55,7 +55,7 @@ export default function NotFound() {
  transition={{ duration: 0.45, delay: 0.25, ease: "easeOut" }}
  className="space-y-3 -mt-4"
  >
- <h1 className="text-2xl font-bold text-foreground">
+ <h1 className="text-2xl font-normal text-foreground">
  Page Under Development
  </h1>
  <p className="text-muted-foreground text-sm leading-relaxed max-w-sm mx-auto">

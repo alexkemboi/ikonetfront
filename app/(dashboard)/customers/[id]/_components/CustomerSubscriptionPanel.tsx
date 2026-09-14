@@ -35,7 +35,7 @@ function SubscriptionField({
  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
  {label}
  </p>
- <p className={cn("text-sm font-semibold", mono && "font-mono", valueClassName)}>
+ <p className={cn("text-sm font-semibold", mono && "font-sans tabular-nums", valueClassName)}>
  {value}
  </p>
  </div>

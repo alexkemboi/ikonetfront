@@ -29,10 +29,10 @@ export default async function IpPoolsPage() {
       <div className="mx-auto max-w-7xl space-y-6">
         {/* Header */}
         <div>
-          <p className="text-[11px] font-mono uppercase tracking-widest text-muted-foreground">
+          <p className="text-[11px] font-sans tabular-nums uppercase tracking-widest text-muted-foreground">
             Network — IP Management
           </p>
-          <h1 className="mt-1 text-3xl font-bold tracking-tight text-foreground">
+          <h1 className="mt-1 text-3xl font-normal tracking-normal text-foreground">
             IP Address Pools
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -65,8 +65,8 @@ export default async function IpPoolsPage() {
                 {pools.map((pool: IpPool, idx: number) => (
                   <TableRow key={`${pool.poolName}-${idx}`} className="hover:bg-muted/50">
                     <TableCell className="font-medium">{pool.poolName || "—"}</TableCell>
-                    <TableCell className="font-mono text-sm">{pool.subnet || "—"}</TableCell>
-                    <TableCell className="font-mono text-sm">{pool.gateway || "—"}</TableCell>
+                    <TableCell className="font-sans tabular-nums text-sm">{pool.subnet || "—"}</TableCell>
+                    <TableCell className="font-sans tabular-nums text-sm">{pool.gateway || "—"}</TableCell>
                     <TableCell>
                       <Badge variant="default" className="text-xs">
                         {pool.utilizationPercentage}% used

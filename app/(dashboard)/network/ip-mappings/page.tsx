@@ -32,10 +32,10 @@ export default async function IpMappingsPage() {
         {/* Header */}
         <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
           <div>
-            <p className="text-[11px] font-mono tracking-wider text-muted-foreground uppercase">
+            <p className="text-[11px] font-sans tabular-nums tracking-wider text-muted-foreground uppercase">
               Network — IP Mappings
             </p>
-            <h1 className="text-3xl font-serif font-semibold text-foreground">
+            <h1 className="text-3xl font-sans font-normal text-foreground">
               Active Session Bindings.
             </h1>
             <p className="mt-1 text-xs text-muted-foreground">
@@ -47,32 +47,32 @@ export default async function IpMappingsPage() {
         {/* KPI Cards */}
         <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
           <div className="rounded-2xl border border-border bg-card p-5 shadow-lg">
-            <span className="text-[11px] font-mono tracking-wider text-muted-foreground uppercase">
+            <span className="text-[11px] font-sans tabular-nums tracking-wider text-muted-foreground uppercase">
               Online Sessions
             </span>
             <div className="mt-2 flex items-center gap-2">
               <Wifi className="h-4 w-4 text-emerald-400" />
-              <span className="text-2xl font-mono font-bold text-emerald-400">{onlineCount}</span>
+              <span className="text-2xl font-sans tabular-nums font-bold text-emerald-400">{onlineCount}</span>
             </div>
             <p className="mt-1 text-xs text-muted-foreground">live RADIUS sessions</p>
           </div>
 
           <div className="rounded-2xl border border-border bg-card p-5 shadow-lg">
-            <span className="text-[11px] font-mono tracking-wider text-muted-foreground uppercase">
+            <span className="text-[11px] font-sans tabular-nums tracking-wider text-muted-foreground uppercase">
               Expired Sessions
             </span>
             <div className="mt-2 flex items-center gap-2">
               <Wifi className="h-4 w-4 text-amber-500" />
-              <span className="text-2xl font-mono font-bold text-amber-500">{expiredCount}</span>
+              <span className="text-2xl font-sans tabular-nums font-bold text-amber-500">{expiredCount}</span>
             </div>
             <p className="mt-1 text-xs text-muted-foreground">no longer active</p>
           </div>
 
           <div className="rounded-2xl border border-border bg-card p-5 shadow-lg">
-            <span className="text-[11px] font-mono tracking-wider text-muted-foreground uppercase">
+            <span className="text-[11px] font-sans tabular-nums tracking-wider text-muted-foreground uppercase">
               Total Mappings
             </span>
-            <div className="mt-2 text-2xl font-mono font-bold text-foreground">{mappings.length}</div>
+            <div className="mt-2 text-2xl font-sans tabular-nums font-bold text-foreground">{mappings.length}</div>
             <p className="mt-1 text-xs text-muted-foreground">observed session bindings</p>
           </div>
         </div>
@@ -91,25 +91,25 @@ export default async function IpMappingsPage() {
               <Table>
                 <TableHeader>
                   <TableRow className="hover:bg-transparent">
-                    <TableHead className="border-b border-border text-[11px] font-mono tracking-wider text-muted-foreground uppercase">
+                    <TableHead className="border-b border-border text-[11px] font-sans tabular-nums tracking-wider text-muted-foreground uppercase">
                       IP Address
                     </TableHead>
-                    <TableHead className="border-b border-border text-[11px] font-mono tracking-wider text-muted-foreground uppercase">
+                    <TableHead className="border-b border-border text-[11px] font-sans tabular-nums tracking-wider text-muted-foreground uppercase">
                       MAC Address
                     </TableHead>
-                    <TableHead className="border-b border-border text-[11px] font-mono tracking-wider text-muted-foreground uppercase">
+                    <TableHead className="border-b border-border text-[11px] font-sans tabular-nums tracking-wider text-muted-foreground uppercase">
                       Username
                     </TableHead>
-                    <TableHead className="border-b border-border text-[11px] font-mono tracking-wider text-muted-foreground uppercase">
+                    <TableHead className="border-b border-border text-[11px] font-sans tabular-nums tracking-wider text-muted-foreground uppercase">
                       Service Type
                     </TableHead>
-                    <TableHead className="border-b border-border text-[11px] font-mono tracking-wider text-muted-foreground uppercase">
+                    <TableHead className="border-b border-border text-[11px] font-sans tabular-nums tracking-wider text-muted-foreground uppercase">
                       Station
                     </TableHead>
-                    <TableHead className="border-b border-border text-[11px] font-mono tracking-wider text-muted-foreground uppercase">
+                    <TableHead className="border-b border-border text-[11px] font-sans tabular-nums tracking-wider text-muted-foreground uppercase">
                       Status
                     </TableHead>
-                    <TableHead className="border-b border-border text-right text-[11px] font-mono tracking-wider text-muted-foreground uppercase">
+                    <TableHead className="border-b border-border text-right text-[11px] font-sans tabular-nums tracking-wider text-muted-foreground uppercase">
                       Last Seen
                     </TableHead>
                   </TableRow>
@@ -120,8 +120,8 @@ export default async function IpMappingsPage() {
                       key={`${mapping.ipAddress}-${mapping.macAddress}-${idx}`}
                       className="border-b border-border hover:bg-muted/40"
                     >
-                      <TableCell className="font-mono text-sm font-medium">{mapping.ipAddress}</TableCell>
-                      <TableCell className="font-mono text-sm">{mapping.macAddress}</TableCell>
+                      <TableCell className="font-sans tabular-nums text-sm font-medium">{mapping.ipAddress}</TableCell>
+                      <TableCell className="font-sans tabular-nums text-sm">{mapping.macAddress}</TableCell>
                       <TableCell className="text-sm">{mapping.username || "—"}</TableCell>
                       <TableCell className="text-sm">
                         <Badge
@@ -165,7 +165,7 @@ export default async function IpMappingsPage() {
 
         {/* Info Box */}
         <div className="rounded-2xl border border-border bg-card p-6 shadow-lg">
-          <p className="text-[11px] font-mono tracking-wider text-muted-foreground uppercase">
+          <p className="text-[11px] font-sans tabular-nums tracking-wider text-muted-foreground uppercase">
             Data Source
           </p>
           <p className="mt-2 text-sm text-muted-foreground">

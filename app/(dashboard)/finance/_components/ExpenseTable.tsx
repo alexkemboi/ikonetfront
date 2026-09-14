@@ -267,7 +267,7 @@ export default function ExpenseTable({
  >
  <div>
  <Badge className="bg-primary/10 text-primary border-primary/20 text-xs mb-1" variant="outline">Finance</Badge>
- <h1 className="text-2xl font-bold tracking-tight">Expense Management</h1>
+ <h1 className="text-2xl font-normal tracking-normal">Expense Management</h1>
  <p className="text-sm text-muted-foreground">Track and manage operational expenses</p>
  </div>
  <div className="flex items-center gap-2">
@@ -339,7 +339,7 @@ export default function ExpenseTable({
  <div className="flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/5 p-3 text-sm text-destructive">
  <AlertCircle className="w-4 h-4 shrink-0" />
  <span>{error}</span>
- <Button variant="outline" size="sm" className="ml-auto h-7 text-xs" onClick={fetchData}>Retry</Button>
+ <Button variant="outline" size="sm" className="ml-auto h-7" onClick={fetchData}>Retry</Button>
  </div>
  )}
 

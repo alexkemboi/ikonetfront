@@ -130,10 +130,10 @@ export function ReconciliationView({ entries, date, onRefresh }: Props) {
             <tbody>
               {entries.map((entry) => (
                 <tr key={entry.receiptNumber} className="border-b align-top">
-                  <td className="py-2 pr-4 font-mono text-xs text-muted-foreground">
+                  <td className="py-2 pr-4 font-sans tabular-nums text-xs text-muted-foreground">
                     {formatPaidAt(entry.transactionDate)}
                   </td>
-                  <td className="py-2 pr-4 font-mono text-xs font-semibold text-foreground">
+                  <td className="py-2 pr-4 font-sans tabular-nums text-xs font-semibold text-foreground">
                     {entry.receiptNumber}
                     {entry.serviceType ? (
                       <span className="ml-1.5 rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
@@ -141,7 +141,7 @@ export function ReconciliationView({ entries, date, onRefresh }: Props) {
                       </span>
                     ) : null}
                   </td>
-                  <td className="py-2 pr-4 font-mono text-xs text-foreground">
+                  <td className="py-2 pr-4 font-sans tabular-nums text-xs text-foreground">
                     {entry.phoneNumber || "—"}
                   </td>
                   <td className="py-2 pr-4 text-muted-foreground">
@@ -195,11 +195,11 @@ export function ReconciliationView({ entries, date, onRefresh }: Props) {
           {forceTarget && (
             <p className="text-sm text-foreground">
               Post{" "}
-              <span className="font-mono font-semibold text-amber-500">
+              <span className="font-sans tabular-nums font-semibold text-amber-500">
                 {formatKsh(forceTarget.amount)}
               </span>{" "}
               for receipt{" "}
-              <span className="font-mono font-semibold">{forceTarget.receiptNumber}</span>{" "}
+              <span className="font-sans tabular-nums font-semibold">{forceTarget.receiptNumber}</span>{" "}
               to the general ledger?
             </p>
           )}

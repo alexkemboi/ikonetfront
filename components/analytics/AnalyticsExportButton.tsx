@@ -45,7 +45,7 @@ export function AnalyticsExportButton({ data }: { data: NetworkAnalyticsOverview
  return (
  <button
  onClick={handleExport}
- className="rounded-xl border border-border bg-card px-4 py-2 text-xs font-mono font-semibold text-muted-foreground hover:bg-accent transition"
+ className="rounded-xl border border-border bg-card px-4 py-2 text-xs font-sans tabular-nums font-semibold text-muted-foreground hover:bg-accent transition"
  >
  Export CSV
  </button>

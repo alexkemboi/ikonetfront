@@ -45,7 +45,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
 
  {/* Mid copy */}
  <div className="relative z-10 space-y-6">
- <h1 className="text-4xl font-bold leading-tight tracking-tight">
+ <h1 className="text-4xl font-normal leading-tight tracking-normal">
  Manage your<br />network with<br />confidence.
  </h1>
  <p className="text-white/60 text-base leading-relaxed max-w-xs">

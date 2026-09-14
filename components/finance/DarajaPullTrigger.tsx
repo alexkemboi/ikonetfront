@@ -193,7 +193,7 @@ export function DarajaPullTrigger({ initialDate, initialEntries, initialSummary 
               <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                 <span className="text-xs font-semibold text-muted-foreground">
                   Sweep summary for{" "}
-                  <span className="font-mono text-foreground">{sweep.day}</span>
+                  <span className="font-sans tabular-nums text-foreground">{sweep.day}</span>
                 </span>
                 <Badge className="bg-emerald-600 text-white">
                   {running ? "Sweeping…" : "Sweep completed"}

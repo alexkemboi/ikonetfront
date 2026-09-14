@@ -38,10 +38,10 @@ export default async function InvestorRoutersPage() {
     <div className="min-h-screen p-4 text-foreground sm:p-6 lg:p-8">
       <div className="mx-auto max-w-7xl space-y-6">
         <div>
-          <span className="text-[11px] font-mono tracking-wider text-muted-foreground uppercase">
+          <span className="text-[11px] font-sans tabular-nums tracking-wider text-muted-foreground uppercase">
             PARTNER — INVESTOR ROUTERS
           </span>
-          <h1 className="text-3xl font-serif font-semibold text-foreground">
+          <h1 className="text-3xl font-sans font-normal text-foreground">
             Assigned routers.
           </h1>
           <p className="mt-1 text-xs text-muted-foreground">
@@ -85,7 +85,7 @@ export default async function InvestorRoutersPage() {
                       <tr key={router.routerId} className="border-b">
                         <td className="py-2 pr-4 font-medium">{router.routerName || `Router ${router.routerId}`}</td>
                         <td className="py-2 pr-4">{router.model || "—"}</td>
-                        <td className="py-2 pr-4 font-mono text-xs">{router.ipAddress || "—"}</td>
+                        <td className="py-2 pr-4 font-sans tabular-nums text-xs">{router.ipAddress || "—"}</td>
                         <td className="py-2 pr-4">{router.stationName || "—"}</td>
                         <td className="py-2 pr-4">
                           <Badge variant={router.status ? "default" : "destructive"}>

@@ -27,10 +27,10 @@ export default function RouterSetupWizardPage() {
  <div className="min-h-screen p-4 text-foreground sm:p-6 lg:p-8">
  <div className="mx-auto max-w-3xl space-y-6">
  <div>
- <span className="text-[11px] font-mono tracking-wider text-muted-foreground uppercase">
+ <span className="text-[11px] font-sans tabular-nums tracking-wider text-muted-foreground uppercase">
  NETWORK — ROUTERS
  </span>
- <h1 className="text-3xl font-serif font-semibold text-foreground">Link a MikroTik.</h1>
+ <h1 className="text-3xl font-sans font-normal text-foreground">Link a MikroTik.</h1>
  <p className="mt-1 text-xs text-muted-foreground">
  Register the router, paste the provisioning script on RouterOS, then choose PPPoE or Hotspot services.
  </p>

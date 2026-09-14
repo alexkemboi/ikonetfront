@@ -52,7 +52,7 @@ export function ManagementDashboardShell({
  <div className="flex items-center gap-2">
  <Badge className="bg-warning text-foreground text-xs">Management</Badge>
  </div>
- <h1 className="text-2xl font-bold tracking-tight mt-1">{greeting}</h1>
+ <h1 className="text-2xl font-normal tracking-normal mt-1">{greeting}</h1>
  <p className="text-sm text-muted-foreground">Business overview &amp; subscription health</p>
  </motion.div>
 
@@ -133,7 +133,7 @@ export function ManagementDashboardShell({
  >
  <div className="min-w-0">
  <p className="text-sm font-medium truncate">{customer.fullName}</p>
- <p className="text-xs text-muted-foreground font-mono">
+ <p className="text-xs text-muted-foreground font-sans tabular-nums">
  {customer.packageName ?? "No package"}
  </p>
  </div>
