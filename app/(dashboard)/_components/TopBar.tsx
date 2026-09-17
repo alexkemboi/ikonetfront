@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { SidebarInner, type SidebarUser } from "./Sidebar";
+import CompanyContextSwitcher from "./CompanyContextSwitcher";
 import type { NavGroup } from "@/lib/nav";
 
 // Derives a human-readable title from the current pathname
@@ -35,11 +36,11 @@ function useBreadcrumb() {
 }
 
 type TopBarProps = {
- notificationCount?: number;
- user?: { username: string; initials: string; role: string; fname?: string; middleName?: string; email?: string };
- navGroups?: NavGroup[];
- brandName?: string;
- sidebarUser?: SidebarUser;
+  notificationCount?: number;
+  user?: { username: string; initials: string; role: string; fname?: string; middleName?: string; email?: string; companyScope?: string };
+  navGroups?: NavGroup[];
+  brandName?: string;
+  sidebarUser?: SidebarUser;
 };
 
 export default function TopBar({
@@ -108,9 +109,12 @@ const breadcrumbs = useBreadcrumb();
  ))}
  </nav>
 
- {/* Actions */}
- <div className="flex items-center gap-2 shrink-0">
- {/* Notifications */}
+{/* Actions */}
+	<div className="flex items-center gap-2 shrink-0">
+	{/* Tenant context switcher (SYSADMIN only) */}
+	{user && <CompanyContextSwitcher rawRole={user.role} companyScope={user.companyScope} />}
+
+	{/* Notifications */}
  <div className="relative">
  <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Notifications">
  <Bell className="w-4 h-4" />

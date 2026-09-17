@@ -65,23 +65,24 @@ export default async function DashboardLayout({ children }: { children: ReactNod
  />
 
  <div className="flex flex-1 flex-col overflow-hidden">
- <TopBar
- notificationCount={0}
- user={sidebarUser
- ? {
- username: sidebarUser.username,
- initials: sidebarUser.initials,
- role: sidebarUser.role,
- fname: sidebarUser.name,
- middleName: "",
- email: sidebarUser.email,
- }
- : undefined
- }
- navGroups={navGroups}
- brandName="Beesmart"
- sidebarUser={sidebarUser}
- />
+<TopBar
+  notificationCount={0}
+  user={sidebarUser
+  ? {
+  username: sidebarUser.username,
+  initials: sidebarUser.initials,
+  role: sidebarUser.role,
+  fname: sidebarUser.name,
+  middleName: "",
+  email: sidebarUser.email,
+  companyScope: session.user.companyScope ?? undefined,
+  }
+  : undefined
+  }
+  navGroups={navGroups}
+  brandName="Beesmart"
+  sidebarUser={sidebarUser}
+  />
  <main className="flex-1 overflow-y-auto py-4">
  {children}
  </main>
