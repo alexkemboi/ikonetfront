@@ -74,6 +74,7 @@ export const adminNavGroups: NavGroup[] = [
   {
     label: "System",
     items: [
+      { href: "/system/companies", label: "Companies", icon: "building-2" },
       { href: "/system/packages", label: "Packages", icon: "package" },
       { href: "/system/users", label: "System Users", icon: "user-cog" },
       { href: "/system/access", label: "Access Control", icon: "shield-check" },

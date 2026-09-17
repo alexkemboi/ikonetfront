@@ -2,6 +2,7 @@ import RolesClient from "./_components/RolesClient";
 import { getAllMenusAction, getRolesAction, getRoleMenusAction, getRoleUsersAction } from "@/actions/roles";
 import { getSystemUsers } from "@/actions/system";
 import { apiMenusToMenuTree, extractPermissions, getCurrentUserPermissions, NO_PERMISSIONS } from "@/lib/data/nav";
+import { auth } from "@/lib/auth";
 import type { MenuNode } from "@/lib/nav";
 import type { ApiRoleUser, PermissionMap } from "@/lib/types/roles";
 import { redirect } from "next/navigation";
@@ -33,9 +34,14 @@ export type { MenuNode, ApiRoleUser, PermissionMap };
 
 // ── Page ────────────────────────────────────────────────────────────────
 export default async function RolesPage() {
- const permissions = await getCurrentUserPermissions();
- const pagePerms = permissions["/system/access"] ?? NO_PERMISSIONS;
- if (!pagePerms.canView) redirect("/dashboard");
+  const permissions = await getCurrentUserPermissions();
+  const pagePerms = permissions["/system/access"] ?? NO_PERMISSIONS;
+  if (!pagePerms.canView) redirect("/dashboard");
+
+  // R-17: role management (create/rename/menu-permissions) is SYSADMIN-only UI.
+  const session = await auth();
+  const rawRole = session?.user?.role ?? "";
+  const canMutate = /SYSADMIN|ROLE_SYSADMIN|SUPER_ADMIN/i.test(rawRole);
 
  // Fetch menu catalog, roles, and all system users in parallel
  const [catalogResult, rolesResult, allSystemUsers] = await Promise.all([
@@ -92,7 +98,7 @@ export default async function RolesPage() {
 
  return (
  <div className="p-6 h-full">
- <RolesClient roles={roles} menuTree={menuTree} allSystemUsers={allSystemUsers} />
+ <RolesClient roles={roles} menuTree={menuTree} allSystemUsers={allSystemUsers} canMutate={canMutate} />
  </div>
  );
 }

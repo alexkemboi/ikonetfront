@@ -497,11 +497,13 @@ function UsersTab({
 
 // ── Permissions tab ────────────────────────────────────────────────────
 function PermissionsTab({
- role,
- menuTree,
+  role,
+  menuTree,
+  canMutate,
 }: {
- role: Role;
- menuTree: MenuNode[];
+  role: Role;
+  menuTree: MenuNode[];
+  canMutate: boolean;
 }) {
  const dispatch = useAppDispatch();
  const pending = useAppSelector((s) => s.roles.pendingPermissions[role.id]);
@@ -535,8 +537,14 @@ function PermissionsTab({
  return nodes;
  }
 
- async function handleSave() {
- setIsSaving(true);
+async function handleSave() {
+  // R-17: menu/permission assignments are SYSADMIN-only. Never submit on
+  // behalf of a read-only caller.
+  if (!canMutate) {
+  toast.error("Only SYSADMIN can save permission changes.");
+  return;
+  }
+  setIsSaving(true);
  try {
  // Send the actual per-flag values the admin set — no longer mirrors one boolean
  const assignments = flattenTree().map(({ route, menuItemId }) => {
@@ -579,35 +587,35 @@ function PermissionsTab({
  <span className="font-semibold text-foreground billing-table">{totalPossible}</span>
  {" "}permissions granted
  </p>
- {isDirty && (
- <div className="flex items-center gap-2">
- <Badge className="bg-warning/15 text-warning border-warning/30 text-xs">
- Unsaved changes
- </Badge>
- <Button
- size="sm"
- variant="outline"
- className="h-7 gap-1"
- disabled={isSaving}
- onClick={() => dispatch(discardChanges(role.id))}
- >
- <RotateCcw className="w-3 h-3" />
- Discard
- </Button>
- <Button
- size="sm"
- className="h-7 gap-1"
- disabled={isSaving}
- onClick={handleSave}
- >
- {isSaving
- ? <Loader2 className="w-3 h-3 animate-spin" />
- : <Save className="w-3 h-3" />
- }
- {isSaving ? "Saving…" : "Save"}
- </Button>
- </div>
- )}
+{isDirty && canMutate && (
+  <div className="flex items-center gap-2">
+  <Badge className="bg-warning/15 text-warning border-warning/30 text-xs">
+  Unsaved changes
+  </Badge>
+  <Button
+  size="sm"
+  variant="outline"
+  className="h-7 text-xs gap-1"
+  disabled={isSaving}
+  onClick={() => dispatch(discardChanges(role.id))}
+  >
+  <RotateCcw className="w-3 h-3" />
+  Discard
+  </Button>
+  <Button
+  size="sm"
+  className="h-7 text-xs gap-1"
+  disabled={isSaving}
+  onClick={handleSave}
+  >
+  {isSaving
+  ? <Loader2 className="w-3 h-3 animate-spin" />
+  : <Save className="w-3 h-3" />
+  }
+  {isSaving ? "Saving…" : "Save"}
+  </Button>
+  </div>
+  )}
  </div>
 
  {/* Permission tree */}
@@ -680,13 +688,15 @@ function RoleCard({
 
 // ── Main component ─────────────────────────────────────────────────────
 export default function RolesClient({
- roles,
- menuTree,
- allSystemUsers,
+  roles,
+  menuTree,
+  allSystemUsers,
+  canMutate = true,
 }: {
- roles: Role[];
- menuTree: MenuNode[];
- allSystemUsers: ApiRoleUser[];
+  roles: Role[];
+  menuTree: MenuNode[];
+  allSystemUsers: ApiRoleUser[];
+  canMutate?: boolean;
 }) {
  const dispatch = useAppDispatch();
  const editingId = useAppSelector((s) => s.roles.editingRoleId);
@@ -706,14 +716,16 @@ export default function RolesClient({
 
  const selectedRole = roles.find((r) => r.id === selectedId);
 
- function handleStartEdit(role: Role) {
- setEditName(role.name);
- dispatch(startEditingRole(role.id));
- setTimeout(() => editInputRef.current?.focus(), 50);
- }
+function handleStartEdit(role: Role) {
+  if (!canMutate) return;
+  setEditName(role.name);
+  dispatch(startEditingRole(role.id));
+  setTimeout(() => editInputRef.current?.focus(), 50);
+}
 
- function handleSaveEdit(roleId: string) {
- const result = renameRoleAction(roleId, editName, selectedRole?.description ?? "");
+function handleSaveEdit(roleId: string) {
+  if (!canMutate) return;
+  const result = renameRoleAction(roleId, editName, selectedRole?.description ?? "");
  result.then((res) => {
  if (res.success) {
  toast.success("Role renamed successfully");
@@ -736,12 +748,14 @@ export default function RolesClient({
  <p className="text-sm text-muted-foreground mt-0.5">
  Manage staff roles and control access to each module.
  </p>
- </div>
- <Button className="gap-2 h-9" onClick={() => setCreateOpen(true)}>
- <Plus className="w-4 h-4" />
- New Role
- </Button>
- </div>
+</div>
+  {canMutate && (
+  <Button className="gap-2 h-9" onClick={() => setCreateOpen(true)}>
+  <Plus className="w-4 h-4" />
+  New Role
+  </Button>
+  )}
+  </div>
 
  {/* Two-pane layout */}
  <div className="flex flex-col md:flex-row gap-5 h-[calc(100vh-180px)]">
@@ -815,17 +829,19 @@ export default function RolesClient({
  </button>
  </div>
  ) : (
- <div className="flex items-center gap-2 group/title">
- <h2 className="text-lg font-normal text-foreground">{selectedRole.name}</h2>
- <button
- type="button"
- onClick={() => handleStartEdit(selectedRole)}
- className="opacity-0 group-hover/title:opacity-100 text-muted-foreground hover:text-foreground transition-all"
- aria-label="Edit role name"
- >
- <Pencil className="w-3.5 h-3.5" />
- </button>
- </div>
+<div className="flex items-center gap-2 group/title">
+  <h2 className="text-lg font-bold text-foreground">{selectedRole.name}</h2>
+  {canMutate && (
+  <button
+  type="button"
+  onClick={() => handleStartEdit(selectedRole)}
+  className="opacity-0 group-hover/title:opacity-100 text-muted-foreground hover:text-foreground transition-all"
+  aria-label="Edit role name"
+  >
+  <Pencil className="w-3.5 h-3.5" />
+  </button>
+  )}
+  </div>
  )}
  <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
  {selectedRole.description}
@@ -889,9 +905,9 @@ export default function RolesClient({
  />
  </TabsContent>
 
- <TabsContent value="permissions" className="flex-1 overflow-hidden px-6 py-5 mt-0">
- <PermissionsTab role={selectedRole} menuTree={menuTree} />
- </TabsContent>
+<TabsContent value="permissions" className="flex-1 overflow-hidden px-6 py-5 mt-0">
+  <PermissionsTab role={selectedRole} menuTree={menuTree} canMutate={canMutate} />
+  </TabsContent>
  </Tabs>
  </div>
  ) : (
@@ -904,7 +920,7 @@ export default function RolesClient({
  )}
  </div>
 
- <CreateRoleSheet open={createOpen} onClose={() => setCreateOpen(false)} />
- </>
+{canMutate && <CreateRoleSheet open={createOpen} onClose={() => setCreateOpen(false)} />}
+  </>
  );
 }

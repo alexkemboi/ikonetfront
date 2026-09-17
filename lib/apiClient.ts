@@ -18,6 +18,7 @@
  */
 import { auth } from "@/lib/auth";
 import { buildApiUrl } from "@/lib/constants";
+import { withCompanyContext } from "@/lib/companyContext";
 import type { ApiResponse } from "@/lib/types/api";
 
 export type ApiAuthPolicy = "required" | "public" | "optional";
@@ -89,6 +90,13 @@ export async function apiFetch<T = unknown>(
     if (session?.user?.apiToken) {
       headers.Authorization = `Bearer ${session.user.apiToken}`;
     }
+  }
+
+  // R-16 / R-02: forward the SYSADMIN-selected tenant context (server-side
+  // cookie → `X-Company-Context`) on every non-public call. Stripped for
+  // `auth: "public"` requests (login/refresh/captive portal must never carry it).
+  if (authPolicy !== "public") {
+    await withCompanyContext(headers);
   }
 
   const next = toNext(options);

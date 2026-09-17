@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import Link from "next/link";
 import { signIn } from "next-auth/react";
+import { clearCompanyContextCookie } from "@/lib/companyContextClient";
 
 const DISMISS_AFTER_MS = 6000;
 
@@ -79,6 +80,9 @@ export default function LoginForm({ error }: { error?: string }) {
  onSubmit: async () => {
 
       try {
+        // R-16: start each login with a clean tenant context — a stale SYSADMIN
+        // selection must never leak into a non-sysadmin session.
+        clearCompanyContextCookie();
         await signIn("credentials", {
           username: formik.values.username,
           password: formik.values.password,
