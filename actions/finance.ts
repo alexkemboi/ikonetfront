@@ -4,6 +4,7 @@ import { updateTag } from "next/cache";
 import { auth } from "@/lib/auth";
 import { BASE_URL, buildApiUrl } from "@/lib/constants";
 import { timeoutSignal, unwrapPostings } from "@/lib/finance/ledger";
+import { withCompanyContext } from "@/lib/companyContext";
 import type { ApiResponse } from "@/lib/types/auth";
 import type {
   AccountBalanceProjection,
@@ -24,13 +25,17 @@ import { EMPTY_PAGE } from "@/lib/types/finance";
 
 // ── Tolerant auth headers (returns {} when no token) ──────────────────────────
 
-async function getAuthHeaders(): Promise<Record<string, string>> {
+async function getAuthHeaders(
+  companyScope?: string | null
+): Promise<Record<string, string>> {
   const session = await auth();
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   if (session?.user?.apiToken) {
     headers["Authorization"] = `Bearer ${session.user.apiToken}`;
   }
-  return headers;
+  // R-16: forward the SYSADMIN-selected tenant context so every finance read is
+  // scoped (R-05). The cookie is the default; an explicit caller param wins.
+  return withCompanyContext(headers, companyScope);
 }
 
 /**
@@ -225,7 +230,8 @@ function unwrapClearingBalance(json: unknown): number {
  */
 export async function getLiveExecutiveDashboardData(
   from?: string,
-  to?: string
+  to?: string,
+  companyScope?: string | null
 ): Promise<{
   pnl: ProfitAndLossSummary;
   recentTransactions: AccountPosting[];
@@ -247,10 +253,7 @@ export async function getLiveExecutiveDashboardData(
     const endDate = toDateTime(to || window.to, true) as string;
 
     const qs = new URLSearchParams({ startDate, endDate }).toString();
-    const headers = {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    };
+    const headers = await getAuthHeaders(companyScope);
     const signal = timeoutSignal();
 
     const [pnlRes, txRes, balanceRes] = await Promise.all([
@@ -346,6 +349,7 @@ export type ExpenseParams = {
   category?: ExpenseCategory;
   page?: number;
   size?: number;
+  companyScope?: string;
 };
 
 /**
@@ -446,7 +450,7 @@ export async function getExpenses(
     if (params.category) qs.append("category", params.category);
 
     const res = await fetch(`${BASE_URL}expenses?${qs.toString()}`, {
-      headers: await getAuthHeaders(),
+      headers: await getAuthHeaders(params.companyScope),
       // Never cache user/company-scoped expense data in the shared Data Cache
       // (keyed by URL, not Authorization) — it would leak across tenants.
       cache: "no-store",
@@ -535,7 +539,8 @@ function normalizeExpenseSummaryResponse(json: unknown): ApiResponse<ExpenseSumm
 
 export async function getExpenseSummary(
   startDate?: string,
-  endDate?: string
+  endDate?: string,
+  companyScope?: string | null
 ): Promise<ApiResponse<ExpenseSummary>> {
   try {
     const today = new Date();
@@ -545,7 +550,7 @@ export async function getExpenseSummary(
     qs.append("endDate", endDate || today.toISOString().slice(0, 10));
 
     const res = await fetch(`${BASE_URL}expenses/summary?${qs.toString()}`, {
-      headers: await getAuthHeaders(),
+      headers: await getAuthHeaders(companyScope),
       cache: "no-store",
     });
     if (!res.ok) return handleFinanceResponse(res, "Failed to fetch expense summary");

@@ -2,6 +2,7 @@
 
 import { auth } from "@/lib/auth";
 import { BASE_URL } from "@/lib/constants";
+import { withCompanyContext } from "@/lib/companyContext";
 import type {
   NetworkAnalyticsOverview,
   AnalyticsTimeWindow,
@@ -130,7 +131,8 @@ const FALLBACK_ANALYTICS: NetworkAnalyticsOverview = {
 };
 
 export async function getNetworkAnalyticsData(
-  timeWindow: AnalyticsTimeWindow = "MONTHLY"
+  timeWindow: AnalyticsTimeWindow = "MONTHLY",
+  companyScope?: string | null
 ): Promise<NetworkAnalyticsOverview> {
   const session = await auth();
   const token = session?.user?.apiToken;
@@ -141,10 +143,13 @@ export async function getNetworkAnalyticsData(
     const res = await fetch(
       `${BASE_URL}analytics/profit-and-loss/dashboard?window=${timeWindow}`,
       {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
+        headers: await withCompanyContext(
+          {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          companyScope
+        ),
         next: { revalidate: 30 },
       }
     );

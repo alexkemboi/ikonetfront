@@ -5,6 +5,7 @@ import { buildApiUrl } from "@/lib/constants";
 import { getPermissionForRoute } from "@/lib/data/nav";
 import { todayEatIso } from "@/lib/dates";
 import { timeoutSignal, unwrapPostings } from "@/lib/finance/ledger";
+import { withCompanyContext } from "@/lib/companyContext";
 import type { AccountPosting } from "@/lib/types/finance";
 import type {
   PaymentLedgerItem,
@@ -163,7 +164,9 @@ const FALLBACK_INVOICE_KPIS: InvoiceKpis = {
   collectedAmount: 0,
 };
 
-export async function getPaymentsLedgerData(): Promise<{
+export async function getPaymentsLedgerData(
+  companyScope?: string | null
+): Promise<{
   kpis: PaymentLedgerKpis;
   payments: PaymentLedgerItem[];
   source: "GL" | "GATEWAY";
@@ -199,10 +202,13 @@ export async function getPaymentsLedgerData(): Promise<{
       const gatewayRes = await fetch(
         buildApiUrl("/payments?issuccessfull=true"),
         {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
+          headers: await withCompanyContext(
+            {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            companyScope
+          ),
           cache: "no-store",
           signal: timeoutSignal(),
         }
@@ -228,10 +234,13 @@ export async function getPaymentsLedgerData(): Promise<{
     const res = await fetch(
       buildApiUrl("/finance/transactions?accountCode=1110&page=0&size=50"),
       {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
+        headers: await withCompanyContext(
+          {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          companyScope
+        ),
         cache: "no-store",
         signal: timeoutSignal(),
       }
