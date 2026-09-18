@@ -32,10 +32,11 @@ describe("getSubscribersData (subscriber hub)", () => {
     expect(kpis.allUsersCount).toBe(2);
     expect(kpis.onlineCount).toBe(1);
 
-    // Online enrichment: joined stationName + MAC/IP from the live mapping.
+    // Online enrichment: NAS/CKE router name (from IpMappingResponse.routerName)
+    // + MAC/IP from the live mapping.
     const grace = subscribers.find((s) => s.fullName === "Grace Wanjiru");
     expect(grace?.status).toBe("ONLINE");
-    expect(grace?.nasName).toBe("ADRNOLDNETWORKS");
+    expect(grace?.nasName).toBe("RTR-BDK-MSA-A");
     expect(grace?.macAddress).toBe("32:A2:F1:9C:4D:02");
     expect(grace?.ipAddress).toBe("172.16.0.11");
 

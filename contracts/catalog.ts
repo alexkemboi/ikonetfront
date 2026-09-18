@@ -139,6 +139,46 @@ export function activePackagesFixture(): ApiResponse<NetPackage[]> {
   );
 }
 
+/**
+ * TV-category active packages served by `GET /api/v1/hotspot/packages?category=TV`
+ * (backend filters by `packageCategory = 'TV'`; frontend maps each to `TvPackage`).
+ */
+export function activeTvPackagesFixture(): ApiResponse<NetPackage[]> {
+  return envelope(
+    [
+      {
+        idxno: 7,
+        packageName: "TV 24H",
+        price: 150,
+        packageCategory: "TV",
+        validityType: "HOURS",
+        validityValue: 24,
+        bandwidthType: "SHARED",
+        activeStatus: true,
+        speedDownload: 15,
+        speedUpload: 15,
+        rateLimit: "15M/15M",
+        maxDevices: 1,
+      },
+      {
+        idxno: 8,
+        packageName: "TV 7 DAYS",
+        price: 800,
+        packageCategory: "TV",
+        validityType: "DAYS",
+        validityValue: 7,
+        bandwidthType: "UNLIMITED",
+        activeStatus: true,
+        speedDownload: 20,
+        speedUpload: 10,
+        rateLimit: "20M/10M",
+        maxDevices: 2,
+      },
+    ],
+    "Active packages retrieved successfully"
+  );
+}
+
 export function initiatePaymentFixture(): ApiResponse<HotspotSessionResponse> {
   return envelope(
     {
@@ -590,16 +630,14 @@ export function ipPoolsFixture(): ApiResponse<IpPool[]> {
 export function customerDeviceFixture(): ApiResponse<{
   customerIdxno: number;
   macAddress: string;
-  ipAddress: string;
-  deviceType: string;
+  deviceName: string;
   idxno: number;
 }> {
   return envelope(
     {
       customerIdxno: 1,
       macAddress: "AA:BB:CC:DD:EE:FF",
-      ipAddress: "192.168.10.50",
-      deviceType: "SMART_TV",
+      deviceName: "Smart TV",
       idxno: 501,
     },
     "Customer device bound successfully",
@@ -616,6 +654,7 @@ export function ipMappingsPageFixture(): ApiResponse<PageResponse<IpMappingRespo
         username: "A2085",
         serviceType: "HOTSPOT",
         stationName: "ADRNOLDNETWORKS",
+        routerName: "RTR-BDK-MSA-A",
         status: "ONLINE",
         lastSeen: "2026-08-26T07:59:00+03:00",
       },
@@ -625,6 +664,7 @@ export function ipMappingsPageFixture(): ApiResponse<PageResponse<IpMappingRespo
         username: "P-114",
         serviceType: "PPPOE",
         stationName: "Adrinold Ukunda",
+        routerName: "RTR-BDK-MSA-B",
         status: "ONLINE",
         lastSeen: "2026-08-26T07:58:00+03:00",
       },
@@ -634,6 +674,7 @@ export function ipMappingsPageFixture(): ApiResponse<PageResponse<IpMappingRespo
         username: "A4290",
         serviceType: "HOTSPOT",
         stationName: "ADRNOLDNETWORKS",
+        routerName: "RTR-BDK-MSA-A",
         status: "EXPIRED",
         lastSeen: "2026-08-25T21:00:00+03:00",
       },
@@ -696,6 +737,15 @@ export const hotspotInteractions: Interaction[] = [
     auth: "public",
     status: 200,
     responseBody: activePackagesFixture(),
+  },
+  {
+    name: "GET /api/v1/hotspot/packages?category=TV",
+    method: "GET",
+    path: "/api/v1/hotspot/packages",
+    query: { category: "TV" },
+    auth: "public",
+    status: 200,
+    responseBody: activeTvPackagesFixture(),
   },
   {
     name: "POST /api/v1/hotspot/initiate",
@@ -838,7 +888,7 @@ export const sessionInteractions: Interaction[] = [
     path: "/api/v1/customer-devices",
     auth: "bearer",
     status: 201,
-    requestBody: { customerIdxno: 1, macAddress: "AA:BB:CC:DD:EE:FF", ipAddress: "192.168.10.50", deviceType: "SMART_TV" },
+    requestBody: { customerIdxno: 1, macAddress: "AA:BB:CC:DD:EE:FF", deviceName: "Smart TV" },
     responseBody: customerDeviceFixture(),
   },
   {

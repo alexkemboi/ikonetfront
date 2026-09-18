@@ -58,6 +58,7 @@ export interface NetPackage {
   speedDownload?: number;
   speedUpload?: number;
   rateLimit?: string;
+  maxDevices?: number;
 }
 
 /**
@@ -86,6 +87,7 @@ export interface IpMappingResponse {
   username: string;
   serviceType: string;
   stationName: string;
+  routerName: string;
   status: "ONLINE" | "EXPIRED";
   lastSeen: string;
 }

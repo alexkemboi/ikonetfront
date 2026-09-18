@@ -946,11 +946,16 @@ export async function getIpMappings(): Promise<IpMappingResponse[]> {
  * Provision a static device (e.g. Smart TV) binding.
  * Backend: CustomerDeviceController POST /api/v1/customer-devices — writes the
  * reservation into `customer_devices` + FreeRADIUS radreply.
+ *
+ * OpenAPI `CustomerDeviceRequest` is `{ customerIdxno, macAddress, deviceName }`
+ * (no `deviceType`, no `ipAddress`). `deviceName` is the canonical connection
+ * label, e.g. "Smart TV", "Guest Lounge — Tenda", or an operator-set name.
  */
 export async function createIpMappingAction(input: {
   customerId: string | number;
   macAddress: string;
-  ipAddress: string;
+  ipAddress?: string; // retained for backward compatibility (ignored by the API)
+  deviceName?: string;
 }): Promise<{ success: boolean; message: string }> {
   const session = await auth();
   if (!session?.user?.apiToken) {
@@ -970,8 +975,7 @@ export async function createIpMappingAction(input: {
       body: {
         customerIdxno: Number(input.customerId),
         macAddress: input.macAddress.trim(),
-        ipAddress: input.ipAddress.trim(),
-        deviceType: "SMART_TV",
+        deviceName: input.deviceName?.trim() || "Smart TV",
       },
     });
 

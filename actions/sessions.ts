@@ -163,7 +163,11 @@ function mapToSession(
     protocol,
     deviceMac: mac || "—",
     assignedIp: ip || "—",
-    routerName: routerNameByStation.get(stationName) || stationName || "—",
+    routerName:
+      String(mapping.routerName ?? "").trim() ||
+      routerNameByStation.get(stationName) ||
+      stationName ||
+      "—",
     routerManagementIp: routerIpByStation.get(stationName) || "",
     downloadBytes,
     uploadBytes,

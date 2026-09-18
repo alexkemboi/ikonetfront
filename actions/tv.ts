@@ -1,5 +1,8 @@
 "use server";
 
+import { apiFetch } from "@/lib/apiClient";
+import type { NetPackage } from "@/lib/types/api";
+import type { TvPackage, TvPackagesResult } from "@/lib/types/tv";
 import { tvDeviceSchema, type TvDeviceDetails } from "@/lib/validation/tv-device";
 
 // Step 1 validates input only. It does not verify ownership, discover a device,
@@ -17,30 +20,56 @@ export async function prepareTvDeviceAction(values: TvDeviceDetails): Promise<
   }
 }
 
-/** Called by the server page. Keep API fetching/mapping and cache tags here. */
-export async function getTvPackagesAction(): Promise<import("@/lib/types/tv").TvPackagesResult> {
-    // TODO: Call your TV packages API here and map its response to TvPackage[].
-  // Scope the request to the company/router when wiring up the endpoint.
-  // Add fetch cache tags here; mutations can invalidate them from server actions.
-  // No hotspot-package fallback: only explicitly eligible TV plans belong here.
-  try{
-    const packages = await fetch(`${process.env.BASE_API_URL!}hotspot/packages`, {
+/**
+ * Map a backend `NetPackage` (category TV) to the UI `TvPackage` shape used by
+ * the captive-portal picker. `validity` and `dataAllowance` are derived from the
+ * package validity/bandwidth fields; raw packages are never shipped un-mapped.
+ */
+export function mapToTvPackage(net: NetPackage): TvPackage {
+  const value = net.validityValue ?? 1;
+  const rawType = (net.validityType ?? "day").toLowerCase();
+  const singular = rawType.endsWith("s") ? rawType.slice(0, -1) : rawType;
+  const validity = `${value} ${singular}${value === 1 ? "" : "s"}`;
+  const unlimited = net.bandwidthType?.toUpperCase() === "UNLIMITED";
+  return {
+    idxno: net.idxno,
+    packageName: net.packageName,
+    price: net.price,
+    validity,
+    speedDownload: net.speedDownload ?? 0,
+    speedUpload: net.speedUpload ?? 0,
+    maxDevices: net.maxDevices ?? 1,
+    dataAllowance: unlimited ? "Unlimited" : net.rateLimit || "Unlimited",
+  };
+}
+
+const TV_CACHE_TAGS = ["hotspot-tv-packages"] as const;
+const TV_REVALIDATE_SECONDS = 60;
+
+/** Read-only, public, no admin JWT. `GET /hotspot/packages?category=TV`. */
+export async function getTvPackagesAction(): Promise<TvPackagesResult> {
+  try {
+    const res = await apiFetch<NetPackage[]>("/hotspot/packages?category=TV", {
       method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      }})
-    
-      const data = await packages.json();
-      if (!data.success || !Array.isArray(data.data)) {
-        console.error("getTvPackagesAction error: Invalid response format", data);
-        return { packages: [] };
-      }
-      return { packages: data.data };
-  }catch (e){
-    console.error("getTvPackagesAction error:", e);
+      auth: "public",
+      tags: [...TV_CACHE_TAGS],
+      revalidate: TV_REVALIDATE_SECONDS,
+    });
+
+    if (!res.success || !Array.isArray(res.data)) {
+      console.error("getTvPackagesAction error:", res.message);
+      return { packages: [] };
+    }
+
+    const packages = res.data
+      .filter((net) => net.packageCategory === "TV")
+      .map(mapToTvPackage);
+
+    return { packages };
+  } catch (error) {
+    console.error("getTvPackagesAction error:", error);
     return { packages: [] };
   }
-
 }
 
 /** Payment integration placeholder. Never reports a payment as sent or successful. */
