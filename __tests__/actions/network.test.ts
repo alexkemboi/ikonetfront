@@ -93,7 +93,7 @@ describe("regions tree (onboarding topology precondition)", () => {
 });
 
 describe("bindings: createIpMappingAction", () => {
-  it("POSTs /customer-devices Bearer payload and revalidates the network page", async () => {
+  it("POSTs /customer-devices Bearer payload (OpenAPI deviceName) and revalidates the network page", async () => {
     server.use(
       http.post(`${API_PREFIX}/customer-devices`, async ({ request }) => {
         expect(request.headers.get("authorization")).toBe(`Bearer ${TOKEN}`);
@@ -101,8 +101,7 @@ describe("bindings: createIpMappingAction", () => {
         expect(body).toEqual({
           customerIdxno: 1,
           macAddress: "AA:BB:CC:DD:EE:FF",
-          ipAddress: "192.168.10.50",
-          deviceType: "SMART_TV",
+          deviceName: "Smart TV",
         });
         return HttpResponse.json(
           { status: 201, success: true, message: "Customer device bound", data: null },
@@ -114,7 +113,6 @@ describe("bindings: createIpMappingAction", () => {
     const result = await createIpMappingAction({
       customerId: "1",
       macAddress: "AA:BB:CC:DD:EE:FF",
-      ipAddress: "192.168.10.50",
     });
 
     expect(result.success).toBe(true);
@@ -131,7 +129,6 @@ describe("bindings: createIpMappingAction", () => {
     const result = await createIpMappingAction({
       customerId: "1",
       macAddress: "AA:BB:CC:DD:EE:FF",
-      ipAddress: "192.168.10.50",
     });
 
     expect(result.success).toBe(false);

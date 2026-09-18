@@ -39,7 +39,8 @@ describe("getLiveSessionsData (live-sessions hub)", () => {
     const grace = sessions.find((s) => s.subscriberCode === "A2085");
     expect(grace?.subscriberName).toBe("Grace Wanjiru");
     expect(grace?.protocol).toBe("HOTSPOT");
-    expect(grace?.routerName).toBe("ADRNOLDNETWORKS");
+    // NAS/CKE router name comes from IpMappingResponse.routerName first.
+    expect(grace?.routerName).toBe("RTR-BDK-MSA-A");
 
     const pppoe = sessions.find((s) => s.subscriberCode === "P-114");
     expect(pppoe?.protocol).toBe("PPPOE");
