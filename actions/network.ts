@@ -301,6 +301,105 @@ export const executeRouterAction = async (
   }
 };
 
+// ── Track 1: remote-access tunnel lease (WinBox relay + WebFig console) ──
+
+export interface TunnelAllocation {
+  deviceId: number;
+  routerName: string;
+  winboxEndpoint: string;
+  port: number | null;
+  webConsoleUrl: string | null;
+  tunnelExpiresAt: string;
+}
+
+export const allocateTunnel = async (deviceId: number): Promise<ApiResponse<TunnelAllocation | null>> => {
+  try {
+    const response = await fetch(
+      `${BASE_URL}network-devices/${deviceId}/tunnel/allocate`,
+      { method: "POST", headers: await getAuthHeaders() }
+    );
+
+    const data = (await response.json()) as {
+      success?: boolean;
+      message?: string;
+      data?: TunnelAllocation | null;
+      timestamp?: string;
+    };
+
+    if (!response.ok) {
+      return {
+        success: false,
+        message: data.message || "Failed to allocate remote access tunnel",
+        data: null,
+        status: response.status,
+        timestamp: new Date().toISOString(),
+      };
+    }
+
+    revalidatePath("/network/routers");
+    return {
+      success: true,
+      message: data.message || "Remote access tunnel allocated",
+      data: data.data as TunnelAllocation,
+      status: response.status,
+      timestamp: data.timestamp ?? new Date().toISOString(),
+    };
+  } catch (error: unknown) {
+    console.error("Error allocating remote access tunnel:", error);
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : "Failed to allocate tunnel",
+      data: null,
+      status: 500,
+      timestamp: new Date().toISOString(),
+    };
+  }
+};
+
+export const deallocateTunnel = async (deviceId: number): Promise<ApiResponse<TunnelAllocation | null>> => {
+  try {
+    const response = await fetch(
+      `${BASE_URL}network-devices/${deviceId}/tunnel/deallocate`,
+      { method: "POST", headers: await getAuthHeaders() }
+    );
+
+    const data = (await response.json()) as {
+      success?: boolean;
+      message?: string;
+      data?: TunnelAllocation | null;
+      timestamp?: string;
+    };
+
+    if (!response.ok) {
+      return {
+        success: false,
+        message: data.message || "Failed to deallocate remote access tunnel",
+        data: null,
+        status: response.status,
+        timestamp: new Date().toISOString(),
+      };
+    }
+
+    revalidatePath("/network/routers");
+    return {
+      success: true,
+      message: data.message || "Remote access tunnel deallocated",
+      data: data.data as TunnelAllocation,
+      status: response.status,
+      timestamp: data.timestamp ?? new Date().toISOString(),
+    };
+  } catch (error: unknown) {
+    console.error("Error deallocating remote access tunnel:", error);
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : "Failed to deallocate tunnel",
+      data: null,
+      status: 500,
+      timestamp: new Date().toISOString(),
+    };
+  }
+};
+
 // ── Region actions ────────────────────────────────────────────────────────
 
 /** Extract an array from a response that may be `{data: [...]}` or `[...]` directly */
