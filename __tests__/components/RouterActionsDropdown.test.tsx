@@ -17,18 +17,23 @@ const router: RouterActionsRow = {
 };
 
 // The dropdown opens the drawer which calls getRouterMonitoringLatest +
-// getNetworkDeviceInterfaces, and it calls executeRouterAction for commands.
-// Mock the whole action module so component tests don't reach MSW/network.
+// getNetworkDeviceInterfaces, and it calls executeRouterAction for commands
+// (plus allocate/deallocateTunnel for the WinBox lease). Mock the whole action
+// module so component tests don't reach MSW/network.
 const mockExecute = vi.fn();
 const mockLatest = vi.fn();
 const mockInterfaces = vi.fn();
 const mockDelete = vi.fn();
+const mockAllocate = vi.fn();
+const mockDeallocate = vi.fn();
 
 vi.mock("@/actions/network", () => ({
   executeRouterAction: (...args: unknown[]) => mockExecute(...args),
   getRouterMonitoringLatest: (...args: unknown[]) => mockLatest(...args),
   getNetworkDeviceInterfaces: (...args: unknown[]) => mockInterfaces(...args),
   deleteNetworkDevice: (...args: unknown[]) => mockDelete(...args),
+  allocateTunnel: (...args: unknown[]) => mockAllocate(...args),
+  deallocateTunnel: (...args: unknown[]) => mockDeallocate(...args),
 }));
 
 beforeEach(() => {
@@ -69,6 +74,27 @@ beforeEach(() => {
     timestamp: new Date().toISOString(),
     data: { id: 1, name: "RTR-BDK-MSA-001", ipAddress: "10.8.1.10" },
   });
+  mockAllocate.mockResolvedValue({
+    success: true,
+    message: "Remote access tunnel allocated",
+    status: 200,
+    timestamp: new Date().toISOString(),
+    data: {
+      deviceId: 1,
+      routerName: "RTR-BDK-MSA-001",
+      winboxEndpoint: "92.205.59.234:51247",
+      port: 51247,
+      webConsoleUrl: "https://webfig-1.beesmartbedak.com/",
+      tunnelExpiresAt: new Date(Date.now() + 7200000).toISOString(),
+    },
+  });
+  mockDeallocate.mockResolvedValue({
+    success: true,
+    message: "Remote access tunnel deallocated",
+    status: 200,
+    timestamp: new Date().toISOString(),
+    data: { deviceId: 1, routerName: "RTR-BDK-MSA-001", port: null, webConsoleUrl: null },
+  });
 });
 
 describe("RouterActionsDropdown", () => {
@@ -85,9 +111,15 @@ describe("RouterActionsDropdown", () => {
     expect(screen.getByText("Live Hardware Vitals")).toBeInTheDocument();
     expect(screen.getByText("Interfaces & Live Traffic")).toBeInTheDocument();
     expect(screen.getByText("Active Subscriber Sessions")).toBeInTheDocument();
+    expect(screen.getByText("Diagnose Health")).toBeInTheDocument();
+    expect(screen.getByText("Sync Router Time")).toBeInTheDocument();
+    expect(screen.getByText("Sync Hotspot Files")).toBeInTheDocument();
+    expect(screen.getByText("Reprovision Router")).toBeInTheDocument();
+    expect(screen.getByText("Copy WinBox host:port")).toBeInTheDocument();
+    expect(screen.getByText("Open in WinBox")).toBeInTheDocument();
+    expect(screen.getByText("Regenerate WinBox Port")).toBeInTheDocument();
     expect(screen.getByText("Refresh Telemetry")).toBeInTheDocument();
     expect(screen.getByText("Reboot Device")).toBeInTheDocument();
-    expect(screen.getByText("Launch WinBox Tunnel")).toBeInTheDocument();
   });
 
   it("opens the telemetry drawer on Live Hardware Vitals", async () => {
@@ -147,6 +179,62 @@ describe("RouterActionsDropdown", () => {
 
     await waitFor(() => {
       expect(mockExecute).toHaveBeenCalledWith(7, { action: "REFRESH" });
+    });
+  });
+
+  it("opens the Diagnose Health modal rendered from details", async () => {
+    mockExecute.mockResolvedValue({
+      success: true,
+      message: "Router diagnostics complete",
+      status: 200,
+      timestamp: new Date().toISOString(),
+      data: {
+        routerId: 7,
+        routerName: "RTR-BDK-MSA-001",
+        ipAddress: "10.8.1.10",
+        action: "DIAGNOSE",
+        nodeStatus: "ONLINE",
+        executionStatus: "SUCCESS",
+        message: "Router diagnostics complete",
+        details: {
+          cpuLoad: "12",
+          uptime: "1d 04:22:15",
+          temperature: "48",
+          wanPingLatency: "23ms",
+          packetLoss: "0%",
+          radiusStatus: "10.8.0.1(hotspot,ppp)",
+          status: "OK",
+        },
+        timestamp: new Date().toISOString(),
+      },
+    });
+    const user = userEvent.setup();
+    render(<RouterActionsDropdown router={router} />);
+
+    await user.click(screen.getByRole("button", { name: /router actions/i }));
+    await user.click(screen.getByText("Diagnose Health"));
+
+    await waitFor(() => {
+      expect(mockExecute).toHaveBeenCalledWith(7, { action: "DIAGNOSE" });
+    });
+    expect(screen.getByTestId("diagnose-modal")).toBeInTheDocument();
+    expect(screen.getByText("12%")).toBeInTheDocument();
+    expect(screen.getByText(/23ms/)).toBeInTheDocument();
+    expect(screen.getByText("OK")).toBeInTheDocument();
+  });
+
+  it("regenerates the WinBox port via deallocate then allocate", async () => {
+    const user = userEvent.setup();
+    render(<RouterActionsDropdown router={router} />);
+
+    await user.click(screen.getByRole("button", { name: /router actions/i }));
+    await user.click(screen.getByText("Regenerate WinBox Port"));
+
+    await waitFor(() => {
+      expect(mockDeallocate).toHaveBeenCalledWith(1);
+    });
+    await waitFor(() => {
+      expect(mockAllocate).toHaveBeenCalledWith(1);
     });
   });
 
