@@ -8,7 +8,6 @@ export interface NasRouterItem {
   /** Raw online flag when the source row carries a boolean (device API). */
   online?: boolean;
   activeSessions: number;
-  winboxTunnelAddress: string; // e.g. "winbox.centipidbilling.com:54910"
   managementIp: string; // e.g. "10.9.86.246"
   lastOnlineText: string; // e.g. "Jul 20, 03:34 AM"
   /** network_routers.idxno — the id the telemetry/action endpoints expect. */
@@ -22,6 +21,13 @@ export interface NasRouterItem {
   uptime?: string | null;
   /** When the enriched snapshot was created (ISO) — recency governs the ONLINE badge. */
   snapshotAt?: string | null;
+  /** Track 1: on-demand WinBox relay lease (e.g. "92.205.59.234:51247"). */
+  winboxTunnelAddress?: string | null;
+  winboxTunnelPort?: number | null;
+  /** Track 1: WebFig console over the WireGuard mesh. */
+  webConsoleUrl?: string | null;
+  /** Track 1: lease expiry (ISO) — hides WebConsole/re-enables after it passes. */
+  tunnelExpiresAt?: string | null;
 }
 
 export interface NasRouterKpis {

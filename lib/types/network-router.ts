@@ -16,7 +16,11 @@ export type RouterAction =
   | "STOP_DISCOVERY"
   | "BACKUP_CONFIG"
   | "RESTORE_CONFIG"
-  | "UPDATE_FIRMWARE";
+  | "UPDATE_FIRMWARE"
+  | "DIAGNOSE"
+  | "SYNC_ROUTER_TIME"
+  | "SYNC_HOTSPOT_FILES"
+  | "REPROVISION";
 
 // Topology tree node — recursive
 export interface TopologyNode {
@@ -63,6 +67,17 @@ export interface RouterActionRequest {
   notes?: string;
 }
 
+/** Structured payload returned by DIAGNOSE — mirrors the backend details map. */
+export interface DiagnoseDetails {
+  cpuLoad?: string | null;
+  uptime?: string | null;
+  temperature?: string | null;
+  wanPingLatency?: string | null;
+  packetLoss?: string | null;
+  radiusStatus?: string | null;
+  status?: "OK" | "DEGRADED" | "WAN_DOWN" | "UNKNOWN" | string | null;
+}
+
 /** Mirrors the backend `RouterActionResponse` (`PATCH /api/v1/network-routers/{id}/action`). */
 export interface RouterActionResponse {
   routerId: number;
@@ -73,6 +88,7 @@ export interface RouterActionResponse {
   executionStatus: string;
   message: string;
   error?: string;
+  details?: DiagnoseDetails;
   timestamp: string;
 }
 
