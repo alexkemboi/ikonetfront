@@ -492,6 +492,208 @@
       }
     },
     {
+      "description": "GET /api/v1/hotspot/packages?category=TV",
+      "providerStates": [
+        {
+          "name": "seed for GET /api/v1/hotspot/packages?category=TV"
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/hotspot/packages",
+        "query": {
+          "category": [
+            "TV"
+          ]
+        }
+      },
+      "response": {
+        "body": {
+          "data": [
+            {
+              "activeStatus": true,
+              "bandwidthType": "SHARED",
+              "idxno": 7,
+              "maxDevices": 1,
+              "packageCategory": "TV",
+              "packageName": "TV 24H",
+              "price": 150,
+              "rateLimit": "15M/15M",
+              "speedDownload": 15,
+              "speedUpload": 15,
+              "validityType": "HOURS",
+              "validityValue": 24
+            }
+          ],
+          "message": "Active packages retrieved successfully",
+          "status": 200,
+          "success": true,
+          "timestamp": "2026-08-26T00:00:00.000Z"
+        },
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "matchingRules": {
+          "body": {
+            "$": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type",
+                  "min": 1
+                }
+              ]
+            },
+            "$.data[*]": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data[*].activeStatus": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data[*].bandwidthType": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data[*].idxno": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data[*].maxDevices": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data[*].packageCategory": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data[*].packageName": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data[*].price": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data[*].rateLimit": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data[*].speedDownload": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data[*].speedUpload": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data[*].validityType": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data[*].validityValue": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.message": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.status": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.success": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.timestamp": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            }
+          }
+        },
+        "status": 200
+      }
+    },
+    {
       "description": "GET /api/v1/system/packages/active",
       "providerStates": [
         {
@@ -4681,8 +4883,7 @@
       "request": {
         "body": {
           "customerIdxno": 1,
-          "deviceType": "SMART_TV",
-          "ipAddress": "192.168.10.50",
+          "deviceName": "Smart TV",
           "macAddress": "AA:BB:CC:DD:EE:FF"
         },
         "headers": {
@@ -4696,9 +4897,8 @@
         "body": {
           "data": {
             "customerIdxno": 1,
-            "deviceType": "SMART_TV",
+            "deviceName": "Smart TV",
             "idxno": 501,
-            "ipAddress": "192.168.10.50",
             "macAddress": "AA:BB:CC:DD:EE:FF"
           },
           "message": "Customer device bound successfully",
@@ -4735,7 +4935,7 @@
                 }
               ]
             },
-            "$.data.deviceType": {
+            "$.data.deviceName": {
               "combine": "AND",
               "matchers": [
                 {
@@ -4744,14 +4944,6 @@
               ]
             },
             "$.data.idxno": {
-              "combine": "AND",
-              "matchers": [
-                {
-                  "match": "type"
-                }
-              ]
-            },
-            "$.data.ipAddress": {
               "combine": "AND",
               "matchers": [
                 {
@@ -4826,6 +5018,7 @@
                 "ipAddress": "172.16.0.11",
                 "lastSeen": "2026-08-26T07:59:00+03:00",
                 "macAddress": "32:A2:F1:9C:4D:02",
+                "routerName": "RTR-BDK-MSA-A",
                 "serviceType": "HOTSPOT",
                 "stationName": "ADRNOLDNETWORKS",
                 "status": "ONLINE",
@@ -4918,6 +5111,14 @@
               ]
             },
             "$.data.content[*].macAddress": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.content[*].routerName": {
               "combine": "AND",
               "matchers": [
                 {
