@@ -3,7 +3,8 @@ import { server } from "@/mocks/server";
 import { http, HttpResponse } from "msw";
 import { API_PREFIX } from "@/mocks/handlers/auth-guard";
 import { activeTvPackagesFixture, errorEnvelope } from "@/contracts/catalog";
-import { getTvPackagesAction, mapToTvPackage } from "@/actions/tv";
+import { getTvPackagesAction } from "@/actions/tv";
+import { mapToTvPackage } from "@/lib/utils/tvPackages";
 import type { NetPackage } from "@/lib/types/api";
 
 describe("TV packages", () => {
