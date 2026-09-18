@@ -250,7 +250,10 @@ export async function getSubscribersData(): Promise<{
           ? isSameDay(new Date(customer.expiryDate), new Date())
           : false,
         status: isOnline ? "ONLINE" : "OFFLINE",
-        nasName: onlineMapping?.stationName || "—",
+        nasName:
+          String(onlineMapping?.routerName ?? "").trim() ||
+          onlineMapping?.stationName ||
+          "—",
         macAddress: onlineMapping?.macAddress || undefined,
         ipAddress: onlineMapping?.ipAddress || undefined,
       };
