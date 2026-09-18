@@ -2,7 +2,8 @@
 
 import { apiFetch } from "@/lib/apiClient";
 import type { NetPackage } from "@/lib/types/api";
-import type { TvPackage, TvPackagesResult } from "@/lib/types/tv";
+import type { TvPackagesResult } from "@/lib/types/tv";
+import { mapToTvPackage } from "@/lib/utils/tvPackages";
 import { tvDeviceSchema, type TvDeviceDetails } from "@/lib/validation/tv-device";
 
 // Step 1 validates input only. It does not verify ownership, discover a device,
@@ -18,29 +19,6 @@ export async function prepareTvDeviceAction(values: TvDeviceDetails): Promise<
   } catch {
     return { success: false, error: "Check your TV’s MAC address and try again." };
   }
-}
-
-/**
- * Map a backend `NetPackage` (category TV) to the UI `TvPackage` shape used by
- * the captive-portal picker. `validity` and `dataAllowance` are derived from the
- * package validity/bandwidth fields; raw packages are never shipped un-mapped.
- */
-export function mapToTvPackage(net: NetPackage): TvPackage {
-  const value = net.validityValue ?? 1;
-  const rawType = (net.validityType ?? "day").toLowerCase();
-  const singular = rawType.endsWith("s") ? rawType.slice(0, -1) : rawType;
-  const validity = `${value} ${singular}${value === 1 ? "" : "s"}`;
-  const unlimited = net.bandwidthType?.toUpperCase() === "UNLIMITED";
-  return {
-    idxno: net.idxno,
-    packageName: net.packageName,
-    price: net.price,
-    validity,
-    speedDownload: net.speedDownload ?? 0,
-    speedUpload: net.speedUpload ?? 0,
-    maxDevices: net.maxDevices ?? 1,
-    dataAllowance: unlimited ? "Unlimited" : net.rateLimit || "Unlimited",
-  };
 }
 
 const TV_CACHE_TAGS = ["hotspot-tv-packages"] as const;
