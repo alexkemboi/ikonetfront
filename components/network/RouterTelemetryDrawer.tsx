@@ -31,7 +31,7 @@ interface TelemetryRouter {
   name: string;
   managementIp?: string;
   vpnIp?: string;
-  winboxTunnelAddress?: string;
+  winboxTunnelAddress?: string | null;
 }
 
 const POLL_MS = 5000;

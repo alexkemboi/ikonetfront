@@ -2,6 +2,7 @@
 
 import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { useRouter } from "next/navigation";
 import {
   MoreHorizontal,
   Activity,
@@ -11,14 +12,29 @@ import {
   RotateCw,
   RefreshCw,
   Trash2,
+  Stethoscope,
+  Clock,
+  Upload,
+  RefreshCcw,
+  Copy,
+  Monitor,
 } from "lucide-react";
 import { toast } from "sonner";
-import { executeRouterAction, deleteNetworkDevice } from "@/actions/network";
+import {
+  executeRouterAction,
+  deleteNetworkDevice,
+  allocateTunnel,
+  deallocateTunnel,
+} from "@/actions/network";
 import { RouterTelemetryDrawer } from "./RouterTelemetryDrawer";
-import type { RouterAction } from "@/lib/types/network-router";
+import { DiagnoseHealthModal } from "./DiagnoseHealthModal";
+import type {
+  DiagnoseDetails,
+  RouterAction,
+} from "@/lib/types/network-router";
 
 export interface RouterActionsRow {
-  /** network_device.id (string) — used for interfaces + delete. */
+  /** network_device.id (string) — used for interfaces + delete + tunnels. */
   id: string;
   /** network_routers.idxno — used for telemetry + remote actions. */
   routerId?: number;
@@ -27,12 +43,14 @@ export interface RouterActionsRow {
   status?: string;
   managementIp?: string;
   vpnIp?: string;
-  winboxTunnelAddress?: string;
+  winboxTunnelAddress?: string | null;
+  webConsoleUrl?: string | null;
+  tunnelExpiresAt?: string | null;
 }
 
 type Tab = "vitals" | "interfaces" | "sessions";
 
-const MENU_WIDTH = 232; // px; keeps right-edge alignment consistent
+const MENU_WIDTH = 252; // px; keeps right-edge alignment consistent
 
 /**
  * The "•••" command menu for a NAS/router table row.
@@ -44,15 +62,18 @@ const MENU_WIDTH = 232; // px; keeps right-edge alignment consistent
  * `position:absolute` table distortion bug). It closes on outside click,
  * scroll, and Escape.
  *
- * Commands: Live Hardware Vitals / Interfaces / Sessions → telemetry drawer;
- * Launch WinBox Tunnel → external link; Refresh / Reboot / Delete → server
- * actions (session auth — never localStorage).
+ * Commands: telemetry drawer (Vitals/Interfaces/Sessions), Track 1
+ * maintenance actions (Diagnose Health → modal, Sync Router Time, Sync
+ * Hotspot Files, Reprovision Router), WinBox remote access (copy host:port,
+ * winbox:// launch, WebConsole, regenerate port) and Refresh / Reboot /
+ * Delete — all authenticated via session (never localStorage).
  */
 export function RouterActionsDropdown({
   router,
 }: {
   router: RouterActionsRow;
 }) {
+  const routerNav = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
   const [coords, setCoords] = useState<{
     top: number;
@@ -60,18 +81,22 @@ export function RouterActionsDropdown({
     openUpwards: boolean;
   } | null>(null);
   const [drawerTab, setDrawerTab] = useState<Tab | null>(null);
-  const [busyAction, setBusyAction] = useState<RouterAction | "DELETE" | null>(null);
+  const [diagnose, setDiagnose] = useState<{
+    details: DiagnoseDetails | null;
+    message: string;
+  } | null>(null);
+  const [busyAction, setBusyAction] = useState<RouterAction | "DELETE" | "TUNNEL_REGEN" | null>(null);
+  const [copied, setCopied] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const didClampRef = useRef(false);
 
   const deviceId = Number(router.id);
   const actionRouterId = Number(router.routerId) || Number(router.id);
-  const winboxHref = router.winboxTunnelAddress
-    ? `http://${router.winboxTunnelAddress}`
-    : router.managementIp
-      ? `http://${router.managementIp}:8291`
-      : null;
+  const hasNumericDevice = Number.isFinite(deviceId) && deviceId > 0;
+  const winboxUri = router.winboxTunnelAddress
+    ? `winbox://${router.winboxTunnelAddress}`
+    : null;
 
   const closeMenu = useCallback(() => setMenuOpen(false), []);
 
@@ -84,9 +109,9 @@ export function RouterActionsDropdown({
     const left = rect.right - MENU_WIDTH;
 
     // ── Smart vertical flip ──
-    // Estimate the open menu's height (7 items + dividers). If there isn't
-    // enough viewport space below the anchor and there IS room above, flip
-    // upward so the menu never gets cut off at the bottom of the window.
+    // Estimate the open menu's height (now 11 items + dividers). If there
+    // isn't enough viewport space below the anchor and there IS room above,
+    // flip upward so the menu never gets cut off at the bottom of the window.
     const vh = window.innerHeight;
     const menuHeight = Math.min(280, vh * 0.85);
     const spaceBelow = vh - rect.bottom;
@@ -167,6 +192,11 @@ export function RouterActionsDropdown({
     try {
       const res = await executeRouterAction(actionRouterId, { action });
       if (res.success && res.data) {
+        if (action === "DIAGNOSE") {
+          setDiagnose({ details: res.data.details ?? null, message: res.data.message });
+          closeMenu();
+          return;
+        }
         toast[res.data.executionStatus === "FAILED" ? "error" : "success"](
           res.data.message || `${action} executed on ${router.name}`
         );
@@ -194,7 +224,7 @@ export function RouterActionsDropdown({
   };
 
   const handleDelete = async () => {
-    if (!Number.isFinite(deviceId) || deviceId <= 0) {
+    if (!hasNumericDevice) {
       toast.error("This row is a local placeholder — no backend device id to delete.");
       closeMenu();
       return;
@@ -226,6 +256,47 @@ export function RouterActionsDropdown({
       toast.error("Unexpected error deleting router.");
     } finally {
       setBusyAction(null);
+    }
+  };
+
+  const copyHostPort = async () => {
+    if (!router.winboxTunnelAddress) {
+      toast.error("No WinBox tunnel allocated for this router yet.");
+      closeMenu();
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(router.winboxTunnelAddress);
+      setCopied(true);
+      toast.success(`WinBox host:port copied (${router.winboxTunnelAddress}).`);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      toast.error("Clipboard unavailable — copy the address manually.");
+    }
+    closeMenu();
+  };
+
+  const regenerateWinBoxPort = async () => {
+    if (!hasNumericDevice) {
+      toast.error("This row is a local placeholder — no backend device id to regenerate.");
+      closeMenu();
+      return;
+    }
+    setBusyAction("TUNNEL_REGEN");
+    try {
+      await deallocateTunnel(deviceId);
+      const res = await allocateTunnel(deviceId);
+      if (res.success) {
+        toast.success("WinBox tunnel re-allocated with a fresh port.");
+        routerNav.refresh();
+      } else {
+        toast.error(res.message || "Failed to re-allocate the tunnel.");
+      }
+    } catch {
+      toast.error("Unexpected error regenerating the WinBox tunnel.");
+    } finally {
+      setBusyAction(null);
+      closeMenu();
     }
   };
 
@@ -280,17 +351,103 @@ export function RouterActionsDropdown({
 
       <div className="h-px bg-border my-1" />
 
-      {winboxHref && (
+      <button
+        type="button"
+        role="menuitem"
+        disabled={busyAction === "DIAGNOSE"}
+        onClick={() => void runAction("DIAGNOSE")}
+        className="flex items-center w-full px-4 py-2.5 hover:bg-muted hover:text-foreground gap-2.5 transition text-left disabled:opacity-50"
+      >
+        <Stethoscope className={`h-4 w-4 ${busyAction === "DIAGNOSE" ? "animate-pulse" : ""} text-cyan-500`} />
+        Diagnose Health
+      </button>
+
+      <button
+        type="button"
+        role="menuitem"
+        disabled={busyAction === "SYNC_ROUTER_TIME"}
+        onClick={() => void runAction("SYNC_ROUTER_TIME")}
+        className="flex items-center w-full px-4 py-2.5 hover:bg-muted hover:text-foreground gap-2.5 transition text-left disabled:opacity-50"
+      >
+        <Clock className={`h-4 w-4 ${busyAction === "SYNC_ROUTER_TIME" ? "animate-pulse" : ""} text-emerald-500`} />
+        Sync Router Time
+      </button>
+
+      <button
+        type="button"
+        role="menuitem"
+        disabled={busyAction === "SYNC_HOTSPOT_FILES"}
+        onClick={() => void runAction("SYNC_HOTSPOT_FILES")}
+        className="flex items-center w-full px-4 py-2.5 hover:bg-muted hover:text-foreground gap-2.5 transition text-left disabled:opacity-50"
+      >
+        <Upload className={`h-4 w-4 ${busyAction === "SYNC_HOTSPOT_FILES" ? "animate-pulse" : ""} text-blue-500`} />
+        Sync Hotspot Files
+      </button>
+
+      <button
+        type="button"
+        role="menuitem"
+        disabled={busyAction === "REPROVISION"}
+        onClick={() => void runAction("REPROVISION")}
+        className="flex items-center w-full px-4 py-2.5 hover:bg-muted hover:text-foreground gap-2.5 transition text-left disabled:opacity-50"
+      >
+        <RefreshCcw className={`h-4 w-4 ${busyAction === "REPROVISION" ? "animate-spin" : ""} text-teal-500`} />
+        Reprovision Router
+      </button>
+
+      <div className="h-px bg-border my-1" />
+
+      {router.winboxTunnelAddress && (
+        <button
+          type="button"
+          role="menuitem"
+          onClick={() => void copyHostPort()}
+          className="flex items-center w-full px-4 py-2.5 hover:bg-muted hover:text-foreground gap-2.5 transition text-left"
+        >
+          {copied ? (
+            <Activity className="h-4 w-4 text-emerald-500" />
+          ) : (
+            <Copy className="h-4 w-4 text-purple-500" />
+          )}
+          Copy WinBox host:port
+        </button>
+      )}
+
+      {winboxUri && (
         <a
-          href={winboxHref}
-          target="_blank"
-          rel="noreferrer"
+          href={winboxUri}
           role="menuitem"
           className="flex items-center w-full px-4 py-2.5 hover:bg-muted hover:text-foreground gap-2.5 transition text-left text-purple-500"
         >
           <ExternalLink className="h-4 w-4" />
-          Launch WinBox Tunnel
+          Open in WinBox
         </a>
+      )}
+
+      {router.webConsoleUrl && (
+        <a
+          href={router.webConsoleUrl}
+          target="_blank"
+          rel="noreferrer"
+          role="menuitem"
+          className="flex items-center w-full px-4 py-2.5 hover:bg-muted hover:text-foreground gap-2.5 transition text-left"
+        >
+          <Monitor className="h-4 w-4 text-amber-500" />
+          Open WebConsole
+        </a>
+      )}
+
+      {hasNumericDevice && (
+        <button
+          type="button"
+          role="menuitem"
+          disabled={busyAction === "TUNNEL_REGEN"}
+          onClick={() => void regenerateWinBoxPort()}
+          className="flex items-center w-full px-4 py-2.5 hover:bg-muted hover:text-foreground gap-2.5 transition text-left disabled:opacity-50"
+        >
+          <RefreshCw className={`h-4 w-4 ${busyAction === "TUNNEL_REGEN" ? "animate-spin" : ""} text-purple-500`} />
+          Regenerate WinBox Port
+        </button>
       )}
 
       <button
@@ -355,6 +512,15 @@ export function RouterActionsDropdown({
           router={router}
           defaultTab={drawerTab}
           onClose={() => setDrawerTab(null)}
+        />
+      )}
+
+      {diagnose && (
+        <DiagnoseHealthModal
+          routerName={router.name}
+          details={diagnose.details}
+          message={diagnose.message}
+          onClose={() => setDiagnose(null)}
         />
       )}
     </>
