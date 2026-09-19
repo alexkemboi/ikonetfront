@@ -59,6 +59,32 @@ export async function refreshAccessToken(
   return { token: res.data.token };
 }
 
+/**
+ * Verify the operator's password and mint a 10-minute step-up token.
+ * Contract: `POST /api/v1/auth/step-up/verify` with `Authorization: Bearer
+ * <accessJwt>`; reply envelope `ApiResponse<{ token, expiresInSeconds,
+ * expiresAt }>`. Server-only so `StepUpProvider` (a client component) never
+ * imports `next/headers` through `apiClient`.
+ */
+export async function verifyStepUpAction(password: string): Promise<{
+  token: string;
+  expiresInSeconds: number;
+  expiresAt: string;
+} | null> {
+  const res = await apiFetch<{
+    token: string;
+    expiresInSeconds: number;
+    expiresAt: string;
+  }>("/auth/step-up/verify", {
+    method: "POST",
+    body: { password },
+    auth: "required",
+    cache: "no-store",
+  });
+  if (!res.success || !res.data?.token) return null;
+  return res.data;
+}
+
 export async function logoutAction(token: string): Promise<void> {
   try {
     await apiFetch("/auth/logout", {
