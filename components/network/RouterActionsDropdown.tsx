@@ -18,6 +18,7 @@ import {
   RefreshCcw,
   Copy,
   Monitor,
+  Gift,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -26,8 +27,10 @@ import {
   allocateTunnel,
   deallocateTunnel,
 } from "@/actions/network";
+import { withStepUp } from "@/lib/stepUp";
 import { RouterTelemetryDrawer } from "./RouterTelemetryDrawer";
 import { DiagnoseHealthModal } from "./DiagnoseHealthModal";
+import CompensateOutageModal from "./CompensateOutageModal";
 import type {
   DiagnoseDetails,
   RouterAction,
@@ -87,6 +90,7 @@ export function RouterActionsDropdown({
   } | null>(null);
   const [busyAction, setBusyAction] = useState<RouterAction | "DELETE" | "TUNNEL_REGEN" | null>(null);
   const [copied, setCopied] = useState(false);
+  const [compensateOpen, setCompensateOpen] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const didClampRef = useRef(false);
@@ -190,7 +194,14 @@ export function RouterActionsDropdown({
     }
     setBusyAction(action);
     try {
-      const res = await executeRouterAction(actionRouterId, { action });
+      const run = (token?: string) => executeRouterAction(actionRouterId, { action }, token);
+      // REPROVISION/REBOOT are high-blast-radius — step-up re-authentication.
+      const res = action === "REPROVISION" || action === "REBOOT"
+        ? await withStepUp(
+            run,
+            `${action} is a high-impact operation. Re-authenticate to continue.`
+          )
+        : await run();
       if (res.success && res.data) {
         if (action === "DIAGNOSE") {
           setDiagnose({ details: res.data.details ?? null, message: res.data.message });
@@ -240,7 +251,10 @@ export function RouterActionsDropdown({
 
     setBusyAction("DELETE");
     try {
-      const res = await deleteNetworkDevice(deviceId);
+      const res = await withStepUp(
+        (token) => deleteNetworkDevice(deviceId, token),
+        "Deleting a router is a high-impact operation. Re-authenticate to continue."
+      );
       if (res.success) {
         toast.success(res.message || `${router.name} deleted successfully.`);
         closeMenu();
@@ -441,6 +455,21 @@ export function RouterActionsDropdown({
         <button
           type="button"
           role="menuitem"
+          onClick={() => {
+            setCompensateOpen(true);
+            closeMenu();
+          }}
+          className="flex items-center w-full px-4 py-2.5 hover:bg-muted hover:text-foreground gap-2.5 transition text-left"
+        >
+          <Gift className="h-4 w-4 text-emerald-500" />
+          Compensate Subscribers
+        </button>
+      )}
+
+      {hasNumericDevice && (
+        <button
+          type="button"
+          role="menuitem"
           disabled={busyAction === "TUNNEL_REGEN"}
           onClick={() => void regenerateWinBoxPort()}
           className="flex items-center w-full px-4 py-2.5 hover:bg-muted hover:text-foreground gap-2.5 transition text-left disabled:opacity-50"
@@ -521,6 +550,15 @@ export function RouterActionsDropdown({
           details={diagnose.details}
           message={diagnose.message}
           onClose={() => setDiagnose(null)}
+        />
+      )}
+
+      {compensateOpen && (
+        <CompensateOutageModal
+          open={compensateOpen}
+          onClose={() => setCompensateOpen(false)}
+          deviceId={Number.isFinite(deviceId) && deviceId > 0 ? deviceId : undefined}
+          targetLabel={router.name}
         />
       )}
     </>
