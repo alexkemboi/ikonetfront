@@ -18,6 +18,8 @@ import { normalizeRole } from "@/lib/types/roles";
 import { resolveCompanyContextCode } from "@/lib/companyContext";
 import { getPublicBranding } from "@/actions/branding";
 import { TenantTheme } from "@/components/tenant/TenantTheme";
+import StepUpProvider from "@/providers/StepUpProvider";
+import OmniSearchModal from "@/components/chrome/OmniSearchModal";
 
 /**
  * Dashboard shell — server component.
@@ -68,41 +70,44 @@ export default async function DashboardLayout({ children }: { children: ReactNod
  ? await getPublicBranding({ host: siteHost, company: contextCompany ?? undefined })
  : null;
 
- return (
- <PermissionsProvider permissions={permissionMap}>
- <TenantTheme branding={tenantBranding}>
- <div className="flex h-screen overflow-hidden bg-background">
- <Sidebar
- navGroups={navGroups}
- brandName="Beesmart"
- user={sidebarUser}
- />
-
- <div className="flex flex-1 flex-col overflow-hidden">
-<TopBar
-  notificationCount={0}
-  user={sidebarUser
-  ? {
-  username: sidebarUser.username,
-  initials: sidebarUser.initials,
-  role: sidebarUser.role,
-  fname: sidebarUser.name,
-  middleName: "",
-  email: sidebarUser.email,
-  companyScope: session.user.companyScope ?? undefined,
-  }
-  : undefined
-  }
+return (
+  <PermissionsProvider permissions={permissionMap}>
+  <StepUpProvider>
+  <TenantTheme branding={tenantBranding}>
+  <div className="flex h-screen overflow-hidden bg-background">
+  <Sidebar
   navGroups={navGroups}
   brandName="Beesmart"
-  sidebarUser={sidebarUser}
+  user={sidebarUser}
   />
+
+  <div className="flex flex-1 flex-col overflow-hidden">
+<TopBar
+   notificationCount={0}
+   user={sidebarUser
+   ? {
+   username: sidebarUser.username,
+   initials: sidebarUser.initials,
+   role: sidebarUser.role,
+   fname: sidebarUser.name,
+   middleName: "",
+   email: sidebarUser.email,
+   companyScope: session.user.companyScope ?? undefined,
+   }
+   : undefined
+   }
+   navGroups={navGroups}
+   brandName="Beesmart"
+   sidebarUser={sidebarUser}
+   />
 <main className="flex-1 overflow-y-auto py-4">
   {children}
   </main>
   </div>
   </div>
   </TenantTheme>
+  <OmniSearchModal />
+  </StepUpProvider>
   </PermissionsProvider>
   );
  }

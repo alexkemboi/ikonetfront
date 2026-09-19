@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { Bell, LogOut, Menu, Shield } from "lucide-react";
+import { Bell, LogOut, Menu, Search, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -18,6 +18,8 @@ import {
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { SidebarInner, type SidebarUser } from "./Sidebar";
 import CompanyContextSwitcher from "./CompanyContextSwitcher";
+import StepUpIndicator from "@/components/chrome/StepUpIndicator";
+import { openOmniSearch } from "@/lib/omniSearchEvents";
 import type { NavGroup } from "@/lib/nav";
 
 // Derives a human-readable title from the current pathname
@@ -111,6 +113,14 @@ const breadcrumbs = useBreadcrumb();
 
 {/* Actions */}
 	<div className="flex items-center gap-2 shrink-0">
+	{/* Step-up elevation countdown */}
+	<StepUpIndicator />
+
+	{/* Omni-search (Ctrl+K also opens it globally) */}
+	<Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Search (Ctrl+K)" onClick={() => openOmniSearch()}>
+	<Search className="w-4 h-4" />
+	</Button>
+
 	{/* Tenant context switcher (SYSADMIN only) */}
 	{user && <CompanyContextSwitcher rawRole={user.role} companyScope={user.companyScope} />}
 
