@@ -1,6 +1,6 @@
 import { getCustomerById } from "@/actions/customer";
 import { notFound } from "next/navigation";
-import { PPPoECustomerProfile } from "./_components/PPPoECustomerProfile";
+import { CustomerCockpit } from "./_components/CustomerCockpit";
 
 export const metadata = { title: "Customer Profile — Beesmart Billing" };
 
@@ -25,7 +25,7 @@ export default async function CustomerDetailsPage({
 
  return (
  <div className="flex-1 p-8 pt-6">
- <PPPoECustomerProfile customer={response.data} />
+ <CustomerCockpit customer={response.data} />
  </div>
  );
 }
