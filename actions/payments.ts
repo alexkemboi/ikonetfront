@@ -1,11 +1,13 @@
 "use server";
 
 import { auth } from "@/lib/auth";
+import { apiFetch } from "@/lib/apiClient";
 import { buildApiUrl } from "@/lib/constants";
 import { getPermissionForRoute } from "@/lib/data/nav";
 import { todayEatIso } from "@/lib/dates";
 import { timeoutSignal, unwrapPostings } from "@/lib/finance/ledger";
 import { withCompanyContext } from "@/lib/companyContext";
+import { revalidatePath } from "next/cache";
 import type { AccountPosting } from "@/lib/types/finance";
 import type {
   PaymentLedgerItem,
@@ -16,6 +18,12 @@ import type {
   DarajaReconciliationSummary,
   DarajaReconciliationEntry,
   ReconciliationOutcomeCounts,
+  ManualPaymentRequest,
+  ManualPaymentResponse,
+  CreateInvoiceRequest,
+  InvoiceItem as InvoiceEntry,
+  VoucherBatchItem,
+  VoucherBatchKpis,
 } from "@/lib/types/payments";
 
 // Zero-safe KPIs — the ledger never fabricates numbers when Account 1110 has
@@ -271,11 +279,209 @@ export async function getPaymentsLedgerData(
   return gatewayFallback();
 }
 
+/**
+ * Record a manual cash/bank payment for a PPPoE customer.
+ * POST /api/v1/payments/manual — envelope-returning endpoint.
+ */
+export async function recordManualPayment(
+  req: ManualPaymentRequest
+): Promise<{ success: boolean; data?: ManualPaymentResponse; message: string }> {
+  const res = await apiFetch<ManualPaymentResponse>("/payments/manual", {
+    method: "POST",
+    body: req,
+    auth: "required",
+  });
+  if (!res.success) {
+    return { success: false, message: res.message || "Failed to record the payment." };
+  }
+  revalidatePath("/finance/billing/payments");
+  return { success: true, data: res.data ?? undefined, message: res.message };
+}
+
+/**
+ * Fetch the invoice ledger (page + summary) with envelope-aware unwrapping.
+ * Replaces the historical stub with the live /finance/invoices contract.
+ */
 export async function getInvoicesLedgerData(): Promise<{
   kpis: InvoiceKpis;
   invoices: InvoiceItem[];
 }> {
-  return { kpis: FALLBACK_INVOICE_KPIS, invoices: [] };
+  const session = await auth();
+  if (!session?.user?.apiToken) {
+    return { kpis: FALLBACK_INVOICE_KPIS, invoices: [] };
+  }
+  const [pageRes, summaryRes] = await Promise.all([
+    apiFetch<{ content: InvoiceEntry[] }>("/finance/invoices?page=0&size=100", { auth: "required" }),
+    apiFetch<{
+      allInvoicesCount: number;
+      pendingAmount: number;
+      pendingCount: number;
+      overdueCount: number;
+      collectedAmount: number;
+      paidCount: number;
+    }>("/finance/invoices/summary", { auth: "required" }),
+  ]);
+  const rows = pageRes.data?.content ?? [];
+  const invoices = rows.length
+    ? rows.map(toInvoiceItem)
+    : await fetchInvoicesFallback();
+  const summary = summaryRes.data;
+  const kpis: InvoiceKpis = summary
+    ? {
+        allInvoicesCount: summary.allInvoicesCount,
+        pendingAmount: summary.pendingAmount ?? 0,
+        pendingCount: summary.pendingCount ?? 0,
+        overdueCount: summary.overdueCount ?? 0,
+        collectedAmount: summary.collectedAmount ?? 0,
+      }
+    : FALLBACK_INVOICE_KPIS;
+  return { kpis, invoices };
+}
+
+function toInvoiceItem(row: InvoiceEntry): InvoiceItem {
+  const status = row.status as InvoiceItem["status"];
+  const amount = Number(row.amount ?? row.outstanding ?? 0);
+  const outstanding = Number(row.outstanding ?? (row.status === "PAID" ? 0 : amount));
+  return {
+    id: String(row.id),
+    invoiceNumber: row.invoiceNumber,
+    customerName: row.customerName ?? "Customer",
+    customerPhone: row.customerPhone ?? "",
+    customerIdxno: row.customerIdxno,
+    packageName: row.packageName,
+    amount: toNumber(row.amount),
+    taxAmount: row.taxAmount != null ? Number(row.taxAmount) : 0,
+    outstanding,
+    dueDate: row.dueDate,
+    status,
+    createdAt: row.createdAt,
+    paymentReference: row.paymentReference,
+    paidAt: row.paidAt,
+    recordedBy: row.recordedBy,
+  };
+}
+
+function toNumber(value: unknown): number {
+  const n = typeof value === "number" ? value : Number(String(value ?? 0));
+  return Number.isFinite(n) ? n : 0;
+}
+
+/**
+ * Bare fetch fallback for the invoice page (legacy MSW/non-envelope shapes),
+ * so the ledger never goes dark when the envelope parse fails.
+ */
+async function fetchInvoicesFallback(): Promise<InvoiceItem[]> {
+  try {
+    const res = await fetch(buildApiUrl("/finance/invoices?page=0&size=100"), {
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${(await auth())?.user?.apiToken ?? ""}`,
+      },
+      cache: "no-store",
+      signal: timeoutSignal(),
+    });
+    if (!res.ok) return [];
+    const body = (await res.json()) as { data?: { content?: unknown[] }; content?: unknown[] };
+    const rows = body?.data?.content ?? body?.content ?? [];
+    if (!Array.isArray(rows)) return [];
+    return (rows as InvoiceEntry[]).map(toInvoiceItem);
+  } catch (error) {
+    console.error("[Payments] invoice fallback error:", error);
+    return [];
+  }
+}
+
+/**
+ * Create a manual pro-forma invoice (document-only; no AR GL).
+ */
+export async function createManualInvoice(
+  req: CreateInvoiceRequest
+): Promise<{ success: boolean; invoice?: InvoiceItem; message: string }> {
+  const res = await apiFetch<InvoiceEntry>("/finance/invoices", {
+    method: "POST",
+    body: req,
+    auth: "required",
+  });
+  if (!res.success || !res.data) {
+    return { success: false, message: res.message || "Failed to create the invoice." };
+  }
+  revalidatePath("/finance/billing/invoices");
+  return { success: true, invoice: toInvoiceItem(res.data), message: res.message };
+}
+
+/**
+ * Mark an invoice PAID (document-level only).
+ */
+export async function markInvoicePaid(
+  id: string,
+  paymentReference?: string
+): Promise<{ success: boolean; message: string }> {
+  const res = await apiFetch<InvoiceEntry>(`/finance/invoices/${id}/paid`, {
+    method: "POST",
+    body: { paymentReference: paymentReference ?? "" },
+    auth: "required",
+  });
+  if (!res.success) {
+    return { success: false, message: res.message || "Failed to mark the invoice paid." };
+  }
+  revalidatePath("/finance/billing/invoices");
+  return { success: true, message: res.message };
+}
+
+/**
+ * Fetch the voucher-batch ledger (page + KPI derivation).
+ */
+export async function getVoucherBatches(): Promise<{
+  kpis: VoucherBatchKpis;
+  batches: VoucherBatchItem[];
+}> {
+  const session = await auth();
+  if (!session?.user?.apiToken) {
+    return { kpis: ZERO_VOUCHER_KPIS, batches: [] };
+  }
+  const res = await apiFetch<{ content: VoucherBatchItem[] }>(
+    "/finance/voucher-batches?page=0&size=100",
+    { auth: "required" }
+  );
+  const batches = res.data?.content ?? [];
+  let activeCount = 0;
+  let activeValue = 0;
+  let totalValue = 0;
+  for (const b of batches) {
+    const v = toNumber(b.totalValue);
+    totalValue += v;
+    if (b.status === "ACTIVE") {
+      activeCount += 1;
+      activeValue += v;
+    }
+  }
+  const kpis: VoucherBatchKpis = { activeCount, activeValue, totalValue };
+  return { kpis, batches };
+}
+
+const ZERO_VOUCHER_KPIS: VoucherBatchKpis = {
+  activeCount: 0,
+  activeValue: 0,
+  totalValue: 0,
+};
+
+/**
+ * Mint a paid voucher batch through the proven hotspot RADIUS path.
+ * POST /api/v1/finance/voucher-batches — envelope-returning endpoint.
+ */
+export async function generateVoucherBatch(
+  req: import("@/lib/types/payments").GenerateVoucherBatchRequest
+): Promise<{ success: boolean; data?: VoucherBatchItem; message: string }> {
+  const res = await apiFetch<VoucherBatchItem>("/finance/voucher-batches", {
+    method: "POST",
+    body: req,
+    auth: "required",
+  });
+  if (!res.success) {
+    return { success: false, message: res.message || "Failed to mint the voucher batch." };
+  }
+  revalidatePath("/finance/vouchers");
+  return { success: true, data: res.data ?? undefined, message: res.message };
 }
 
 export async function downloadReceiptPdf(
