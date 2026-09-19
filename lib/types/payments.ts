@@ -32,11 +32,17 @@ export interface InvoiceItem {
   invoiceNumber: string;
   customerName: string;
   customerPhone: string;
+  customerIdxno?: number;
+  packageName?: string;
   amount: number;
+  taxAmount?: number;
   outstanding: number;
   dueDate: string;
-  status: "PENDING" | "PAID" | "PARTIAL" | "OVERDUE" | "CANCELLED";
+  status: "UNPAID" | "PAID" | "OVERDUE" | "CANCELLED" | "PENDING" | "PARTIAL";
   createdAt: string;
+  paymentReference?: string;
+  paidAt?: string;
+  recordedBy?: string;
 }
 
 export interface InvoiceKpis {
@@ -84,4 +90,65 @@ export interface DarajaReconciliationSummary {
 
 /** Outcome-count map returned by `GET /payments/mpesa/reconciliation`. */
 export type ReconciliationOutcomeCounts = Record<string, number>;
+
+// ── Track 4 — manual payments, invoices, voucher batches ──────────────
+export interface ManualPaymentRequest {
+  customerIdxno: number;
+  accountId?: string;
+  subscriptionId?: string;
+  amount: number;
+  channel: "CASH" | "BANK_TRANSFER";
+  notes?: string;
+  invoiceId?: string;
+}
+
+export interface ManualPaymentResponse {
+  paymentId: string;
+  referenceNumber: string;
+  amount: number;
+  channel: "CASH" | "BANK_TRANSFER";
+  expiresAt: string | null;
+  recordedAt: string;
+}
+
+export interface VoucherBatchItem {
+  batchId: string;
+  batchNumber: string;
+  packageName: string;
+  quantity: number;
+  unitPrice: number;
+  totalValue: number;
+  channel: "CASH" | "BANK_TRANSFER";
+  status: "ACTIVE" | "EXHAUSTED" | "ARCHIVED";
+  codePrefix?: string;
+  codeLength?: number;
+  createdByUsername: string;
+  createdAt: string;
+  codes?: string[];
+}
+
+export interface VoucherBatchKpis {
+  activeCount: number;
+  activeValue: number;
+  totalValue: number;
+}
+
+export interface GenerateVoucherBatchRequest {
+  packageId: number;
+  quantity: number;
+  codePrefix?: string;
+  codeLength?: number;
+  channel: "CASH" | "BANK_TRANSFER";
+  stationId?: string;
+}
+
+export interface CreateInvoiceRequest {
+  customerIdxno: number;
+  accountId?: string;
+  subscriptionId?: string;
+  packageId?: string;
+  amount?: number;
+  taxAmount?: number;
+  packageName?: string;
+}
 
