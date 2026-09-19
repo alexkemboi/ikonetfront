@@ -165,7 +165,7 @@ describe("RouterActionsDropdown", () => {
     await user.click(screen.getByText("Reboot Device"));
 
     await waitFor(() => {
-      expect(mockExecute).toHaveBeenCalledWith(7, { action: "REBOOT" });
+      expect(mockExecute).toHaveBeenCalledWith(7, { action: "REBOOT" }, undefined);
     });
     vi.restoreAllMocks();
   });
@@ -178,7 +178,7 @@ describe("RouterActionsDropdown", () => {
     await user.click(screen.getByText("Refresh Telemetry"));
 
     await waitFor(() => {
-      expect(mockExecute).toHaveBeenCalledWith(7, { action: "REFRESH" });
+      expect(mockExecute).toHaveBeenCalledWith(7, { action: "REFRESH" }, undefined);
     });
   });
 
@@ -215,7 +215,7 @@ describe("RouterActionsDropdown", () => {
     await user.click(screen.getByText("Diagnose Health"));
 
     await waitFor(() => {
-      expect(mockExecute).toHaveBeenCalledWith(7, { action: "DIAGNOSE" });
+      expect(mockExecute).toHaveBeenCalledWith(7, { action: "DIAGNOSE" }, undefined);
     });
     expect(screen.getByTestId("diagnose-modal")).toBeInTheDocument();
     expect(screen.getByText("12%")).toBeInTheDocument();
@@ -264,7 +264,7 @@ describe("RouterActionsDropdown", () => {
     // The delete runs the server action; the follow-up reload is scheduled via
     // setTimeout (450ms) so it's not asserted synchronously — delete success is.
     await waitFor(() => {
-      expect(mockDelete).toHaveBeenCalledWith(1);
+      expect(mockDelete).toHaveBeenCalledWith(1, undefined);
     });
     vi.restoreAllMocks();
   });
@@ -373,14 +373,14 @@ describe("RouterActionsDropdown", () => {
     await user.click(screen.getByRole("button", { name: /router actions/i }));
     await user.click(screen.getByText("Refresh Telemetry"));
     await waitFor(() => {
-      expect(mockExecute).toHaveBeenCalledWith(7, { action: "REFRESH" });
+      expect(mockExecute).toHaveBeenCalledWith(7, { action: "REFRESH" }, undefined);
     });
 
     // Delete → network_device.id (1).
     await user.click(screen.getByRole("button", { name: /router actions/i }));
     await user.click(screen.getByText("Delete Router"));
     await waitFor(() => {
-      expect(mockDelete).toHaveBeenCalledWith(1);
+      expect(mockDelete).toHaveBeenCalledWith(1, undefined);
     });
     vi.restoreAllMocks();
   });
