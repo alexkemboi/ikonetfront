@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
-import { apiFetch } from "@/lib/apiClient";
+import { verifyStepUpAction } from "@/actions/auth";
 import { registerStepUpWaiter } from "@/lib/stepUpClient";
 import StepUpModal from "@/components/chrome/StepUpModal";
 
@@ -45,16 +45,14 @@ export default function StepUpProvider({ children }: { children: React.ReactNode
   }, []);
 
   const verify = useCallback(async (password: string): Promise<string | null> => {
-    const res = await apiFetch<{ token: string; expiresInSeconds: number; expiresAt: string }>(
-      "/auth/step-up/verify",
-      { method: "POST", body: { password }, auth: "required", cache: "no-store" }
-    );
-    if (!res.success || !res.data?.token) {
+    const data = await verifyStepUpAction(password);
+    const token = data?.token ?? null;
+    if (!token) {
       return null;
     }
-    setToken(res.data.token);
+    setToken(token);
     setExpiresAt(new Date(Date.now() + STEP_UP_TTL_MS));
-    return res.data.token;
+    return token;
   }, []);
 
   const open = useCallback(
