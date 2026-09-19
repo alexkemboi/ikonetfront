@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { server } from "@/mocks/server";
 import { http, HttpResponse } from "msw";
 import { API_PREFIX } from "@/mocks/handlers/auth-guard";
-import { getPaymentsLedgerData } from "@/actions/payments";
+import { getPaymentsLedgerData, getInvoicesLedgerData, recordManualPayment, getVoucherBatches } from "@/actions/payments";
 import { auth } from "@/lib/auth";
 import type { AccountPosting } from "@/lib/types/finance";
 
@@ -268,3 +268,111 @@ describe("getPaymentsLedgerData — zero-dummy mandate", () => {
     expect(JSON.stringify(payments)).not.toContain("UGK3W0IY06");
   });
 });
+
+describe("getInvoicesLedgerData — envelope contract", () => {
+  it("returns page rows and summary KPIs from /finance/invoices", async () => {
+    server.use(
+      http.get(`${API_PREFIX}/finance/invoices`, () =>
+        HttpResponse.json({
+          success: true,
+          data: {
+            content: [
+              {
+                id: 1,
+                invoiceNumber: "INV-CMP-A-2026-100001",
+                companyId: "CMP-A",
+                customerId: "2f6b2f8a-1c44-4f8e-bd3a-5e9a6b7c01",
+                customerIdxno: 42,
+                customerName: "Njeri Wafula",
+                customerPhone: "0712345678",
+                packageName: "Home 30",
+                amount: 2500,
+                taxAmount: 0,
+                status: "UNPAID",
+                dueDate: "2026-09-26",
+                createdAt: "2026-09-19T06:00:00",
+              },
+            ],
+            totalElements: 1,
+            totalPages: 1,
+          },
+        })
+      )
+    );
+    server.use(
+      http.get(`${API_PREFIX}/finance/invoices/summary`, () =>
+        HttpResponse.json({
+          success: true,
+          data: {
+            allInvoicesCount: 1,
+            pendingAmount: 2500,
+            pendingCount: 1,
+            overdueCount: 0,
+            collectedAmount: 0,
+            paidCount: 0,
+          },
+        })
+      )
+    );
+    const { kpis, invoices } = await getInvoicesLedgerData();
+    expect(kpis.allInvoicesCount).toBe(1);
+    expect(kpis.pendingAmount).toBe(2500);
+    expect(invoices).toHaveLength(1);
+    expect(invoices[0].invoiceNumber).toBe("INV-CMP-A-2026-100001");
+    expect(invoices[0].status).toBe("UNPAID");
+    expect(invoices[0].outstanding).toBe(2500);
+  });
+});
+
+describe("recordManualPayment — envelope contract", () => {
+  it("posts to /payments/manual and returns the receipt number", async () => {
+    server.use(
+      http.post(`${API_PREFIX}/payments/manual`, ({ request }) => {
+        expect(request.headers.get("authorization")).toBe(`Bearer ${TOKEN}`);
+        return HttpResponse.json(
+          {
+            success: true,
+            status: 201,
+            message: "Manual payment recorded successfully",
+            data: {
+              paymentId: "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
+              referenceNumber: "MAN-20260919-8F3A2C70",
+              amount: 1500,
+              channel: "CASH",
+              expiresAt: null,
+              recordedAt: "2026-09-19T06:00:00",
+            },
+            timestamp: "2026-09-19T06:00:00",
+          },
+          { status: 201 }
+        );
+      })
+    );
+    const res = await recordManualPayment({
+      customerIdxno: 42,
+      amount: 1500,
+      channel: "CASH",
+    });
+    expect(res.success).toBe(true);
+    expect(res.data?.referenceNumber).toBe("MAN-20260919-8F3A2C70");
+    expect(res.data?.channel).toBe("CASH");
+  });
+});
+
+describe("getVoucherBatches — envelope contract", () => {
+  it("returns empty-safe KPIs when the batch list is empty", async () => {
+    server.use(
+      http.get(`${API_PREFIX}/finance/voucher-batches`, () =>
+        HttpResponse.json({
+          success: true,
+          data: { content: [], totalElements: 0 },
+        })
+      )
+    );
+    const { kpis, batches } = await getVoucherBatches();
+    expect(batches).toEqual([]);
+    expect(kpis.activeCount).toBe(0);
+    expect(kpis.totalValue).toBe(0);
+  });
+});
+

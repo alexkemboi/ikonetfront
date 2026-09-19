@@ -96,10 +96,11 @@ export async function createCompanyAction(input: {
   });
 }
 
-/** SYSADMIN-only: add a payment account to a company (R-01). */
+/** SYSADMIN-only: add a payment account to a company (R-01). Step-up gated. */
 export async function createPaymentAccountAction(
   companyCode: string,
-  payload: PaymentAccountPayload
+  payload: PaymentAccountPayload,
+  stepUpToken?: string
 ): Promise<ApiResponse<PaymentAccountSummary>> {
   return apiFetch<PaymentAccountSummary>(
     `/companies/${encodeURIComponent(companyCode)}/payment-accounts`,
@@ -108,6 +109,7 @@ export async function createPaymentAccountAction(
       body: payload,
       auth: "required",
       cache: "no-store",
+      stepUpToken,
     }
   );
 }

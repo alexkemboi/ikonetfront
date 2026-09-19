@@ -1,4 +1,5 @@
 import { type ReactNode } from "react";
+import { headers } from "next/headers";
 import Sidebar from "./_components/Sidebar";
 import TopBar from "./_components/TopBar";
 import { auth } from "@/lib/auth";
@@ -14,6 +15,11 @@ import type { NavGroup } from "@/lib/nav";
 import { PermissionsProvider } from "@/providers/PermissionsProvider";
 import type { PermissionMap } from "@/lib/types/roles";
 import { normalizeRole } from "@/lib/types/roles";
+import { resolveCompanyContextCode } from "@/lib/companyContext";
+import { getPublicBranding } from "@/actions/branding";
+import { TenantTheme } from "@/components/tenant/TenantTheme";
+import StepUpProvider from "@/providers/StepUpProvider";
+import OmniSearchModal from "@/components/chrome/OmniSearchModal";
 
 /**
  * Dashboard shell — server component.
@@ -55,39 +61,53 @@ export default async function DashboardLayout({ children }: { children: ReactNod
  ? extractPermissions(rawMenus)
  : staticNavToPermissions(navGroups);
 
- return (
- <PermissionsProvider permissions={permissionMap}>
- <div className="flex h-screen overflow-hidden bg-background">
- <Sidebar
- navGroups={navGroups}
- brandName="Beesmart"
- user={sidebarUser}
- />
+ // Track 2 — tenant theming: resolve the brand for the requesting subdomain
+ // (custom domain / company-context cookie wins on the dashboard shell).
+ const headerStore = await headers();
+ const siteHost = headerStore.get("host") ?? undefined;
+ const contextCompany = await resolveCompanyContextCode();
+ const tenantBranding = siteHost
+ ? await getPublicBranding({ host: siteHost, company: contextCompany ?? undefined })
+ : null;
 
- <div className="flex flex-1 flex-col overflow-hidden">
-<TopBar
-  notificationCount={0}
-  user={sidebarUser
-  ? {
-  username: sidebarUser.username,
-  initials: sidebarUser.initials,
-  role: sidebarUser.role,
-  fname: sidebarUser.name,
-  middleName: "",
-  email: sidebarUser.email,
-  companyScope: session.user.companyScope ?? undefined,
-  }
-  : undefined
-  }
+return (
+  <PermissionsProvider permissions={permissionMap}>
+  <StepUpProvider>
+  <TenantTheme branding={tenantBranding}>
+  <div className="flex h-screen overflow-hidden bg-background">
+  <Sidebar
   navGroups={navGroups}
   brandName="Beesmart"
-  sidebarUser={sidebarUser}
+  user={sidebarUser}
   />
- <main className="flex-1 overflow-y-auto py-4">
- {children}
- </main>
- </div>
- </div>
- </PermissionsProvider>
- );
-}
+
+  <div className="flex flex-1 flex-col overflow-hidden">
+<TopBar
+   notificationCount={0}
+   user={sidebarUser
+   ? {
+   username: sidebarUser.username,
+   initials: sidebarUser.initials,
+   role: sidebarUser.role,
+   fname: sidebarUser.name,
+   middleName: "",
+   email: sidebarUser.email,
+   companyScope: session.user.companyScope ?? undefined,
+   }
+   : undefined
+   }
+   navGroups={navGroups}
+   brandName="Beesmart"
+   sidebarUser={sidebarUser}
+   />
+<main className="flex-1 overflow-y-auto py-4">
+  {children}
+  </main>
+  </div>
+  </div>
+  </TenantTheme>
+  <OmniSearchModal />
+  </StepUpProvider>
+  </PermissionsProvider>
+  );
+ }

@@ -15,6 +15,12 @@ export interface MikrotikDevice {
   online: boolean;
   cpuLoad: string | null;
   uptime: string | null;
+  /** Track 1: on-demand WinBox relay lease surfaced on the device row. */
+  winboxTunnelPort?: number | null;
+  webfigProxyEnabled?: boolean | null;
+  tunnelExpiresAt?: string | null;
+  winboxTunnelAddress?: string | null;
+  webConsoleUrl?: string | null;
 }
 
 export interface MikrotikDeviceStatus {

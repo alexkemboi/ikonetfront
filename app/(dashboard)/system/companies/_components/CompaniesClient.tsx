@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { Building2, Loader2, Plus, ShieldAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { withStepUp } from "@/lib/stepUp";
 import {
   Dialog,
   DialogContent,
@@ -119,7 +120,10 @@ export default function CompaniesClient({ companies, canMutate }: Props) {
       isDefault,
     };
     startTransition(async () => {
-      const res = await createPaymentAccountAction(accountFor.code, payload);
+      const res = await withStepUp(
+        (token) => createPaymentAccountAction(accountFor.code, payload, token),
+        "Updating payment gateway credentials requires re-authentication."
+      );
       if (res.success) {
         toast.success(`Payment account added for ${accountFor.code}`);
         setAccountFor(null);

@@ -6,6 +6,8 @@ import { isRouterOnline } from "@/lib/utils/router-status";
 import { getPermissionForRoute } from "@/lib/data/nav";
 import { redirect } from "next/navigation";
 import { RouterActionsDropdown } from "@/components/network/RouterActionsDropdown";
+import { RouterTunnelCell } from "@/components/network/RouterTunnelCell";
+import RowHighlightWatcher from "@/components/network/RowHighlightWatcher";
 
 export const metadata = {
  title: "NAS & Routers — IBS",
@@ -116,6 +118,8 @@ export default async function NasRoutersPage() {
   <th className="py-4 px-6 font-semibold">RAM Usage</th>
   <th className="py-4 px-6 font-semibold">Sessions</th>
   <th className="py-4 px-6 font-semibold">Uptime</th>
+  <th className="py-4 px-6 font-semibold">WinBox Tunnel</th>
+  <th className="py-4 px-6 font-semibold">Web Console</th>
   <th className="py-4 px-6 font-semibold text-right">Actions</th>
   </tr>
   </thead>
@@ -124,16 +128,13 @@ export default async function NasRoutersPage() {
   const cpu = Number.isFinite(Number(r.cpuUsage)) ? Number(r.cpuUsage) : null;
   const freeMemMB = r.freeMemory ? Math.round(r.freeMemory / (1024 * 1024)) : null;
   return (
-  <tr key={r.id} className="hover:bg-zinc-800/30 transition">
+  <tr key={r.id} data-row-id={String(r.id)} className="hover:bg-zinc-800/30 transition">
   <td className="py-4 px-6 font-sans">
   <div className="font-semibold text-foreground">{r.name}</div>
   <div className="text-[11px] text-muted-foreground font-sans tabular-nums">{r.model}</div>
   </td>
   <td className="py-4 px-6">
   <span className="text-foreground font-sans tabular-nums text-xs">{r.managementIp}</span>
-  {r.winboxTunnelAddress ? (
-  <div className="text-[11px] text-teal-400/80 font-sans tabular-nums mt-0.5">{r.winboxTunnelAddress}</div>
-  ) : null}
   </td>
   <td className="py-4 px-6">
   {isRouterOnline(r) ? (
@@ -170,6 +171,35 @@ export default async function NasRoutersPage() {
   <td className="py-4 px-6 text-xs text-muted-foreground font-sans tabular-nums">
   {r.uptime || r.lastOnlineText || "—"}
   </td>
+  {pagePerms.canEdit ? (
+  <RouterTunnelCell
+  deviceId={r.deviceId}
+  winboxTunnelAddress={r.winboxTunnelAddress}
+  winboxTunnelPort={r.winboxTunnelPort}
+  webConsoleUrl={r.webConsoleUrl}
+  tunnelExpiresAt={r.tunnelExpiresAt}
+  canEdit={pagePerms.canEdit}
+  />
+  ) : (
+  <>
+  <td className="py-4 px-6">
+  {r.winboxTunnelAddress ? (
+  <span className="inline-flex items-center rounded-full border border-border px-2 py-0.5 text-[11px] font-sans tabular-nums text-teal-400">
+  :{(r.winboxTunnelPort ?? r.winboxTunnelAddress.split(":")[1]) ?? "—"}
+  </span>
+  ) : (
+  <span className="text-[11px] text-muted-foreground">—</span>
+  )}
+  </td>
+  <td className="py-4 px-6">
+  {r.webConsoleUrl ? (
+  <span className="text-[11px] text-muted-foreground">Available</span>
+  ) : (
+  <span className="text-[11px] text-muted-foreground">—</span>
+  )}
+  </td>
+  </>
+  )}
   <td className="py-4 px-6 text-right">
   <RouterActionsDropdown
   router={{
@@ -180,6 +210,8 @@ export default async function NasRoutersPage() {
   status: r.status,
   managementIp: r.managementIp,
   winboxTunnelAddress: r.winboxTunnelAddress,
+  webConsoleUrl: r.webConsoleUrl,
+  tunnelExpiresAt: r.tunnelExpiresAt,
   }}
   />
   </td>
@@ -191,6 +223,7 @@ export default async function NasRoutersPage() {
   </div>
   </div>
   </div>
+  <RowHighlightWatcher />
   </div>
   );
 }

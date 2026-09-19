@@ -2,11 +2,21 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { Loader2 } from "lucide-react";
 import type { PaymentLedgerKpis, PaymentLedgerItem } from "@/lib/types/payments";
 import { PaymentsKpiCards } from "@/components/payments/PaymentsKpiCards";
 import { PaymentsDataTable } from "@/components/payments/PaymentsDataTable";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -15,6 +25,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { recordManualPayment } from "@/actions/payments";
+import { withStepUp } from "@/lib/stepUp";
+import RowHighlightWatcher from "@/components/network/RowHighlightWatcher";
 
 interface Props {
   kpis: PaymentLedgerKpis;
@@ -25,6 +38,48 @@ interface Props {
 export function PaymentsLedgerView({ kpis, payments, source }: Props) {
   const router = useRouter();
   const [recordOpen, setRecordOpen] = useState(false);
+  const [customerIdxno, setCustomerIdxno] = useState("");
+  const [amount, setAmount] = useState("");
+  const [channel, setChannel] = useState<"CASH" | "BANK_TRANSFER">("CASH");
+  const [notes, setNotes] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  async function handleRecord() {
+    const idx = Number(customerIdxno.trim());
+    const amt = Number(amount);
+    if (!Number.isInteger(idx) || idx <= 0) {
+      toast.error("Enter a valid customer idxno.");
+      return;
+    }
+    if (!Number.isFinite(amt) || amt <= 0) {
+      toast.error("Enter a valid positive amount.");
+      return;
+    }
+    setSaving(true);
+    try {
+      const res = await withStepUp(
+        (token) => recordManualPayment({
+          customerIdxno: idx,
+          amount: Math.round(amt * 100) / 100,
+          channel,
+          notes: notes.trim() || undefined,
+        }, token),
+        "Recording a manual payment requires re-authentication."
+      );
+      if (res.success && res.data) {
+        toast.success(`Payment ${res.data.referenceNumber} recorded (${channel}).`);
+        setRecordOpen(false);
+        setCustomerIdxno("");
+        setAmount("");
+        setNotes("");
+        router.refresh();
+      } else {
+        toast.error(res.message);
+      }
+    } finally {
+      setSaving(false);
+    }
+  }
 
   return (
     <div className="min-h-screen p-4 text-foreground sm:p-6 lg:p-8">
@@ -65,43 +120,76 @@ export function PaymentsLedgerView({ kpis, payments, source }: Props) {
         <PaymentsKpiCards kpis={kpis} />
         <PaymentsDataTable payments={payments} />
       </div>
+      <RowHighlightWatcher />
 
-      {/* Manual payment capture is NOT part of the current API contract — the
-          dialog never fabricates a ledger entry; it explains the gap and routes
-          operators to expenses instead. */}
+      {/* Manual cash/bank payment capture for PPPoE customers */}
       <Dialog open={recordOpen} onOpenChange={setRecordOpen}>
         <DialogContent className="bg-card border-border text-foreground">
           <DialogHeader>
             <DialogTitle className="text-foreground">Record a payment</DialogTitle>
             <DialogDescription className="text-muted-foreground">
-              Manual M-Pesa capture is not available yet.
+              Capture a cash or bank payment for a PPPoE customer. This posts a
+              real ledger entry (Dr 1130 Till / 1120 Bank, Cr 4200 Revenue).
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-3 font-sans tabular-nums text-xs text-muted-foreground">
-            <p>
-              Paying in a mobile-money movement by hand needs a backend
-              payment-recording endpoint, which is not part of the current API
-              contract. This ledger is populated automatically from M-Pesa
-              confirmation callbacks — every confirmed payment lands here as an
-              Account 1110 posting.
-            </p>
-            <p>
-              To capture an outgoing cash movement instead, record an operating
-              expense on the Expenses page.
-            </p>
+          <div className="space-y-3 font-sans tabular-nums text-xs">
+            <div className="space-y-1.5">
+              <label className="text-muted-foreground">Customer idxno</label>
+              <Input
+                type="number"
+                value={customerIdxno}
+                onChange={(e) => setCustomerIdxno(e.target.value)}
+                placeholder="e.g. 42"
+                className="border-border bg-muted text-foreground placeholder:text-zinc-600"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-muted-foreground">Amount (KES)</label>
+              <Input
+                type="number"
+                step="0.01"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                placeholder="e.g. 1500"
+                className="border-border bg-muted text-foreground placeholder:text-zinc-600"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-muted-foreground">Channel</label>
+              <Select value={channel} onValueChange={(v) => setChannel(v as "CASH" | "BANK_TRANSFER")}>
+                <SelectTrigger className="border-border bg-muted text-foreground">
+                  <SelectValue placeholder="Channel" />
+                </SelectTrigger>
+                <SelectContent className="bg-popover border-border text-foreground">
+                  <SelectItem value="CASH">Cash</SelectItem>
+                  <SelectItem value="BANK_TRANSFER">Bank transfer</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-muted-foreground">Notes (optional)</label>
+              <Input
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="e.g. office walk-in"
+                className="border-border bg-muted text-foreground placeholder:text-zinc-600"
+              />
+            </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setRecordOpen(false)}>
+            <Button variant="outline" onClick={() => setRecordOpen(false)} disabled={saving}>
               Cancel
             </Button>
             <Button
-              onClick={() => {
-                setRecordOpen(false);
-                router.push("/finance/expenses");
-              }}
+              onClick={handleRecord}
+              disabled={saving}
               className="bg-amber-500 text-black hover:bg-amber-400"
             >
-              Record operating expense instead
+              {saving ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                "Record payment"
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

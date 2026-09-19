@@ -63,10 +63,16 @@ function mapDeviceToNasRouter(device: {
   ipAddress?: string;
   uptime?: string | null;
   cpuLoad?: string | null;
+  winboxTunnelPort?: number | null;
+  webfigProxyEnabled?: boolean | null;
+  tunnelExpiresAt?: string | null;
+  winboxTunnelAddress?: string | null;
+  webConsoleUrl?: string | null;
 }, routerIdxno?: number): NasRouterItem {
   return {
-    // id/name/status/managementIp from the real network-devices row;
-    // activeSessions/winboxTunnel=address/lastOnline=uptime are synthesized placeholders
+    // id/name/status/managementIp come from the real network-devices row;
+    // activeSessions fills from telemetry, winbox/webfig from the real tunnel
+    // lease (Track 1) instead of a synthesized mock.
     id: String(device.id),
     deviceId: device.id,
     routerId: routerIdxno,
@@ -75,7 +81,10 @@ function mapDeviceToNasRouter(device: {
     status: device.online ? "ONLINE" : "OFFLINE",
     online: device.online ?? false,
     activeSessions: 0,
-    winboxTunnelAddress: `winbox.centipidbilling.com:${20000 + device.id}`,
+    winboxTunnelAddress: device.winboxTunnelAddress ?? null,
+    winboxTunnelPort: device.winboxTunnelPort ?? null,
+    webConsoleUrl: device.webConsoleUrl ?? null,
+    tunnelExpiresAt: device.tunnelExpiresAt ?? null,
     managementIp: device.ipAddress ?? "—",
     lastOnlineText: device.uptime ?? "—",
     // Surface the device row's own raw telemetry; `getNasRoutersData` layers the

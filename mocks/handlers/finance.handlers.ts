@@ -263,6 +263,48 @@ const expenseSummaryFixture = {
   },
 };
 
+/** `FinanceInvoiceResponse` shaped row (backend contract). */
+interface InvoiceRow {
+  id: number;
+  invoiceNumber: string;
+  companyId: string;
+  customerId: string;
+  customerIdxno?: number;
+  customerName?: string;
+  customerPhone?: string;
+  subscriptionId?: string;
+  packageId?: string;
+  packageName?: string;
+  amount: number;
+  taxAmount?: number;
+  status: string;
+  dueDate: string;
+  paidAt?: string | null;
+  paymentReference?: string | null;
+  createdByUsername?: string;
+  createdAt: string;
+}
+
+const invoicesFixture: InvoiceRow[] = [
+  {
+    id: 1,
+    invoiceNumber: "INV-CMP-A-2026-100001",
+    companyId: "CMP-A",
+    customerId: "2f6b2f8a-1c44-4f8e-bd3a-5e9a6b7c01",
+    customerIdxno: 42,
+    customerName: "Njeri Wafula",
+    customerPhone: "0712345678",
+    subscriptionId: "b1a3a9d2-8f22-4c0f-9e2a-7d1b3c4d5e6f",
+    packageId: "4d3a2b1c-6f5e-4d3c-8b2a-1f0e9d8c7b6a",
+    packageName: "Home 30",
+    amount: 2500,
+    taxAmount: 0,
+    status: "UNPAID",
+    dueDate: "2026-09-26",
+    createdAt: "2026-09-19T06:00:00",
+  },
+];
+
 export const financeHandlers = [
   http.get(`${API_PREFIX}/finance/coa`, (info) => {
     const forbidden = requireAuth(info.request);
@@ -325,5 +367,156 @@ export const financeHandlers = [
     const forbidden = requireAuth(info.request);
     if (forbidden) return forbidden;
     return HttpResponse.json({ success: true, data: expenseSummaryFixture }, { status: 200 });
+  }),
+
+  // ── Track 4 — envelope-returning finance endpoints ─────────────────────
+  http.post(`${API_PREFIX}/payments/manual`, (info) => {
+    const forbidden = requireAuth(info.request);
+    if (forbidden) return forbidden;
+    return HttpResponse.json(
+      {
+        success: true,
+        status: 201,
+        message: "Manual payment recorded successfully",
+        data: {
+          paymentId: "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
+          referenceNumber: "MAN-20260919-8F3A2C70",
+          amount: 1500,
+          channel: "CASH",
+          expiresAt: null,
+          recordedAt: "2026-09-19T06:00:00",
+        },
+        timestamp: "2026-09-19T06:00:00",
+      },
+      { status: 201 }
+    );
+  }),
+
+  http.get(`${API_PREFIX}/finance/invoices`, (info) => {
+    const forbidden = requireAuth(info.request);
+    if (forbidden) return forbidden;
+    return HttpResponse.json(
+      {
+        success: true,
+        status: 200,
+        message: "Invoices retrieved successfully",
+        data: {
+          content: invoicesFixture,
+          totalElements: invoicesFixture.length,
+          totalPages: 1,
+          size: 100,
+          number: 0,
+          first: true,
+          last: true,
+          empty: invoicesFixture.length === 0,
+        },
+        timestamp: "2026-09-19T06:00:00",
+      },
+      { status: 200 }
+    );
+  }),
+
+  http.get(`${API_PREFIX}/finance/invoices/summary`, (info) => {
+    const forbidden = requireAuth(info.request);
+    if (forbidden) return forbidden;
+    return HttpResponse.json(
+      {
+        success: true,
+        status: 200,
+        message: "Invoice summary retrieved successfully",
+        data: {
+          allInvoicesCount: 1,
+          pendingAmount: 2500,
+          pendingCount: 1,
+          overdueCount: 0,
+          collectedAmount: 0,
+          paidCount: 0,
+        },
+        timestamp: "2026-09-19T06:00:00",
+      },
+      { status: 200 }
+    );
+  }),
+
+  http.post(`${API_PREFIX}/finance/invoices`, (info) => {
+    const forbidden = requireAuth(info.request);
+    if (forbidden) return forbidden;
+    return HttpResponse.json(
+      {
+        success: true,
+        status: 201,
+        message: "Invoice created successfully",
+        data: {
+          id: 2,
+          invoiceNumber: "INV-CMP-A-2026-100002",
+          companyId: "CMP-A",
+          customerId: "2f6b2f8a-1c44-4f8e-bd3a-5e9a6b7c02",
+          customerIdxno: 42,
+          customerName: "Njeri Wafula",
+          customerPhone: "0712345678",
+          packageName: "Home 30",
+          amount: 2500,
+          taxAmount: 0,
+          status: "UNPAID",
+          dueDate: "2026-09-26",
+          createdAt: "2026-09-19T06:00:00",
+        },
+        timestamp: "2026-09-19T06:00:00",
+      },
+      { status: 201 }
+    );
+  }),
+
+  http.get(`${API_PREFIX}/finance/voucher-batches`, (info) => {
+    const forbidden = requireAuth(info.request);
+    if (forbidden) return forbidden;
+    return HttpResponse.json(
+      {
+        success: true,
+        status: 200,
+        message: "Voucher batches retrieved successfully",
+        data: {
+          content: [],
+          totalElements: 0,
+          totalPages: 0,
+          size: 100,
+          number: 0,
+          first: true,
+          last: true,
+          empty: true,
+        },
+        timestamp: "2026-09-19T06:00:00",
+      },
+      { status: 200 }
+    );
+  }),
+
+  http.post(`${API_PREFIX}/finance/voucher-batches`, (info) => {
+    const forbidden = requireAuth(info.request);
+    if (forbidden) return forbidden;
+    return HttpResponse.json(
+      {
+        success: true,
+        status: 201,
+        message: "Voucher batch created successfully",
+        data: {
+          batchId: "1c9b6f4a-2d8e-4a3f-9c2b-7e1d5f8a9b0c",
+          batchNumber: "VB-CMP-A-2026-100001",
+          packageName: "Daily 1GB",
+          quantity: 100,
+          unitPrice: 50,
+          totalValue: 5000,
+          channel: "CASH",
+          status: "ACTIVE",
+          codePrefix: "ADR",
+          codeLength: 8,
+          createdByUsername: "ops1",
+          createdAt: "2026-09-19T06:00:00",
+          codes: ["ADR4F2K7X", "ADR8N2W5M"],
+        },
+        timestamp: "2026-09-19T06:00:00",
+      },
+      { status: 201 }
+    );
   }),
 ];

@@ -41,6 +41,11 @@ export interface ApiFetchOptions {
   timeoutMs?: number;
   /** Extra retries (on top of the always-on idempotent GET retry). */
   retries?: number;
+  /**
+   * Step-up re-authentication token (Track 6). When present, forwarded as
+   * `X-Step-Up-Token` so step-up-gated endpoints accept the mutation.
+   */
+  stepUpToken?: string;
 }
 
 type FetchNext = {
@@ -76,9 +81,14 @@ export async function apiFetch<T = unknown>(
     revalidate,
     timeoutMs = 30_000,
     retries = 0,
+    stepUpToken,
   } = options;
 
   const headers: Record<string, string> = { "Content-Type": "application/json" };
+
+  if (stepUpToken) {
+    headers["X-Step-Up-Token"] = stepUpToken;
+  }
 
   if (authorization) {
     headers.Authorization = authorization;

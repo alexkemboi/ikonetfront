@@ -261,12 +261,17 @@ export const updateRouter = async (
 
 export const executeRouterAction = async (
   id: number,
-  body: RouterActionRequest
+  body: RouterActionRequest,
+  stepUpToken?: string
 ): Promise<ApiResponse<RouterActionResponse | null>> => {
   try {
+    const headers = await getAuthHeaders();
+    if (stepUpToken) {
+      (headers as Record<string, string>)["X-Step-Up-Token"] = stepUpToken;
+    }
     const response = await fetch(BASE_URL + `network-routers/${id}/action`, {
       method: "PATCH",
-      headers: await getAuthHeaders(),
+      headers,
       body: JSON.stringify({ action: body.action, notes: body.notes ?? "" }),
     });
 
@@ -294,6 +299,105 @@ export const executeRouterAction = async (
     return {
       success: false,
       message: error instanceof Error ? error.message : "Failed to execute action",
+      data: null,
+      status: 500,
+      timestamp: new Date().toISOString(),
+    };
+  }
+};
+
+// ── Track 1: remote-access tunnel lease (WinBox relay + WebFig console) ──
+
+export interface TunnelAllocation {
+  deviceId: number;
+  routerName: string;
+  winboxEndpoint: string;
+  port: number | null;
+  webConsoleUrl: string | null;
+  tunnelExpiresAt: string;
+}
+
+export const allocateTunnel = async (deviceId: number): Promise<ApiResponse<TunnelAllocation | null>> => {
+  try {
+    const response = await fetch(
+      `${BASE_URL}network-devices/${deviceId}/tunnel/allocate`,
+      { method: "POST", headers: await getAuthHeaders() }
+    );
+
+    const data = (await response.json()) as {
+      success?: boolean;
+      message?: string;
+      data?: TunnelAllocation | null;
+      timestamp?: string;
+    };
+
+    if (!response.ok) {
+      return {
+        success: false,
+        message: data.message || "Failed to allocate remote access tunnel",
+        data: null,
+        status: response.status,
+        timestamp: new Date().toISOString(),
+      };
+    }
+
+    revalidatePath("/network/routers");
+    return {
+      success: true,
+      message: data.message || "Remote access tunnel allocated",
+      data: data.data as TunnelAllocation,
+      status: response.status,
+      timestamp: data.timestamp ?? new Date().toISOString(),
+    };
+  } catch (error: unknown) {
+    console.error("Error allocating remote access tunnel:", error);
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : "Failed to allocate tunnel",
+      data: null,
+      status: 500,
+      timestamp: new Date().toISOString(),
+    };
+  }
+};
+
+export const deallocateTunnel = async (deviceId: number): Promise<ApiResponse<TunnelAllocation | null>> => {
+  try {
+    const response = await fetch(
+      `${BASE_URL}network-devices/${deviceId}/tunnel/deallocate`,
+      { method: "POST", headers: await getAuthHeaders() }
+    );
+
+    const data = (await response.json()) as {
+      success?: boolean;
+      message?: string;
+      data?: TunnelAllocation | null;
+      timestamp?: string;
+    };
+
+    if (!response.ok) {
+      return {
+        success: false,
+        message: data.message || "Failed to deallocate remote access tunnel",
+        data: null,
+        status: response.status,
+        timestamp: new Date().toISOString(),
+      };
+    }
+
+    revalidatePath("/network/routers");
+    return {
+      success: true,
+      message: data.message || "Remote access tunnel deallocated",
+      data: data.data as TunnelAllocation,
+      status: response.status,
+      timestamp: data.timestamp ?? new Date().toISOString(),
+    };
+  } catch (error: unknown) {
+    console.error("Error deallocating remote access tunnel:", error);
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : "Failed to deallocate tunnel",
       data: null,
       status: 500,
       timestamp: new Date().toISOString(),
@@ -785,12 +889,17 @@ export const getNetworkDeviceInterfaces = async (
  * `message` is surfaced verbatim so operators know why a delete can fail.
  */
 export const deleteNetworkDevice = async (
-  id: number
+  id: number,
+  stepUpToken?: string
 ): Promise<AuthApiResponse<{ id: number; name: string; ipAddress: string }>> => {
   try {
+    const headers = await getAuthHeaders();
+    if (stepUpToken) {
+      (headers as Record<string, string>)["X-Step-Up-Token"] = stepUpToken;
+    }
     const response = await fetch(buildApiUrl(`/network-devices/${id}`), {
       method: "DELETE",
-      headers: await getAuthHeaders(),
+      headers,
     });
     const data = (await response.json().catch(() => ({}))) as ApiResponse<unknown>;
 
@@ -992,3 +1101,75 @@ export async function createIpMappingAction(input: {
     return { success: false, message: "Failed to create mapping." };
   }
 }
+
+// ── Track 6 Phase 4: outage compensation (whole-day credits) ──
+
+export interface CompensationPreviewResult {
+  affectedSubscriptions: number;
+  extensionDays: number;
+  scopeLabel: string;
+}
+
+export interface CompensationResult {
+  affectedSubscriptions: number;
+  extensionDays: number;
+  notified: number;
+}
+
+export interface CompensateOutageRequest {
+  deviceId?: number;
+  stationId?: number;
+  extensionHours: number;
+  reason: string;
+  notifyBySms: boolean;
+}
+
+export const previewCompensation = async (
+  deviceId: number | undefined,
+  extensionHours: number
+): Promise<CompensationPreviewResult | null> => {
+  try {
+    const params = new URLSearchParams({ extensionHours: String(extensionHours) });
+    if (deviceId !== undefined) params.append("deviceId", String(deviceId));
+    const res = await apiFetch<CompensationPreviewResult>(
+      `/customers/compensation/preview?${params.toString()}`,
+      { auth: "required", cache: "no-store" }
+    );
+    return res.success && res.data ? res.data : null;
+  } catch (error) {
+    console.error("[Compensation] preview error:", error);
+    return null;
+  }
+};
+
+export const compensateOutage = async (
+  body: CompensateOutageRequest,
+  stepUpToken?: string
+): Promise<ApiResponse<CompensationResult | null>> => {
+  try {
+    const res = await apiFetch<CompensationResult>("/customers/bulk/compensate", {
+      method: "POST",
+      auth: "required",
+      body,
+      stepUpToken,
+    });
+    revalidatePath("/network/routers");
+    revalidatePath("/network/live-sessions");
+    return {
+      success: res.success,
+      message: res.message ?? (res.success ? "Compensation applied" : "Failed to compensate"),
+      data: res.data,
+      status: res.status,
+      timestamp: res.timestamp,
+    };
+  } catch (error) {
+    console.error("[Compensation] execute error:", error);
+    return {
+      success: false,
+      message: "Failed to apply compensation.",
+      data: null,
+      status: 500,
+      timestamp: new Date().toISOString(),
+    };
+  }
+};
