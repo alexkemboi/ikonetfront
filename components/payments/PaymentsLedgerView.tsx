@@ -26,6 +26,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { recordManualPayment } from "@/actions/payments";
+import { withStepUp } from "@/lib/stepUp";
+import RowHighlightWatcher from "@/components/network/RowHighlightWatcher";
 
 interface Props {
   kpis: PaymentLedgerKpis;
@@ -55,12 +57,15 @@ export function PaymentsLedgerView({ kpis, payments, source }: Props) {
     }
     setSaving(true);
     try {
-      const res = await recordManualPayment({
-        customerIdxno: idx,
-        amount: Math.round(amt * 100) / 100,
-        channel,
-        notes: notes.trim() || undefined,
-      });
+      const res = await withStepUp(
+        (token) => recordManualPayment({
+          customerIdxno: idx,
+          amount: Math.round(amt * 100) / 100,
+          channel,
+          notes: notes.trim() || undefined,
+        }, token),
+        "Recording a manual payment requires re-authentication."
+      );
       if (res.success && res.data) {
         toast.success(`Payment ${res.data.referenceNumber} recorded (${channel}).`);
         setRecordOpen(false);
@@ -115,6 +120,7 @@ export function PaymentsLedgerView({ kpis, payments, source }: Props) {
         <PaymentsKpiCards kpis={kpis} />
         <PaymentsDataTable payments={payments} />
       </div>
+      <RowHighlightWatcher />
 
       {/* Manual cash/bank payment capture for PPPoE customers */}
       <Dialog open={recordOpen} onOpenChange={setRecordOpen}>

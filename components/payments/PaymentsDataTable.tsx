@@ -191,7 +191,7 @@ export function PaymentsDataTable({ payments }: Props) {
       </tr>
     ) : (
       filtered.map((p) => (
-        <tr key={p.id} className="hover:bg-zinc-800/30 transition">
+        <tr key={p.id} data-row-id={(p.receiptNumber ?? "").toUpperCase()} className="hover:bg-zinc-800/30 transition">
           <td className="py-3.5 px-3">
             <Checkbox
               checked={selectedIds.has(p.id)}
