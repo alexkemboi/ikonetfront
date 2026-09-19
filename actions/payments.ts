@@ -284,18 +284,20 @@ export async function getPaymentsLedgerData(
  * POST /api/v1/payments/manual — envelope-returning endpoint.
  */
 export async function recordManualPayment(
-  req: ManualPaymentRequest
-): Promise<{ success: boolean; data?: ManualPaymentResponse; message: string }> {
+  req: ManualPaymentRequest,
+  stepUpToken?: string
+): Promise<{ success: boolean; status?: number; data?: ManualPaymentResponse; message: string }> {
   const res = await apiFetch<ManualPaymentResponse>("/payments/manual", {
     method: "POST",
     body: req,
     auth: "required",
+    stepUpToken,
   });
   if (!res.success) {
-    return { success: false, message: res.message || "Failed to record the payment." };
+    return { success: false, status: res.status, message: res.message || "Failed to record the payment." };
   }
   revalidatePath("/finance/billing/payments");
-  return { success: true, data: res.data ?? undefined, message: res.message };
+  return { success: true, status: res.status, data: res.data ?? undefined, message: res.message };
 }
 
 /**

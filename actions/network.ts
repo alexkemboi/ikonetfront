@@ -261,12 +261,17 @@ export const updateRouter = async (
 
 export const executeRouterAction = async (
   id: number,
-  body: RouterActionRequest
+  body: RouterActionRequest,
+  stepUpToken?: string
 ): Promise<ApiResponse<RouterActionResponse | null>> => {
   try {
+    const headers = await getAuthHeaders();
+    if (stepUpToken) {
+      (headers as Record<string, string>)["X-Step-Up-Token"] = stepUpToken;
+    }
     const response = await fetch(BASE_URL + `network-routers/${id}/action`, {
       method: "PATCH",
-      headers: await getAuthHeaders(),
+      headers,
       body: JSON.stringify({ action: body.action, notes: body.notes ?? "" }),
     });
 
@@ -884,12 +889,17 @@ export const getNetworkDeviceInterfaces = async (
  * `message` is surfaced verbatim so operators know why a delete can fail.
  */
 export const deleteNetworkDevice = async (
-  id: number
+  id: number,
+  stepUpToken?: string
 ): Promise<AuthApiResponse<{ id: number; name: string; ipAddress: string }>> => {
   try {
+    const headers = await getAuthHeaders();
+    if (stepUpToken) {
+      (headers as Record<string, string>)["X-Step-Up-Token"] = stepUpToken;
+    }
     const response = await fetch(buildApiUrl(`/network-devices/${id}`), {
       method: "DELETE",
-      headers: await getAuthHeaders(),
+      headers,
     });
     const data = (await response.json().catch(() => ({}))) as ApiResponse<unknown>;
 
@@ -1091,3 +1101,75 @@ export async function createIpMappingAction(input: {
     return { success: false, message: "Failed to create mapping." };
   }
 }
+
+// ── Track 6 Phase 4: outage compensation (whole-day credits) ──
+
+export interface CompensationPreviewResult {
+  affectedSubscriptions: number;
+  extensionDays: number;
+  scopeLabel: string;
+}
+
+export interface CompensationResult {
+  affectedSubscriptions: number;
+  extensionDays: number;
+  notified: number;
+}
+
+export interface CompensateOutageRequest {
+  deviceId?: number;
+  stationId?: number;
+  extensionHours: number;
+  reason: string;
+  notifyBySms: boolean;
+}
+
+export const previewCompensation = async (
+  deviceId: number | undefined,
+  extensionHours: number
+): Promise<CompensationPreviewResult | null> => {
+  try {
+    const params = new URLSearchParams({ extensionHours: String(extensionHours) });
+    if (deviceId !== undefined) params.append("deviceId", String(deviceId));
+    const res = await apiFetch<CompensationPreviewResult>(
+      `/customers/compensation/preview?${params.toString()}`,
+      { auth: "required", cache: "no-store" }
+    );
+    return res.success && res.data ? res.data : null;
+  } catch (error) {
+    console.error("[Compensation] preview error:", error);
+    return null;
+  }
+};
+
+export const compensateOutage = async (
+  body: CompensateOutageRequest,
+  stepUpToken?: string
+): Promise<ApiResponse<CompensationResult | null>> => {
+  try {
+    const res = await apiFetch<CompensationResult>("/customers/bulk/compensate", {
+      method: "POST",
+      auth: "required",
+      body,
+      stepUpToken,
+    });
+    revalidatePath("/network/routers");
+    revalidatePath("/network/live-sessions");
+    return {
+      success: res.success,
+      message: res.message ?? (res.success ? "Compensation applied" : "Failed to compensate"),
+      data: res.data,
+      status: res.status,
+      timestamp: res.timestamp,
+    };
+  } catch (error) {
+    console.error("[Compensation] execute error:", error);
+    return {
+      success: false,
+      message: "Failed to apply compensation.",
+      data: null,
+      status: 500,
+      timestamp: new Date().toISOString(),
+    };
+  }
+};
