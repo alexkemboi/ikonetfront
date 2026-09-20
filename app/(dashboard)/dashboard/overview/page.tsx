@@ -14,10 +14,16 @@ import { NetworkPulseHeatmap } from "@/components/dashboard/NetworkPulseHeatmap"
 export const dynamic = "force-dynamic";
 
 export default async function OverviewDashboardPage() {
- const session = await auth();
- const role = normalizeRole(session?.user?.role);
+  const session = await auth();
+  const role = normalizeRole(session?.user?.role);
+  const rawRole = session?.user?.role ?? "";
 
- if (role !== ROLE_NAME.ADMIN) redirect("/dashboard");
+  const isOperator = role === ROLE_NAME.ADMIN ||
+                     role === ROLE_NAME.MANAGEMENT ||
+                     role === ROLE_NAME.STAFF ||
+                     /^(SYSADMIN|ROLE_SYSADMIN|SUPER_ADMIN|01|02|03)$/i.test(rawRole.trim());
+
+  if (!isOperator) redirect("/dashboard");
 
  const data = await getDashboardOverview();
 
