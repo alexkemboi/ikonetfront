@@ -1,102 +1,425 @@
 import type { ReactNode } from "react";
+import Image from "next/image";
 
-export default function AuthLayout({ children }: { children: ReactNode }) {
- return (
- <div className="min-h-screen flex">
- {/* ── Brand Panel (desktop only) ── */}
- <aside className="hidden lg:flex lg:w-[42%] flex-col justify-between bg-primary text-primary-foreground p-12 relative overflow-hidden">
- {/* Decorative network circles */}
- <div
- aria-hidden
- className="absolute -top-24 -right-24 w-96 h-96 rounded-full border border-white/10"
- />
- <div
- aria-hidden
- className="absolute -bottom-32 -left-20 w-80 h-80 rounded-full border border-white/10"
- />
- <div
- aria-hidden
- className="absolute top-1/3 right-8 w-48 h-48 rounded-full border border-white/5"
- />
+export default function AuthLayout({
+  children,
+}: {
+  children: ReactNode;
+}) {
+  return (
+    <div
+      className="
+        min-h-screen
+        w-full
+        bg-muted/30
+        flex
+        items-center
+        justify-center
+        p-4
+        sm:p-6
+        lg:p-8
+      "
+    >
+      {/* =========================================================
+          MAIN AUTHENTICATION CONTAINER
+      ========================================================= */}
+      <div
+        className="
+          mx-auto
+          flex
+          h-[80vh]
+          min-h-[560px]
+          w-full
+          max-w-7xl
+          overflow-hidden
+          rounded-3xl
+          border
+          border-primary/20
+          bg-background
+          shadow-[0_25px_80px_rgba(0,0,0,0.10)]
+        "
+      >
+        {/* =======================================================
+            BRAND PANEL
+        ======================================================= */}
+        <aside
+          className="
+            relative
+            hidden
+            overflow-hidden
+            border-r
+            border-white/30
+            bg-primary
+            text-primary-foreground
+            lg:flex
+            lg:w-[44%]
+            flex-col
+            justify-between
+            p-10
+            xl:p-14
+          "
+        >
+          {/* =====================================================
+              DECORATIVE BACKGROUND
+          ===================================================== */}
 
- {/* Logo */}
- <div className="relative z-10">
- <div className="flex items-center gap-3">
- {/* Icon placeholder — replace with actual SVG logo */}
- <div className="w-10 h-10 rounded-lg bg-white/15 flex items-center justify-center">
- <svg
- width="22"
- height="22"
- viewBox="0 0 22 22"
- fill="none"
- xmlns="http://www.w3.org/2000/svg"
- aria-hidden
- >
- <circle cx="11" cy="11" r="4" fill="white" />
- <circle cx="11" cy="11" r="8" stroke="white" strokeWidth="1.5" />
- <circle cx="11" cy="11" r="11" stroke="white/40" strokeWidth="0.75" />
- <line x1="3" y1="11" x2="19" y2="11" stroke="white" strokeWidth="1" />
- <line x1="11" y1="3" x2="11" y2="19" stroke="white" strokeWidth="1" />
- </svg>
- </div>
- <span className="text-xl font-semibold tracking-tight">Beesmart</span>
- </div>
- </div>
+          {/* Top right circle */}
+          <div
+            aria-hidden
+            className="
+              absolute
+              -right-32
+              -top-32
+              h-[420px]
+              w-[420px]
+              rounded-full
+              border
+              border-white/10
+            "
+          />
 
- {/* Mid copy */}
- <div className="relative z-10 space-y-6">
- <h1 className="text-4xl font-normal leading-tight tracking-normal">
- Manage your<br />network with<br />confidence.
- </h1>
- <p className="text-white/60 text-base leading-relaxed max-w-xs">
- Unified billing, PPPoE management, and hotspot provisioning — all in one place.
- </p>
+          {/* Bottom left circle */}
+          <div
+            aria-hidden
+            className="
+              absolute
+              -bottom-40
+              -left-32
+              h-[420px]
+              w-[420px]
+              rounded-full
+              border
+              border-white/10
+            "
+          />
 
- {/* Trust indicators */}
- <div className="flex flex-col gap-3 pt-4">
- {[
- "Real-time subscriber management",
- "M-Pesa & Airtel Money integrated",
- "Mikrotik-native PPPoE support",
- ].map((item) => (
- <div key={item} className="flex items-center gap-2.5 text-sm text-white/75">
- <div className="w-1.5 h-1.5 rounded-full bg-white/50 shrink-0" />
- {item}
- </div>
- ))}
- </div>
- </div>
+          {/* Middle circle */}
+          <div
+            aria-hidden
+            className="
+              absolute
+              right-20
+              top-1/2
+              h-56
+              w-56
+              -translate-y-1/2
+              rounded-full
+              border
+              border-white/5
+            "
+          />
 
- {/* Footer */}
- <p className="relative z-10 text-xs text-white/30">
- © {new Date().getFullYear()} Beesmart. All rights reserved.
- </p>
- </aside>
+          {/* Soft glow */}
+          <div
+            aria-hidden
+            className="
+              absolute
+              left-1/2
+              top-1/2
+              h-72
+              w-72
+              -translate-x-1/2
+              -translate-y-1/2
+              rounded-full
+              bg-white/5
+              blur-3xl
+            "
+          />
 
- {/* ── Form Panel ── */}
- <main className="flex-1 flex flex-col items-center justify-center bg-background p-6 lg:p-16">
- {/* Mobile logo */}
- <div className="lg:hidden mb-8 flex items-center gap-2">
- <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
- <svg
- width="16"
- height="16"
- viewBox="0 0 22 22"
- fill="none"
- xmlns="http://www.w3.org/2000/svg"
- aria-hidden
- >
- <circle cx="11" cy="11" r="4" fill="white" />
- <circle cx="11" cy="11" r="8" stroke="white" strokeWidth="1.5" />
- <line x1="3" y1="11" x2="19" y2="11" stroke="white" strokeWidth="1" />
- <line x1="11" y1="3" x2="11" y2="19" stroke="white" strokeWidth="1" />
- </svg>
- </div>
- <span className="text-lg font-semibold text-foreground">Beesmart</span>
- </div>
+          {/* =====================================================
+              LOGO
+          ===================================================== */}
+          <div
+            className="
+              relative
+              z-10
+              flex
+              flex-col
+              items-center
+              text-center
+            "
+          >
+            <div
+              className="
+                flex
+                h-24
+                w-24
+                items-center
+                justify-center
+                rounded-2xl
+                bg-white
+                p-3
+                shadow-xl
+                ring-1
+                ring-white/20
+              "
+            >
+              <Image
+                src="/logo.png"
+                alt="Beesmart Bedak ISP"
+                width={160}
+                height={160}
+                priority
+                className="h-full w-full object-contain"
+              />
+            </div>
 
- <div className="w-full max-w-105">{children}</div>
- </main>
- </div>
- );
+            <div className="mt-5">
+              <h2
+                className="
+                  text-2xl
+                  font-bold
+                  tracking-tight
+                  text-white
+                "
+              >
+                BEESMARTBEDAK
+              </h2>
+
+              <p
+                className="
+                  mt-1
+                  text-sm
+                  font-medium
+                  uppercase
+                  tracking-[0.2em]
+                  text-white/60
+                "
+              >
+                ISP Management
+              </p>
+            </div>
+          </div>
+
+          {/* =====================================================
+              BRAND CONTENT
+          ===================================================== */}
+          <div
+            className="
+              relative
+              z-10
+              mx-auto
+              w-full
+              max-w-md
+              py-6
+            "
+          >
+            <p
+              className="
+                mb-4
+                text-xs
+                font-semibold
+                uppercase
+                tracking-[0.2em]
+                text-white/50
+              "
+            >
+              Network Management Platform
+            </p>
+
+            <h1
+              className="
+                text-4xl
+                font-bold
+                leading-[1.15]
+                tracking-tight
+                text-white
+                xl:text-[46px]
+              "
+            >
+              Manage your network with confidence.
+            </h1>
+
+            <p
+              className="
+                mt-5
+                max-w-md
+                text-base
+                leading-7
+                text-white/65
+              "
+            >
+              Unified billing, PPPoE management, and hotspot provisioning
+              designed to give your ISP complete control from one platform.
+            </p>
+
+            {/* =================================================
+                TRUST INDICATORS
+            ================================================= */}
+            <div className="mt-7 space-y-3">
+              {[
+                "Real-time subscriber management",
+                "M-Pesa & Airtel Money integrated",
+                "MikroTik-native PPPoE support",
+              ].map((item) => (
+                <div
+                  key={item}
+                  className="
+                    flex
+                    items-center
+                    gap-3
+                    text-sm
+                    text-white/80
+                  "
+                >
+                  <span
+                    className="
+                      flex
+                      h-5
+                      w-5
+                      shrink-0
+                      items-center
+                      justify-center
+                      rounded-full
+                      bg-white/10
+                      ring-1
+                      ring-white/10
+                    "
+                  >
+                    <span
+                      className="
+                        h-1.5
+                        w-1.5
+                        rounded-full
+                        bg-white
+                      "
+                    />
+                  </span>
+
+                  <span>{item}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* =====================================================
+              FOOTER
+          ===================================================== */}
+          <p
+            className="
+              relative
+              z-10
+              text-xs
+              text-white/40
+            "
+          >
+            © {new Date().getFullYear()} Beesmart Bedak. All rights reserved.
+          </p>
+        </aside>
+
+        {/* =======================================================
+            LOGIN / FORM PANEL
+        ======================================================= */}
+        <main
+          className="
+            flex
+            flex-1
+            items-center
+            justify-center
+            bg-background
+            p-5
+            sm:p-8
+            lg:p-12
+            xl:p-16
+          "
+        >
+          <div className="w-full max-w-md">
+            {/* =================================================
+                MOBILE LOGO
+            ================================================= */}
+            <div
+              className="
+                mb-7
+                flex
+                flex-col
+                items-center
+                text-center
+                lg:hidden
+              "
+            >
+              <div
+                className="
+                  flex
+                  h-20
+                  w-20
+                  items-center
+                  justify-center
+                  rounded-2xl
+                  bg-white
+                  p-2.5
+                  shadow-lg
+                  ring-1
+                  ring-border
+                "
+              >
+                <Image
+                  src="/logo.png"
+                  alt="Beesmart Bedak ISP"
+                  width={140}
+                  height={140}
+                  priority
+                  className="h-full w-full object-contain"
+                />
+              </div>
+
+              <h2
+                className="
+                  mt-4
+                  text-xl
+                  font-bold
+                  tracking-tight
+                "
+              >
+                BEESMARTBEDAK
+              </h2>
+
+              <p
+                className="
+                  mt-1
+                  text-xs
+                  font-medium
+                  uppercase
+                  tracking-[0.18em]
+                  text-muted-foreground
+                "
+              >
+                ISP Management
+              </p>
+            </div>
+
+            {/* =================================================
+                LOGIN CARD
+            ================================================= */}
+            <div
+              className="
+                rounded-3xl
+                border
+                border-border/70
+                bg-card
+                p-6
+                shadow-[0_20px_70px_rgba(0,0,0,0.08)]
+                sm:p-8
+              "
+            >
+              {children}
+            </div>
+
+            {/* =================================================
+                SECURITY FOOTER
+            ================================================= */}
+            <p
+              className="
+                mt-5
+                text-center
+                text-xs
+                text-muted-foreground
+              "
+            >
+              Secure access to your ISP management platform
+            </p>
+          </div>
+        </main>
+      </div>
+    </div>
+  );
 }

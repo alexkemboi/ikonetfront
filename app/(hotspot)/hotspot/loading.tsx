@@ -11,18 +11,18 @@ export default function HotspotLoading() {
  </div>
  <div>
  <h1 className="text-2xl font-normal tracking-normal text-foreground">
- IKONEX Hotspot
+ BEESMARTBEDAK HOTSPOT
  </h1>
  <p className="text-xs text-muted-foreground mt-1">
  Premium High-Speed Internet Access
  </p>
  </div>
  <a
- href="tel:0700000000"
+ href="tel:0706354194"
  className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline"
  >
  <Phone className="w-3.5 h-3.5" />
- Customer Care: 0700 000 000
+ Customer Care: 0706 354 194
  </a>
  </div>
 
@@ -36,7 +36,7 @@ export default function HotspotLoading() {
  </div>
 
  <p className="mt-6 text-center text-xs text-muted-foreground">
- Powered by <span className="font-medium text-foreground">Beesmart</span>
+ Powered by <span className="font-medium text-foreground">BEESMARTBEDAK</span>
  </p>
  </div>
  );

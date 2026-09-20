@@ -92,14 +92,14 @@ export default function HotspotShell({ packages, initialCompanyCode, clientMac, 
       </div>
 
       {/* Footer with Company Info */}
-      <div className="mt-8 pt-6 border-t border-border">
+      <div className="mt-8 pt-6 border-t border-border mx-auto max-w-md text-center">
         <div className="flex flex-col gap-3 text-xs text-muted-foreground">
           <p>
             Powered by <span className="font-medium text-foreground">{brand}</span>
           </p>
-          <p className="flex items-center gap-2">
+          <p className="flex items-center gap-2 mx-auto">
             <Phone className="w-4 h-4 text-foreground" />
-            <span>Support: <span className="font-medium text-foreground">0726837210</span></span>
+            <span>Support: <span className="font-medium text-foreground">0706 354 194</span></span>
           </p>
           <p>© 2026 {brand}. All rights reserved.</p>
         </div>

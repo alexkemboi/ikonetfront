@@ -168,13 +168,25 @@
     -moz-osx-font-smoothing: grayscale;
   }
 
-  h1, h2, h3, h4, h5, h6 {
+@layer base {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
-    font-weight: 400;
+    font-weight: 700 !important;
     letter-spacing: 0;
     line-height: 1.2;
     text-wrap: pretty;
   }
+
+  h1 {
+    font-size: 23px !important;
+    line-height: 56px !important;
+  }
+}
 
   body {
     @apply bg-background text-foreground;

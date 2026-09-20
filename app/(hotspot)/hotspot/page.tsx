@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { getTvPackagesAction } from "@/actions/tv";
 import HotspotShell from "./_components/HotspotShell";
 import { Wifi, Zap, Shield, Clock } from "lucide-react";
@@ -46,15 +47,36 @@ export default async function HotspotPage({ searchParams }: HotspotPageProps) {
 
         {/* Content */}
         <div className="relative z-10">
-          <div className="inline-flex items-center justify-center w-10 h-10 rounded-lg bg-warning/20 mb-8">
-            <Wifi className="w-5 h-5 text-warning" />
-          </div>
-
-          <h1 className="text-4xl font-normal text-primary-foreground leading-tight mb-4">
+ <div
+              className="
+                flex
+                h-24
+                w-24
+                items-center
+                justify-center
+                rounded-2xl
+                bg-white
+                p-3
+                shadow-xl
+                ring-1
+                ring-white/20
+                mx-auto
+              "
+            >
+              <Image
+                src="/logo.png"
+                alt="Beesmart Bedak ISP"
+                width={160}
+                height={160}
+                priority
+                className="h-full w-full object-contain"
+              />
+            </div>
+          <h1 className="text-4xl font-normal text-primary-foreground leading-tight mb-4 mx-auto text-center">
             Ultra-Fast Hotspot Connectivity
           </h1>
 
-          <p className="text-base text-primary-foreground/80 mb-8 max-w-md">
+          <p className="text-base text-primary-foreground/80 mb-8 max-w-md mx-auto text-center">
             Instant activation, premium speeds, and flexible plans designed for your needs. Stay connected anywhere, anytime.
           </p>
 
@@ -88,7 +110,7 @@ export default async function HotspotPage({ searchParams }: HotspotPageProps) {
 
         {/* Footer */}
         <div className="relative z-10 text-sm text-primary-foreground/60">
-          <p>© 2026 Ikonex. All rights reserved.</p>
+          <p>© 2026 BEESMARTBEDAK. All rights reserved.</p>
         </div>
       </div>
 
