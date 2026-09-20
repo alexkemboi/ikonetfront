@@ -60,7 +60,7 @@ export interface DashboardOverviewData {
   mobileMoneyRevenueToday: number;
   activeSubscriptionsCount: number;
   onlinePercentage: number;
-  smsCreditsCount: number;
+  smsCreditsCount: number | null;
 
   // Live Ticker
   liveTicker: LivePaymentTicker;

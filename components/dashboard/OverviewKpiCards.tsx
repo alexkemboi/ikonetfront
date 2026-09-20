@@ -7,7 +7,7 @@ interface Props {
  activeSubscriptions: number;
  onlinePercentage: number;
  onlineCount: number;
- smsCredits: number;
+ smsCredits: number | null;
 }
 
 export function OverviewKpiCards({
@@ -76,21 +76,21 @@ export function OverviewKpiCards({
  </div>
  </div>
 
- {/* Card 4: SMS Credits */}
- <div className="rounded-2xl border border-border bg-card p-5 shadow-lg">
- <span className="text-[11px] font-sans tabular-nums tracking-wider text-muted-foreground uppercase">
- SMS CREDITS
- </span>
- <div className="mt-2 text-3xl font-sans tabular-nums font-bold text-foreground">
- {smsCredits}
- </div>
- <p className="mt-2 text-xs font-medium text-rose-400">
- Low — top up soon
- </p>
- <div className="mt-5 h-1 w-full rounded-full bg-rose-500/20">
- <div className="h-1 w-1/12 rounded-full bg-rose-500" />
- </div>
- </div>
+  {/* Card 4: SMS Credits */}
+  <div className="rounded-2xl border border-border bg-card p-5 shadow-lg">
+  <span className="text-[11px] font-sans tabular-nums tracking-wider text-muted-foreground uppercase">
+  SMS CREDITS
+  </span>
+  <div className="mt-2 text-3xl font-sans tabular-nums font-bold text-foreground">
+  {smsCredits === null ? "\u2014" : smsCredits}
+  </div>
+  <p className="mt-2 text-xs font-medium text-muted-foreground">
+  {smsCredits === null ? "Top up to enable reminders" : "Low \u2014 top up soon"}
+  </p>
+  <div className="mt-5 h-1 w-full rounded-full bg-rose-500/20">
+  <div className="h-1 w-1/12 rounded-full bg-rose-500" />
+  </div>
+  </div>
  </div>
  );
 }

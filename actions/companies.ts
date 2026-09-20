@@ -31,21 +31,39 @@ export type PaymentAccountSummary = {
   isActive: boolean;
 };
 
-/**
- * Static fallback kept in sync with `lib/brand.ts` (the 3 bootstrap companies).
- * Used only while the R-01 backend (`GET /api/v1/companies`) is unreachable,
- * so the SYSADMIN switcher never renders empty.
- */
+export type CompanyPaymentAccountView = {
+  accountType: string;
+  shortCode: string;
+  accountReference: string | null;
+  isDefault: boolean;
+  isActive: boolean;
+  provider: string;
+  maskedConsumerKey: string | null;
+  companyBranding: CompanySummary;
+};
+
+export type UpdateCompanyBrandingRequest = {
+  primaryColor?: string;
+  secondaryColor?: string;
+  logoUrl?: string;
+  supportPhone?: string;
+  supportEmail?: string;
+  subdomain?: string;
+  customDomain?: string;
+};
+
+export type MpesaProbeResult = {
+  ok: boolean;
+  message: string;
+  latencyMs: number;
+};
+
 const FALLBACK_COMPANIES: CompanySummary[] = [
   { id: "bootstrap-bsm", code: "CMP-BSM-001", name: "Beesmart High-Speed Wi-Fi", alias: "BSM" },
   { id: "bootstrap-bdk", code: "CMP-BDK-001", name: "Bedak Networks", alias: "BDK" },
   { id: "bootstrap-adr", code: "CMP-ADR-001", name: "Adrinold Broadband", alias: "ADR" },
 ];
 
-/**
- * Fetches the active company list for the tenant-context switcher and the
- * Companies admin screen. Backend: `GET /api/v1/companies` (SYSADMIN/ADMIN/01).
- */
 export async function listCompanies(): Promise<CompanySummary[]> {
   const session = await auth();
   const token = session?.user?.apiToken;
@@ -61,8 +79,6 @@ export async function listCompanies(): Promise<CompanySummary[]> {
     });
 
     if (!res.ok) {
-      // 401/403 (role without access) → empty; transient backend failure →
-      // static fallback so the switcher stays usable.
       if (res.status === 401 || res.status === 403) return [];
       return FALLBACK_COMPANIES;
     }
@@ -80,6 +96,40 @@ export async function listCompanies(): Promise<CompanySummary[]> {
   } catch {
     return FALLBACK_COMPANIES;
   }
+}
+
+export async function getCompanyPaymentAccounts(companyCode: string): Promise<ApiResponse<CompanyPaymentAccountView[]>> {
+  return apiFetch<CompanyPaymentAccountView[]>(
+    `/companies/${encodeURIComponent(companyCode)}/payment-accounts`,
+    {
+      method: "GET",
+      auth: "required",
+      cache: "no-store",
+    }
+  );
+}
+
+export async function updateCompanyBranding(companyCode: string, body: UpdateCompanyBrandingRequest): Promise<ApiResponse<CompanySummary>> {
+  return apiFetch<CompanySummary>(
+    `/companies/${encodeURIComponent(companyCode)}/branding`,
+    {
+      method: "PUT",
+      body,
+      auth: "required",
+      cache: "no-store",
+    }
+  );
+}
+
+export async function testCompanyPaymentAccount(companyCode: string): Promise<ApiResponse<MpesaProbeResult>> {
+  return apiFetch<MpesaProbeResult>(
+    `/companies/${encodeURIComponent(companyCode)}/payment-accounts/test`,
+    {
+      method: "POST",
+      auth: "required",
+      cache: "no-store",
+    }
+  );
 }
 
 /** SYSADMIN-only: create a company (R-01). */
