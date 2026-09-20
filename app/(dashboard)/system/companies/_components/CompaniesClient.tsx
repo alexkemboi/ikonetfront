@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
-import { Building2, Loader2, Plus, ShieldAlert } from "lucide-react";
+import { Building2, Loader2, Plus, ShieldAlert, Palette, Radio } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { withStepUp } from "@/lib/stepUp";
@@ -35,8 +35,14 @@ import {
 import {
   createCompanyAction,
   createPaymentAccountAction,
+  getCompanyPaymentAccounts,
+  updateCompanyBranding,
+  testCompanyPaymentAccount,
   type CompanySummary,
   type PaymentAccountPayload,
+  type CompanyPaymentAccountView,
+  type UpdateCompanyBrandingRequest,
+  type MpesaProbeResult,
 } from "@/actions/companies";
 
 type Props = {
@@ -44,23 +50,48 @@ type Props = {
   canMutate: boolean;
 };
 
+type BrandingForm = {
+  primaryColor: string;
+  secondaryColor: string;
+  logoUrl: string;
+  supportPhone: string;
+  supportEmail: string;
+  subdomain: string;
+  customDomain: string;
+};
+
+const EMPTY_BRANDING: BrandingForm = {
+  primaryColor: "",
+  secondaryColor: "",
+  logoUrl: "",
+  supportPhone: "",
+  supportEmail: "",
+  subdomain: "",
+  customDomain: "",
+};
+
 export default function CompaniesClient({ companies, canMutate }: Props) {
   const [rows, setRows] = useState<CompanySummary[]>(companies);
   const [companyOpen, setCompanyOpen] = useState(false);
   const [accountFor, setAccountFor] = useState<CompanySummary | null>(null);
+  const [brandingFor, setBrandingFor] = useState<CompanySummary | null>(null);
+  const [accountsFor, setAccountsFor] = useState<CompanySummary | null>(null);
+  const [probeResult, setProbeResult] = useState<MpesaProbeResult | null>(null);
 
-  // New-company form
   const [code, setCode] = useState("");
   const [name, setName] = useState("");
   const [alias, setAlias] = useState("");
 
-  // Payment-account form
   const [accountType, setAccountType] = useState<"PAYBILL" | "TILL" | "BANK">("PAYBILL");
   const [shortCode, setShortCode] = useState("");
   const [tillNumber, setTillNumber] = useState("");
   const [clientKey, setClientKey] = useState("");
   const [clientSecret, setClientSecret] = useState("");
   const [isDefault, setIsDefault] = useState(false);
+
+  const [branding, setBranding] = useState<BrandingForm>(EMPTY_BRANDING);
+  const [paymentAccounts, setPaymentAccounts] = useState<CompanyPaymentAccountView[]>([]);
+  const [loadingAccounts, setLoadingAccounts] = useState(false);
 
   const [isPending, startTransition] = useTransition();
 
@@ -77,6 +108,10 @@ export default function CompaniesClient({ companies, canMutate }: Props) {
     setClientKey("");
     setClientSecret("");
     setIsDefault(false);
+  }
+
+  function resetBrandingForm() {
+    setBranding(EMPTY_BRANDING);
   }
 
   function handleCreateCompany() {
@@ -130,6 +165,64 @@ export default function CompaniesClient({ companies, canMutate }: Props) {
         resetAccountForm();
       } else {
         toast.error(res.message || "Failed to add payment account");
+      }
+    });
+  }
+
+  function openBranding(company: CompanySummary) {
+    setBrandingFor(company);
+    setBranding({
+      primaryColor: "",
+      secondaryColor: "",
+      logoUrl: "",
+      supportPhone: "",
+      supportEmail: "",
+      subdomain: "",
+      customDomain: "",
+    });
+  }
+
+  function handleSaveBranding() {
+    if (!brandingFor) return;
+    startTransition(async () => {
+      const res = await updateCompanyBranding(brandingFor.code, branding);
+      if (res.success) {
+        toast.success(`Branding updated for ${brandingFor.code}`);
+        setBrandingFor(null);
+        resetBrandingForm();
+      } else {
+        toast.error(res.message || "Failed to update branding");
+      }
+    });
+  }
+
+  function openAccounts(company: CompanySummary) {
+    setAccountsFor(company);
+    setProbeResult(null);
+    setLoadingAccounts(true);
+    startTransition(async () => {
+      const res = await getCompanyPaymentAccounts(company.code);
+      if (res.success && res.data) {
+        setPaymentAccounts(res.data);
+      } else {
+        setPaymentAccounts([]);
+        toast.error(res.message || "Failed to load payment accounts");
+      }
+      setLoadingAccounts(false);
+    });
+  }
+
+  function handleTestPing() {
+    if (!accountsFor) return;
+    startTransition(async () => {
+      const res = await testCompanyPaymentAccount(accountsFor.code);
+      if (res.success && res.data) {
+        setProbeResult(res.data);
+        toast.success(res.data.ok ? "Ping successful" : "Ping failed", {
+          description: res.data.message,
+        });
+      } else {
+        toast.error(res.message || "Ping failed");
       }
     });
   }
@@ -191,20 +284,40 @@ export default function CompaniesClient({ companies, canMutate }: Props) {
                     <TableCell className="font-medium">{company.name}</TableCell>
                     <TableCell className="text-muted-foreground">{company.alias}</TableCell>
                     <TableCell className="text-right">
-                      {canMutate && (
+                      <div className="flex items-center justify-end gap-2">
                         <Button
                           variant="outline"
                           size="sm"
                           className="h-8 gap-1.5"
-                          onClick={() => {
-                            resetAccountForm();
-                            setAccountFor(company);
-                          }}
+                          onClick={() => openBranding(company)}
                         >
-                          <Building2 className="w-3.5 h-3.5" />
-                          Payment Account
+                          <Palette className="w-3.5 h-3.5" />
+                          Edit Brand Profile
                         </Button>
-                      )}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-8 gap-1.5"
+                          onClick={() => openAccounts(company)}
+                        >
+                          <Radio className="w-3.5 h-3.5" />
+                          Paybills &amp; Tills
+                        </Button>
+                        {canMutate && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-8 gap-1.5"
+                            onClick={() => {
+                              resetAccountForm();
+                              setAccountFor(company);
+                            }}
+                          >
+                            <Building2 className="w-3.5 h-3.5" />
+                            Payment Account
+                          </Button>
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))
@@ -306,6 +419,133 @@ export default function CompaniesClient({ companies, canMutate }: Props) {
             <Button onClick={handleCreateAccount} disabled={isPending}>
               {isPending && <Loader2 className="w-4 h-4 animate-spin mr-1.5" />}
               Add account
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Branding dialog */}
+      <Dialog open={brandingFor !== null} onOpenChange={(open) => !open && setBrandingFor(null)}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Edit Brand Profile — {brandingFor?.code}</DialogTitle>
+            <DialogDescription>
+              Update theme colors, logo, support contacts, and domain settings.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="b-primary">Primary Color</Label>
+                <Input id="b-primary" placeholder="#f59e0b" value={branding.primaryColor} onChange={(e) => setBranding({ ...branding, primaryColor: e.target.value })} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="b-secondary">Secondary Color</Label>
+                <Input id="b-secondary" placeholder="#18181b" value={branding.secondaryColor} onChange={(e) => setBranding({ ...branding, secondaryColor: e.target.value })} />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="b-logo">Logo URL</Label>
+              <Input id="b-logo" placeholder="https://..." value={branding.logoUrl} onChange={(e) => setBranding({ ...branding, logoUrl: e.target.value })} />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="b-phone">Support Phone</Label>
+                <Input id="b-phone" placeholder="+254..." value={branding.supportPhone} onChange={(e) => setBranding({ ...branding, supportPhone: e.target.value })} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="b-email">Support Email</Label>
+                <Input id="b-email" placeholder="support@..." value={branding.supportEmail} onChange={(e) => setBranding({ ...branding, supportEmail: e.target.value })} />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="b-subdomain">Subdomain</Label>
+              <Input id="b-subdomain" placeholder="tenant" value={branding.subdomain} onChange={(e) => setBranding({ ...branding, subdomain: e.target.value })} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="b-custom">Custom Domain</Label>
+              <Input id="b-custom" placeholder="tenant.example.com" value={branding.customDomain} onChange={(e) => setBranding({ ...branding, customDomain: e.target.value })} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBrandingFor(null)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveBranding} disabled={isPending}>
+              {isPending && <Loader2 className="w-4 h-4 animate-spin mr-1.5" />}
+              Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Paybills & Tills dialog */}
+      <Dialog open={accountsFor !== null} onOpenChange={(open) => !open && setAccountsFor(null)}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Paybills &amp; Tills — {accountsFor?.code}</DialogTitle>
+            <DialogDescription>
+              Masked payment accounts. Consumer key last 4 characters are visible for verification.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            {loadingAccounts ? (
+              <div className="flex items-center justify-center py-8 text-muted-foreground">
+                <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                Loading accounts...
+              </div>
+            ) : paymentAccounts.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">No payment accounts configured.</p>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Short Code</TableHead>
+                    <TableHead>Reference</TableHead>
+                    <TableHead>Provider</TableHead>
+                    <TableHead>Consumer Key</TableHead>
+                    <TableHead>Default</TableHead>
+                    <TableHead>Active</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {paymentAccounts.map((acct) => (
+                    <TableRow key={`${acct.accountType}-${acct.shortCode}`}>
+                      <TableCell className="font-mono text-xs">{acct.accountType}</TableCell>
+                      <TableCell className="font-mono text-xs">{acct.shortCode}</TableCell>
+                      <TableCell className="text-xs">{acct.accountReference ?? "\u2014"}</TableCell>
+                      <TableCell className="text-xs">{acct.provider}</TableCell>
+                      <TableCell className="font-mono text-xs">{acct.maskedConsumerKey ?? "\u2014"}</TableCell>
+                      <TableCell className="text-xs">{acct.isDefault ? "Yes" : "No"}</TableCell>
+                      <TableCell className="text-xs">{acct.isActive ? "Yes" : "No"}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+
+            <div className="flex items-center gap-3 pt-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5"
+                onClick={handleTestPing}
+                disabled={isPending || paymentAccounts.length === 0}
+              >
+                {isPending && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                Test Ping
+              </Button>
+              {probeResult && (
+                <span className={`text-xs ${probeResult.ok ? "text-emerald-400" : "text-rose-400"}`}>
+                  {probeResult.ok ? "OK" : "FAIL"}: {probeResult.message} ({probeResult.latencyMs}ms)
+                </span>
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAccountsFor(null)}>
+              Close
             </Button>
           </DialogFooter>
         </DialogContent>
