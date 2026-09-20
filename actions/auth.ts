@@ -1,6 +1,6 @@
 "use server";
 
-import type { ApiResponse, LoginData, RefreshTokenResponse } from "@/lib/types/auth";
+import type { ApiResponse, LoginData, RefreshTokenResponse, AccountTypeResponse } from "@/lib/types/auth";
 import { apiFetch } from "@/lib/apiClient";
 
 export async function loginAction(credentials: {
@@ -10,6 +10,33 @@ export async function loginAction(credentials: {
   return apiFetch<LoginData & { refreshToken?: string }>("/auth/userlogin", {
     method: "POST",
     body: credentials,
+    auth: "public",
+    cache: "no-store",
+  });
+}
+
+export async function determineAccountTypeAction(username: string, password: string): Promise<ApiResponse<AccountTypeResponse>> {
+  return apiFetch<AccountTypeResponse>("/auth/account-type", {
+    method: "POST",
+    body: { username, password },
+    auth: "public",
+    cache: "no-store",
+  });
+}
+
+export async function sendSysAdminOtpAction(username: string, password: string): Promise<ApiResponse<null>> {
+  return apiFetch<null>("/auth/sysadminlogin", {
+    method: "POST",
+    body: { username, password },
+    auth: "public",
+    cache: "no-store",
+  });
+}
+
+export async function verifySysAdminOtpAction(username: string, otp: string): Promise<ApiResponse<LoginData & { refreshToken?: string }>> {
+  return apiFetch<LoginData & { refreshToken?: string }>("/auth/sysadminlogin/verify", {
+    method: "POST",
+    body: { username, otp },
     auth: "public",
     cache: "no-store",
   });
