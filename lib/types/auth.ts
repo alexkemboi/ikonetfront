@@ -43,6 +43,10 @@ export type LoginResponse = ApiResponse<{
   expiresIn?: number;
 }>;
 
+export type AccountTypeResponse = {
+  accountType: "CUSTOMER" | "SYSADMIN" | "INVALID";
+};
+
 /**
  * Refresh-token success payload. The backend keys refresh off the Bearer
  * access JWT (`Authorization: Bearer <oldJwt>`) and replies `{ token }`.
