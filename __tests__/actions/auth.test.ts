@@ -6,9 +6,17 @@ import {
   loginFixture,
   refreshTokenFixture,
   logoutFixture,
+  accountTypeFixture,
   errorEnvelope,
 } from "@/contracts/catalog";
-import { loginAction, refreshAccessToken, logoutAction } from "@/actions/auth";
+import {
+  loginAction,
+  refreshAccessToken,
+  logoutAction,
+  determineAccountTypeAction,
+  sendSysAdminOtpAction,
+  verifySysAdminOtpAction,
+} from "@/actions/auth";
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -27,6 +35,90 @@ describe("loginAction", () => {
     expect(result.success).toBe(true);
     expect(result.data?.token).toBe(loginFixture().data?.token);
     expect(result.data?.role).toBe("SYSADMIN");
+  });
+});
+
+describe("determineAccountTypeAction", () => {
+  it("POSTs /auth/account-type with username and password and returns accountType", async () => {
+    server.use(
+      http.post(`${API_PREFIX}/auth/account-type`, ({ request }) => {
+        expect(request.headers.get("authorization")).toBeNull();
+        return HttpResponse.json(accountTypeFixture({ accountType: "SYSADMIN" }), { status: 200 });
+      })
+    );
+
+    const result = await determineAccountTypeAction("admin", "secret");
+    expect(result.success).toBe(true);
+    expect(result.data?.accountType).toBe("SYSADMIN");
+  });
+
+  it("returns INVALID when the backend reports it", async () => {
+    server.use(
+      http.post(`${API_PREFIX}/auth/account-type`, () =>
+        HttpResponse.json(accountTypeFixture({ accountType: "INVALID" }), { status: 200 })
+      )
+    );
+
+    const result = await determineAccountTypeAction("nobody", "secret");
+    expect(result.success).toBe(true);
+    expect(result.data?.accountType).toBe("INVALID");
+  });
+
+  it("surfaces backend errors", async () => {
+    server.use(
+      http.post(`${API_PREFIX}/auth/account-type`, () =>
+        HttpResponse.json(errorEnvelope(400, "Bad request"), { status: 400 })
+      )
+    );
+
+    const result = await determineAccountTypeAction("admin", "");
+    expect(result.success).toBe(false);
+    expect(result.status).toBe(400);
+  });
+});
+
+describe("sendSysAdminOtpAction", () => {
+  it("POSTs /auth/sysadminlogin without Authorization header", async () => {
+    server.use(
+      http.post(`${API_PREFIX}/auth/sysadminlogin`, ({ request }) => {
+        expect(request.headers.get("authorization")).toBeNull();
+        return HttpResponse.json(
+          { status: 200, success: true, message: "OTP sent to registered email", data: null },
+          { status: 200 }
+        );
+      })
+    );
+
+    const result = await sendSysAdminOtpAction("admin", "secret");
+    expect(result.success).toBe(true);
+    expect(result.message).toBe("OTP sent to registered email");
+  });
+});
+
+describe("verifySysAdminOtpAction", () => {
+  it("POSTs /auth/sysadminlogin/verify and returns the backend JWT", async () => {
+    server.use(
+      http.post(`${API_PREFIX}/auth/sysadminlogin/verify`, ({ request }) => {
+        expect(request.headers.get("authorization")).toBeNull();
+        return HttpResponse.json(loginFixture(), { status: 200 });
+      })
+    );
+
+    const result = await verifySysAdminOtpAction("admin", "123456");
+    expect(result.success).toBe(true);
+    expect(result.data?.token).toBe(loginFixture().data?.token);
+  });
+
+  it("returns null-like failure envelope when the backend rejects the OTP", async () => {
+    server.use(
+      http.post(`${API_PREFIX}/auth/sysadminlogin/verify`, () =>
+        HttpResponse.json(errorEnvelope(401, "Invalid or expired OTP"), { status: 401 })
+      )
+    );
+
+    const result = await verifySysAdminOtpAction("admin", "000000");
+    expect(result.success).toBe(false);
+    expect(result.status).toBe(401);
   });
 });
 
