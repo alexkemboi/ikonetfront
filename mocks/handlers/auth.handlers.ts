@@ -1,12 +1,22 @@
 import { http, HttpResponse } from "msw";
 import { API_PREFIX, requireAuth } from "./auth-guard";
-import { loginFixture, refreshTokenFixture, logoutFixture } from "@/contracts/catalog";
+import {
+  loginFixture,
+  refreshTokenFixture,
+  logoutFixture,
+  accountTypeFixture,
+} from "@/contracts/catalog";
 
 export const authHandlers = [
   // Public: no Authorization expected.
   http.post(`${API_PREFIX}/auth/userlogin`, () =>
     HttpResponse.json(loginFixture(), { status: 200 })
   ),
+
+  http.post(`${API_PREFIX}/auth/account-type`, () => {
+    // Default to CUSTOMER unless overridden in tests via MSW handler overrides.
+    return HttpResponse.json(accountTypeFixture(), { status: 200 });
+  }),
 
   http.post(`${API_PREFIX}/auth/forgot-password`, () =>
     HttpResponse.json(

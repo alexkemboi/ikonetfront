@@ -95,6 +95,17 @@ export function loginFixture(overrides: Partial<LoginFixtureData> = {}): ApiResp
   );
 }
 
+export function accountTypeFixture(overrides: { accountType?: "CUSTOMER" | "SYSADMIN" | "INVALID" } = {}): ApiResponse<{
+  accountType: "CUSTOMER" | "SYSADMIN" | "INVALID";
+}> {
+  return envelope(
+    {
+      accountType: overrides.accountType ?? "CUSTOMER",
+    },
+    "Account type resolved"
+  );
+}
+
 export function refreshTokenFixture(): ApiResponse<{ token: string }> {
   return envelope({ token: buildRoleJwt("SYSADMIN") }, "Token refreshed");
 }
@@ -709,6 +720,15 @@ export const authInteractions: Interaction[] = [
     auth: "public",
     status: 200,
     responseBody: loginFixture(),
+  },
+  {
+    name: "POST /api/v1/auth/account-type",
+    method: "POST",
+    path: "/api/v1/auth/account-type",
+    auth: "public",
+    status: 200,
+    requestBody: { username: "admin", password: "secret" },
+    responseBody: accountTypeFixture({ accountType: "SYSADMIN" }),
   },
   {
     name: "POST /api/v1/auth/refresh-token with Bearer old JWT",

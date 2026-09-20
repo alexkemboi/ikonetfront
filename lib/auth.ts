@@ -79,8 +79,42 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         username: { label: "Username", type: "text" },
         password: { label: "Password", type: "password" },
       },
-      async authorize(credentials) {
+      async authorize(credentials, _request) {
         if (!credentials?.username || !credentials?.password) return null;
+
+        // Sysadmin OTP-verified path: the client already verified the OTP via
+        // the /auth/sysadminlogin/verify endpoint and forwards the resulting
+        // JWT as `sysadminToken`. Skip the normal userlogin call and build the
+        // session directly from the verified token.
+        if (credentials.password === "sysadmin-otp-verified") {
+          const sysadminToken = (credentials as Record<string, unknown>).sysadminToken as string | undefined;
+          if (!sysadminToken) return null;
+
+          const decoded = await parseBackendJwt(sysadminToken, getJwtSecret());
+          if (!decoded) return null;
+
+          const fname = typeof decoded?.fname === "string" ? decoded.fname : String(credentials.username);
+
+          return {
+            id: decoded?.userId || decoded?.sub || String(credentials.username),
+            userId: decoded?.userId,
+            username: String(credentials.username),
+            email: typeof decoded?.email === "string" ? decoded.email : "",
+            role: typeof decoded?.role === "string" ? decoded.role : "SYSADMIN",
+            fname,
+            middleName: typeof decoded?.middleName === "string" ? decoded.middleName : undefined,
+            otherName: typeof decoded?.otherName === "string" ? decoded.otherName : undefined,
+            phoneNumber: typeof decoded?.phoneNumber === "string" ? decoded.phoneNumber : undefined,
+            apiToken: sysadminToken,
+            refreshToken: undefined,
+            expiresAt: tokenExpiryMs(sysadminToken) ?? Date.now() + 2 * 60 * 60 * 1000,
+            regionId: typeof decoded?.regionId === "number" ? decoded.regionId : undefined,
+            stationId: typeof decoded?.stationId === "number" ? decoded.stationId : undefined,
+            locationId: typeof decoded?.locationId === "number" ? decoded.locationId : undefined,
+            investorScope: typeof decoded?.investorScope === "string" ? decoded.investorScope : undefined,
+            companyScope: typeof decoded?.companyScope === "string" ? decoded.companyScope : undefined,
+          };
+        }
 
         try {
           const res = await fetch(buildApiUrl("/auth/userlogin"), {
