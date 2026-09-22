@@ -103,8 +103,8 @@ export default function CheckoutModal({ package: pkg, pendingPurchase: initialPe
   const handleConfirm = async () => {
     if (!pkg || !hasUsableMac || !phoneNumber.trim()) return;
     setIsProcessing(true);
-    try {
-      const result = await initiatePublicHotspotPayment({ packageId: pkg.idxno, phone: phoneNumber.trim(), paymentMode: "mpesa", macAddress, clientMac: requestClientMac, clientIp: clientIp?.trim() || "" });
+try {
+        const result = await initiatePublicHotspotPayment({ packageId: pkg.idxno, phone: phoneNumber.trim(), paymentMode: "mpesa", macAddress, clientMac: requestClientMac, clientIp: clientIp?.trim() || "", companyCode: companyCode ?? undefined });
       if (!result.success || !result.data?.voucherCode) throw new Error(result.message || "Failed to start payment tracking. Please try again.");
       if (result.data.companyId) onCompanyResolved?.(result.data.companyId);
       const nextPurchase: PendingHotspotPurchase = { sessionId: result.data.sessionId, voucherCode: result.data.voucherCode, startedAt: Date.now() };
