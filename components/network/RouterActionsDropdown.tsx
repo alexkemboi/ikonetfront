@@ -19,6 +19,7 @@ import {
   Copy,
   Monitor,
   Gift,
+  Pencil,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -26,6 +27,7 @@ import {
   deleteNetworkDevice,
   allocateTunnel,
   deallocateTunnel,
+  updateRouter,
 } from "@/actions/network";
 import { withStepUp } from "@/lib/stepUp";
 import { RouterTelemetryDrawer } from "./RouterTelemetryDrawer";
@@ -35,6 +37,16 @@ import type {
   DiagnoseDetails,
   RouterAction,
 } from "@/lib/types/network-router";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 
 export interface RouterActionsRow {
   /** network_device.id (string) — used for interfaces + delete + tunnels. */
@@ -91,6 +103,9 @@ export function RouterActionsDropdown({
   const [busyAction, setBusyAction] = useState<RouterAction | "DELETE" | "TUNNEL_REGEN" | null>(null);
   const [copied, setCopied] = useState(false);
   const [compensateOpen, setCompensateOpen] = useState(false);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [friendlyName, setFriendlyName] = useState(router.name);
+  const [renameBusy, setRenameBusy] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const didClampRef = useRef(false);
@@ -273,6 +288,43 @@ export function RouterActionsDropdown({
     }
   };
 
+  const handleSaveRename = async () => {
+    if (!Number.isFinite(actionRouterId) || actionRouterId <= 0) {
+      toast.error("No backend router id to update.");
+      return;
+    }
+    if (friendlyName.trim() === router.name) {
+      setEditModalOpen(false);
+      return;
+    }
+    setRenameBusy(true);
+    try {
+      // Use the existing updateRouter action with only routerName
+      const res = await updateRouter(actionRouterId, {
+        routerName: friendlyName.trim(),
+        serviceMode: "",
+        requiresAuthentication: false,
+        routerUsername: "",
+        routerPassword: "",
+        hotspotEnabled: false,
+        pppoeEnabled: false,
+        freeInternet: false,
+        monitoringEnabled: false,
+      });
+      if (res.success) {
+        toast.success(`Router renamed to "${friendlyName.trim()}"`);
+        routerNav.refresh(); // Re-fetch the routers table
+      } else {
+        toast.error(res.message || "Failed to rename router");
+      }
+    } catch {
+      toast.error("Unexpected error renaming router");
+    } finally {
+      setRenameBusy(false);
+      setEditModalOpen(false);
+    }
+  };
+
   const copyHostPort = async () => {
     if (!router.winboxTunnelAddress) {
       toast.error("No WinBox tunnel allocated for this router yet.");
@@ -361,6 +413,18 @@ export function RouterActionsDropdown({
       >
         <Users className="h-4 w-4 text-amber-500" />
         Active Subscriber Sessions
+      </button>
+
+      <div className="h-px bg-border my-1" />
+
+      <button
+        type="button"
+        role="menuitem"
+        onClick={() => { setFriendlyName(router.name); setEditModalOpen(true); }}
+        className="flex items-center w-full px-4 py-2.5 hover:bg-muted hover:text-foreground gap-2.5 transition text-left"
+      >
+        <Pencil className="h-4 w-4 text-amber-500" />
+        <span>Edit / Rename Router</span>
       </button>
 
       <div className="h-px bg-border my-1" />
@@ -561,6 +625,46 @@ export function RouterActionsDropdown({
           targetLabel={router.name}
         />
       )}
+
+      <Dialog open={editModalOpen} onOpenChange={setEditModalOpen}>
+        <DialogContent className="bg-zinc-900 border-zinc-800 text-white sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Edit Router Identity</DialogTitle>
+            <DialogDescription className="text-zinc-400 text-xs">
+              Update the human-friendly display name for this router across all dashboards.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-3">
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-zinc-300">Friendly Display Name</label>
+              <Input
+                value={friendlyName}
+                onChange={(e) => setFriendlyName(e.target.value)}
+                placeholder="e.g. Adrinold Ukunda B"
+                className="bg-black/50 border-zinc-700 text-white text-sm"
+              />
+              <p className="text-[11px] text-zinc-500">
+                Machine Asset Tag: <span className="font-mono text-zinc-400">{router.name}</span>
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="ghost" size="sm" onClick={() => setEditModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              className="bg-amber-500 hover:bg-amber-600 text-black font-semibold text-xs"
+              onClick={handleSaveRename}
+              disabled={renameBusy || friendlyName.trim() === router.name}
+            >
+              {renameBusy ? "Saving..." : "Save Changes"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
