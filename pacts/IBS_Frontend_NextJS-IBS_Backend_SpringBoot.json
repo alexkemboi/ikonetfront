@@ -121,6 +121,100 @@
       }
     },
     {
+      "description": "POST /api/v1/auth/account-type",
+      "providerStates": [
+        {
+          "name": "seed for POST /api/v1/auth/account-type"
+        }
+      ],
+      "request": {
+        "body": {
+          "password": "secret",
+          "username": "admin"
+        },
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "method": "POST",
+        "path": "/api/v1/auth/account-type"
+      },
+      "response": {
+        "body": {
+          "data": {
+            "accountType": "SYSADMIN"
+          },
+          "message": "Account type resolved",
+          "status": 200,
+          "success": true,
+          "timestamp": "2026-08-26T00:00:00.000Z"
+        },
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "matchingRules": {
+          "body": {
+            "$": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.accountType": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.message": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.status": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.success": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.timestamp": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            }
+          }
+        },
+        "status": 200
+      }
+    },
+    {
       "description": "POST /api/v1/auth/refresh-token with Bearer old JWT",
       "providerStates": [
         {
@@ -888,6 +982,691 @@
                 {
                   "match": "type"
                 },
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.message": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.status": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.success": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.timestamp": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            }
+          }
+        },
+        "status": 200
+      }
+    },
+    {
+      "description": "POST /api/v1/auth/sysadminlogin (direct bypass)",
+      "providerStates": [
+        {
+          "name": "seed for POST /api/v1/auth/sysadminlogin (direct bypass)"
+        }
+      ],
+      "request": {
+        "body": {
+          "password": "secret",
+          "username": "nicanornicolas"
+        },
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "method": "POST",
+        "path": "/api/v1/auth/sysadminlogin"
+      },
+      "response": {
+        "body": {
+          "data": {
+            "role": "SYSADMIN",
+            "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwicm9sZSI6IlNZU0FETUlOIiwiaWF0IjoxNzAwMDAwMDAwfQ.mock-signature",
+            "username": "nicanornicolas"
+          },
+          "message": "SysAdmin login successful",
+          "status": 200,
+          "success": true,
+          "timestamp": "2026-08-26T00:00:00.000Z"
+        },
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "matchingRules": {
+          "body": {
+            "$": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.role": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.token": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.username": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.message": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.status": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.success": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.timestamp": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            }
+          }
+        },
+        "status": 200
+      }
+    },
+    {
+      "description": "POST /api/v1/auth/refresh-token with Bearer old JWT",
+      "providerStates": [
+        {
+          "name": "seed for POST /api/v1/auth/refresh-token with Bearer old JWT"
+        }
+      ],
+      "request": {
+        "body": {},
+        "headers": {
+          "Authorization": "Bearer test-access-token",
+          "Content-Type": "application/json"
+        },
+        "method": "POST",
+        "path": "/api/v1/auth/refresh-token"
+      },
+      "response": {
+        "body": {
+          "data": {
+            "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwicm9sZSI6IlNZU0FETUlOIiwiaWF0IjoxNzAwMDAwMDAwfQ.mock-signature"
+          },
+          "message": "Token refreshed",
+          "status": 200,
+          "success": true,
+          "timestamp": "2026-08-26T00:00:00.000Z"
+        },
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "matchingRules": {
+          "body": {
+            "$": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.token": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.message": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.status": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.success": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.timestamp": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            }
+          }
+        },
+        "status": 200
+      }
+    },
+    {
+      "description": "POST /api/v1/auth/logout",
+      "providerStates": [
+        {
+          "name": "seed for POST /api/v1/auth/logout"
+        }
+      ],
+      "request": {
+        "headers": {
+          "Authorization": "Bearer test-access-token",
+          "Content-Type": "application/json"
+        },
+        "method": "POST",
+        "path": "/api/v1/auth/logout"
+      },
+      "response": {
+        "body": {
+          "data": {
+            "message": "Logged out successfully"
+          },
+          "message": "Logged out successfully",
+          "status": 200,
+          "success": true,
+          "timestamp": "2026-08-26T00:00:00.000Z"
+        },
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "matchingRules": {
+          "body": {
+            "$": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.message": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.message": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.status": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.success": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.timestamp": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            }
+          }
+        },
+        "status": 200
+      }
+    },
+    {
+      "description": "GET /api/v1/hotspot/packages",
+      "providerStates": [
+        {
+          "name": "seed for GET /api/v1/hotspot/packages"
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/hotspot/packages"
+      },
+      "response": {
+        "body": {
+          "data": [
+            {
+              "activeStatus": true,
+              "bandwidthType": "SHARED",
+              "idxno": 1,
+              "packageCategory": "HOTSPOT",
+              "packageName": "Home Hotspot 10Mbps",
+              "price": 1500,
+              "rateLimit": "10M/5M",
+              "speedDownload": 10,
+              "speedUpload": 5,
+              "validityType": "MONTHLY",
+              "validityValue": 30
+            }
+          ],
+          "message": "Active packages retrieved successfully",
+          "status": 200,
+          "success": true,
+          "timestamp": "2026-08-26T00:00:00.000Z"
+        },
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "matchingRules": {
+          "body": {
+            "$": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type",
+                  "min": 1
+                }
+              ]
+            },
+            "$.data[*]": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data[*].activeStatus": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data[*].bandwidthType": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data[*].idxno": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data[*].packageCategory": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data[*].packageName": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data[*].price": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data[*].rateLimit": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data[*].speedDownload": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data[*].speedUpload": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data[*].validityType": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data[*].validityValue": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.message": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.status": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.success": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.timestamp": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            }
+          }
+        },
+        "status": 200
+      }
+    },
+    {
+      "description": "GET /api/v1/hotspot/packages?category=TV",
+      "providerStates": [
+        {
+          "name": "seed for GET /api/v1/hotspot/packages?category=TV"
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/hotspot/packages",
+        "query": {
+          "category": [
+            "TV"
+          ]
+        }
+      },
+      "response": {
+        "body": {
+          "data": [
+            {
+              "activeStatus": true,
+              "bandwidthType": "SHARED",
+              "idxno": 7,
+              "maxDevices": 1,
+              "packageCategory": "TV",
+              "packageName": "TV 24H",
+              "price": 150,
+              "rateLimit": "15M/15M",
+              "speedDownload": 15,
+              "speedUpload": 15,
+              "validityType": "HOURS",
+              "validityValue": 24
+            }
+          ],
+          "message": "Active packages retrieved successfully",
+          "status": 200,
+          "success": true,
+          "timestamp": "2026-08-26T00:00:00.000Z"
+        },
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "matchingRules": {
+          "body": {
+            "$": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type",
+                  "min": 1
+                }
+              ]
+            },
+            "$.data[*]": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data[*].activeStatus": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data[*].bandwidthType": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data[*].idxno": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data[*].maxDevices": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data[*].packageCategory": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data[*].packageName": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data[*].price": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data[*].rateLimit": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data[*].speedDownload": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data[*].speedUpload": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data[*].validityType": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data[*].validityValue": {
+              "combine": "AND",
+              "matchers": [
                 {
                   "match": "type"
                 }
@@ -5015,14 +5794,21 @@
           "data": {
             "content": [
               {
-                "ipAddress": "172.16.0.11",
-                "lastSeen": "2026-08-26T07:59:00+03:00",
-                "macAddress": "32:A2:F1:9C:4D:02",
-                "routerName": "RTR-BDK-MSA-A",
+                "bytesIn": 777265,
+                "bytesOut": 6228594,
+                "expiresAt": "2026-09-15T18:00:00+03:00",
+                "ipAddress": "10.50.50.254",
+                "lastSeen": "2026-09-15T11:14:42+03:00",
+                "macAddress": "78:F2:38:8C:D1:BC",
+                "mpesaReceipt": "UIDAC6EEVC",
+                "nasIp": "10.8.1.5",
+                "routerName": "RTR-BDK-A",
                 "serviceType": "HOTSPOT",
-                "stationName": "ADRNOLDNETWORKS",
+                "stationName": "Mombasa Central",
                 "status": "ONLINE",
-                "username": "A2085"
+                "subscriberPhone": "254790721501",
+                "username": "78:F2:38:8C:D1:BC",
+                "voucher": "FAA5AF0B"
               }
             ],
             "empty": false,
@@ -5094,6 +5880,30 @@
                 }
               ]
             },
+            "$.data.content[*].bytesIn": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.content[*].bytesOut": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.content[*].expiresAt": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
             "$.data.content[*].ipAddress": {
               "combine": "AND",
               "matchers": [
@@ -5111,6 +5921,22 @@
               ]
             },
             "$.data.content[*].macAddress": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.content[*].mpesaReceipt": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.content[*].nasIp": {
               "combine": "AND",
               "matchers": [
                 {
@@ -5150,7 +5976,23 @@
                 }
               ]
             },
+            "$.data.content[*].subscriberPhone": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
             "$.data.content[*].username": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.content[*].voucher": {
               "combine": "AND",
               "matchers": [
                 {
