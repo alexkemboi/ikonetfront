@@ -2,14 +2,6 @@
 
 import { bulkEmailSchema, type BulkEmailValues } from "@/lib/validation/bulk-email";
 
-export type AudienceSegment = {
-  id: string;
-  label: string;
-  description: string;
-  count: number;
-  icon: string;
-};
-
 export type EmailTemplate = {
   id: string;
   name: string;
@@ -17,17 +9,8 @@ export type EmailTemplate = {
   body: string;
 };
 
-// Placeholder data. Swap for `apiFetch<AudienceSegment[]>("/communications/email/audience-segments")`
-// once that endpoint ships — the read actions below keep the same return shape either way.
-const PLACEHOLDER_SEGMENTS: AudienceSegment[] = [
-  { id: "expiring-7d", label: "Expiring in 7 days", description: "Subscriptions renewing within the next week.", count: 0, icon: "clock" },
-  { id: "expired", label: "Expired subscribers", description: "Accounts past their renewal date.", count: 0, icon: "bell" },
-  { id: "all-active", label: "All active subscribers", description: "Every customer with an active connection.", count: 0, icon: "wifi" },
-  { id: "hotspot-users", label: "Hotspot users", description: "Customers who purchased a hotspot package.", count: 0, icon: "radio" },
-  { id: "suspended", label: "Suspended accounts", description: "Accounts currently suspended for non-payment.", count: 0, icon: "user-x" },
-  { id: "all-customers", label: "All customers", description: "Every customer on record, regardless of status.", count: 0, icon: "users" },
-];
-
+// Placeholder data. Swap for `apiFetch<EmailTemplate[]>("/communications/email/templates")`
+// once that endpoint ships — the read action below keeps the same return shape either way.
 const PLACEHOLDER_TEMPLATES: EmailTemplate[] = [
   { id: "blank", name: "Blank", subject: "", body: "" },
   {
@@ -44,10 +27,6 @@ const PLACEHOLDER_TEMPLATES: EmailTemplate[] = [
   },
 ];
 
-export async function getAudienceSegments(): Promise<{ success: boolean; data: AudienceSegment[] }> {
-  return { success: true, data: PLACEHOLDER_SEGMENTS };
-}
-
 export async function getEmailTemplates(): Promise<{ success: boolean; data: EmailTemplate[] }> {
   return { success: true, data: PLACEHOLDER_TEMPLATES };
 }
@@ -60,7 +39,8 @@ export async function sendBulkEmailAction(
   } catch (error) {
     return { success: false, message: (error as Error).message || "Check the form and try again." };
   }
-  // TODO: POST the validated values to /communications/email/send via apiFetch,
+  // TODO: POST the validated values to /communications/{channel}/send via apiFetch,
   // then revalidatePath("/communications/bulk-email") on success.
-  return { success: false, message: "Bulk email sending is not available yet. No email was sent." };
+  const channelLabel = values.channel === "SMS" ? "SMS" : "email";
+  return { success: false, message: `Bulk ${channelLabel} sending is not available yet. No message was sent.` };
 }

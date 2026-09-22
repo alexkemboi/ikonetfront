@@ -1,19 +1,23 @@
 import BulkEmailWizard from "./_components/BulkEmailWizard";
-import { getEmailTemplates, getAudienceSegments } from "@/actions/communications";
+import { getEmailTemplates } from "@/actions/communications";
+import { getCustomers } from "@/actions/customer";
+import { getSystemUsers } from "@/actions/system";
 
 export const metadata = { title: "Bulk Email — Beesmart" };
 
 export default async function BulkEmailPage() {
-  const [templatesResult, segmentsResult] = await Promise.all([
+  const [templatesResult, customersResult, systemUsers] = await Promise.all([
     getEmailTemplates(),
-    getAudienceSegments(),
+    getCustomers(0, 50),
+    getSystemUsers(),
   ]);
 
   return (
-    <div className="p-6 pb-16 mb-6 h-full">
+    <div className="p-6 pb-16 h-full">
       <BulkEmailWizard
-        segments={segmentsResult.data}
         templates={templatesResult.data}
+        customers={customersResult.data?.content ?? []}
+        systemUsers={systemUsers}
       />
     </div>
   );

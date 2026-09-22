@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import {
   Select,
@@ -17,14 +18,12 @@ import {
 } from "@/components/ui/select";
 import {
   Users,
-  Wifi,
-  Radio,
-  Clock,
-  Bell,
-  UserX,
+  UserCog,
   Mail,
+  MessageSquare,
   Eye,
   Send,
+  Search,
   CheckCircle2,
   ChevronRight,
   ChevronLeft,
@@ -34,29 +33,58 @@ import {
   Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { AudienceSegment, EmailTemplate } from "@/actions/communications";
+import type { EmailTemplate } from "@/actions/communications";
 import { sendBulkEmailAction } from "@/actions/communications";
-import { bulkEmailSchema, BULK_EMAIL_INITIAL_VALUES, type BulkEmailValues } from "@/lib/validation/bulk-email";
+import type { Customer } from "@/lib/types/customer";
+import type { ApiRoleUser } from "@/lib/types/roles";
+import {
+  bulkEmailSchema,
+  BULK_EMAIL_INITIAL_VALUES,
+  type BulkEmailValues,
+  type NotificationChannel,
+  type AudienceSource,
+} from "@/lib/validation/bulk-email";
 
 interface Props {
-  segments: AudienceSegment[];
   templates: EmailTemplate[];
+  customers: Customer[];
+  systemUsers: ApiRoleUser[];
 }
 
-const ICON_MAP: Record<string, React.ElementType> = {
-  users: Users,
-  wifi: Wifi,
-  radio: Radio,
-  clock: Clock,
-  bell: Bell,
-  "user-x": UserX,
+type Recipient = {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
 };
+
+function customerToRecipient(c: Customer): Recipient {
+  return { id: String(c.userIdxno), name: c.fullName || c.username, email: c.email, phone: c.phoneNumber };
+}
+
+function userToRecipient(u: ApiRoleUser): Recipient {
+  return { id: String(u.idxno), name: u.fullName || u.username, email: u.email, phone: u.phoneNumber };
+}
+
+function hasContactForChannel(recipient: Recipient, channel: NotificationChannel): boolean {
+  return channel === "EMAIL" ? !!recipient.email : !!recipient.phone;
+}
 
 const STEPS = [
   { id: 1, label: "Audience", icon: Users },
   { id: 2, label: "Compose", icon: Mail },
   { id: 3, label: "Preview", icon: Eye },
   { id: 4, label: "Send", icon: Send },
+];
+
+const CHANNEL_OPTIONS: { id: NotificationChannel; label: string; icon: React.ElementType }[] = [
+  { id: "EMAIL", label: "Email", icon: Mail },
+  { id: "SMS", label: "SMS", icon: MessageSquare },
+];
+
+const SOURCE_OPTIONS: { id: AudienceSource; label: string; icon: React.ElementType }[] = [
+  { id: "customers", label: "Customers", icon: Users },
+  { id: "users", label: "System Users", icon: UserCog },
 ];
 
 function StepIndicator({ current }: { current: number }) {
@@ -106,53 +134,72 @@ function StepIndicator({ current }: { current: number }) {
   );
 }
 
-function SegmentCard({
-  segment,
-  selected,
-  onSelect,
+function ToggleGroup<T extends string>({
+  options,
+  value,
+  onChange,
+  size = "default",
 }: {
-  segment: AudienceSegment;
-  selected: boolean;
-  onSelect: () => void;
+  options: { id: T; label: string; icon: React.ElementType }[];
+  value: T;
+  onChange: (id: T) => void;
+  size?: "default" | "sm";
 }) {
-  const Icon = ICON_MAP[segment.icon] ?? Users;
   return (
-    <button
-      type="button"
-      onClick={onSelect}
-      className={`w-full text-left p-4 rounded-xl border-2 transition-all hover:shadow-sm ${
-        selected
-          ? "border-primary bg-primary/5 shadow-sm"
-          : "border-border bg-card hover:border-primary/40"
-      }`}
+    <div className="flex gap-2">
+      {options.map((opt) => {
+        const Icon = opt.icon;
+        const selected = value === opt.id;
+        return (
+          <button
+            key={opt.id}
+            type="button"
+            onClick={() => onChange(opt.id)}
+            className={cn(
+              "flex items-center gap-1.5 rounded-lg border font-medium transition-all",
+              size === "sm" ? "px-3 py-1.5 text-xs" : "px-4 py-2.5 text-sm",
+              selected
+                ? "border-primary bg-primary/5 text-primary"
+                : "border-border text-muted-foreground hover:bg-muted/50"
+            )}
+          >
+            <Icon className={size === "sm" ? "w-3.5 h-3.5" : "w-4 h-4"} />
+            {opt.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function RecipientRow({
+  recipient,
+  channel,
+  selected,
+  onToggle,
+}: {
+  recipient: Recipient;
+  channel: NotificationChannel;
+  selected: boolean;
+  onToggle: () => void;
+}) {
+  const contact = channel === "EMAIL" ? recipient.email : recipient.phone;
+  const reachable = !!contact;
+  return (
+    <label
+      className={cn(
+        "flex items-center gap-3 px-4 py-2.5 transition-colors",
+        reachable ? "cursor-pointer hover:bg-muted/40" : "opacity-50 cursor-not-allowed"
+      )}
     >
-      <div className="flex items-start gap-3">
-        <div
-          className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
-            selected ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
-          }`}
-        >
-          <Icon className="w-4.5 h-4.5" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-sm font-semibold text-foreground">
-              {segment.label}
-            </span>
-            <span
-              className={`text-sm font-bold tabular-nums ${
-                selected ? "text-primary" : "text-foreground"
-              }`}
-            >
-              {segment.count.toLocaleString()}
-            </span>
-          </div>
-          <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
-            {segment.description}
-          </p>
-        </div>
+      <Checkbox checked={selected} disabled={!reachable} onCheckedChange={onToggle} />
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium text-foreground truncate">{recipient.name}</p>
+        <p className="text-xs text-muted-foreground truncate">
+          {reachable ? contact : `No ${channel === "EMAIL" ? "email" : "phone number"} on file`}
+        </p>
       </div>
-    </button>
+    </label>
   );
 }
 
@@ -160,12 +207,12 @@ function EmailPreview({
   subject,
   body,
   recipientCount,
-  segmentLabel,
+  audienceLabel,
 }: {
   subject: string;
   body: string;
   recipientCount: number;
-  segmentLabel: string;
+  audienceLabel: string;
 }) {
   return (
     <div className="space-y-4">
@@ -173,7 +220,7 @@ function EmailPreview({
         <div className="flex items-center gap-2 text-sm">
           <span className="text-muted-foreground">To:</span>
           <Badge variant="outline" className="text-xs">
-            {segmentLabel}
+            {audienceLabel}
           </Badge>
           <span className="text-muted-foreground text-xs">
             ({recipientCount.toLocaleString()} recipients)
@@ -214,9 +261,45 @@ function EmailPreview({
   );
 }
 
-export default function BulkEmailWizard({ segments, templates }: Props) {
+function SmsPreview({ body, recipientCount, audienceLabel }: { body: string; recipientCount: number; audienceLabel: string }) {
+  const segments = body.length === 0 ? 0 : Math.ceil(body.length / 160);
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/40 border border-border">
+        <div className="flex items-center gap-2 text-sm">
+          <span className="text-muted-foreground">To:</span>
+          <Badge variant="outline" className="text-xs">
+            {audienceLabel}
+          </Badge>
+          <span className="text-muted-foreground text-xs">
+            ({recipientCount.toLocaleString()} recipients)
+          </span>
+        </div>
+      </div>
+
+      <div className="rounded-xl border border-border bg-white p-5">
+        <div className="max-w-xs ml-auto rounded-2xl rounded-tr-sm bg-primary text-primary-foreground px-4 py-2.5 text-sm whitespace-pre-wrap leading-relaxed">
+          {body || <span className="italic opacity-70">(no message body)</span>}
+        </div>
+        <p className="text-[11px] text-muted-foreground text-right mt-2">
+          {body.length} characters · {segments} SMS segment{segments === 1 ? "" : "s"}
+        </p>
+      </div>
+
+      <div className="flex items-start gap-2 p-3 rounded-lg bg-warning/10 border border-warning/30">
+        <AlertCircle className="w-4 h-4 text-warning shrink-0 mt-0.5" />
+        <p className="text-xs text-warning">
+          Variables like <code className="font-mono bg-warning/15 px-1 rounded">{"{{customer_name}}"}</code> will be replaced with each recipient&apos;s actual details before sending.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+export default function BulkEmailWizard({ templates, customers, systemUsers }: Props) {
   const [step, setStep] = useState(1);
   const [sent, setSent] = useState(false);
+  const [search, setSearch] = useState("");
 
   const formik = useFormik<BulkEmailValues>({
     initialValues: BULK_EMAIL_INITIAL_VALUES,
@@ -233,9 +316,27 @@ export default function BulkEmailWizard({ segments, templates }: Props) {
   });
 
   const { values, errors, touched } = formik;
-  const selectedSegment = segments.find((s) => s.id === values.segmentId);
-  const step1Valid = !!values.segmentId;
-  const step2Valid = !!values.subject.trim() && !!values.body.trim();
+
+  const customerRecipients = customers.map(customerToRecipient);
+  const userRecipients = systemUsers.map(userToRecipient);
+  const sourceRecipients = values.source === "customers" ? customerRecipients : userRecipients;
+  const selectedRecipients = sourceRecipients.filter((r) => values.recipientIds.includes(r.id));
+  const audienceLabel = values.source === "customers" ? "Customers" : "System Users";
+
+  const visibleRecipients = sourceRecipients.filter(
+    (r) => !search.trim() || r.name.toLowerCase().includes(search.trim().toLowerCase())
+  );
+  const reachableVisibleIds = visibleRecipients
+    .filter((r) => hasContactForChannel(r, values.channel))
+    .map((r) => r.id);
+  const allVisibleSelected =
+    reachableVisibleIds.length > 0 && reachableVisibleIds.every((id) => values.recipientIds.includes(id));
+
+  const step1Valid = values.recipientIds.length > 0;
+  const step2Valid =
+    values.channel === "EMAIL"
+      ? !!values.subject.trim() && !!values.body.trim()
+      : !!values.body.trim();
 
   function applyTemplate(templateId: string) {
     const tpl = templates.find((t) => t.id === templateId);
@@ -244,13 +345,46 @@ export default function BulkEmailWizard({ segments, templates }: Props) {
     formik.setFieldValue("body", tpl?.body ?? "");
   }
 
+  function handleChannelChange(channel: NotificationChannel) {
+    formik.setFieldValue("channel", channel);
+    const stillReachable = sourceRecipients
+      .filter((r) => hasContactForChannel(r, channel))
+      .map((r) => r.id);
+    formik.setFieldValue(
+      "recipientIds",
+      values.recipientIds.filter((id) => stillReachable.includes(id))
+    );
+  }
+
+  function handleSourceChange(source: AudienceSource) {
+    formik.setFieldValue("source", source);
+    formik.setFieldValue("recipientIds", []);
+    setSearch("");
+  }
+
+  function toggleRecipient(id: string) {
+    const next = values.recipientIds.includes(id)
+      ? values.recipientIds.filter((r) => r !== id)
+      : [...values.recipientIds, id];
+    formik.setFieldValue("recipientIds", next);
+  }
+
+  function toggleSelectAllVisible() {
+    formik.setFieldValue(
+      "recipientIds",
+      allVisibleSelected
+        ? values.recipientIds.filter((id) => !reachableVisibleIds.includes(id))
+        : Array.from(new Set([...values.recipientIds, ...reachableVisibleIds]))
+    );
+  }
+
   function goBack() {
     setStep((s) => s - 1);
   }
 
   function goNext() {
     if (step === 1 && !step1Valid) {
-      formik.setFieldTouched("segmentId", true);
+      formik.setFieldTouched("recipientIds", true);
       return;
     }
     if (step === 2 && !step2Valid) {
@@ -264,6 +398,7 @@ export default function BulkEmailWizard({ segments, templates }: Props) {
   function startNewCampaign() {
     setSent(false);
     setStep(1);
+    setSearch("");
     formik.resetForm();
   }
 
@@ -275,9 +410,9 @@ export default function BulkEmailWizard({ segments, templates }: Props) {
         </div>
         <h2 className="text-2xl font-normal text-foreground">Campaign Sent!</h2>
         <p className="text-sm text-muted-foreground text-center max-w-xs">
-          Your email has been queued for delivery to{" "}
-          <strong>{selectedSegment?.count.toLocaleString()} recipients</strong> in the{" "}
-          <strong>{selectedSegment?.label}</strong> segment.
+          Your {values.channel === "EMAIL" ? "email" : "SMS"} has been queued for delivery to{" "}
+          <strong>{values.recipientIds.length.toLocaleString()} recipients</strong> in{" "}
+          <strong>{audienceLabel}</strong>.
         </p>
         <Button onClick={startNewCampaign}>Send Another Campaign</Button>
       </div>
@@ -285,7 +420,7 @@ export default function BulkEmailWizard({ segments, templates }: Props) {
   }
 
   return (
-    <form onSubmit={formik.handleSubmit} className="w-full max-w-5xl mx-auto space-y-8 mb-16">
+    <form onSubmit={formik.handleSubmit} className="w-full max-w-5xl mx-auto space-y-8">
       {/* Header */}
       <div>
         <h1 className="text-2xl font-normal text-foreground">Bulk Email</h1>
@@ -302,27 +437,66 @@ export default function BulkEmailWizard({ segments, templates }: Props) {
         <CardContent className="p-8">
           {/* ── Step 1: Audience ── */}
           {step === 1 && (
-            <div className="space-y-4">
+            <div className="space-y-6">
               <div>
-                <h2 className="text-base font-normal text-foreground">
-                  Who will receive this email?
-                </h2>
+                <h2 className="text-base font-normal text-foreground">How should we reach them?</h2>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  Choose a segment. You can refine the audience further with filters in a future release.
+                  Choose a channel, then select recipients individually from customers or system users.
                 </p>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {segments.map((seg) => (
-                  <SegmentCard
-                    key={seg.id}
-                    segment={seg}
-                    selected={values.segmentId === seg.id}
-                    onSelect={() => formik.setFieldValue("segmentId", seg.id)}
+
+              <ToggleGroup options={CHANNEL_OPTIONS} value={values.channel} onChange={handleChannelChange} />
+
+              <Separator />
+
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <ToggleGroup options={SOURCE_OPTIONS} value={values.source} onChange={handleSourceChange} size="sm" />
+                <div className="relative w-full sm:w-56">
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                  <Input
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Search by name"
+                    className="h-8 pl-8 text-xs"
                   />
-                ))}
+                </div>
               </div>
-              {touched.segmentId && errors.segmentId && (
-                <p className="text-xs text-danger">{errors.segmentId}</p>
+
+              <div className="rounded-xl border border-border overflow-hidden">
+                <div className="flex items-center justify-between px-4 py-2 bg-muted/40 border-b border-border">
+                  <label className="flex items-center gap-2 text-xs font-medium text-foreground cursor-pointer">
+                    <Checkbox
+                      checked={allVisibleSelected}
+                      disabled={reachableVisibleIds.length === 0}
+                      onCheckedChange={toggleSelectAllVisible}
+                    />
+                    Select all visible
+                  </label>
+                  <span className="text-xs text-muted-foreground tabular-nums">
+                    {values.recipientIds.length.toLocaleString()} selected
+                  </span>
+                </div>
+                <div className="max-h-72 overflow-y-auto divide-y divide-border">
+                  {visibleRecipients.length === 0 ? (
+                    <p className="px-4 py-6 text-xs text-muted-foreground text-center">
+                      No {audienceLabel.toLowerCase()} found.
+                    </p>
+                  ) : (
+                    visibleRecipients.map((r) => (
+                      <RecipientRow
+                        key={r.id}
+                        recipient={r}
+                        channel={values.channel}
+                        selected={values.recipientIds.includes(r.id)}
+                        onToggle={() => toggleRecipient(r.id)}
+                      />
+                    ))
+                  )}
+                </div>
+              </div>
+
+              {touched.recipientIds && errors.recipientIds && (
+                <p className="text-xs text-danger">{errors.recipientIds as string}</p>
               )}
             </div>
           )}
@@ -331,7 +505,9 @@ export default function BulkEmailWizard({ segments, templates }: Props) {
           {step === 2 && (
             <div className="space-y-5">
               <div>
-                <h2 className="text-base font-normal text-foreground">Compose your email</h2>
+                <h2 className="text-base font-normal text-foreground">
+                  Compose your {values.channel === "EMAIL" ? "email" : "SMS"}
+                </h2>
                 <p className="text-xs text-muted-foreground mt-0.5">
                   Start from a template or write your own. Use{" "}
                   <code className="font-mono bg-muted px-1 rounded text-[11px]">{"{{customer_name}}"}</code>{" "}
@@ -360,20 +536,22 @@ export default function BulkEmailWizard({ segments, templates }: Props) {
 
               <Separator />
 
-              {/* Subject */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-foreground">
-                  Subject line
-                </label>
-                <Input
-                  placeholder="e.g. Your subscription is expiring soon"
-                  className={cn("h-10", touched.subject && errors.subject && "border-danger")}
-                  {...formik.getFieldProps("subject")}
-                />
-                {touched.subject && errors.subject && (
-                  <p className="text-xs text-danger">{errors.subject}</p>
-                )}
-              </div>
+              {/* Subject — email only */}
+              {values.channel === "EMAIL" && (
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-foreground">
+                    Subject line
+                  </label>
+                  <Input
+                    placeholder="e.g. Your subscription is expiring soon"
+                    className={cn("h-10", touched.subject && errors.subject && "border-danger")}
+                    {...formik.getFieldProps("subject")}
+                  />
+                  {touched.subject && errors.subject && (
+                    <p className="text-xs text-danger">{errors.subject}</p>
+                  )}
+                </div>
+              )}
 
               {/* Body */}
               <div className="space-y-1.5">
@@ -382,7 +560,7 @@ export default function BulkEmailWizard({ segments, templates }: Props) {
                   Message body
                 </label>
                 <textarea
-                  rows={12}
+                  rows={values.channel === "EMAIL" ? 12 : 6}
                   placeholder="Write your message here..."
                   className={cn(
                     "w-full rounded-lg border border-input bg-background px-3 py-2.5 text-sm font-sans tabular-nums resize-none focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary placeholder:text-muted-foreground",
@@ -397,7 +575,9 @@ export default function BulkEmailWizard({ segments, templates }: Props) {
                     <span />
                   )}
                   <p className="text-[11px] text-muted-foreground text-right">
-                    {values.body.length} characters
+                    {values.channel === "SMS"
+                      ? `${values.body.length} characters · ${values.body.length === 0 ? 0 : Math.ceil(values.body.length / 160)} SMS segment${Math.ceil(values.body.length / 160) === 1 ? "" : "s"}`
+                      : `${values.body.length} characters`}
                   </p>
                 </div>
               </div>
@@ -410,15 +590,23 @@ export default function BulkEmailWizard({ segments, templates }: Props) {
               <div>
                 <h2 className="text-base font-normal text-foreground">Review before sending</h2>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  This is how your email will appear. Check subject, body, and recipient count carefully.
+                  This is how your {values.channel === "EMAIL" ? "email" : "SMS"} will appear. Check the message and recipient count carefully.
                 </p>
               </div>
-              <EmailPreview
-                subject={values.subject}
-                body={values.body}
-                recipientCount={selectedSegment?.count ?? 0}
-                segmentLabel={selectedSegment?.label ?? ""}
-              />
+              {values.channel === "EMAIL" ? (
+                <EmailPreview
+                  subject={values.subject}
+                  body={values.body}
+                  recipientCount={selectedRecipients.length}
+                  audienceLabel={audienceLabel}
+                />
+              ) : (
+                <SmsPreview
+                  body={values.body}
+                  recipientCount={selectedRecipients.length}
+                  audienceLabel={audienceLabel}
+                />
+              )}
             </div>
           )}
 
@@ -434,8 +622,11 @@ export default function BulkEmailWizard({ segments, templates }: Props) {
 
               <div className="space-y-3">
                 {[
-                  { label: "Audience", value: `${selectedSegment?.label} (${selectedSegment?.count.toLocaleString()} recipients)` },
-                  { label: "Subject", value: values.subject || "(no subject)" },
+                  { label: "Channel", value: values.channel === "EMAIL" ? "Email" : "SMS" },
+                  { label: "Audience", value: `${values.recipientIds.length.toLocaleString()} ${audienceLabel}` },
+                  ...(values.channel === "EMAIL"
+                    ? [{ label: "Subject", value: values.subject || "(no subject)" }]
+                    : []),
                   { label: "Body length", value: `${values.body.length} characters` },
                   { label: "Template", value: templates.find((t) => t.id === values.templateId)?.name ?? "Custom" },
                 ].map(({ label, value }) => (
@@ -449,7 +640,7 @@ export default function BulkEmailWizard({ segments, templates }: Props) {
               <div className="flex items-start gap-2 p-3 rounded-lg bg-danger/10 border border-danger/30">
                 <AlertCircle className="w-4 h-4 text-danger shrink-0 mt-0.5" />
                 <p className="text-xs text-danger">
-                  Sending to <strong>{selectedSegment?.count.toLocaleString()}</strong> customers is irreversible. Ensure your message is accurate and professional before proceeding.
+                  Sending to <strong>{values.recipientIds.length.toLocaleString()}</strong> recipients is irreversible. Ensure your message is accurate and professional before proceeding.
                 </p>
               </div>
             </div>
@@ -458,7 +649,7 @@ export default function BulkEmailWizard({ segments, templates }: Props) {
       </Card>
 
       {/* Navigation */}
-      <div className="flex items-center justify-between mb-16">
+      <div className="flex items-center justify-between">
         <Button
           type="button"
           variant="outline"
