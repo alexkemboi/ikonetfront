@@ -13,7 +13,7 @@ export const metadata = {
 export const dynamic = "force-dynamic"; // Ensure the page is always rendered on the server
 
 interface HotspotPageProps {
-  searchParams: Promise<{ company?: string; router?: string; mac?: string; ip?: string }>;
+  searchParams: Promise<{ company?: string; router?: string; mac?: string; clientMac?: string; ip?: string }>;
 }
 
 export default async function HotspotPage({ searchParams }: HotspotPageProps) {
@@ -27,6 +27,7 @@ export default async function HotspotPage({ searchParams }: HotspotPageProps) {
   // empty IP, which FreeRADIUS/MikroTik cannot match to a physical phone —
   // payment succeeds but the device never gets internet.
   const clientMac = params?.mac?.trim() || "";
+  const redirectClientMac = params?.clientMac?.trim() || "";
   const clientIp = params?.ip?.trim() || "";
 
   const [packagesResponse, tvPackagesResult] = await Promise.all([
@@ -125,6 +126,7 @@ export default async function HotspotPage({ searchParams }: HotspotPageProps) {
             initialTvDevice={{ macAddress: "" }}
             initialCompanyCode={initialCompanyCode}
             clientMac={clientMac}
+            redirectClientMac={redirectClientMac}
             clientIp={clientIp}
           />
         </div>
