@@ -14,8 +14,7 @@ import { signIn } from "next-auth/react";
 import { clearCompanyContextCookie } from "@/lib/companyContextClient";
 import {
   determineAccountTypeAction,
-  sendSysAdminOtpAction,
-  verifySysAdminOtpAction,
+  sysAdminLoginAction,
 } from "@/actions/auth";
 
 const DISMISS_AFTER_MS = 6000;
@@ -77,10 +76,8 @@ const validationSchema = Yup.object({
 // ── Form ───────────────────────────────────────────────────────────────
 export default function LoginForm({ error }: { error?: string }) {
   const [showPassword, setShowPassword] = useState(false);
-  const [otp, setOtp] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDetecting, setIsDetecting] = useState(false);
-  const [isOtpSent, setIsOtpSent] = useState(false);
   const [localError, setLocalError] = useState<string | undefined>(undefined);
   const [accountType, setAccountType] = useState<string | null>(null);
 
@@ -114,18 +111,28 @@ export default function LoginForm({ error }: { error?: string }) {
         }
 
         if (type === "SYSADMIN") {
-          setIsDetecting(false);
+          setIsSubmitting(true);
           try {
-            const otpRes = await sendSysAdminOtpAction(formik.values.username, formik.values.password);
-            if (!otpRes.success) {
-              setLocalError(otpRes.message || "Failed to send OTP. Please try again.");
-              setAccountType(null);
+            const sysRes = await sysAdminLoginAction(formik.values.username, formik.values.password);
+
+            if (!sysRes.success || !sysRes.data?.token) {
+              setLocalError(sysRes.message || "SysAdmin login failed. Please try again.");
+              setIsSubmitting(false);
               return;
             }
-            setIsOtpSent(true);
+
+            clearCompanyContextCookie();
+            await signIn("credentials", {
+              username: formik.values.username,
+              password: "sysadmin-otp-verified",
+              sysadminToken: sysRes.data.token,
+              redirect: true,
+              callbackUrl: "/dashboard",
+            });
           } catch {
-            setLocalError("Failed to send OTP. Please try again.");
-            setAccountType(null);
+            setLocalError("Something went wrong. Please try again.");
+          } finally {
+            setIsSubmitting(false);
           }
           return;
         }
@@ -145,56 +152,6 @@ export default function LoginForm({ error }: { error?: string }) {
       }
     },
   });
-
-  const handleOtpSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!otp || otp.length < 4) {
-      setLocalError("Please enter the OTP sent to your email.");
-      return;
-    }
-
-    setIsSubmitting(true);
-    setLocalError(undefined);
-
-    try {
-      const verifyRes = await verifySysAdminOtpAction(formik.values.username, otp);
-
-      if (!verifyRes.success || !verifyRes.data?.token) {
-        setLocalError(verifyRes.message || "Invalid or expired OTP. Please try again.");
-        setIsSubmitting(false);
-        return;
-      }
-
-      await signIn("credentials", {
-        username: formik.values.username,
-        password: "sysadmin-otp-verified",
-        sysadminToken: verifyRes.data.token,
-        redirect: true,
-        callbackUrl: "/dashboard",
-      });
-    } catch {
-      setLocalError("Something went wrong. Please try again.");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleResendOtp = async () => {
-    setIsSubmitting(true);
-    setLocalError(undefined);
-
-    try {
-      const resendRes = await sendSysAdminOtpAction(formik.values.username, formik.values.password);
-
-      if (!resendRes.success) {
-        setLocalError(resendRes.message || "Failed to resend OTP. Please try again.");
-      }
-    } catch {
-      setLocalError("Something went wrong. Please try again.");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
 
   return (
     <div className="space-y-5">
@@ -271,79 +228,18 @@ export default function LoginForm({ error }: { error?: string }) {
           )}
         </div>
 
-        {/* OTP step for sysadmin */}
-        {accountType === "SYSADMIN" && (
-          <div className="space-y-2">
-            <Label htmlFor="otp">Enter OTP</Label>
-            <Input
-              id="otp"
-              type="text"
-              inputMode="numeric"
-              placeholder="Enter the 6-digit OTP"
-              value={otp}
-              onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 10))}
-              disabled={isSubmitting}
-            />
-            <p className="text-xs text-muted-foreground">
-              {isOtpSent
-                ? "Enter the OTP sent to your registered email."
-                : "Enter the OTP sent to your registered email."}
-            </p>
-          </div>
-        )}
-
-        {/* Submit / Actions */}
-        {accountType === "SYSADMIN" ? (
-          <div className="space-y-2">
-            <Button
-              type="button"
-              className="w-full h-10 bg-warning text-warning-foreground hover:bg-warning/90"
-              disabled={isSubmitting}
-              onClick={handleOtpSubmit}
-            >
-              {isSubmitting ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                "Verify OTP & Sign In"
-              )}
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              className="w-full h-10"
-              disabled={isSubmitting}
-              onClick={handleResendOtp}
-            >
-              Resend OTP
-            </Button>
-            <Button
-              type="button"
-              variant="link"
-              className="w-full"
-              disabled={isSubmitting}
-              onClick={() => {
-                setAccountType(null);
-                setOtp("");
-                setIsOtpSent(false);
-                setLocalError(undefined);
-              }}
-            >
-              Back to login
-            </Button>
-          </div>
-        ) : (
-          <Button
-            type="submit"
-            className="w-full h-10 bg-warning text-warning-foreground hover:bg-warning/90"
-            disabled={formik.isSubmitting || isDetecting}
-          >
-            {(formik.isSubmitting || isDetecting) ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              "Sign In"
-            )}
-          </Button>
-        )}
+        {/* Submit */}
+        <Button
+          type="submit"
+          className="w-full h-10 bg-warning text-warning-foreground hover:bg-warning/90"
+          disabled={formik.isSubmitting || isDetecting || isSubmitting}
+        >
+          {(formik.isSubmitting || isDetecting || isSubmitting) ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            "Sign In"
+          )}
+        </Button>
       </form>
     </div>
   );

@@ -82,10 +82,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       async authorize(credentials, _request) {
         if (!credentials?.username || !credentials?.password) return null;
 
-        // Sysadmin OTP-verified path: the client already verified the OTP via
-        // the /auth/sysadminlogin/verify endpoint and forwards the resulting
-        // JWT as `sysadminToken`. Skip the normal userlogin call and build the
-        // session directly from the verified token.
+        // Sysadmin direct-login bypass (OTP temporarily disabled).
+        // The client calls /auth/sysadminlogin directly, receives a JWT, and
+        // forwards it here as `sysadminToken`. We skip the normal userlogin
+        // call and build the session from the verified token.
         if (credentials.password === "sysadmin-otp-verified") {
           const sysadminToken = (credentials as Record<string, unknown>).sysadminToken as string | undefined;
           if (!sysadminToken) return null;
