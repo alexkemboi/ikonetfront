@@ -45,7 +45,7 @@ describe("getDashboardOverview", () => {
 
     global.fetch = vi.fn().mockResolvedValue({
       ok: false,
-    }) as any;
+    }) as unknown as typeof fetch;
 
     const { getDashboardOverview } = await import("@/actions/dashboard");
     const result = await getDashboardOverview();
@@ -63,7 +63,7 @@ describe("getDashboardOverview", () => {
     global.fetch = vi.fn().mockResolvedValue({
       ok: true,
       json: vi.fn().mockResolvedValue(mockEmptyResponse()),
-    }) as any;
+    }) as unknown as typeof fetch;
 
     const { getDashboardOverview } = await import("@/actions/dashboard");
     const result = await getDashboardOverview();

@@ -29,7 +29,7 @@ export function normalizeCompanyCode(company?: string | null): CompanyCode | nul
 /** Clean customer-facing brand name for a company code (neutral fallback). */
 export function getCustomerFacingBrand(companyCode?: string | null): string {
   const code = normalizeCompanyCode(companyCode);
-  return code ? COMPANY_CODES[code] : "BEESMARTBEDAK HOTSPOT";
+  return code ? COMPANY_CODES[code] : "Ikonex Wi-Fi";
 }
 
 /**

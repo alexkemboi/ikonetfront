@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, type Mock } from "vitest";
 
 describe("companies actions", () => {
   beforeEach(() => {
@@ -21,7 +21,7 @@ describe("companies actions", () => {
       auth: vi.fn().mockResolvedValue({ user: { apiToken: "token" } }),
     }));
 
-    (global.fetch as any).mockResolvedValue({
+    (global.fetch as Mock).mockResolvedValue({
       ok: false,
       status: 403,
     });
@@ -36,7 +36,7 @@ describe("companies actions", () => {
       auth: vi.fn().mockResolvedValue({ user: { apiToken: "token" } }),
     }));
 
-    (global.fetch as any).mockResolvedValue({
+    (global.fetch as Mock).mockResolvedValue({
       ok: true,
       headers: new Headers({ "content-type": "application/json" }),
       json: vi.fn().mockResolvedValue({ success: true, data: [] }),
@@ -56,7 +56,7 @@ describe("companies actions", () => {
       auth: vi.fn().mockResolvedValue({ user: { apiToken: "token" } }),
     }));
 
-    (global.fetch as any).mockResolvedValue({
+    (global.fetch as Mock).mockResolvedValue({
       ok: true,
       headers: new Headers({ "content-type": "application/json" }),
       json: vi.fn().mockResolvedValue({ success: true, data: { code: "CMP-BSM-001" } }),
@@ -76,7 +76,7 @@ describe("companies actions", () => {
       auth: vi.fn().mockResolvedValue({ user: { apiToken: "token" } }),
     }));
 
-    (global.fetch as any).mockResolvedValue({
+    (global.fetch as Mock).mockResolvedValue({
       ok: true,
       headers: new Headers({ "content-type": "application/json" }),
       json: vi.fn().mockResolvedValue({ success: true, data: { ok: true, message: "OK", latencyMs: 100 } }),

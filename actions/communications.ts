@@ -1,89 +1,46 @@
 "use server";
 
-import { auth } from "@/lib/auth";
-import { buildApiUrl } from "@/lib/constants";
+import { bulkEmailSchema, type BulkEmailValues } from "@/lib/validation/bulk-email";
 
-async function getAuthHeaders(): Promise<Record<string, string>> {
-  const session = await auth();
-  if (!session?.user?.apiToken) {
-    throw new Error("Unauthorized: No active backend session.");
-  }
-  return {
-    "Content-Type": "application/json",
-    Accept: "application/json",
-    Authorization: `Bearer ${session.user.apiToken}`,
-  };
-}
-
-export async function getEmailTemplates() {
-  try {
-    const headers = await getAuthHeaders();
-    const res = await fetch(buildApiUrl("/communications/email/templates"), {
-      headers,
-      cache: "no-store",
-    });
-
-    if (!res.ok) {
-      const errorText = await res.text().catch(() => "");
-      throw new Error(
-        `Failed to fetch email templates (${res.status}): ${errorText || res.statusText}`
-      );
-    }
-
-    return await res.json();
-  } catch (error) {
-    console.error("[Comm Action] getEmailTemplates error:", error);
-    return { success: false, data: [], message: (error as Error).message || "Email templates unavailable." };
-  }
-}
-
-export async function getAudienceSegments() {
-  try {
-    const headers = await getAuthHeaders();
-    const res = await fetch(buildApiUrl("/communications/email/audience-segments"), {
-      headers,
-      cache: "no-store",
-    });
-
-    if (!res.ok) {
-      const errorText = await res.text().catch(() => "");
-      throw new Error(
-        `Failed to fetch audience segments (${res.status}): ${errorText || res.statusText}`
-      );
-    }
-
-    return await res.json();
-  } catch (error) {
-    console.error("[Comm Action] getAudienceSegments error:", error);
-    return { success: false, data: [], message: (error as Error).message || "Audience segments unavailable." };
-  }
-}
-
-export async function sendBulkEmailAction(payload: {
-  segmentId: string;
-  templateId: string;
+export type EmailTemplate = {
+  id: string;
+  name: string;
   subject: string;
   body: string;
-}) {
+};
+
+// Placeholder data. Swap for `apiFetch<EmailTemplate[]>("/communications/email/templates")`
+// once that endpoint ships — the read action below keeps the same return shape either way.
+const PLACEHOLDER_TEMPLATES: EmailTemplate[] = [
+  { id: "blank", name: "Blank", subject: "", body: "" },
+  {
+    id: "renewal-reminder",
+    name: "Renewal Reminder",
+    subject: "Your subscription is expiring soon",
+    body: "Hi {{customer_name}},\n\nYour internet subscription is expiring soon. Renew now to avoid interruption.\n\nThank you.",
+  },
+  {
+    id: "service-notice",
+    name: "Service Notice",
+    subject: "Scheduled maintenance notice",
+    body: "Hi {{customer_name}},\n\nWe will be performing scheduled maintenance that may briefly affect your service.\n\nThank you for your patience.",
+  },
+];
+
+export async function getEmailTemplates(): Promise<{ success: boolean; data: EmailTemplate[] }> {
+  return { success: true, data: PLACEHOLDER_TEMPLATES };
+}
+
+export async function sendBulkEmailAction(
+  values: BulkEmailValues
+): Promise<{ success: boolean; message: string }> {
   try {
-    const headers = await getAuthHeaders();
-    const res = await fetch(buildApiUrl("/communications/email/send"), {
-      method: "POST",
-      headers,
-      body: JSON.stringify(payload),
-      cache: "no-store",
-    });
-
-    if (!res.ok) {
-      const errorText = await res.text().catch(() => "");
-      throw new Error(
-        `Failed to dispatch bulk email (${res.status}): ${errorText || res.statusText}`
-      );
-    }
-
-    return await res.json();
+    await bulkEmailSchema.validate(values, { stripUnknown: true });
   } catch (error) {
-    console.error("[Comm Action] sendBulkEmailAction error:", error);
-    return { success: false, message: (error as Error).message || "Failed to send bulk email." };
+    return { success: false, message: (error as Error).message || "Check the form and try again." };
   }
+  // TODO: POST the validated values to /communications/{channel}/send via apiFetch,
+  // then revalidatePath("/communications/bulk-email") on success.
+  const channelLabel = values.channel === "SMS" ? "SMS" : "email";
+  return { success: false, message: `Bulk ${channelLabel} sending is not available yet. No message was sent.` };
 }
