@@ -90,4 +90,11 @@ export interface IpMappingResponse {
   routerName: string;
   status: "ONLINE" | "EXPIRED";
   lastSeen: string;
+  subscriberPhone?: string;
+  mpesaReceipt?: string;
+  voucher?: string;
+  expiresAt?: string;
+  nasIp?: string;
+  bytesIn?: number;
+  bytesOut?: number;
 }
