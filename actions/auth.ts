@@ -24,19 +24,14 @@ export async function determineAccountTypeAction(username: string, password: str
   });
 }
 
-export async function sendSysAdminOtpAction(username: string, password: string): Promise<ApiResponse<null>> {
-  return apiFetch<null>("/auth/sysadminlogin", {
+/**
+ * Temporary sysadmin direct-login bypass (OTP paused).
+ * Calls /auth/sysadminlogin which now returns the JWT directly.
+ */
+export async function sysAdminLoginAction(username: string, password: string): Promise<ApiResponse<LoginData & { refreshToken?: string }>> {
+  return apiFetch<LoginData & { refreshToken?: string }>("/auth/sysadminlogin", {
     method: "POST",
     body: { username, password },
-    auth: "public",
-    cache: "no-store",
-  });
-}
-
-export async function verifySysAdminOtpAction(username: string, otp: string): Promise<ApiResponse<LoginData & { refreshToken?: string }>> {
-  return apiFetch<LoginData & { refreshToken?: string }>("/auth/sysadminlogin/verify", {
-    method: "POST",
-    body: { username, otp },
     auth: "public",
     cache: "no-store",
   });

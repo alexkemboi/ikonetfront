@@ -13,6 +13,24 @@ export const authHandlers = [
     HttpResponse.json(loginFixture(), { status: 200 })
   ),
 
+  // Sysadmin direct-login bypass (OTP temporarily disabled).
+  http.post(`${API_PREFIX}/auth/sysadminlogin`, () =>
+    HttpResponse.json(
+      {
+        status: 200,
+        success: true,
+        message: "SysAdmin login successful",
+        data: {
+          username: "nicanornicolas",
+          role: "SYSADMIN",
+          token: "mock-sysadmin-jwt",
+        },
+        timestamp: "2026-08-26T00:00:00.000Z",
+      },
+      { status: 200 }
+    )
+  ),
+
   http.post(`${API_PREFIX}/auth/account-type`, () => {
     // Default to CUSTOMER unless overridden in tests via MSW handler overrides.
     return HttpResponse.json(accountTypeFixture(), { status: 200 });
