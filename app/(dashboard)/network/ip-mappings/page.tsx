@@ -17,6 +17,20 @@ export const dynamic = "force-dynamic";
 
 export const metadata = { title: "IP Mappings — IBS" };
 
+function formatExpiryCountdown(expiresAt?: string): string {
+  if (!expiresAt) return "—";
+  const now = new Date();
+  const expiry = new Date(expiresAt);
+  const diffMs = expiry.getTime() - now.getTime();
+  if (diffMs <= 0) return "Ended";
+  const diffMins = Math.floor(diffMs / 60000);
+  if (diffMins < 60) return `${diffMins}m left`;
+  const diffHours = Math.floor(diffMins / 60);
+  if (diffHours < 24) return `${diffHours}h left`;
+  const diffDays = Math.floor(diffHours / 24);
+  return `${diffDays}d left`;
+}
+
 export default async function IpMappingsPage() {
   const pagePerms = await getPermissionForRoute("/network/ip-mappings");
   if (!pagePerms.canView) redirect("/dashboard");
@@ -98,16 +112,19 @@ export default async function IpMappingsPage() {
                       MAC Address
                     </TableHead>
                     <TableHead className="border-b border-border text-[11px] font-sans tabular-nums tracking-wider text-muted-foreground uppercase">
-                      Username
+                      Subscriber / Phone
                     </TableHead>
                     <TableHead className="border-b border-border text-[11px] font-sans tabular-nums tracking-wider text-muted-foreground uppercase">
-                      Service Type
+                      Router
                     </TableHead>
                     <TableHead className="border-b border-border text-[11px] font-sans tabular-nums tracking-wider text-muted-foreground uppercase">
-                      Station
+                      Receipt / Voucher
                     </TableHead>
                     <TableHead className="border-b border-border text-[11px] font-sans tabular-nums tracking-wider text-muted-foreground uppercase">
                       Status
+                    </TableHead>
+                    <TableHead className="border-b border-border text-right text-[11px] font-sans tabular-nums tracking-wider text-muted-foreground uppercase">
+                      Remaining
                     </TableHead>
                     <TableHead className="border-b border-border text-right text-[11px] font-sans tabular-nums tracking-wider text-muted-foreground uppercase">
                       Last Seen
@@ -122,17 +139,25 @@ export default async function IpMappingsPage() {
                     >
                       <TableCell className="font-sans tabular-nums text-sm font-medium">{mapping.ipAddress}</TableCell>
                       <TableCell className="font-sans tabular-nums text-sm">{mapping.macAddress}</TableCell>
-                      <TableCell className="text-sm">{mapping.username || "—"}</TableCell>
                       <TableCell className="text-sm">
-                        <Badge
-                          variant="outline"
-                          className="border-border bg-muted text-[10px] text-muted-foreground"
-                        >
-                          {mapping.serviceType || "—"}
-                        </Badge>
+                        <div className="font-medium text-foreground">{mapping.subscriberPhone || mapping.username || "—"}</div>
+                        <div className="text-xs text-muted-foreground font-mono">{mapping.username}</div>
                       </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {mapping.stationName || "—"}
+                      <TableCell className="text-sm">
+                        <div className="text-foreground">{mapping.routerName || "—"}</div>
+                        <div className="text-xs text-muted-foreground">{mapping.stationName}</div>
+                      </TableCell>
+                      <TableCell className="text-sm">
+                        {mapping.mpesaReceipt ? (
+                          <>
+                            <div className="font-mono text-xs font-semibold text-emerald-400">{mapping.mpesaReceipt}</div>
+                            {mapping.voucher && (
+                              <div className="text-xs text-muted-foreground font-mono">Voucher: {mapping.voucher}</div>
+                            )}
+                          </>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
                       </TableCell>
                       <TableCell>
                         <span
@@ -144,6 +169,9 @@ export default async function IpMappingsPage() {
                         >
                           {mapping.status || "—"}
                         </span>
+                      </TableCell>
+                      <TableCell className="text-right text-sm text-muted-foreground">
+                        {formatExpiryCountdown(mapping.expiresAt)}
                       </TableCell>
                       <TableCell className="text-right text-sm text-muted-foreground">
                         {mapping.lastSeen
@@ -169,7 +197,8 @@ export default async function IpMappingsPage() {
             Data Source
           </p>
           <p className="mt-2 text-sm text-muted-foreground">
-            IP mapping data is sourced from RADIUS accounting logs (radacct table). There may be a
+            IP mapping data is sourced from RADIUS accounting logs (radacct table) enriched with
+            hotspot_session billing context and network_device router metadata. There may be a
             delay between an actual session event and its appearance here, depending on how
             frequently RADIUS writes accounting records to the database.
           </p>
