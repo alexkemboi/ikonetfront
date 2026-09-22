@@ -5506,14 +5506,14 @@
         "body": {
           "data": [
             {
-              "availableIps": 65485,
-              "gateway": "172.16.0.1",
-              "poolName": "hs-pool-magunas",
+              "availableIps": 205,
+              "gateway": "10.50.50.1",
+              "poolName": "hs-pool-mombasa",
               "serviceType": "HOTSPOT",
-              "subnet": "172.16.0.0/16",
-              "totalIps": 65534,
+              "subnet": "10.50.50.0/24",
+              "totalIps": 254,
               "usedIps": 49,
-              "utilizationPercentage": 0
+              "utilizationPercentage": 0.07
             }
           ],
           "message": "IP pools fetched successfully",
@@ -5796,18 +5796,18 @@
               {
                 "bytesIn": 777265,
                 "bytesOut": 6228594,
-                "expiresAt": "2026-09-15T18:00:00+03:00",
-                "ipAddress": "10.50.50.254",
-                "lastSeen": "2026-09-15T11:14:42+03:00",
-                "macAddress": "78:F2:38:8C:D1:BC",
+                "expiresAt": "2026-08-26T18:00:00+03:00",
+                "ipAddress": "172.16.0.11",
+                "lastSeen": "2026-08-26T07:59:00+03:00",
+                "macAddress": "32:A2:F1:9C:4D:02",
                 "mpesaReceipt": "UIDAC6EEVC",
                 "nasIp": "10.8.1.5",
-                "routerName": "RTR-BDK-A",
+                "routerName": "RTR-BDK-MSA-A",
                 "serviceType": "HOTSPOT",
-                "stationName": "Mombasa Central",
+                "stationName": "ADRNOLDNETWORKS",
                 "status": "ONLINE",
                 "subscriberPhone": "254790721501",
-                "username": "78:F2:38:8C:D1:BC",
+                "username": "A2085",
                 "voucher": "FAA5AF0B"
               }
             ],

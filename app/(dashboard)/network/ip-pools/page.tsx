@@ -78,17 +78,6 @@ export default async function IpPoolsPage() {
             </Table>
           </div>
         )}
-
-        {/* Info Box */}
-        <Card className="border-amber-200 bg-amber-50/50">
-          <CardHeader>
-            <CardTitle className="text-sm font-medium text-amber-900">Known Issue</CardTitle>
-          </CardHeader>
-          <CardContent className="text-sm text-amber-800">
-            IP pool values are currently hardcoded fixtures on the backend and do not reflect real pool state. 
-            This is tracked as <code className="font-mono">BE-AAA-046</code>.
-          </CardContent>
-        </Card>
       </div>
     </div>
   );
