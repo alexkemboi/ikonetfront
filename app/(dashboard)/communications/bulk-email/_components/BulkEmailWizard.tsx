@@ -75,7 +75,7 @@ function StepIndicator({ current }: { current: number }) {
                     ? "bg-primary border-primary text-primary-foreground"
                     : active
                     ? "border-primary bg-primary/10 text-primary"
-                    : "border-border bg-card text-muted-foreground"
+                    : "border-secondary bg-secondary text-secondary-foreground"
                 }`}
               >
                 {done ? (
@@ -95,7 +95,7 @@ function StepIndicator({ current }: { current: number }) {
             {i < STEPS.length - 1 && (
               <div
                 className={`w-16 h-0.5 mb-4 mx-1 transition-colors ${
-                  current > step.id ? "bg-primary" : "bg-border"
+                  current > step.id ? "bg-primary" : "bg-secondary"
                 }`}
               />
             )}
@@ -204,10 +204,10 @@ function EmailPreview({
         </div>
       </div>
 
-      <div className="flex items-start gap-2 p-3 rounded-lg bg-[oklch(0.97_0.04_65)] border border-[oklch(0.86_0.1_65)]">
-        <AlertCircle className="w-4 h-4 text-[oklch(0.65_0.18_65)] shrink-0 mt-0.5" />
-        <p className="text-xs text-[oklch(0.5_0.18_65)]">
-          Variables like <code className="font-mono bg-[oklch(0.93_0.04_65)] px-1 rounded">{"{{customer_name}}"}</code> will be replaced with each recipient&apos;s actual details before sending.
+      <div className="flex items-start gap-2 p-3 rounded-lg bg-warning/10 border border-warning/30">
+        <AlertCircle className="w-4 h-4 text-warning shrink-0 mt-0.5" />
+        <p className="text-xs text-warning">
+          Variables like <code className="font-mono bg-warning/15 px-1 rounded">{"{{customer_name}}"}</code> will be replaced with each recipient&apos;s actual details before sending.
         </p>
       </div>
     </div>
@@ -270,8 +270,8 @@ export default function BulkEmailWizard({ segments, templates }: Props) {
   if (sent) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
-        <div className="w-20 h-20 rounded-full bg-[oklch(0.97_0.03_155)] flex items-center justify-center">
-          <CheckCircle2 className="w-10 h-10 text-[oklch(0.52_0.16_155)]" />
+        <div className="w-20 h-20 rounded-full bg-success/10 flex items-center justify-center">
+          <CheckCircle2 className="w-10 h-10 text-success" />
         </div>
         <h2 className="text-2xl font-normal text-foreground">Campaign Sent!</h2>
         <p className="text-sm text-muted-foreground text-center max-w-xs">
@@ -285,7 +285,7 @@ export default function BulkEmailWizard({ segments, templates }: Props) {
   }
 
   return (
-    <form onSubmit={formik.handleSubmit} className="max-w-3xl mx-auto space-y-8">
+    <form onSubmit={formik.handleSubmit} className="w-full max-w-5xl mx-auto space-y-8 mb-16">
       {/* Header */}
       <div>
         <h1 className="text-2xl font-normal text-foreground">Bulk Email</h1>
@@ -299,7 +299,7 @@ export default function BulkEmailWizard({ segments, templates }: Props) {
 
       {/* Step content */}
       <Card className="border-border shadow-sm">
-        <CardContent className="p-6">
+        <CardContent className="p-8">
           {/* ── Step 1: Audience ── */}
           {step === 1 && (
             <div className="space-y-4">
@@ -311,7 +311,7 @@ export default function BulkEmailWizard({ segments, templates }: Props) {
                   Choose a segment. You can refine the audience further with filters in a future release.
                 </p>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {segments.map((seg) => (
                   <SegmentCard
                     key={seg.id}
@@ -446,9 +446,9 @@ export default function BulkEmailWizard({ segments, templates }: Props) {
                 ))}
               </div>
 
-              <div className="flex items-start gap-2 p-3 rounded-lg bg-[oklch(0.97_0.02_25)] border border-[oklch(0.88_0.06_25)]">
-                <AlertCircle className="w-4 h-4 text-[oklch(0.55_0.18_25)] shrink-0 mt-0.5" />
-                <p className="text-xs text-[oklch(0.48_0.14_25)]">
+              <div className="flex items-start gap-2 p-3 rounded-lg bg-danger/10 border border-danger/30">
+                <AlertCircle className="w-4 h-4 text-danger shrink-0 mt-0.5" />
+                <p className="text-xs text-danger">
                   Sending to <strong>{selectedSegment?.count.toLocaleString()}</strong> customers is irreversible. Ensure your message is accurate and professional before proceeding.
                 </p>
               </div>
@@ -458,7 +458,7 @@ export default function BulkEmailWizard({ segments, templates }: Props) {
       </Card>
 
       {/* Navigation */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between mb-16">
         <Button
           type="button"
           variant="outline"
@@ -485,7 +485,7 @@ export default function BulkEmailWizard({ segments, templates }: Props) {
             <Button
               type="submit"
               disabled={formik.isSubmitting || !step2Valid}
-              className="gap-2 bg-[oklch(0.38_0.12_155)] hover:bg-[oklch(0.32_0.12_155)] text-foreground"
+              className="gap-2"
             >
               {formik.isSubmitting ? (
                 <Loader2 className="w-4 h-4 animate-spin" />

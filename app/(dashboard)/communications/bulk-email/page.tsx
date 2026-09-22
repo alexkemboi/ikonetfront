@@ -10,7 +10,7 @@ export default async function BulkEmailPage() {
   ]);
 
   return (
-    <div className="p-6 h-full">
+    <div className="p-6 pb-16 mb-6 h-full">
       <BulkEmailWizard
         segments={segmentsResult.data}
         templates={templatesResult.data}
