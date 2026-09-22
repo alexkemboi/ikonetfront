@@ -19,6 +19,7 @@ interface HotspotFlowProps {
   companyCode?: string | null;
   onCompanyResolved?: (companyCode?: string | null) => void;
   clientMac?: string;
+  redirectClientMac?: string;
   clientIp?: string;
 }
 
@@ -27,6 +28,7 @@ export default function HotspotFlow({
   companyCode,
   onCompanyResolved,
   clientMac,
+  redirectClientMac,
   clientIp,
 }: HotspotFlowProps) {
   const [activeTab, setActiveTab] = useState<Tab>(resolveInitialTab);
@@ -88,6 +90,7 @@ export default function HotspotFlow({
             onCompanyResolved={onCompanyResolved}
             onBack={() => handleTabChange("activate")}
             clientMac={clientMac}
+            redirectClientMac={redirectClientMac}
             clientIp={clientIp}
           />
         )}

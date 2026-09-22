@@ -16,6 +16,7 @@ interface HotspotShellProps {
   tvPackagesError?: string;
   initialCompanyCode?: string | null;
   clientMac?: string;
+  redirectClientMac?: string;
   clientIp?: string;
 }
 
@@ -28,7 +29,7 @@ interface HotspotShellProps {
  * `companyId`, which re-hydrates the brand here — updating the header/footer,
  * not just the checkout modal.
  */
-export default function HotspotShell({ packages, initialCompanyCode, clientMac, clientIp, initialTvDevice, tvPackages, tvPackagesError }: HotspotShellProps) {
+export default function HotspotShell({ packages, initialCompanyCode, clientMac, redirectClientMac, clientIp, initialTvDevice, tvPackages, tvPackagesError }: HotspotShellProps) {
   const [companyCode, setCompanyCode] = useState<string | null>(
     initialCompanyCode ?? null
   );
@@ -86,6 +87,7 @@ export default function HotspotShell({ packages, initialCompanyCode, clientMac, 
             companyCode={companyCode}
             onCompanyResolved={handleCompanyResolved}
             clientMac={clientMac}
+            redirectClientMac={redirectClientMac}
             clientIp={clientIp}
           />
         </div>

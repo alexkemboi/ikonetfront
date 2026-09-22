@@ -1,10 +1,12 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { Search, SortAsc, Filter } from "lucide-react";
 import { HotspotPackage } from "@/lib/types/hotspot";
 import PackageCard from "./PackageCard";
 import CheckoutModal from "./CheckoutModal";
+import type { PendingHotspotPurchase } from "@/lib/types/hotspot";
+import { PENDING_HOTSPOT_PURCHASE_KEY } from "@/lib/hotspotPublicClient";
 
 
 interface BuyTabProps {
@@ -13,16 +15,32 @@ interface BuyTabProps {
   onCompanyResolved?: (companyCode?: string | null) => void;
   onBack: () => void;
   clientMac?: string;
+  redirectClientMac?: string;
   clientIp?: string;
 }
 
 type SortBy = "price-asc" | "price-desc" | "data-asc" | "data-desc";
 
-export default function BuyTab({ packages, companyCode, onCompanyResolved, onBack, clientMac, clientIp }: BuyTabProps) {
+export default function BuyTab({ packages, companyCode, onCompanyResolved, onBack, clientMac, redirectClientMac, clientIp }: BuyTabProps) {
  const [searchQuery, setSearchQuery] = useState("");
  const [sortBy, setSortBy] = useState<SortBy>("price-asc");
  const [selectedPackage, setSelectedPackage] = useState<HotspotPackage | null>(null);
  const [showCheckout, setShowCheckout] = useState(false);
+ const [pendingPurchase, setPendingPurchase] = useState<PendingHotspotPurchase | null>(null);
+
+ useEffect(() => {
+   try {
+     const stored = window.sessionStorage.getItem(PENDING_HOTSPOT_PURCHASE_KEY);
+     if (!stored) return;
+     const parsed = JSON.parse(stored) as PendingHotspotPurchase;
+     if (parsed.voucherCode && parsed.sessionId !== undefined && parsed.startedAt) {
+       setPendingPurchase(parsed);
+       setShowCheckout(true);
+     }
+   } catch {
+     window.sessionStorage.removeItem(PENDING_HOTSPOT_PURCHASE_KEY);
+   }
+ }, []);
 
     // Filter and sort packages
     const filteredAndSorted = useMemo(() => {
@@ -132,22 +150,20 @@ export default function BuyTab({ packages, companyCode, onCompanyResolved, onBac
  </div>
 
 {/* Checkout Modal */}
-  {showCheckout && selectedPackage && (
+  {showCheckout && (selectedPackage || pendingPurchase) && (
     <CheckoutModal
-      package={selectedPackage}
+      package={selectedPackage ?? undefined}
+      pendingPurchase={pendingPurchase ?? undefined}
       companyCode={companyCode}
       onCompanyResolved={onCompanyResolved}
       clientMac={clientMac}
+      redirectClientMac={redirectClientMac}
       clientIp={clientIp}
       onClose={() => {
         setShowCheckout(false);
         setSelectedPackage(null);
       }}
-      onConfirm={() => {
-        // Handle purchase confirmation
-        setShowCheckout(false);
-        setSelectedPackage(null);
-      }}
+      onPendingPurchase={setPendingPurchase}
     />
   )}
  </div>
