@@ -13,6 +13,8 @@ async function getAuthHeaders(): Promise<HeadersInit> {
     (headers as Record<string, string>)["Authorization"] =
       `Bearer ${session.user.apiToken}`;
   }
+  console.log(session?.user, "he")
+  debugger;
   return headers;
 }
 
@@ -88,6 +90,7 @@ export async function addSystemUser(
         body: JSON.stringify(payload),
         cache: "no-store",
       });
+      console.log(await response.json(), url)
 
       const text = await response.text();
       const result = text ? JSON.parse(text) : null;
