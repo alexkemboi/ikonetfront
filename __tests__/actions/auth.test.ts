@@ -14,8 +14,7 @@ import {
   refreshAccessToken,
   logoutAction,
   determineAccountTypeAction,
-  sendSysAdminOtpAction,
-  verifySysAdminOtpAction,
+  sysAdminLoginAction,
 } from "@/actions/auth";
 
 beforeEach(() => {
@@ -77,46 +76,43 @@ describe("determineAccountTypeAction", () => {
   });
 });
 
-describe("sendSysAdminOtpAction", () => {
-  it("POSTs /auth/sysadminlogin without Authorization header", async () => {
+describe("sysAdminLoginAction", () => {
+  it("POSTs /auth/sysadminlogin and returns the JWT directly (OTP bypass)", async () => {
     server.use(
       http.post(`${API_PREFIX}/auth/sysadminlogin`, ({ request }) => {
         expect(request.headers.get("authorization")).toBeNull();
         return HttpResponse.json(
-          { status: 200, success: true, message: "OTP sent to registered email", data: null },
+          {
+            status: 200,
+            success: true,
+            message: "SysAdmin login successful",
+            data: {
+              username: "nicanornicolas",
+              role: "SYSADMIN",
+              token: "mock-sysadmin-jwt",
+            },
+            timestamp: "2026-08-26T00:00:00.000Z",
+          },
           { status: 200 }
         );
       })
     );
 
-    const result = await sendSysAdminOtpAction("admin", "secret");
+    const result = await sysAdminLoginAction("nicanornicolas", "secret");
     expect(result.success).toBe(true);
-    expect(result.message).toBe("OTP sent to registered email");
-  });
-});
-
-describe("verifySysAdminOtpAction", () => {
-  it("POSTs /auth/sysadminlogin/verify and returns the backend JWT", async () => {
-    server.use(
-      http.post(`${API_PREFIX}/auth/sysadminlogin/verify`, ({ request }) => {
-        expect(request.headers.get("authorization")).toBeNull();
-        return HttpResponse.json(loginFixture(), { status: 200 });
-      })
-    );
-
-    const result = await verifySysAdminOtpAction("admin", "123456");
-    expect(result.success).toBe(true);
-    expect(result.data?.token).toBe(loginFixture().data?.token);
+    expect(result.data?.token).toBe("mock-sysadmin-jwt");
+    expect(result.data?.username).toBe("nicanornicolas");
+    expect(result.data?.role).toBe("SYSADMIN");
   });
 
-  it("returns null-like failure envelope when the backend rejects the OTP", async () => {
+  it("surfaces backend rejection for sysadmin login", async () => {
     server.use(
-      http.post(`${API_PREFIX}/auth/sysadminlogin/verify`, () =>
-        HttpResponse.json(errorEnvelope(401, "Invalid or expired OTP"), { status: 401 })
+      http.post(`${API_PREFIX}/auth/sysadminlogin`, () =>
+        HttpResponse.json(errorEnvelope(401, "Invalid username or password"), { status: 401 })
       )
     );
 
-    const result = await verifySysAdminOtpAction("admin", "000000");
+    const result = await sysAdminLoginAction("nobody", "wrong");
     expect(result.success).toBe(false);
     expect(result.status).toBe(401);
   });

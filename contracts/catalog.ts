@@ -731,6 +731,22 @@ export const authInteractions: Interaction[] = [
     responseBody: accountTypeFixture({ accountType: "SYSADMIN" }),
   },
   {
+    name: "POST /api/v1/auth/sysadminlogin (direct bypass)",
+    method: "POST",
+    path: "/api/v1/auth/sysadminlogin",
+    auth: "public",
+    status: 200,
+    requestBody: { username: "nicanornicolas", password: "secret" },
+    responseBody: envelope(
+      {
+        username: "nicanornicolas",
+        role: "SYSADMIN",
+        token: buildRoleJwt("SYSADMIN"),
+      },
+      "SysAdmin login successful"
+    ),
+  },
+  {
     name: "POST /api/v1/auth/refresh-token with Bearer old JWT",
     method: "POST",
     path: "/api/v1/auth/refresh-token",
