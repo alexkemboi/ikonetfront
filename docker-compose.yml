@@ -13,6 +13,8 @@ services:
       - AUTH_SECRET=${AUTH_SECRET}
       - AUTH_JWT_SECRET=${AUTH_JWT_SECRET}
       - AUTH_URL=https://beesmartbedak.com
+      - NEXT_PUBLIC_IBS_API_URL=${NEXT_PUBLIC_IBS_API_URL}
+      - IBS_API_URL=${IBS_API_URL}
     networks:
       - default
     logging:
