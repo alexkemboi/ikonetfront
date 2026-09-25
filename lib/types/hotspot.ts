@@ -20,7 +20,7 @@ export interface InitiatePaymentRequest {
   macAddress: string;
   clientMac: string;
   clientIp: string;
-  companyCode?: string;
+  companyId?: string;
 }
 
 /**

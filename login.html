@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign in to IKONEX SYSTEMS</title>
+    <!-- Fallback Meta Refresh -->
+    <meta http-equiv="refresh" content="2; url=https://beesmartbedak.com/hotspot?mac=$(mac)&ip=$(ip)&link-login=$(link-login-only)&link-orig=$(link-orig)&error=$(error)">
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+        body {
+            background-color: #0c0d0e;
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .card {
+            background: #16181a;
+            border: 1px solid #26292d;
+            border-radius: 24px;
+            width: 100%;
+            max-width: 380px;
+            padding: 36px 28px;
+            text-align: center;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+        }
+        /* Wi-Fi Pulse Animation */
+        .icon-container {
+            width: 72px;
+            height: 72px;
+            background: #202428;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 24px auto;
+            position: relative;
+        }
+        .icon-container svg {
+            width: 36px;
+            height: 36px;
+            fill: #10b981;
+        }
+        .pulse-ring {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            border: 2px solid #10b981;
+            animation: pulse 2s ease-out infinite;
+        }
+        @keyframes pulse {
+            0% { transform: scale(0.95); opacity: 0.8; }
+            50% { transform: scale(1.3); opacity: 0; }
+            100% { transform: scale(0.95); opacity: 0; }
+        }
+        h1 {
+            font-size: 22px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            letter-spacing: -0.02em;
+        }
+        p.subtitle {
+            font-size: 14px;
+            color: #9ca3af;
+            line-height: 1.5;
+            margin-bottom: 28px;
+        }
+        /* Progress Indicator */
+        .progress-bar {
+            width: 100%;
+            height: 4px;
+            background: #26292d;
+            border-radius: 2px;
+            overflow: hidden;
+            margin-bottom: 28px;
+        }
+        .progress-fill {
+            height: 100%;
+            background: #10b981;
+            width: 40%;
+            border-radius: 2px;
+            animation: progress 1.8s ease-in-out infinite;
+        }
+        @keyframes progress {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(250%); }
+        }
+        /* Fallback Action Button */
+        .btn-continue {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            padding: 14px;
+            background: #ffffff;
+            color: #0c0d0e;
+            font-size: 15px;
+            font-weight: 600;
+            border: none;
+            border-radius: 14px;
+            text-decoration: none;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .btn-continue:active {
+            transform: scale(0.98);
+            background: #e5e7eb;
+        }
+        /* Accordion for Technical Details */
+        details {
+            margin-top: 24px;
+            text-align: left;
+            border-top: 1px solid #26292d;
+            padding-top: 16px;
+        }
+        summary {
+            font-size: 12px;
+            color: #6b7280;
+            cursor: pointer;
+            list-style: none;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            user-select: none;
+        }
+        summary::-webkit-details-marker { display: none; }
+        summary::after {
+            content: "+";
+            font-size: 14px;
+        }
+        details[open] summary::after { content: "−"; }
+        .details-content {
+            margin-top: 12px;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            font-size: 11px;
+            color: #9ca3af;
+            background: #111214;
+            padding: 12px;
+            border-radius: 8px;
+            word-break: break-all;
+        }
+    </style>
+    <script>
+        function executeRedirect() {
+            var targetUrl = "https://beesmartbedak.com/hotspot" +
+                "?mac=" + encodeURIComponent("$(mac)") +
+                "&ip=" + encodeURIComponent("$(ip)") +
+                "&link-login=" + encodeURIComponent("$(link-login-only)") +
+                "&link-orig=" + encodeURIComponent("$(link-orig)") +
+                "&error=" + encodeURIComponent("$(error)");
+            
+            // Set href for manual fallback button
+            var btn = document.getElementById("manual-btn");
+            if (btn) btn.href = targetUrl;
+
+            // Trigger immediate background redirect
+            setTimeout(function() {
+                window.location.replace(targetUrl);
+            }, 300);
+        }
+    </script>
+    <!-- Inside MikroTik login.html redirect script -->
+    <script type="text/javascript">
+        function doRedirect() {
+            var redirectUrl = "https://beesmartbedak.com/hotspot" +
+                "?mac=" + encodeURIComponent("$(mac)") +
+                "&ip=" + encodeURIComponent("$(ip)") +
+                "&company=CMP-ADR-001" +
+                "&router=" + encodeURIComponent("$(identity)");
+            window.location.replace(redirectUrl);
+        }
+    </script>
+</head>
+<body onload="executeRedirect()">
+    <div class="card">
+        <div class="icon-container">
+            <div class="pulse-ring"></div>
+            <!-- Wi-Fi SVG Icon -->
+            <svg viewBox="0 0 24 24">
+                <path d="M12 18c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm-4.9-3.7l1.4 1.4c1.9-1.9 5.1-1.9 7 0l1.4-1.4c-2.7-2.7-7.1-2.7-9.8 0zm-3.5-3.5l1.4 1.4c3.9-3.9 10.1-3.9 14 0l1.4-1.4c-4.7-4.6-12.1-4.6-16.8 0z"/>
+            </svg>
+        </div>
+
+        <h1>Almost there</h1>
+        <p class="subtitle">Connecting you to the portal to choose an internet or TV package...</p>
+
+        <div class="progress-bar">
+            <div class="progress-fill"></div>
+        </div>
+
+        <a id="manual-btn" href="#" class="btn-continue">
+            Tap to continue &rarr;
+        </a>
+
+        <details>
+            <summary>Session details</summary>
+            <div class="details-content">
+                <strong>IP:</strong> $(ip)<br>
+                <strong>MAC:</strong> $(mac)<br>
+                <strong>Host:</strong> $(identity)
+            </div>
+        </details>
+    </div>
+</body>
+</html>
