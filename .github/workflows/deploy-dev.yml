@@ -36,6 +36,7 @@ jobs:
             cat > .env << 'EOF'
             BASE_API_URL=${{ secrets.BASE_API_URL }}
             NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }}
+            NEXT_PUBLIC_IBS_API_URL=${{ secrets.NEXT_PUBLIC_IBS_API_URL }}
             AUTH_SECRET=${{ secrets.AUTH_SECRET }}
             AUTH_JWT_SECRET=${{ secrets.AUTH_JWT_SECRET }}
             EOF
@@ -44,7 +45,7 @@ jobs:
             docker compose down --remove-orphans
 
             echo "Building fresh images..."
-            docker compose build --pull --no-cache --build-arg NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }}
+            docker compose build --pull --no-cache --build-arg NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }} --build-arg NEXT_PUBLIC_IBS_API_URL=${{ secrets.NEXT_PUBLIC_IBS_API_URL }}
 
             echo "Starting containers..."
             docker compose up -d --force-recreate

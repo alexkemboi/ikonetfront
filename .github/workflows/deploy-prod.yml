@@ -45,6 +45,7 @@ jobs:
           cache-to: type=gha,mode=max
           build-args: |
             NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_BASE_API_URL_PROD }}
+            NEXT_PUBLIC_IBS_API_URL=${{ secrets.NEXT_PUBLIC_IBS_API_URL }}
             BASE_API_URL=${{ secrets.BASE_API_URL_PROD }}
 
   deploy:
