@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Connected - IKONEX SYSTEMS</title>
+    <!-- Redirect to whatever destination the user originally requested, or google.com -->
+    <meta http-equiv="refresh" content="3; url=$(link-orig)">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, sans-serif; }
+        body { background: #0c0d0e; color: #fff; display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; }
+        .card { background: #16181a; border: 1px solid #26292d; border-radius: 24px; max-width: 380px; width: 100%; padding: 36px 28px; text-align: center; }
+        .icon { width: 64px; height: 64px; background: #064e3b; color: #10b981; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px auto; font-size: 32px; font-weight: bold; }
+        h1 { font-size: 22px; margin-bottom: 8px; }
+        p { font-size: 14px; color: #9ca3af; margin-bottom: 24px; }
+        .btn { display: block; width: 100%; padding: 14px; background: #10b981; color: #fff; font-weight: 600; border-radius: 12px; text-decoration: none; }
+    </style>
+    <script>
+        setTimeout(function() {
+            window.location.href = "$(link-orig)";
+        }, 2000);
+    </script>
+</head>
+<body>
+    <div class="card">
+        <div class="icon">&#10003;</div>
+        <h1>You're Online!</h1>
+        <p>Your session has been activated successfully. Enjoy high-speed internet.</p>
+        <a href="$(link-orig)" class="btn">Start Browsing</a>
+    </div>
+</body>
+</html>
