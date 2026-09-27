@@ -38,6 +38,7 @@ interface LiveSessionDto {
   online?: boolean;
   expiresAt?: string | null;
   minutesRemaining?: number | null;
+  lastSeenAt?: string | null;
 }
 
 interface LiveSessionListDto {
@@ -46,6 +47,7 @@ interface LiveSessionListDto {
     pppoeCount?: number;
     hotspotCount?: number;
     paidNotConnected?: number;
+    lostContact?: number;
     downloadBytesTotal?: string | number;
     uploadBytesTotal?: string | number;
     totalBytesTotal?: string | number;
@@ -58,6 +60,7 @@ const EMPTY_KPIS: LiveSessionKpis = {
   pppoeCount: 0,
   hotspotCount: 0,
   paidNotConnected: 0,
+  lostContact: 0,
   downloadTrafficGb: 0,
   uploadTrafficGb: 0,
   totalTrafficGb: 0,
@@ -117,6 +120,7 @@ function mapSession(dto: LiveSessionDto, index: number): LiveSessionItem {
     nasIp: dto.nasIp ?? undefined,
     online: dto.online !== false,
     minutesRemaining: dto.minutesRemaining ?? null,
+    lastSeenAt: dto.lastSeenAt ?? undefined,
   };
 }
 
@@ -138,6 +142,7 @@ export async function getLiveSessionsData(): Promise<{
     pppoeCount: toNumber(k.pppoeCount),
     hotspotCount: toNumber(k.hotspotCount),
     paidNotConnected: toNumber(k.paidNotConnected),
+    lostContact: toNumber(k.lostContact),
     downloadTrafficGb: toGb(k.downloadBytesTotal),
     uploadTrafficGb: toGb(k.uploadBytesTotal),
     totalTrafficGb: toGb(k.totalBytesTotal),

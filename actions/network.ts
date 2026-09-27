@@ -1038,6 +1038,16 @@ export async function getIpPools(): Promise<IpPool[]> {
  * GET /api/v1/network/ip-mappings — active/expired session bindings from RADIUS accounting logs.
  * Returns `ApiResponse<Page<IpMappingResponse>>`. Unwrap the Page envelope to `content[]`.
  */
+/** Same as getIpMappings, but keeps the backend error so the page can show it. */
+export async function getIpMappingsResult(): Promise<{ items: IpMappingResponse[]; error?: string }> {
+  const res = await apiFetch<PageResponse<IpMappingResponse>>("/network/ip-mappings?page=0&size=200", {
+    auth: "required",
+    tags: ["network"],
+  });
+  if (!res.success) return { items: [], error: res.message || "IP mappings are unavailable." };
+  return { items: res.data?.content ?? [] };
+}
+
 export async function getIpMappings(): Promise<IpMappingResponse[]> {
   try {
     // Online bindings first (backend order), latest 200 — the default page is only 20.
