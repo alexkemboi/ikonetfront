@@ -5,26 +5,29 @@ export function LiveSessionHeaderCards({ kpis }: { kpis: LiveSessionKpis }) {
  {
  label: "ONLINE",
  value: kpis.currentlyConnectedCount,
- footer: "active sessions",
+ footer: `${kpis.hotspotCount} hotspot · ${kpis.pppoeCount} PPPoE`,
  color: "text-emerald-400",
+ },
+ {
+ label: "PAID, NOT CONNECTED",
+ value: kpis.paidNotConnected,
+ footer:
+ kpis.paidNotConnected > 0
+ ? "paid hotspot time with no device online"
+ : "every paid customer is online",
+ color: kpis.paidNotConnected > 0 ? "text-amber-400" : "text-foreground",
  },
  {
  label: "DOWNLOAD",
  value: `${kpis.downloadTrafficGb.toFixed(1)} GB`,
- footer: "across all sessions",
+ footer: "reported by the routers",
  color: "text-foreground",
  },
  {
  label: "UPLOAD",
  value: `${kpis.uploadTrafficGb.toFixed(1)} GB`,
- footer: "across all sessions",
+ footer: "reported by the routers",
  color: "text-foreground",
- },
- {
- label: "TOTAL",
- value: `${kpis.totalTrafficGb.toFixed(1)} GB`,
- footer: "combined throughput",
- color: "text-amber-400",
  },
  ];
 
