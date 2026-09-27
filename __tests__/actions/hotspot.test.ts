@@ -82,11 +82,55 @@ describe("public hotspot portal (permitAll — NO Authorization header)", () => 
   });
 });
 
-describe("voucher activation gating (BE gap ticket)", () => {
-  it("returns a readable 503 envelope without touching the network", async () => {
-    const result = await activateVoucherAction("ABC123XYZ789");
+describe("voucher activation (POST /hotspot/vouchers/activate)", () => {
+  it("posts the device context without auth and returns the activated session", async () => {
+    let seenAuth: string | null = "unset";
+    let seenBody: Record<string, unknown> | null = null;
+    server.use(
+      http.post(`${API_PREFIX}/hotspot/vouchers/activate`, async ({ request }) => {
+        seenAuth = request.headers.get("authorization");
+        seenBody = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json({
+          status: 200,
+          success: true,
+          message: "Voucher activated successfully",
+          data: { sessionId: 9, sessionStatus: "ACTIVE", voucherCode: "KES7HQ2M", macAddress: "78:F2:38:8C:D1:BC" },
+          timestamp: new Date().toISOString(),
+        });
+      })
+    );
+
+    const result = await activateVoucherAction({
+      voucherCode: " kes7hq2m ",
+      macAddress: "78:F2:38:8C:D1:BC",
+      clientIp: "10.5.50.20",
+      routerIdentity: "ADRINOLD-WESTLANDS",
+    });
+
+    expect(seenAuth).toBeNull();
+    expect(seenBody).toEqual({
+      voucherCode: "KES7HQ2M",
+      macAddress: "78:F2:38:8C:D1:BC",
+      clientIp: "10.5.50.20",
+      routerIdentity: "ADRINOLD-WESTLANDS",
+    });
+    expect(result.success).toBe(true);
+    expect(result.data?.sessionStatus).toBe("ACTIVE");
+  });
+
+  it("surfaces the backend refusal message", async () => {
+    server.use(
+      http.post(`${API_PREFIX}/hotspot/vouchers/activate`, () =>
+        HttpResponse.json(
+          { status: 409, success: false, message: "This voucher is already bound to another device.", data: null, timestamp: new Date().toISOString() },
+          { status: 409 }
+        )
+      )
+    );
+
+    const result = await activateVoucherAction({ voucherCode: "KES7HQ2M", macAddress: "AA:BB:CC:DD:EE:FF" });
+
     expect(result.success).toBe(false);
-    expect(result.status).toBe(503);
-    expect(result.message).toMatch(/pending/i);
+    expect(result.message).toMatch(/another device/i);
   });
 });
