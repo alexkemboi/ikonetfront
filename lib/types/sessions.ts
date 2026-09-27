@@ -35,6 +35,16 @@ export interface LiveSessionItem {
   /** false = paid, unexpired entitlement but the router reports no traffic session. */
   online: boolean;
   minutesRemaining?: number | null;
+  /** Last time the router reported the session; absent = never connected. */
+  lastSeenAt?: string;
+}
+
+/** online: router reporting now · lost: router stopped reporting (no Stop) · waiting: paid, never connected. */
+export type SessionState = "ONLINE" | "LOST" | "WAITING";
+
+export function sessionState(s: Pick<LiveSessionItem, "online" | "lastSeenAt">): SessionState {
+  if (s.online) return "ONLINE";
+  return s.lastSeenAt ? "LOST" : "WAITING";
 }
 
 export interface LiveSessionKpis {
@@ -43,6 +53,8 @@ export interface LiveSessionKpis {
   hotspotCount: number;
   /** Hotspot customers with a paid, unexpired session who are not online now. */
   paidNotConnected: number;
+  /** Sessions the router stopped reporting without a Stop (router/CPE lost power or link). */
+  lostContact: number;
   downloadTrafficGb: number;
   uploadTrafficGb: number;
   totalTrafficGb: number;
