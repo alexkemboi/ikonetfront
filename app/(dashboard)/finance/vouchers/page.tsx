@@ -3,6 +3,7 @@ import { VouchersClient } from "@/components/vouchers/VouchersClient";
 import { getVouchersData } from "@/actions/vouchers";
 import { getVoucherBatches } from "@/actions/payments";
 import { getPackagesAction } from "@/actions/packages";
+import { getMikrotikDevices } from "@/actions/mikrotik";
 import { getPermissionForRoute } from "@/lib/data/nav";
 import { redirect } from "next/navigation";
 
@@ -20,6 +21,16 @@ export default async function VouchersPage() {
   const data = await getVouchersData();
   const batches = await getVoucherBatches();
   const packages = await getPackagesAction();
+  const devices = await getMikrotikDevices();
+  // Vouchers are minted per router and are redeemable only on it.
+  const routerOptions = devices.success && Array.isArray(devices.data)
+    ? devices.data
+        .filter((d) => d.active && d.deviceType?.toUpperCase() === "MIKROTIK")
+        .map((d) => ({
+          value: String(d.id),
+          label: d.site ? `${d.name} · ${d.site}` : d.name,
+        }))
+    : [];
   const packageOptions = packages.success && Array.isArray(packages.data)
     ? packages.data
         .filter((p) => p.activeStatus === true && p.price > 0)
@@ -36,6 +47,7 @@ export default async function VouchersPage() {
       batchKpis={batches.kpis}
       batches={batches.batches}
       packageOptions={packageOptions}
+      routerOptions={routerOptions}
     />
   );
 }
