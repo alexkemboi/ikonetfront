@@ -11,90 +11,13 @@ import type {
   VoucherStatus,
 } from "@/lib/types/vouchers";
 
-const FALLBACK_KPIS: VoucherKpis = {
-  totalGenerated: 5,
-  usedCount: 2,
-  unusedCount: 3,
-  batchesCount: 3,
-  redemptionRatePercent: 40,
+const EMPTY_KPIS: VoucherKpis = {
+  totalGenerated: 0,
+  usedCount: 0,
+  unusedCount: 0,
+  batchesCount: 0,
+  redemptionRatePercent: 0,
 };
-
-const FALLBACK_VOUCHERS: VoucherItem[] = [
-  {
-    id: "v-1",
-    code: "ADR4F2K7X9",
-    batchNumber: "BN-2026-001",
-    packageId: "3",
-    packageName: "Monthly Flex 10M/10M",
-    planSpeed: "10M/10M",
-    planPrice: "Ksh 900",
-    durationText: "30 Days",
-    status: "UNUSED",
-    expiresText: "2026-09-14",
-    createdAt: "2026-08-15",
-    isFallback: true,
-  },
-  {
-    id: "v-2",
-    code: "ADR8N2W5M3",
-    batchNumber: "BN-2026-002",
-    packageId: "2",
-    packageName: "Weekly Flex 4M/4M",
-    planSpeed: "4M/4M",
-    planPrice: "Ksh 300",
-    durationText: "7 Days",
-    status: "UNUSED",
-    expiresText: "2026-08-22",
-    createdAt: "2026-08-15",
-    isFallback: true,
-  },
-  {
-    id: "v-3",
-    code: "ADR5T9C7R2",
-    batchNumber: "BN-2026-002",
-    packageId: "2",
-    packageName: "Weekly Flex 4M/4M",
-    planSpeed: "4M/4M",
-    planPrice: "Ksh 300",
-    durationText: "7 Days",
-    status: "UNUSED",
-    expiresText: "2026-08-22",
-    createdAt: "2026-08-15",
-    isFallback: true,
-  },
-  {
-    id: "v-4",
-    code: "ADR6H3M8K4",
-    batchNumber: "BN-2026-003",
-    packageId: "1",
-    packageName: "Daily Flex 1M/1M",
-    planSpeed: "1M/1M",
-    planPrice: "Ksh 50",
-    durationText: "1 Day",
-    status: "USED",
-    expiresText: "2026-08-16",
-    createdAt: "2026-08-14",
-    redeemedAt: "2026-08-14",
-    redeemedByPhone: "254712345678",
-    isFallback: true,
-  },
-  {
-    id: "v-5",
-    code: "ADR9P2D6J5",
-    batchNumber: "BN-2026-003",
-    packageId: "1",
-    packageName: "Daily Flex 1M/1M",
-    planSpeed: "1M/1M",
-    planPrice: "Ksh 50",
-    durationText: "1 Day",
-    status: "USED",
-    expiresText: "2026-08-16",
-    createdAt: "2026-08-14",
-    redeemedAt: "2026-08-14",
-    redeemedByPhone: "254798765432",
-    isFallback: true,
-  },
-];
 
 async function getAuthHeaders(): Promise<HeadersInit> {
   const session = await auth();
@@ -116,6 +39,7 @@ function str(value: unknown): string | undefined {
   return String(value);
 }
 
+/** Maps a backend HotspotSessionResponse (GET /hotspot/vouchers). */
 function mapRowToVoucher(row: unknown): VoucherItem {
   const r = (row ?? {}) as Record<string, unknown>;
   const pkg = (r.package ?? {}) as Record<string, unknown>;
@@ -123,6 +47,7 @@ function mapRowToVoucher(row: unknown): VoucherItem {
   const speedDown = Number(r.speedDownload ?? pkg.speedDownload ?? 0);
   const speedUp = Number(r.speedUpload ?? pkg.speedUpload ?? 0);
   const planSpeed =
+    str(r.packageSpeedLabel) ??
     str(r.planSpeed) ??
     (speedDown > 0 || speedUp > 0
       ? `${speedDown}M/${speedUp}M`
@@ -130,25 +55,28 @@ function mapRowToVoucher(row: unknown): VoucherItem {
   const validityValue = str(r.validityValue) ?? str(pkg.validityValue);
   const validityType = str(r.validityType) ?? str(pkg.validityType);
   const durationText =
+    str(r.packageValidityLabel) ??
     str(r.durationText) ??
     (validityValue && validityType ? `${validityValue} ${validityType}` : "—");
   const price = Number(r.price ?? pkg.price ?? r.planPrice);
 
   return {
-    id: str(r.id) ?? str(r.voucherId) ?? "—",
+    id: str(r.sessionId) ?? str(r.id) ?? str(r.voucherId) ?? "—",
     code: str(r.code) ?? str(r.voucherCode) ?? "—",
-    batchNumber: str(r.batchNumber),
+    batchNumber: str(r.voucherBatchId) ?? str(r.batchNumber),
     packageId: str(r.packageId) ?? str(pkg.id),
     packageName,
     planSpeed,
-    planPrice: Number.isFinite(price) && price > 0 ? `Ksh ${price}` : undefined,
+    planPrice: str(r.packageCurrencyAmount) ??
+      (Number.isFinite(price) && price > 0 ? `Ksh ${price}` : undefined),
     durationText,
-    status: normalizeStatus(r.status),
+    // voucherState is derived server-side from session status + redemption.
+    status: normalizeStatus(r.voucherState ?? r.status),
     expiresText: str(r.expiresAt) ?? str(r.expiryDate) ?? "—",
     createdAt: str(r.createdAt),
     redeemedAt: str(r.redeemedAt),
     redeemedByPhone: str(r.redeemedByPhone),
-    redeemedByMac: str(r.redeemedByMac),
+    redeemedByMac: str(r.redeemedByMac) ?? (r.redeemedAt ? str(r.macAddress) : undefined),
   };
 }
 
@@ -174,10 +102,12 @@ export async function getVouchersData(): Promise<{
 }> {
   const session = await auth();
   if (!session?.user?.apiToken) {
-    return { kpis: FALLBACK_KPIS, vouchers: FALLBACK_VOUCHERS };
+    return { kpis: EMPTY_KPIS, vouchers: [] };
   }
   try {
-    const res = await fetch(`${BASE_URL}hotspot/vouchers`, {
+    // Issued vouchers only (minted / migration / compensation — not raw M-Pesa
+    // purchase sessions), newest first, so today's batch is at the top.
+    const res = await fetch(`${BASE_URL}hotspot/vouchers?issuedOnly=true&size=200&sort=createdAt,desc`, {
       headers: await getAuthHeaders(),
       cache: "no-store",
     });
@@ -194,12 +124,12 @@ export async function getVouchersData(): Promise<{
         : null;
 
     if (!Array.isArray(list) || list.length === 0) {
-      return { kpis: FALLBACK_KPIS, vouchers: FALLBACK_VOUCHERS };
+      return { kpis: EMPTY_KPIS, vouchers: [] };
     }
     const vouchers = list.map(mapRowToVoucher);
     return { kpis: deriveKpis(vouchers), vouchers };
   } catch {
-    return { kpis: FALLBACK_KPIS, vouchers: FALLBACK_VOUCHERS };
+    return { kpis: EMPTY_KPIS, vouchers: [] };
   }
 }
 
