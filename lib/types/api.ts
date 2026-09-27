@@ -97,4 +97,9 @@ export interface IpMappingResponse {
   nasIp?: string;
   bytesIn?: number;
   bytesOut?: number;
+  packageName?: string;
+  subscriberName?: string;
+  /** hotspot_session.id when the binding belongs to a hotspot purchase/voucher. */
+  sessionId?: number;
+  companyId?: string;
 }
