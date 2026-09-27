@@ -2,7 +2,6 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { server } from "@/mocks/server";
 import { http, HttpResponse } from "msw";
 import { API_PREFIX } from "@/mocks/handlers/auth-guard";
-import { ipMappingsPageFixture } from "@/contracts/catalog";
 import { getLiveSessionsData } from "@/actions/sessions";
 
 const TOKEN = "mock-valid-bearer-token";
@@ -11,77 +10,100 @@ beforeEach(() => {
   vi.clearAllMocks();
 });
 
-describe("getLiveSessionsData (live-sessions hub)", () => {
-  it("unwraps the ip-mappings Page envelope into content[] and derives KPIs from real bindings", async () => {
+const liveEnvelope = {
+  status: 200,
+  success: true,
+  message: "Live sessions retrieved successfully",
+  timestamp: new Date().toISOString(),
+  data: {
+    kpis: {
+      currentlyConnected: 1,
+      pppoeCount: 0,
+      hotspotCount: 1,
+      paidNotConnected: 1,
+      downloadBytesTotal: "1500000000",
+      uploadBytesTotal: "500000000",
+      totalBytesTotal: "2000000000",
+    },
+    sessions: {
+      content: [
+        {
+          subscriberCode: "ADR7KQ",
+          subscriberName: "254725134318",
+          protocol: "Hotspot",
+          deviceMac: "26:76:05:86:C8:34",
+          assignedIp: "10.50.50.248",
+          routerName: "ADRINOLD-WESTLANDS",
+          downloadBytes: "1500000000",
+          uploadBytes: "500000000",
+          onlineDurationFormatted: "12m",
+          sessionId: 212,
+          phone: "254725134318",
+          packageName: "1 Hour Basic",
+          voucherCode: "ADR7KQ",
+          mpesaReceipt: "UIR4T8DKZG",
+          amountPaid: "1.00",
+          nasIp: "10.8.1.11",
+          online: true,
+          minutesRemaining: 48,
+        },
+        {
+          subscriberCode: "C4E3E65A",
+          protocol: "Hotspot",
+          deviceMac: "4A:AA:9E:1A:5D:1D",
+          sessionId: 213,
+          phone: "254790721501",
+          online: false,
+          downloadBytes: "0",
+          uploadBytes: "0",
+        },
+      ],
+    },
+  },
+};
+
+describe("getLiveSessionsData (GET /sessions/live)", () => {
+  it("maps real sessions with their customer, payment and router identity", async () => {
     server.use(
-      http.get(`${API_PREFIX}/network/ip-mappings`, ({ request }) => {
+      http.get(`${API_PREFIX}/sessions/live`, ({ request }) => {
         expect(request.headers.get("authorization")).toBe(`Bearer ${TOKEN}`);
-        return HttpResponse.json(ipMappingsPageFixture(), { status: 200 });
+        return HttpResponse.json(liveEnvelope, { status: 200 });
       })
     );
 
-    const { kpis, sessions } = await getLiveSessionsData();
+    const { kpis, sessions, error } = await getLiveSessionsData();
 
-    // 2 ONLINE bindings (A2085 HOTSPOT, P-114 PPPOE); EXPIRED row is excluded.
-    expect(sessions).toHaveLength(2);
-    expect(kpis.currentlyConnectedCount).toBe(2);
-    expect(kpis.pppoeCount).toBe(1);
-    expect(kpis.hotspotCount).toBe(1);
-    expect(kpis.downloadTrafficGb).toBeGreaterThanOrEqual(0);
-    expect(kpis.totalTrafficGb).toBeGreaterThanOrEqual(0);
+    expect(error).toBeUndefined();
+    expect(kpis.currentlyConnectedCount).toBe(1);
+    expect(kpis.paidNotConnected).toBe(1);
+    expect(kpis.downloadTrafficGb).toBe(1.5);
 
-    // Real identity: no synthesized "demo-/uuid" rows when content is non-empty.
+    const online = sessions.find((s) => s.sessionId === 212);
+    expect(online?.phone).toBe("254725134318");
+    expect(online?.mpesaReceipt).toBe("UIR4T8DKZG");
+    expect(online?.routerName).toBe("ADRINOLD-WESTLANDS");
+    expect(online?.downloadBytes).toBe(1500000000);
+    expect(online?.online).toBe(true);
+
+    const waiting = sessions.find((s) => s.sessionId === 213);
+    expect(waiting?.online).toBe(false);
     expect(sessions.some((s) => s.isFallback)).toBe(false);
-    expect(sessions.every((s) => !s.id.startsWith("demo-"))).toBe(true);
-    expect(sessions.every((s) => !/\b[0-9a-f]{8}-[0-9a-f]{4}/i.test(s.id))).toBe(true);
-
-    // Display name joined from the real customer directory (username -> fullName).
-    const grace = sessions.find((s) => s.subscriberCode === "A2085");
-    expect(grace?.subscriberName).toBe("Grace Wanjiru");
-    expect(grace?.protocol).toBe("HOTSPOT");
-    // NAS/CKE router name comes from IpMappingResponse.routerName first.
-    expect(grace?.routerName).toBe("RTR-BDK-MSA-A");
-
-    const pppoe = sessions.find((s) => s.subscriberCode === "P-114");
-    expect(pppoe?.protocol).toBe("PPPOE");
   });
 
-  it("falls back to the demo baseline when the backend has no bindings", async () => {
+  it("returns an empty list with an error instead of demo rows when the backend fails", async () => {
     server.use(
-      http.get(`${API_PREFIX}/network/ip-mappings`, () =>
+      http.get(`${API_PREFIX}/sessions/live`, () =>
         HttpResponse.json(
-          {
-            status: 200,
-            success: true,
-            message: "OK",
-            data: {
-              content: [],
-              pageable: {
-                pageNumber: 0,
-                pageSize: 20,
-                sort: { unsorted: true, sorted: false, empty: true },
-                offset: 0,
-                unpaged: false,
-                paged: true,
-              },
-              totalElements: 0,
-              totalPages: 0,
-              last: true,
-              first: true,
-              numberOfElements: 0,
-              size: 20,
-              number: 0,
-              sort: { unsorted: true, sorted: false, empty: true },
-              empty: true,
-            },
-          },
-          { status: 200 }
+          { status: 503, success: false, message: "LIVE_SESSIONS_UNAVAILABLE", data: null, timestamp: new Date().toISOString() },
+          { status: 503 }
         )
       )
     );
 
-    const { kpis, sessions } = await getLiveSessionsData();
-    expect(kpis.currentlyConnectedCount).toBe(51);
-    expect(sessions[0].isFallback).toBe(true);
+    const { sessions, kpis, error } = await getLiveSessionsData();
+
+    expect(sessions).toEqual([]);
+    expect(kpis.currentlyConnectedCount).toBe(0);
+    expect(error).toBeTruthy();
   });
 });
