@@ -88,7 +88,7 @@ export interface IpMappingResponse {
   serviceType: string;
   stationName: string;
   routerName: string;
-  /** ONLINE: router reporting · LOST: open but silent 15 min (no Stop) · EXPIRED: ended. */
+  /** ONLINE: router reporting · LOST: open but missed 3 interim updates (no Stop) · EXPIRED: ended. */
   status: "ONLINE" | "LOST" | "EXPIRED";
   lastSeen: string;
   subscriberPhone?: string;
