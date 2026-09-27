@@ -1,4 +1,4 @@
-import { getIpMappings } from "@/actions/network";
+import { getIpMappingsResult } from "@/actions/network";
 import type { IpMappingResponse } from "@/lib/types/api";
 import { getPermissionForRoute } from "@/lib/data/nav";
 import { redirect } from "next/navigation";
@@ -50,10 +50,11 @@ export default async function IpMappingsPage() {
   const pagePerms = await getPermissionForRoute("/network/ip-mappings");
   if (!pagePerms.canView) redirect("/dashboard");
 
-  const mappings = await getIpMappings();
+  const { items: mappings, error } = await getIpMappingsResult();
 
   const onlineCount = mappings.filter((mapping: IpMappingResponse) => mapping.status === "ONLINE").length;
   const expiredCount = mappings.filter((mapping: IpMappingResponse) => mapping.status === "EXPIRED").length;
+  const lostCount = mappings.filter((mapping: IpMappingResponse) => mapping.status === "LOST").length;
 
   return (
     <div className="min-h-screen p-4 text-foreground sm:p-6 lg:p-8">
@@ -68,10 +69,16 @@ export default async function IpMappingsPage() {
               Active Session Bindings.
             </h1>
             <p className="mt-1 text-xs text-muted-foreground">
-              Latest {mappings.length} bindings · {onlineCount} online · {expiredCount} ended — each tied to its customer, payment and router
+              Latest {mappings.length} bindings · {onlineCount} online · {lostCount} lost contact · {expiredCount} ended — each tied to its customer, payment and router
             </p>
           </div>
         </div>
+
+        {error && (
+          <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-400">
+            IP mappings could not be loaded: {error}
+          </div>
+        )}
 
         {/* KPI Cards */}
         <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
@@ -196,10 +203,17 @@ export default async function IpMappingsPage() {
                           className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-medium ${
                             mapping.status === "ONLINE"
                               ? "bg-success/10 text-success border-success/20"
-                              : "bg-destructive/10 text-destructive border-destructive/20"
+                              : mapping.status === "LOST"
+                                ? "bg-amber-500/10 text-amber-500 border-amber-500/20"
+                                : "bg-destructive/10 text-destructive border-destructive/20"
                           }`}
+                          title={
+                            mapping.status === "LOST"
+                              ? "The router stopped reporting this session without ending it — router or CPE lost power/link."
+                              : undefined
+                          }
                         >
-                          {mapping.status || "—"}
+                          {mapping.status === "LOST" ? "LOST CONTACT" : mapping.status === "EXPIRED" ? "ENDED" : mapping.status || "—"}
                         </span>
                       </TableCell>
                       <TableCell className="text-right text-sm text-muted-foreground">

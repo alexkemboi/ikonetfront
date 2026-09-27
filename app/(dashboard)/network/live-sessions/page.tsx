@@ -27,6 +27,7 @@ export default async function LiveSessionsPage() {
  </h1>
  <p className="mt-1 text-sm text-muted-foreground">
  {kpis.currentlyConnectedCount} online
+ {kpis.lostContact > 0 ? ` · ${kpis.lostContact} lost contact` : ""}
  {kpis.paidNotConnected > 0 ? ` · ${kpis.paidNotConnected} paid but not connected` : ""}
  {" · "}each session traced to its customer, payment and router
  </p>
