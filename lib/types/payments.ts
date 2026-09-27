@@ -140,6 +140,8 @@ export interface GenerateVoucherBatchRequest {
   codeLength?: number;
   channel: "CASH" | "BANK_TRANSFER";
   stationId?: string;
+  /** Router the batch is minted for; its vouchers are redeemable only there. */
+  deviceId?: number;
 }
 
 export interface CreateInvoiceRequest {

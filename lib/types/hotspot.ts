@@ -20,6 +20,8 @@ export interface InitiatePaymentRequest {
   macAddress: string;
   clientMac: string;
   clientIp: string;
+  /** RouterOS identity of the serving router; required once several routers are active. */
+  routerIdentity?: string;
   companyId?: string;
 }
 
