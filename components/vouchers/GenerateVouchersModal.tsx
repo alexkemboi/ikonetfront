@@ -14,6 +14,7 @@ import {
 interface Props {
  isOpen: boolean;
  onClose: () => void;
+ routerOptions?: { value: string; label: string }[];
 }
 
 interface PackageOption {
@@ -21,12 +22,8 @@ interface PackageOption {
  label: string;
 }
 
-const FALLBACK_OPTIONS: PackageOption[] = [
- { value: "1", label: "Daily Flex 1M/1M · Ksh 50 · 1 Day" },
- { value: "2", label: "Weekly Flex 4M/4M · Ksh 300 · 7 Days" },
- { value: "3", label: "Monthly Flex 10M/10M · Ksh 900 · 30 Days" },
- { value: "4", label: "Quarterly Turbo 20M/30M · Ksh 2500 · 90 Days" },
-];
+type PaymentChannel = "CASH" | "BANK_TRANSFER";
+type Source = "SALE" | "MIGRATION";
 
 function fmtSpeed(p: InternetPackage): string {
  if (p.speedDownload > 0 || p.speedUpload > 0) {
@@ -46,14 +43,19 @@ function mapPackages(rows: InternetPackage[]): PackageOption[] {
  }));
 }
 
-export function GenerateVouchersModal({ isOpen, onClose }: Props) {
+export function GenerateVouchersModal({ isOpen, onClose, routerOptions = [] }: Props) {
  const [step, setStep] = useState<1 | 2>(1);
- const [packages, setPackages] = useState<PackageOption[]>(FALLBACK_OPTIONS);
+ // No placeholder catalog: minting posts revenue, so it must only ever run
+ // against a real, live package.
+ const [packages, setPackages] = useState<PackageOption[]>([]);
+ const [packagesError, setPackagesError] = useState(false);
  const [packageId, setPackageId] = useState(0);
  const [quantity, setQuantity] = useState("");
  const [codeLength, setCodeLength] = useState("6");
  const [prefix, setPrefix] = useState("");
- const [expiresAt, setExpiresAt] = useState("");
+ const [channel, setChannel] = useState<PaymentChannel>("CASH");
+ const [source, setSource] = useState<Source>("SALE");
+ const [deviceId, setDeviceId] = useState("");
  const [error, setError] = useState<string | null>(null);
  const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -62,7 +64,12 @@ export function GenerateVouchersModal({ isOpen, onClose }: Props) {
  let cancelled = false;
  getPackagesAction()
  .then((res) => {
- if (cancelled || !res.success) return;
+ if (cancelled) return;
+ if (!res.success) {
+ setPackagesError(true);
+ return;
+ }
+ setPackagesError(false);
  const active = Array.isArray(res.data)
  ? res.data.filter((p) => p.activeStatus === true)
  : [];
@@ -78,8 +85,7 @@ export function GenerateVouchersModal({ isOpen, onClose }: Props) {
  })
  .catch(() => {
  if (cancelled) return;
- setPackages(FALLBACK_OPTIONS);
- setPackageId((current) => (current === 0 ? 1 : current));
+ setPackagesError(true);
  });
  return () => {
  cancelled = true;
@@ -98,8 +104,8 @@ export function GenerateVouchersModal({ isOpen, onClose }: Props) {
  return;
  }
  const qty = Number(quantity);
- if (!Number.isInteger(qty) || qty < 1 || qty > 10000) {
- setError("Quantity must be a whole number between 1 and 10,000.");
+ if (!Number.isInteger(qty) || qty < 1 || qty > 500) {
+ setError("Quantity must be a whole number between 1 and 500 per batch.");
  return;
  }
  const len = Number(codeLength || 6);
@@ -107,20 +113,28 @@ export function GenerateVouchersModal({ isOpen, onClose }: Props) {
  setError("Code length must be between 4 and 12 characters.");
  return;
  }
+ if (source === "SALE" && !deviceId) {
+ setError("Select the router these vouchers are sold for.");
+ return;
+ }
  setIsSubmitting(true);
  const res = await generateVouchers({
+ source,
+ deviceId: deviceId ? Number(deviceId) : undefined,
  packageId,
  quantity: qty,
  codeLength: len,
  prefix: prefix.trim(),
- expiresAt: expiresAt || undefined,
+ channel: source === "SALE" ? channel : undefined,
  });
  setIsSubmitting(false);
  if (res.success) {
  setStep(1);
  setQuantity("");
  setPrefix("");
- setExpiresAt("");
+ setChannel("CASH");
+ setSource("SALE");
+ setDeviceId("");
  setError(null);
  onClose();
  } else {
@@ -181,8 +195,10 @@ export function GenerateVouchersModal({ isOpen, onClose }: Props) {
  ))}
  </select>
  <p className="mt-1.5 text-[11px] text-muted-foreground">
- {packages === FALLBACK_OPTIONS
- ? "Live packages unavailable — showing catalog defaults."
+ {packagesError
+ ? "Live packages unavailable — vouchers cannot be minted right now."
+ : packages.length === 0
+ ? "Loading live packages…"
  : `Live packages · ${packages.length} active`}
  </p>
  </div>
@@ -198,7 +214,7 @@ export function GenerateVouchersModal({ isOpen, onClose }: Props) {
  onChange={(e) => setQuantity(e.target.value)}
  placeholder="e.g. 100"
  min={1}
- max={10000}
+ max={500}
  className="mt-1 w-full rounded-lg border border-border bg-muted p-2.5 text-sm text-foreground placeholder-zinc-600 focus:border-amber-500 focus:outline-none"
  />
  </div>
@@ -232,18 +248,60 @@ export function GenerateVouchersModal({ isOpen, onClose }: Props) {
  </div>
  <div>
  <label className="text-xs font-sans tabular-nums text-muted-foreground">
- Expiry date{" "}
- <span className="font-sans text-muted-foreground">
- (optional — backend default applied)
- </span>
+ Voucher source *
  </label>
- <input
- type="date"
- value={expiresAt}
- onChange={(e) => setExpiresAt(e.target.value)}
+ <select
+ value={source}
+ onChange={(e) => setSource(e.target.value as Source)}
  className="mt-1 w-full rounded-lg border border-border bg-muted p-2.5 text-sm text-foreground focus:border-amber-500 focus:outline-none"
- />
+ >
+ <option value="SALE">Sold vouchers (records the sale)</option>
+ <option value="MIGRATION">Migrated customers (no payment — from another ISP)</option>
+ </select>
  </div>
+ <div>
+ <label className="text-xs font-sans tabular-nums text-muted-foreground">
+ Router {source === "SALE" ? "*" : "(optional)"}
+ </label>
+ <select
+ value={deviceId}
+ onChange={(e) => setDeviceId(e.target.value)}
+ className="mt-1 w-full rounded-lg border border-border bg-muted p-2.5 text-sm text-foreground focus:border-amber-500 focus:outline-none"
+ >
+ <option value="">
+ {source === "SALE" ? "Select a router…" : "Any site of the company"}
+ </option>
+ {routerOptions.map((r) => (
+ <option key={r.value} value={r.value}>
+ {r.label}
+ </option>
+ ))}
+ </select>
+ <p className="mt-1.5 text-[11px] text-muted-foreground">
+ A voucher minted for a router can only be redeemed on that router.
+ </p>
+ </div>
+ {source === "SALE" && (
+ <div>
+ <label className="text-xs font-sans tabular-nums text-muted-foreground">
+ Paid by *
+ </label>
+ <select
+ value={channel}
+ onChange={(e) => setChannel(e.target.value as PaymentChannel)}
+ className="mt-1 w-full rounded-lg border border-border bg-muted p-2.5 text-sm text-foreground focus:border-amber-500 focus:outline-none"
+ >
+ <option value="CASH">Cash</option>
+ <option value="BANK_TRANSFER">Bank transfer</option>
+ </select>
+ <p className="mt-1.5 text-[11px] text-muted-foreground">
+ The batch value is recorded as a sale (Cr 4100) against cash or bank.
+ </p>
+ </div>
+ )}
+ <p className="text-[11px] text-muted-foreground">
+ Each voucher&apos;s validity starts when it is first redeemed on the captive portal.
+ </p>
  <p className="text-[11px] text-muted-foreground">
  Ambiguous characters{" "}
  <span className="font-sans tabular-nums text-muted-foreground">I L O 0 1</span> are
@@ -285,6 +343,7 @@ export function GenerateVouchersModal({ isOpen, onClose }: Props) {
  ) : (
  <button
  type="button"
+ disabled={packagesError || packages.length === 0}
  onClick={() => {
  if (!packageId) {
  setError("Select a package first.");
@@ -293,7 +352,7 @@ export function GenerateVouchersModal({ isOpen, onClose }: Props) {
  setError(null);
  setStep(2);
  }}
- className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500 px-5 py-2.5 text-xs font-semibold text-black hover:bg-amber-400"
+ className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500 px-5 py-2.5 text-xs font-semibold text-black hover:bg-amber-400 disabled:opacity-50"
  >
  Next: Configure <ArrowRight className="h-3.5 w-3.5" />
  </button>

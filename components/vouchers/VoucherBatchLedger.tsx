@@ -27,6 +27,7 @@ interface Props {
   kpis: VoucherBatchKpis;
   batches: VoucherBatchItem[];
   packageOptions: { value: string; label: string }[];
+  routerOptions?: { value: string; label: string }[];
 }
 
 function toKsh(value: number): string {
@@ -36,10 +37,11 @@ function toKsh(value: number): string {
   });
 }
 
-export function VoucherBatchLedger({ kpis, batches, packageOptions }: Props) {
+export function VoucherBatchLedger({ kpis, batches, packageOptions, routerOptions = [] }: Props) {
   const [mintOpen, setMintOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [packageId, setPackageId] = useState("");
+  const [deviceId, setDeviceId] = useState("");
   const [quantity, setQuantity] = useState("");
   const [channel, setChannel] = useState<"CASH" | "BANK_TRANSFER">("CASH");
   const [codePrefix, setCodePrefix] = useState("");
@@ -64,6 +66,10 @@ export function VoucherBatchLedger({ kpis, batches, packageOptions }: Props) {
       toast.error("Quantity must be between 1 and 500.");
       return;
     }
+    if (!deviceId) {
+      toast.error("Select the router these vouchers are sold for.");
+      return;
+    }
     setSaving(true);
     try {
       const res = await generateVoucherBatch({
@@ -71,6 +77,7 @@ export function VoucherBatchLedger({ kpis, batches, packageOptions }: Props) {
         quantity: qty,
         channel,
         codePrefix: codePrefix.trim() || undefined,
+        deviceId: Number(deviceId),
       });
       if (res.success && res.data) {
         toast.success(`Batch ${res.data.batchNumber} minted (${qty} codes).`);
@@ -191,6 +198,21 @@ export function VoucherBatchLedger({ kpis, batches, packageOptions }: Props) {
                   {packageOptions.map((p) => (
                     <SelectItem key={p.value} value={p.value}>
                       {p.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-muted-foreground">Router (vouchers work only here)</label>
+              <Select value={deviceId} onValueChange={setDeviceId}>
+                <SelectTrigger className="border-border bg-muted text-foreground">
+                  <SelectValue placeholder={routerOptions.length ? "Select a router" : "No active routers"} />
+                </SelectTrigger>
+                <SelectContent className="bg-popover border-border text-foreground">
+                  {routerOptions.map((r) => (
+                    <SelectItem key={r.value} value={r.value}>
+                      {r.label}
                     </SelectItem>
                   ))}
                 </SelectContent>
