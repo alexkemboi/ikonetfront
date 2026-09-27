@@ -5,7 +5,9 @@ export function LiveSessionHeaderCards({ kpis }: { kpis: LiveSessionKpis }) {
  {
  label: "ONLINE",
  value: kpis.currentlyConnectedCount,
- footer: `${kpis.hotspotCount} hotspot · ${kpis.pppoeCount} PPPoE`,
+ footer: `${kpis.hotspotCount} hotspot · ${kpis.pppoeCount} PPPoE${
+ kpis.lostContact > 0 ? ` · ${kpis.lostContact} lost contact` : ""
+ }`,
  color: "text-emerald-400",
  },
  {

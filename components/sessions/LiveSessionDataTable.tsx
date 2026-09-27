@@ -5,11 +5,12 @@ import { Power, Search } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { disconnectLiveSession } from "@/actions/sessions";
-import type { LiveSessionItem } from "@/lib/types/sessions";
+import { sessionState, type LiveSessionItem } from "@/lib/types/sessions";
 
 const TABS = [
  { key: "ALL", label: "All" },
  { key: "ONLINE", label: "Online" },
+ { key: "LOST", label: "Lost contact" },
  { key: "NOT_CONNECTED", label: "Paid, not connected" },
  { key: "HOTSPOT", label: "Hotspot" },
  { key: "PPPOE", label: "PPPoE" },
@@ -22,9 +23,11 @@ const TH = "px-4 py-3 text-[11px] font-sans tabular-nums uppercase tracking-wide
 function matchesTab(session: LiveSessionItem, tab: TabKey): boolean {
  switch (tab) {
  case "ONLINE":
- return session.online;
+ return sessionState(session) === "ONLINE";
+ case "LOST":
+ return sessionState(session) === "LOST";
  case "NOT_CONNECTED":
- return !session.online;
+ return sessionState(session) === "WAITING";
  case "HOTSPOT":
  return session.protocol === "HOTSPOT";
  case "PPPOE":
@@ -50,16 +53,37 @@ function remainingText(minutes?: number | null): string {
  return `${Math.floor(hours / 24)} days left`;
 }
 
+function agoText(iso?: string): string {
+ if (!iso) return "";
+ const minutes = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
+ if (minutes < 60) return `${minutes} min ago`;
+ const hours = Math.floor(minutes / 60);
+ return hours < 48 ? `${hours}h ago` : `${Math.floor(hours / 24)} days ago`;
+}
+
+const STATE_STYLE = {
+ ONLINE: { label: "Online", badge: "bg-emerald-500/10 text-emerald-400", dot: "bg-emerald-400" },
+ LOST: { label: "Lost contact", badge: "bg-rose-500/10 text-rose-400", dot: "bg-rose-400" },
+ WAITING: { label: "Paid, not connected", badge: "bg-amber-500/10 text-amber-400", dot: "bg-amber-400" },
+} as const;
+
 function StatusBadge({ session }: { session: LiveSessionItem }) {
+ const state = sessionState(session);
+ const style = STATE_STYLE[state];
  return (
  <span
+ title={
+ state === "LOST"
+ ? `The router stopped reporting this session ${agoText(session.lastSeenAt)} — the router or the customer's device/CPE likely lost power or link.`
+ : undefined
+ }
  className={cn(
  "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
- session.online ? "bg-emerald-500/10 text-emerald-400" : "bg-amber-500/10 text-amber-400"
+ style.badge
  )}
  >
- <span className={cn("h-1.5 w-1.5 rounded-full", session.online ? "bg-emerald-400" : "bg-amber-400")} />
- {session.online ? "Online" : "Paid, not connected"}
+ <span className={cn("h-1.5 w-1.5 rounded-full", style.dot)} />
+ {style.label}
  </span>
  );
 }
@@ -255,7 +279,11 @@ export function LiveSessionDataTable({
  {/* Time */}
  <td className="px-4 py-3">
  <p className="whitespace-nowrap text-sm text-foreground">
- {session.online ? `Online ${session.onlineDurationFormatted}` : "Not online"}
+ {sessionState(session) === "ONLINE"
+ ? `Online ${session.onlineDurationFormatted}`
+ : sessionState(session) === "LOST"
+ ? `Last heard ${agoText(session.lastSeenAt)}`
+ : "Never connected"}
  </p>
  <p className="whitespace-nowrap text-[11px] text-muted-foreground">
  {session.protocol === "HOTSPOT" ? remainingText(session.minutesRemaining) : session.expiryFormatted}
