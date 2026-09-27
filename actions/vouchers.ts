@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
 import { BASE_URL } from "@/lib/constants";
 import { getPermissionForRoute } from "@/lib/data/nav";
@@ -204,19 +205,20 @@ export async function getVouchersData(): Promise<{
 
 export async function generateVouchers(
   request: GenerateVouchersRequest
-): Promise<{ success: boolean; message: string; count?: number }> {
+): Promise<{ success: boolean; message: string; count?: number; batchNumber?: string }> {
   const pagePerms = await getPermissionForRoute("/finance/vouchers");
   if (!pagePerms.canCreate) {
     return { success: false, message: "Not authorized to mint vouchers." };
   }
 
   const quantity = Math.floor(Number(request.quantity));
-  const codeLength = Math.floor(Number(request.codeLength ?? 6));
+  const codeLength = Math.floor(Number(request.codeLength ?? 8));
+  const isSale = request.source === "SALE";
 
-  if (!Number.isInteger(quantity) || quantity < 1 || quantity > 10000) {
+  if (!Number.isInteger(quantity) || quantity < 1 || quantity > 500) {
     return {
       success: false,
-      message: "Quantity must be a whole number between 1 and 10,000.",
+      message: "Quantity must be a whole number between 1 and 500 per batch.",
     };
   }
   if (!Number.isInteger(codeLength) || codeLength < 4 || codeLength > 12) {
@@ -225,38 +227,69 @@ export async function generateVouchers(
       message: "Code length must be between 4 and 12 characters.",
     };
   }
+  if (isSale && !request.deviceId) {
+    return { success: false, message: "Select the router these vouchers are sold for." };
+  }
+  if (isSale && request.channel !== "CASH" && request.channel !== "BANK_TRANSFER") {
+    return { success: false, message: "Select how the batch was paid for (cash or bank transfer)." };
+  }
 
   try {
-    // Backend ManualVoucherRequest: POST /hotspot/vouchers/create
-    // accepts { packageId, count, stationId, companyId }. stationId/companyId
-    // are optional (backend derives them from JWT/device); pass stationId when known.
     const session = await auth();
     const stationId = session?.user?.stationId
       ? String(session.user.stationId)
       : undefined;
-    const res = await fetch(`${BASE_URL}hotspot/vouchers/create`, {
-      method: "POST",
-      headers: await getAuthHeaders(),
-      body: JSON.stringify({
-        packageId: Number(request.packageId),
-        count: quantity,
-        stationId,
-      }),
-    });
+    const prefix = request.prefix?.trim() || undefined;
+    const deviceId = request.deviceId ? Number(request.deviceId) : undefined;
 
+    // SALE: /finance/voucher-batches creates the sessions AND posts the sale
+    // (Dr 1130/1120, Cr 4100) in one transaction.
+    // MIGRATION: /hotspot/vouchers/create — no revenue (the customer paid their
+    // previous ISP), still tenant-scoped and optionally locked to a router.
+    const res = isSale
+      ? await fetch(`${BASE_URL}finance/voucher-batches`, {
+          method: "POST",
+          headers: await getAuthHeaders(),
+          body: JSON.stringify({
+            packageId: Number(request.packageId),
+            quantity,
+            codeLength,
+            codePrefix: prefix,
+            channel: request.channel,
+            stationId,
+            deviceId,
+          }),
+        })
+      : await fetch(`${BASE_URL}hotspot/vouchers/create`, {
+          method: "POST",
+          headers: await getAuthHeaders(),
+          body: JSON.stringify({
+            packageId: Number(request.packageId),
+            count: quantity,
+            codeLength,
+            prefix,
+            voucherType: "MIGRATION",
+            stationId,
+            deviceId,
+          }),
+        });
+
+    const body: { message?: string; data?: { batchNumber?: string } } | null = await res
+      .json()
+      .catch(() => null);
     if (!res.ok) {
-      const body: { message?: string } | null = await res
-        .json()
-        .catch(() => null);
       const message = `HTTP ${res.status}: ${body?.message || "Failed to mint vouchers"}`;
       console.warn(message);
       return { success: false, message, count: quantity };
     }
 
+    revalidatePath("/finance/vouchers");
+    const batchNumber = isSale ? body?.data?.batchNumber : undefined;
     return {
       success: true,
-      message: `Successfully minted ${quantity} vouchers.`,
+      message: `Minted ${quantity} ${isSale ? "" : "migration "}vouchers${batchNumber ? ` in batch ${batchNumber}` : ""}.`,
       count: quantity,
+      batchNumber,
     };
   } catch (error: unknown) {
     const detail = error instanceof Error ? error.message : "fetch failed";
@@ -265,5 +298,47 @@ export async function generateVouchers(
       success: false,
       message: "Failed to reach voucher minting service. Please retry.",
     };
+  }
+}
+
+/**
+ * Re-instate a settled M-Pesa hotspot purchase that never connected.
+ * POST /hotspot/vouchers/compensate — no GL (the sale was posted at settlement);
+ * the original session is revoked; idempotent per payment.
+ */
+export async function compensateHotspotPayment(
+  mpesaReceipt: string,
+  reason?: string
+): Promise<{ success: boolean; message: string; voucherCode?: string; packageName?: string }> {
+  const pagePerms = await getPermissionForRoute("/finance/vouchers");
+  if (!pagePerms.canCreate) {
+    return { success: false, message: "Not authorized to issue compensation vouchers." };
+  }
+  const receipt = mpesaReceipt.trim().toUpperCase();
+  if (!/^[A-Z0-9]{8,12}$/.test(receipt)) {
+    return { success: false, message: "Enter the M-Pesa receipt code from the customer's SMS (e.g. UIOAC7SJ5A)." };
+  }
+  try {
+    const res = await fetch(`${BASE_URL}hotspot/vouchers/compensate`, {
+      method: "POST",
+      headers: await getAuthHeaders(),
+      body: JSON.stringify({ mpesaReceipt: receipt, reason: reason?.trim() || undefined }),
+    });
+    const body: { message?: string; data?: { voucherCode?: string; packageName?: string } } | null = await res
+      .json()
+      .catch(() => null);
+    if (!res.ok || !body?.data?.voucherCode) {
+      return { success: false, message: body?.message || `Failed to issue voucher (HTTP ${res.status}).` };
+    }
+    revalidatePath("/finance/vouchers");
+    return {
+      success: true,
+      message: body.message || "Compensation voucher issued",
+      voucherCode: body.data.voucherCode,
+      packageName: body.data.packageName,
+    };
+  } catch (error: unknown) {
+    console.warn("Compensation voucher network error:", error instanceof Error ? error.message : error);
+    return { success: false, message: "Failed to reach the voucher service. Please retry." };
   }
 }

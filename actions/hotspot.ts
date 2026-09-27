@@ -58,23 +58,36 @@ export async function initiateHotspotPayment(
 }
 
 /**
- * Voucher activation — TEMPORARILY GATED OFF.
+ * Voucher activation — `POST /api/v1/hotspot/vouchers/activate` (permitAll).
  *
- * The backend has no `POST /hotspot/activate` mapping in HotspotController /
- * HotspotSessionController (BE gap ticket; endpoint exists only in OpenAPI
- * docs). Keep the action returning a readable envelope so the UI can explain
- * the state instead of 404ing. Re-enable once the backend route lands.
+ * Body `VoucherActivationRequest { voucherCode, macAddress, clientIp, routerIdentity }`.
+ * The backend binds the voucher to this device's MAC (recovering it from the
+ * router by `clientIp` when the CNA stripped `mac`), starts the validity clock on
+ * first use, writes the RADIUS rows and auto-logs the device in on the serving
+ * router. Errors come back as readable envelopes (404 unknown code, 409 bound to
+ * another device, 410 expired/revoked, 403 voucher of another provider).
  */
-export async function activateVoucherAction(code: string): Promise<ApiResponse<null>> {
-  void code;
-  return {
-    status: 503,
-    success: false,
-    message:
-      "Voucher activation is temporarily unavailable — pending the backend route (POST /hotspot/activate) being verified. Tier-2 BE ticket.",
-    data: null,
-    timestamp: new Date().toISOString(),
-  };
+export interface ActivateVoucherRequest {
+  voucherCode: string;
+  macAddress?: string;
+  clientIp?: string;
+  routerIdentity?: string;
+}
+
+export async function activateVoucherAction(
+  request: ActivateVoucherRequest
+): Promise<ApiResponse<HotspotSessionResponse | null>> {
+  const res = await apiFetch<HotspotSessionResponse>('/hotspot/vouchers/activate', {
+    method: 'POST',
+    body: {
+      voucherCode: request.voucherCode.trim().toUpperCase(),
+      macAddress: request.macAddress?.trim() || undefined,
+      clientIp: request.clientIp?.trim() || undefined,
+      routerIdentity: request.routerIdentity?.trim() || undefined,
+    },
+    auth: 'public',
+  });
+  return { ...res, data: res.data ?? null };
 }
 
 export async function checkActiveSession(
