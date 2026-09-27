@@ -1040,7 +1040,8 @@ export async function getIpPools(): Promise<IpPool[]> {
  */
 export async function getIpMappings(): Promise<IpMappingResponse[]> {
   try {
-    const res = await apiFetch<PageResponse<IpMappingResponse>>("/network/ip-mappings", {
+    // Online bindings first (backend order), latest 200 — the default page is only 20.
+    const res = await apiFetch<PageResponse<IpMappingResponse>>("/network/ip-mappings?page=0&size=200", {
       auth: "required",
       tags: ["network"],
     });
