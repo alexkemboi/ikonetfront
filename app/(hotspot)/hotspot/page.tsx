@@ -13,7 +13,7 @@ export const metadata = {
 export const dynamic = "force-dynamic"; // Ensure the page is always rendered on the server
 
 interface HotspotPageProps {
-  searchParams: Promise<{ company?: string; router?: string; mac?: string; clientMac?: string; ip?: string }>;
+  searchParams: Promise<{ company?: string; router?: string; mac?: string; clientMac?: string; ip?: string; identity?: string }>;
 }
 
 export default async function HotspotPage({ searchParams }: HotspotPageProps) {
@@ -29,6 +29,9 @@ export default async function HotspotPage({ searchParams }: HotspotPageProps) {
   const clientMac = params?.mac?.trim() || "";
   const redirectClientMac = params?.clientMac?.trim() || "";
   const clientIp = params?.ip?.trim() || "";
+  // Every router hands out the same hotspot subnet, so the backend pins the
+  // serving router (tenant + auto-login target) by its RouterOS identity.
+  const routerIdentity = params?.identity?.trim() || params?.router?.trim() || "";
 
   const [packagesResponse, tvPackagesResult] = await Promise.all([
     getPublicHotspotPackagesAction(),
@@ -128,6 +131,7 @@ export default async function HotspotPage({ searchParams }: HotspotPageProps) {
             clientMac={clientMac}
             redirectClientMac={redirectClientMac}
             clientIp={clientIp}
+            routerIdentity={routerIdentity}
           />
         </div>
       </div>

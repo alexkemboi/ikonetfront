@@ -24,6 +24,8 @@ interface CheckoutModalProps {
   /** Optional distinct `clientMac` redirect value. */
   redirectClientMac?: string;
   clientIp?: string;
+  /** RouterOS $(identity) of the serving router (redirect `identity`/`router`). */
+  routerIdentity?: string;
 }
 
 function readableExpiry(status?: HotspotVoucherStatusResponse | null): string | null {
@@ -32,7 +34,7 @@ function readableExpiry(status?: HotspotVoucherStatusResponse | null): string | 
   return Number.isNaN(date.getTime()) ? status.expiresAt : date.toLocaleString();
 }
 
-export default function CheckoutModal({ package: pkg, pendingPurchase: initialPendingPurchase, companyCode, onCompanyResolved, onClose, onPendingPurchase, clientMac, redirectClientMac, clientIp }: CheckoutModalProps) {
+export default function CheckoutModal({ package: pkg, pendingPurchase: initialPendingPurchase, companyCode, onCompanyResolved, onClose, onPendingPurchase, clientMac, redirectClientMac, clientIp, routerIdentity }: CheckoutModalProps) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [phoneNumber, setPhoneNumber] = useState("");
   const [view, setView] = useState<PaymentView>(initialPendingPurchase ? "pending" : "checkout");
@@ -104,7 +106,7 @@ export default function CheckoutModal({ package: pkg, pendingPurchase: initialPe
     if (!pkg || !hasUsableMac || !phoneNumber.trim()) return;
     setIsProcessing(true);
 try {
-        const result = await initiatePublicHotspotPayment({ packageId: pkg.idxno, phone: phoneNumber.trim(), paymentMode: "mpesa", macAddress, clientMac: requestClientMac, clientIp: clientIp?.trim() || "", companyId: companyCode ?? undefined });
+        const result = await initiatePublicHotspotPayment({ packageId: pkg.idxno, phone: phoneNumber.trim(), paymentMode: "mpesa", macAddress, clientMac: requestClientMac, clientIp: clientIp?.trim() || "", routerIdentity: routerIdentity?.trim() || undefined, companyId: companyCode ?? undefined });
       if (!result.success || !result.data?.voucherCode) throw new Error(result.message || "Failed to start payment tracking. Please try again.");
       if (result.data.companyId) onCompanyResolved?.(result.data.companyId);
       const nextPurchase: PendingHotspotPurchase = { sessionId: result.data.sessionId, voucherCode: result.data.voucherCode, startedAt: Date.now() };

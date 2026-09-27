@@ -17,11 +17,13 @@ interface BuyTabProps {
   clientMac?: string;
   redirectClientMac?: string;
   clientIp?: string;
+  /** RouterOS $(identity) of the serving router (redirect `identity`/`router`). */
+  routerIdentity?: string;
 }
 
 type SortBy = "price-asc" | "price-desc" | "data-asc" | "data-desc";
 
-export default function BuyTab({ packages, companyCode, onCompanyResolved, onBack, clientMac, redirectClientMac, clientIp }: BuyTabProps) {
+export default function BuyTab({ packages, companyCode, onCompanyResolved, onBack, clientMac, redirectClientMac, clientIp, routerIdentity }: BuyTabProps) {
  const [searchQuery, setSearchQuery] = useState("");
  const [sortBy, setSortBy] = useState<SortBy>("price-asc");
  const [selectedPackage, setSelectedPackage] = useState<HotspotPackage | null>(null);
@@ -159,6 +161,7 @@ export default function BuyTab({ packages, companyCode, onCompanyResolved, onBac
       clientMac={clientMac}
       redirectClientMac={redirectClientMac}
       clientIp={clientIp}
+      routerIdentity={routerIdentity}
       onClose={() => {
         setShowCheckout(false);
         setSelectedPackage(null);

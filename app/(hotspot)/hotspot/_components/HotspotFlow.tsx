@@ -21,6 +21,8 @@ interface HotspotFlowProps {
   clientMac?: string;
   redirectClientMac?: string;
   clientIp?: string;
+  /** RouterOS $(identity) of the serving router (redirect `identity`/`router`). */
+  routerIdentity?: string;
 }
 
 export default function HotspotFlow({
@@ -30,6 +32,7 @@ export default function HotspotFlow({
   clientMac,
   redirectClientMac,
   clientIp,
+  routerIdentity,
 }: HotspotFlowProps) {
   const [activeTab, setActiveTab] = useState<Tab>(resolveInitialTab);
 
@@ -82,7 +85,9 @@ export default function HotspotFlow({
 
       {/* Tab content */}
       <div>
-        {activeTab === "activate" && <ActivateTab />}
+        {activeTab === "activate" && (
+          <ActivateTab clientMac={clientMac} clientIp={clientIp} routerIdentity={routerIdentity} />
+        )}
         {activeTab === "buy" && (
           <BuyTab
             packages={packages}
@@ -92,6 +97,7 @@ export default function HotspotFlow({
             clientMac={clientMac}
             redirectClientMac={redirectClientMac}
             clientIp={clientIp}
+            routerIdentity={routerIdentity}
           />
         )}
       </div>
