@@ -12,7 +12,7 @@ export default async function LiveSessionsPage() {
  const pagePerms = await getPermissionForRoute("/network/live-sessions");
  if (!pagePerms.canView) redirect("/dashboard");
 
- const { kpis, sessions } = await getLiveSessionsData();
+ const { kpis, sessions, error } = await getLiveSessionsData();
 
  return (
  <div className="min-h-screen p-4 text-foreground sm:p-6 lg:p-8">
@@ -26,10 +26,17 @@ export default async function LiveSessionsPage() {
  Currently online.
  </h1>
  <p className="mt-1 text-sm text-muted-foreground">
- {kpis.currentlyConnectedCount} active sessions · one-click RFC 5176
- disconnect per subscriber
+ {kpis.currentlyConnectedCount} online
+ {kpis.paidNotConnected > 0 ? ` · ${kpis.paidNotConnected} paid but not connected` : ""}
+ {" · "}each session traced to its customer, payment and router
  </p>
  </div>
+
+ {error && (
+ <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-400">
+ Live sessions could not be loaded: {error}
+ </div>
+ )}
 
  <LiveSessionHeaderCards kpis={kpis} />
  <LiveSessionDataTable sessions={sessions} />
