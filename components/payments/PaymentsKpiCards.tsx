@@ -38,6 +38,26 @@ export function PaymentsKpiCards({ kpis }: Props) {
  <p className="mt-1 text-xs text-muted-foreground">this month</p>
  </div>
 
+ {kpis.notConnectedCount !== undefined ? (
+ <div className="rounded-2xl border border-border bg-card p-5 shadow-lg">
+ <span className="text-[11px] font-sans tabular-nums tracking-wider text-muted-foreground uppercase">
+ PAID, NOT CONNECTED
+ </span>
+ <div
+ className={`mt-2 text-3xl font-sans tabular-nums font-bold ${
+ kpis.notConnectedCount > 0 ? "text-rose-400" : "text-foreground"
+ }`}
+ >
+ {kpis.notConnectedCount.toLocaleString()}
+ </div>
+ <p className="mt-1 text-xs text-muted-foreground">
+ {kpis.notConnectedCount > 0
+ ? "customers to compensate"
+ : "every payer got connected"}
+ {kpis.compensatedCount ? ` · ${kpis.compensatedCount} compensated` : ""}
+ </p>
+ </div>
+ ) : (
  <div className="rounded-2xl border border-border bg-card p-5 shadow-lg">
  <span className="text-[11px] font-sans tabular-nums tracking-wider text-muted-foreground uppercase">
  VOUCHER
@@ -47,6 +67,7 @@ export function PaymentsKpiCards({ kpis }: Props) {
  </div>
  <p className="mt-1 text-xs text-muted-foreground">this month</p>
  </div>
+ )}
  </div>
  );
 }

@@ -32,10 +32,19 @@ import RowHighlightWatcher from "@/components/network/RowHighlightWatcher";
 interface Props {
   kpis: PaymentLedgerKpis;
   payments: PaymentLedgerItem[];
-  source: "GL" | "GATEWAY";
+  source: "GL" | "GATEWAY" | "RECEIVED";
+  /** False for the customer care desk (staff): read-only view. */
+  canRecordPayment?: boolean;
+  canIssueVoucher?: boolean;
 }
 
-export function PaymentsLedgerView({ kpis, payments, source }: Props) {
+export function PaymentsLedgerView({
+  kpis,
+  payments,
+  source,
+  canRecordPayment = true,
+  canIssueVoucher = true,
+}: Props) {
   const router = useRouter();
   const [recordOpen, setRecordOpen] = useState(false);
   const [customerIdxno, setCustomerIdxno] = useState("");
@@ -101,6 +110,14 @@ export function PaymentsLedgerView({ kpis, payments, source }: Props) {
               <Badge variant="outline" className="mt-1.5 text-amber-600">
                 Showing confirmed gateway payments — GL 1110 backfill pending
               </Badge>
+            ) : source === "RECEIVED" ? (
+              <p className="mt-1 text-xs text-muted-foreground">
+                {kpis.totalRecordedCount.toLocaleString()} confirmed M-Pesa payments, each
+                traced to the payer and whether they got connected.
+                {kpis.notConnectedCount
+                  ? ` ${kpis.notConnectedCount} paid but never connected — issue a voucher from the row.`
+                  : ""}
+              </p>
             ) : (
               <p className="mt-1 text-xs text-muted-foreground">
                 Postings against Account 1110 (M-Pesa Clearing), confirmed from the
@@ -109,16 +126,18 @@ export function PaymentsLedgerView({ kpis, payments, source }: Props) {
             )}
           </div>
 
+          {canRecordPayment && (
           <button
             onClick={() => setRecordOpen(true)}
             className="rounded-xl bg-amber-500 px-5 py-2.5 text-xs font-semibold text-black hover:bg-amber-400 transition shadow-lg shadow-amber-500/20"
           >
             + Record payment
           </button>
+          )}
         </div>
 
         <PaymentsKpiCards kpis={kpis} />
-        <PaymentsDataTable payments={payments} />
+        <PaymentsDataTable payments={payments} canIssueVoucher={canIssueVoucher} />
       </div>
       <RowHighlightWatcher />
 
