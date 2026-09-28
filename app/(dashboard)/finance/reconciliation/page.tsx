@@ -2,11 +2,12 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 import { auth } from "@/lib/auth";
-import { getDarajaReconciliation } from "@/actions/payments";
+import { getDarajaReconciliation, getReconciliationDay } from "@/actions/payments";
 import { getPermissionForRoute } from "@/lib/data/nav";
 import { todayEatIso } from "@/lib/dates";
 import { normalizeRole, ROLE_NAME } from "@/lib/types/roles";
 import { DarajaPullTrigger } from "@/components/finance/DarajaPullTrigger";
+import { ReconciliationDayView } from "@/components/finance/ReconciliationDayView";
 
 export const dynamic = "force-dynamic";
 
@@ -30,7 +31,10 @@ export default async function ReconciliationPage() {
   if (!pagePerms.canView) redirect("/dashboard");
 
   const day = todayEatIso();
-  const { entries, summary, message } = await getDarajaReconciliation(day);
+  const [{ entries, summary, message }, dayView] = await Promise.all([
+    getDarajaReconciliation(day),
+    getReconciliationDay(day),
+  ]);
 
   return (
     <div className="min-h-screen p-4 text-foreground sm:p-6 lg:p-8">
@@ -43,8 +47,25 @@ export default async function ReconciliationPage() {
             M-Pesa reconciliation.
           </h1>
           <p className="mt-1 text-xs text-muted-foreground">
-            Run the Daraja PullTransactions sweep and review daily reconciliation
-            entries. Admin &amp; management only.
+            What came in, who got connected, and what someone needs to act on.
+            Admin &amp; management only.
+          </p>
+        </div>
+
+        <ReconciliationDayView
+          initialDate={day}
+          initialData={dayView.data}
+          initialMessage={dayView.message}
+        />
+
+        <div className="pt-4">
+          <span className="text-[11px] font-sans tabular-nums tracking-wider text-muted-foreground uppercase">
+            Safaricom cross-check — detail
+          </span>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Compares Safaricom&apos;s own transaction list (Daraja PullTransactions) with IBS. While
+            Safaricom returns nothing, every row below shows as &ldquo;unmatched in Daraja&rdquo; — see the
+            status above before acting on it.
           </p>
         </div>
 
