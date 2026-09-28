@@ -26,4 +26,12 @@ export const staffNavGroups: NavGroup[] = [
       { href: "/network/live-sessions", label: "Live Sessions", icon: "activity" },
     ],
   },
+  {
+    // Customer care desk: trace a customer's M-Pesa payment and whether it connected.
+    // Read-only — recording payments and issuing vouchers stay with admins.
+    label: "Customer Care",
+    items: [
+      { href: "/finance/billing/payments", label: "Payments", icon: "credit-card" },
+    ],
+  },
 ];
