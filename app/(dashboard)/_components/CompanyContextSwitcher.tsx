@@ -63,7 +63,8 @@ export default function CompanyContextSwitcher({
 
   const onSelect = useCallback(
     (code: string | null) => {
-      setSelected(code);
+      // "ALL" is the union view; store it as null so the checkmark and label agree.
+      setSelected(code && code.toUpperCase() !== "ALL" ? code : null);
       setOpen(false);
       // Persist + notify Redux + rerun the server components so every scoped
       // read (dashboard/GL/payments/expenses/live sessions) recomputes.
