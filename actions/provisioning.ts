@@ -1,5 +1,6 @@
 "use server";
 
+import { withCompanyContext } from "@/lib/companyContext";
 import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
 import { BASE_URL, buildApiUrl } from "@/lib/constants";
@@ -15,36 +16,6 @@ import type { RouterHealthSnapshot, RouterResponse } from "@/lib/types/network";
 import { isRouterOnline } from "@/lib/utils/router-status";
 import { getPermissionForRoute } from "@/lib/data/nav";
 
-const FALLBACK_NAS_KPIS: NasRouterKpis = {
-  totalRoutersCount: 2,
-  onlineCount: 2,
-  offlineCount: 0,
-  liveSessionsCount: 50,
-};
-
-const FALLBACK_NAS_ROUTERS: NasRouterItem[] = [
-  {
-    id: "rtr-1",
-    name: "Beedak LKN",
-    model: "RouterOS RB5009UG+S+",
-    status: "ONLINE",
-    activeSessions: 18,
-    winboxTunnelAddress: "winbox.beesmartbedak.com:54910",
-    managementIp: "10.9.189.88",
-    lastOnlineText: "Jul 20, 03:34 AM",
-  },
-  {
-    id: "rtr-2",
-    name: "Beedak Consolata",
-    model: "RouterOS RB5009UG+S+",
-    status: "ONLINE",
-    activeSessions: 32,
-    winboxTunnelAddress: "winbox.beesmartbedak.com:56021",
-    managementIp: "10.9.86.246",
-    lastOnlineText: "Jul 17, 09:44 AM",
-  },
-];
-
 async function getAuthHeaders(): Promise<HeadersInit> {
   const session = await auth();
   const headers: HeadersInit = { "Content-Type": "application/json" };
@@ -52,7 +23,8 @@ async function getAuthHeaders(): Promise<HeadersInit> {
     (headers as Record<string, string>)["Authorization"] =
       `Bearer ${session.user.apiToken}`;
   }
-  return headers;
+  // Forward the SYSADMIN-selected company so the backend scopes the call.
+  return withCompanyContext(headers as Record<string, string>);
 }
 
 function mapDeviceToNasRouter(device: {
@@ -143,11 +115,21 @@ function deriveNasKpis(routers: NasRouterItem[]): NasRouterKpis {
 export async function getNasRoutersData(): Promise<{
   kpis: NasRouterKpis;
   routers: NasRouterItem[];
+  /** Set when the inventory could not be loaded (distinct from "no routers"). */
+  error?: string;
 }> {
   try {
     const res = await getMikrotikDevices();
-    if (!res.success || !Array.isArray(res.data) || res.data.length === 0) {
-      return { kpis: FALLBACK_NAS_KPIS, routers: FALLBACK_NAS_ROUTERS };
+    if (!res.success || !Array.isArray(res.data)) {
+      return {
+        kpis: deriveNasKpis([]),
+        routers: [],
+        error: res.message || "Could not load the router inventory.",
+      };
+    }
+    if (res.data.length === 0) {
+      // A company with no routers yet is a real, empty state — never sample data.
+      return { kpis: deriveNasKpis([]), routers: [] };
     }
 
     // Join network_device → network_routers by IP address. The telemetry and
@@ -170,10 +152,10 @@ export async function getNasRoutersData(): Promise<{
           ? routerByIp.get(device.ipAddress.toLowerCase())
           : undefined;
         const base = mapDeviceToNasRouter(device, routerIdxno);
-        if (!device.id || device.id <= 0) return base;
-        // Telemetry snapshots store routerId = network_routers.idxno.
-        const snapshotRouterId = routerIdxno ?? device.id;
-        const snapshot = await getRouterMonitoringLatest(snapshotRouterId).catch(() => null);
+        // Telemetry snapshots store routerId = network_routers.idxno; without a
+        // matching router row there is no telemetry for this device.
+        if (!routerIdxno) return base;
+        const snapshot = await getRouterMonitoringLatest(routerIdxno).catch(() => null);
         return enrichWithLatestSnapshot(base, snapshot);
       })
     );
@@ -181,7 +163,11 @@ export async function getNasRoutersData(): Promise<{
     return { kpis: deriveNasKpis(routers), routers };
   } catch (error: unknown) {
     console.error("Error fetching NAS routers:", error);
-    return { kpis: FALLBACK_NAS_KPIS, routers: FALLBACK_NAS_ROUTERS };
+    return {
+      kpis: deriveNasKpis([]),
+      routers: [],
+      error: "Could not load the router inventory.",
+    };
   }
 }
 

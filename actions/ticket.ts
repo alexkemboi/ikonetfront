@@ -1,5 +1,6 @@
 "use server"
 
+import { withCompanyContext } from "@/lib/companyContext";
 import { revalidatePath, revalidateTag, updateTag } from "next/cache"
 import { auth } from "@/lib/auth"
 import type {
@@ -22,7 +23,7 @@ async function getAuthHeaders(): Promise<Record<string, string>> {
     console.error("[Ticket Action] Missing apiToken in session!")
     return {}
   }
-  return { Authorization: `Bearer ${session.user.apiToken}` }
+  return withCompanyContext({ Authorization: `Bearer ${session.user.apiToken}` })
 }
 
 // ─── Read Actions ────────────────────────────────────────────────────────────

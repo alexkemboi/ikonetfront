@@ -584,7 +584,8 @@ async function getAuthHeaders(): Promise<HeadersInit> {
     (headers as Record<string, string>)["Authorization"] =
       `Bearer ${session.user.apiToken}`;
   }
-  return headers;
+  // Forward the SYSADMIN-selected company so the backend scopes the call.
+  return withCompanyContext(headers as Record<string, string>);
 }
 
 /** Defensive unwrap: bare payloads pass through; wrapped `{ data }` is unwrapped. */

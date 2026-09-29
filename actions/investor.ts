@@ -15,6 +15,7 @@
  * Auth: spec has no security block; runtime SecurityConfig enforces bearer
  * (probe-verified). We attach the session token — `investor/*` probe-override.
  */
+import { withCompanyContext } from "@/lib/companyContext";
 import { auth } from "@/lib/auth";
 import { buildApiUrl } from "@/lib/constants";
 import type {
@@ -32,7 +33,8 @@ async function getAuthHeaders(): Promise<Record<string, string>> {
   if (session?.user?.apiToken) {
     headers.Authorization = `Bearer ${session.user.apiToken}`;
   }
-  return headers;
+  // Forward the SYSADMIN-selected company so the backend scopes the call.
+  return withCompanyContext(headers as Record<string, string>);
 }
 
 /**

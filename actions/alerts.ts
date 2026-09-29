@@ -1,5 +1,6 @@
 "use server";
 
+import { withCompanyContext } from "@/lib/companyContext";
 import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
 import type { ApiResponse } from "@/lib/types/auth";
@@ -39,7 +40,8 @@ async function getAuthHeaders(): Promise<HeadersInit> {
     (headers as Record<string, string>)["Authorization"] =
       `Bearer ${session.user.apiToken}`;
   }
-  return headers;
+  // Forward the SYSADMIN-selected company so the backend scopes the call.
+  return withCompanyContext(headers as Record<string, string>);
 }
 
 const BASE = () => `${process.env.BASE_API_URL}notification-providers`;

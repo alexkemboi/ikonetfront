@@ -1,5 +1,6 @@
 "use server";
 
+import { withCompanyContext } from "@/lib/companyContext";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { auth } from "@/lib/auth";
 import { buildApiUrl } from "@/lib/constants";
@@ -9,13 +10,13 @@ import { NAV_MENUS_TAG } from "@/lib/data/nav";
 
 async function getAuthHeaders(): Promise<HeadersInit> {
   const session = await auth();
-  console.log("Current session in getAuthHeaders:", session?.user?.apiToken);
   const headers: HeadersInit = { "Content-Type": "application/json" };
   if (session?.user?.apiToken) {
     (headers as Record<string, string>)["Authorization"] =
       `Bearer ${session.user.apiToken}`;
   }
-  return headers;
+  // Forward the SYSADMIN-selected company so the backend scopes the call.
+  return withCompanyContext(headers as Record<string, string>);
 }
 
 function normalizeRoleRecord(raw: unknown): ApiRole {

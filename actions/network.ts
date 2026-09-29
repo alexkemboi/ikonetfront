@@ -1,5 +1,6 @@
 "use server";
 
+import { withCompanyContext } from "@/lib/companyContext";
 import { BASE_URL, buildApiUrl } from "@/lib/constants";
 import { safeJsonParse } from "@/lib/utils/api";
 import {
@@ -25,6 +26,8 @@ import {
   RouterCapacityResponse,
   SubscriberProvisioningRequest,
   RouterResponse,
+  RouterLiveInterface,
+  RouterLiveSessions,
 } from "@/lib/types/network";
 import { revalidatePath, revalidateTag, updateTag } from "next/cache";
 import { auth } from "@/lib/auth";
@@ -50,7 +53,8 @@ async function getAuthHeaders(): Promise<HeadersInit> {
     headers["Authorization"] = `Bearer ${session.user.apiToken}`;
   }
   
-  return headers;
+  // Forward the SYSADMIN-selected company so the backend scopes the call.
+  return withCompanyContext(headers as Record<string, string>);
 }
   
 
@@ -216,7 +220,8 @@ export const finalizeRouter = async (
 
 export const updateRouter = async (
   id: number,
-  body: RouterConfigRequest
+  // Partial: the backend only applies the fields that are present.
+  body: Partial<RouterConfigRequest>
 ): Promise<ApiResponse<NetworkRouter | null>> => {
   try {
     const response = await fetch(BASE_URL + `network-routers/${id}`, {
@@ -860,6 +865,32 @@ export async function getRouterMonitoringLatest(
     return null;
   }
 };
+
+/** Interfaces read live from the router, with current rx/tx rates. */
+export async function getRouterLiveInterfaces(
+  routerId: number
+): Promise<{ data: RouterLiveInterface[]; error: string | null }> {
+  const res = await apiFetch<RouterLiveInterface[]>(
+    `/network/monitoring/router/${routerId}/interfaces`,
+    { auth: "required", cache: "no-store", timeoutMs: 20_000 }
+  );
+  return res.success
+    ? { data: res.data ?? [], error: null }
+    : { data: [], error: res.message || "Could not read interfaces from the router." };
+}
+
+/** PPPoE and Hotspot sessions active on the router right now. */
+export async function getRouterLiveSessions(
+  routerId: number
+): Promise<{ data: RouterLiveSessions | null; error: string | null }> {
+  const res = await apiFetch<RouterLiveSessions>(
+    `/network/monitoring/router/${routerId}/sessions`,
+    { auth: "required", cache: "no-store", timeoutMs: 20_000 }
+  );
+  return res.success
+    ? { data: res.data ?? { pppoe: [], hotspot: [] }, error: null }
+    : { data: null, error: res.message || "Could not read sessions from the router." };
+}
 
 export const getNetworkDeviceInterfaces = async (
   deviceId: number
