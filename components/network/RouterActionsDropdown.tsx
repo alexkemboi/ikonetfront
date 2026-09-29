@@ -111,7 +111,11 @@ export function RouterActionsDropdown({
   const didClampRef = useRef(false);
 
   const deviceId = Number(router.id);
-  const actionRouterId = Number(router.routerId) || Number(router.id);
+  // Router actions, telemetry and rename act on network_routers.idxno. A device
+  // with no linked router row has none — never substitute the device id, it
+  // belongs to a different table and would target another router.
+  const actionRouterId = Number(router.routerId);
+  const hasRouterRecord = Number.isFinite(actionRouterId) && actionRouterId > 0;
   const hasNumericDevice = Number.isFinite(deviceId) && deviceId > 0;
   const winboxUri = router.winboxTunnelAddress
     ? `winbox://${router.winboxTunnelAddress}`
@@ -202,8 +206,8 @@ export function RouterActionsDropdown({
   };
 
   const runAction = async (action: RouterAction) => {
-    if (!Number.isFinite(actionRouterId) || actionRouterId <= 0) {
-      toast.error("This row is a local placeholder — no backend router id to act on.");
+    if (!hasRouterRecord) {
+      toast.error("This device has no linked router record, so router actions are unavailable. Re-run onboarding to link it.");
       closeMenu();
       return;
     }
@@ -223,9 +227,15 @@ export function RouterActionsDropdown({
           closeMenu();
           return;
         }
-        toast[res.data.executionStatus === "FAILED" ? "error" : "success"](
+        const failed = res.data.executionStatus === "FAILED";
+        toast[failed ? "error" : "success"](
           res.data.message || `${action} executed on ${router.name}`
         );
+        if (!failed && action === "REFRESH") {
+          // The backend collects a fresh snapshot asynchronously; re-read the
+          // table once it has had time to land.
+          window.setTimeout(() => routerNav.refresh(), 4000);
+        }
       } else {
         toast.error(res.message || `Failed to execute ${action}.`);
       }
@@ -289,8 +299,8 @@ export function RouterActionsDropdown({
   };
 
   const handleSaveRename = async () => {
-    if (!Number.isFinite(actionRouterId) || actionRouterId <= 0) {
-      toast.error("No backend router id to update.");
+    if (!hasRouterRecord) {
+      toast.error("This device has no linked router record to rename.");
       return;
     }
     if (friendlyName.trim() === router.name) {
@@ -299,17 +309,10 @@ export function RouterActionsDropdown({
     }
     setRenameBusy(true);
     try {
-      // Use the existing updateRouter action with only routerName
+      // Send only the name: the backend applies present fields, so blank
+      // serviceMode/credentials here would overwrite the router's real config.
       const res = await updateRouter(actionRouterId, {
         routerName: friendlyName.trim(),
-        serviceMode: "",
-        requiresAuthentication: false,
-        routerUsername: "",
-        routerPassword: "",
-        hotspotEnabled: false,
-        pppoeEnabled: false,
-        freeInternet: false,
-        monitoringEnabled: false,
       });
       if (res.success) {
         toast.success(`Router renamed to "${friendlyName.trim()}"`);
