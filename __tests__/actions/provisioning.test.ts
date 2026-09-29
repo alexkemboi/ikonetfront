@@ -104,4 +104,28 @@ describe("getNasRoutersData (telemetry-driven ONLINE badge)", () => {
     const { routers } = await getNasRoutersData();
     expect(routers[0].status).toBe("OFFLINE");
   });
+
+  it("returns an empty inventory (never sample routers) when the company has none", async () => {
+    mockDevices.mockResolvedValue({ success: true, data: [] });
+    const { kpis, routers, error } = await getNasRoutersData();
+    expect(routers).toEqual([]);
+    expect(kpis.totalRoutersCount).toBe(0);
+    expect(kpis.liveSessionsCount).toBe(0);
+    expect(error).toBeUndefined();
+  });
+
+  it("reports an error instead of sample routers when the inventory call fails", async () => {
+    mockDevices.mockResolvedValue({ success: false, data: [], message: "Forbidden" });
+    const { routers, error } = await getNasRoutersData();
+    expect(routers).toEqual([]);
+    expect(error).toBe("Forbidden");
+  });
+
+  it("does not read telemetry by device id when no router row matches", async () => {
+    mockRouters.mockResolvedValue([]);
+    mockLatest.mockResolvedValue(freshSnapshot);
+    const { routers } = await getNasRoutersData();
+    expect(mockLatest).not.toHaveBeenCalled();
+    expect(routers[0].routerId).toBeUndefined();
+  });
 });
