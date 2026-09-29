@@ -1,52 +1,63 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi, beforeEach } from "vitest";
 import TvDeviceSetup from "@/app/(hotspot)/hotspot/_components/TvDeviceSetup";
-import { prepareTvDeviceAction } from "@/actions/tv";
+import { apiFetch } from "@/lib/apiClient";
+import { prepareTvDeviceAction, type TvDeviceVerification } from "@/actions/tv";
 
-// The action currently validates locally; these tests make no API requests.
-describe("TV device setup", () => {
-  it("normalizes the address and preserves it when editing after confirmation", async () => {
+vi.mock("@/lib/apiClient", () => ({ apiFetch: vi.fn() }));
+const mockedApiFetch = vi.mocked(apiFetch);
+const verified = (recommendedPackages: TvDeviceVerification["recommendedPackages"]) => ({
+  status: 200, success: true, message: "Verified", timestamp: "2026-09-29T07:00:00Z",
+  data: { eligible: true, existingCustomer: null, nearestStationId: 1, recommendedPackages, softWarnings: [], portalToken: "signed-portal-token", portalTokenExpiresAt: "2026-09-29T07:30:00Z", companyCode: "CMP-BDK-001", stationId: "1", normalizedPhone: "254712345678", normalizedMac: "AA:BB:CC:DD:EE:FF" },
+});
+const packageOptions: TvDeviceVerification["recommendedPackages"] = [{ packageId: 12, name: "TV Monthly", validityLabel: "30 days", speedLabel: "10/5 Mbps", price: "800.00", currency: "KES", availableForDevice: true, unavailableReason: null, notes: "Unlimited" }];
+
+beforeEach(() => { vi.clearAllMocks(); });
+
+describe("TV captive-portal flow", () => {
+  it("verifies anonymously and uses the recommended package list", async () => {
     const user = userEvent.setup();
-    render(<TvDeviceSetup brand="BeeSmart Wi-Fi" initialDevice={{ macAddress: "" }} packages={[]} />);
+    mockedApiFetch.mockResolvedValueOnce(verified([]) as never);
+    render(<TvDeviceSetup brand="BeeSmart Wi-Fi" initialDevice={{ macAddress: "", customerPhone: "" }} packages={[]} routerIdentity="RTR-1" />);
+    await user.type(screen.getByLabelText("Customer phone number"), "0712345678");
     await user.type(screen.getByLabelText("TV MAC address"), "aa-bb-cc-dd-ee-ff");
     await user.click(screen.getByRole("button", { name: "Review TV details" }));
     expect(await screen.findByText("AA:BB:CC:DD:EE:FF")).toBeInTheDocument();
+    expect(mockedApiFetch).toHaveBeenCalledWith("/tv/devices/verify", expect.objectContaining({ auth: "public", body: expect.objectContaining({ routerIdentity: "RTR-1" }) }));
     await user.click(screen.getByRole("button", { name: "Confirm this TV" }));
-    expect(screen.getByRole("status")).toHaveTextContent("No TV packages are available");
-    await user.click(screen.getByRole("button", { name: "Edit address" }));
-    expect(screen.getByLabelText("TV MAC address")).toHaveValue("AA:BB:CC:DD:EE:FF");
+    expect(await screen.findByRole("status")).toHaveTextContent("No TV packages are available");
   });
 
-  it.each([12, "tv-month"])("selects package ID %s and retains it after editing the TV", async (idxno) => {
+  it("uses portal token for payment and polls until provisioned", async () => {
     const user = userEvent.setup();
-    render(<TvDeviceSetup brand="BeeSmart Wi-Fi" initialDevice={{ macAddress: "AA:BB:CC:DD:EE:FF" }} packages={[
-      { idxno, packageName: "TV Monthly", price: 800, validity: "30 days", speedDownload: 10, speedUpload: 5, maxDevices: 1, dataAllowance: "Unlimited" },
-    ]} />);
+    mockedApiFetch.mockImplementation(async (path, options) => {
+      if (path === "/tv/devices/verify") return verified(packageOptions) as never;
+      if (path === "/tv/payments/initiate") {
+        expect(options?.auth).toBe("public");
+        expect(options?.headers).toMatchObject({ "X-TV-Portal-Token": "signed-portal-token" });
+        expect(options?.headers?.["Idempotency-Key"]).toBeTruthy();
+        expect(options?.body).toMatchObject({ customerPhone: "254712345678", phone: "254712345678", packageId: 12, submittedAmount: "800.00" });
+        return { status: 201, success: true, message: "Accepted", data: { transactionReference: "TV-REF-1", mpesaStkPushTriggered: true, checkoutRequestId: "checkout-1", statusUrl: "/api/v1/tv/payments/TV-REF-1/status", replayed: false, validationOutcome: { valid: true, serverAmount: "800.00", currency: "KES", message: null } } } as never;
+      }
+      if (path.includes("/tv/payments/TV-REF-1/status")) return { status: 200, success: true, message: "OK", data: { transactionReference: "TV-REF-1", state: "SETTLED", provisioningState: "PROVISIONED", pendingReason: null, settledAt: "2026-09-29T07:01:00Z", failedReason: null, provisionedAt: "2026-09-29T07:01:02Z", provisioningAttempts: 1, provisioningFailureCode: null, supportReference: "TV-REF-1", mpesaReceipt: "QWE123", amount: "800.00", currency: "KES", tvEntitlementExpiresAt: "2026-10-29T07:01:02Z" } } as never;
+      throw new Error(`Unexpected API path: ${path}`);
+    });
+    render(<TvDeviceSetup brand="BeeSmart Wi-Fi" initialDevice={{ macAddress: "AA:BB:CC:DD:EE:FF", customerPhone: "0712345678" }} packages={[]} />);
     await user.click(screen.getByRole("button", { name: "Review TV details" }));
     await user.click(await screen.findByRole("button", { name: "Confirm this TV" }));
-    await user.click(screen.getByRole("button", { name: "Review purchase" }));
-    expect(await screen.findByRole("alert")).toHaveTextContent("Choose");
     await user.click(screen.getByRole("radio", { name: /TV Monthly/ }));
     await user.click(screen.getByRole("button", { name: "Review purchase" }));
     expect(await screen.findByText("Review your TV purchase")).toBeInTheDocument();
-    await user.type(screen.getByLabelText("M-Pesa phone number"), "0712 345 678");
-    await user.click(screen.getByRole("button", { name: "Edit address" }));
-    await user.click(screen.getByRole("button", { name: "Review TV details" }));
-    await user.click(await screen.findByRole("button", { name: "Confirm this TV" }));
-    expect(screen.getByRole("radio", { name: /TV Monthly/ })).toBeChecked();
-    await user.click(screen.getByRole("button", { name: "Review purchase" }));
-    expect(screen.getByLabelText("M-Pesa phone number")).toHaveValue("0712 345 678");
-    await user.click(screen.getByRole("button", { name: "Pay KES 800" }));
-    expect(await screen.findByRole("status")).toHaveTextContent("No payment request was sent");
+    await user.type(screen.getByLabelText("Payer M-Pesa phone"), "0712 345 678");
+    await user.click(screen.getByRole("button", { name: "Pay KES 800.00" }));
+    expect(await screen.findByText(/PROVISIONED/)).toBeInTheDocument();
+    expect(await screen.findByText(/Receipt: QWE123/)).toBeInTheDocument();
   });
 
-  it("rejects invalid, empty and multicast addresses on the server boundary", async () => {
-    for (const macAddress of ["", "AA:BB", "GG:BB:CC:DD:EE:FF", "00:00:00:00:00:00", "FF:FF:FF:FF:FF:FF", "01:00:5E:00:00:01"]) {
-      expect((await prepareTvDeviceAction({ macAddress })).success).toBe(false);
-    }
-    expect(await prepareTvDeviceAction({ macAddress: "aa bb cc dd ee ff" })).toEqual({
-      success: true, device: { macAddress: "AA:BB:CC:DD:EE:FF" },
-    });
+  it("rejects invalid MAC before making any backend call", async () => {
+    const result = await prepareTvDeviceAction({ macAddress: "00:00:00:00:00:00", customerPhone: "0712345678" });
+    expect(result.success).toBe(false);
+    expect(mockedApiFetch).not.toHaveBeenCalled();
   });
 });

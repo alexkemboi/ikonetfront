@@ -20,6 +20,7 @@ interface HotspotFlowProps {
   onCompanyResolved?: (companyCode?: string | null) => void;
   clientMac?: string;
   clientIp?: string;
+  routerIdentity?: string;
 }
 
 export default function HotspotFlow({
@@ -28,6 +29,7 @@ export default function HotspotFlow({
   onCompanyResolved,
   clientMac,
   clientIp,
+  routerIdentity,
 }: HotspotFlowProps) {
   const [activeTab, setActiveTab] = useState<Tab>(resolveInitialTab);
 
@@ -80,7 +82,7 @@ export default function HotspotFlow({
 
       {/* Tab content */}
       <div>
-        {activeTab === "activate" && <ActivateTab />}
+        {activeTab === "activate" && <ActivateTab clientMac={clientMac} clientIp={clientIp} routerIdentity={routerIdentity} companyId={companyCode ?? undefined} />}
         {activeTab === "buy" && (
           <BuyTab
             packages={packages}

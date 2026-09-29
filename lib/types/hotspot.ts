@@ -1,6 +1,7 @@
 import type { ApiResponse, NetPackage } from "@/lib/types/api";
 
-export interface HotspotPackage extends NetPackage {
+export interface HotspotPackage extends Omit<NetPackage, "price"> {
+  price: string;
   enableBurst: boolean;
   burstLimit: string;
   burstThreshold: string;

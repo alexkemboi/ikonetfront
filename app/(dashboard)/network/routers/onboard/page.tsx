@@ -23,7 +23,9 @@ export default async function OnboardRouterPage() {
   const isPlatformAdmin = role === "SYSADMIN" || role === "ADMIN";
   const companyScope = session?.user?.companyScope;
 
-  const regionsTree = await getRegions(true);
+  const regionsResult = await getRegions(true);
+  if (!regionsResult.success && regionsResult.status === 401) redirect("/signout?reason=session-expired");
+  const regionsTree = regionsResult.success ? regionsResult.data : [];
 
   return (
     <div className="space-y-6 p-6 max-w-4xl mx-auto">
@@ -33,6 +35,8 @@ export default async function OnboardRouterPage() {
           Connect, validate, locate, and automatically provision a new MikroTik RouterOS device.
         </p>
       </div>
+
+      {!regionsResult.success && <p role="alert" className="rounded-md border border-destructive/30 bg-destructive/5 p-4 text-sm">Region data unavailable: {regionsResult.message}{regionsResult.requestId ? ` · Ref: ${regionsResult.requestId}` : ""}</p>}
 
       <OnboardingWizard
         regionsTree={regionsTree}

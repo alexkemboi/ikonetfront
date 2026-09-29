@@ -1,4 +1,4 @@
-import { getIpPools } from "@/actions/network";
+import { getIpPoolsResult } from "@/actions/network";
 import type { IpPool } from "@/lib/types/api";
 import { getPermissionForRoute } from "@/lib/data/nav";
 import { redirect } from "next/navigation";
@@ -22,7 +22,11 @@ export default async function IpPoolsPage() {
   const pagePerms = await getPermissionForRoute("/network/ip-pools");
   if (!pagePerms.canView) redirect("/dashboard");
 
-  const pools = await getIpPools();
+  const result = await getIpPoolsResult();
+  if (!result.success) {
+    return <div className="min-h-screen p-4 sm:p-6 lg:p-8"><div role="alert" className="mx-auto max-w-7xl rounded-lg border border-destructive/30 bg-destructive/5 p-5 text-sm"><h1 className="font-medium">IP pool data unavailable</h1><p className="mt-1 text-muted-foreground">{result.message}{result.requestId ? ` · Ref: ${result.requestId}` : ""}</p></div></div>;
+  }
+  const pools = result.pools;
 
   return (
     <div className="min-h-screen p-4 text-foreground sm:p-6 lg:p-8">
@@ -58,19 +62,23 @@ export default async function IpPoolsPage() {
                   <TableHead className="font-semibold">Pool Name</TableHead>
                   <TableHead className="font-semibold">Network Range</TableHead>
                   <TableHead className="font-semibold">Gateway</TableHead>
-                  <TableHead className="font-semibold">Status</TableHead>
+                  <TableHead className="font-semibold">Usage / Probe</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {pools.map((pool: IpPool, idx: number) => (
-                  <TableRow key={`${pool.poolName}-${idx}`} className="hover:bg-muted/50">
+                  <TableRow key={pool.poolId ?? `${pool.poolName}-${idx}`} className="hover:bg-muted/50">
                     <TableCell className="font-medium">{pool.poolName || "—"}</TableCell>
                     <TableCell className="font-sans tabular-nums text-sm">{pool.subnet || "—"}</TableCell>
-                    <TableCell className="font-sans tabular-nums text-sm">{pool.gateway || "—"}</TableCell>
+                    <TableCell className="font-sans tabular-nums text-sm">{pool.gateway ?? "—"}</TableCell>
                     <TableCell>
-                      <Badge variant="default" className="text-xs">
-                        {pool.utilizationPercentage}% used
-                      </Badge>
+                      <div className="flex flex-wrap gap-1">
+                        <Badge variant="default" className="text-xs">{pool.usedIps}/{pool.totalIps} used · {pool.utilizationPercentage}%</Badge>
+                        <Badge variant={pool.probeStatus === "OK" ? "outline" : "destructive"} className="text-xs">{pool.probeStatus}</Badge>
+                        {pool.stale && <Badge variant="outline" className="text-xs">Stale{pool.lastProbedAt ? ` · ${pool.lastProbedAt}` : ""}</Badge>}
+                        {pool.overCapacity && <Badge variant="destructive" className="text-xs">Over capacity · {pool.rawUsedIps} in use</Badge>}
+                      </div>
+                      {pool.probeError && <p className="mt-1 text-xs text-destructive">{pool.probeError.replaceAll("_", " ")}</p>}
                     </TableCell>
                   </TableRow>
                 ))}
@@ -79,16 +87,6 @@ export default async function IpPoolsPage() {
           </div>
         )}
 
-        {/* Info Box */}
-        <Card className="border-amber-200 bg-amber-50/50">
-          <CardHeader>
-            <CardTitle className="text-sm font-medium text-amber-900">Known Issue</CardTitle>
-          </CardHeader>
-          <CardContent className="text-sm text-amber-800">
-            IP pool values are currently hardcoded fixtures on the backend and do not reflect real pool state. 
-            This is tracked as <code className="font-mono">BE-AAA-046</code>.
-          </CardContent>
-        </Card>
       </div>
     </div>
   );

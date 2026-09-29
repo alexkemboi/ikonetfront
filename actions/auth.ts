@@ -2,6 +2,7 @@
 
 import type { ApiResponse, LoginData, RefreshTokenResponse, AccountTypeResponse } from "@/lib/types/auth";
 import { apiFetch } from "@/lib/apiClient";
+import { getBackendAccessToken } from "@/lib/authToken";
 
 export async function loginAction(credentials: {
   username: string;
@@ -107,8 +108,10 @@ export async function verifyStepUpAction(password: string): Promise<{
   return res.data;
 }
 
-export async function logoutAction(token: string): Promise<void> {
+export async function logoutAction(): Promise<void> {
   try {
+    const token = await getBackendAccessToken();
+    if (!token) return;
     await apiFetch("/auth/logout", {
       method: "POST",
       authorization: `Bearer ${token}`,

@@ -4,6 +4,7 @@ import { resolveDashboardPathForRole } from "@/lib/utils/dashboardRouting";
 import { getCustomers } from "@/actions/customer";
 import { getPackagesAction } from "@/actions/packages";
 import { ManagementDashboardShell } from "./_components/ManagementDashboardShell";
+import { addDaysToDateOnly, todayEatIso } from "@/lib/dates";
 
 export const metadata = { title: "Management Dashboard — Beesmart Billing" };
 
@@ -15,8 +16,8 @@ export default async function ManagementDashboardPage() {
  redirect(correctPath);
  }
 
- const thirtyDaysFromNow = new Date();
- thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
+ const today = todayEatIso();
+ const thirtyDaysFromNow = addDaysToDateOnly(today, 30);
 
  const [allCustomersRes, activeCustomersRes, pppoeCustomersRes, packagesRes] =
  await Promise.all([
@@ -34,15 +35,8 @@ export default async function ManagementDashboardPage() {
   // Customers whose subscription expires within 30 days
   const expiringCustomers = allPPPoE.filter((c: { expiryDate: string | null }) => {
     if (!c.expiryDate) return false;
-    const expiry = new Date(c.expiryDate);
-    const now = new Date();
-    return expiry >= now && expiry <= thirtyDaysFromNow;
+    return c.expiryDate >= today && c.expiryDate <= thirtyDaysFromNow;
   });
-
- // Revenue potential: active packages total price (representative metric)
- const revenuePotential = packages
- ?.filter((p) => p.activeStatus)
- ?.reduce((sum, p) => sum + p.price, 0) ?? 0;
 
  const greeting = `Welcome, ${session?.user?.fname ?? "Manager"}`;
 
@@ -54,7 +48,6 @@ export default async function ManagementDashboardPage() {
  pppoeCustomers={allPPPoE.length}
  packages={packages}
  expiringCustomers={expiringCustomers}
- revenuePotential={revenuePotential}
  greeting={greeting}
  />
  </div>

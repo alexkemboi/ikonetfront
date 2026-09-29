@@ -17,7 +17,12 @@ export const metadata: Metadata = {
 };
 
 export default async function AnalyticsDashboardPage() {
- const data = await getNetworkAnalyticsData("MONTHLY");
+ const result = await getNetworkAnalyticsData();
+
+ if (!result.success) {
+  return <main className="min-h-screen p-4 sm:p-6 lg:p-8"><div role="alert" className="rounded-lg border border-destructive/30 bg-destructive/5 p-5"><h1 className="text-lg font-medium">Analytics unavailable</h1><p className="mt-1 text-sm text-muted-foreground">{result.message}{result.requestId ? ` · Ref: ${result.requestId}` : ""}</p></div></main>;
+ }
+ const data = result.data;
 
  return (
  <div className="min-h-screen p-4 text-foreground sm:p-6 lg:p-8">
@@ -30,40 +35,26 @@ export default async function AnalyticsDashboardPage() {
  <h1 className="text-3xl font-sans font-normal text-foreground">
  Your network.
  </h1>
- <p className="mt-1 text-xs text-muted-foreground">
- All MikroTik routers · Monthly · Updated live
- </p>
+ <p className="mt-1 text-xs text-muted-foreground">{data.period.from} to {data.period.to} · {data.period.timezone} · Updated {new Date(data.generatedAt).toLocaleString()}</p>
  </div>
 
  <AnalyticsExportButton data={data} />
  </div>
 
+ {data.dataStatus === "PARTIAL" && <div role="status" className="rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-950">Some analytics are unavailable. Null values are shown as unavailable and are listed by the backend.</div>}
  <AnalyticsKpiCards kpis={data.kpis} />
 
  <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
- <PaymentsTrendChart
- totalAmount={data.paymentsTrend.periodTotal}
- prevAmount={data.paymentsTrend.previousPeriodTotal}
- deltaPercent={data.paymentsTrend.deltaPercent}
- points={data.paymentsTrend.points}
- />
+ <PaymentsTrendChart trend={data.paymentsTrend} />
 
- <PaymentsVsExpensesChart
- paymentsTotal={data.paymentsVsExpenses.totalPayments}
- expensesTotal={data.paymentsVsExpenses.totalExpenses}
- netProfit={data.paymentsVsExpenses.netProfit}
- points={data.paymentsVsExpenses.points}
- />
+ <PaymentsVsExpensesChart points={data.paymentsVsExpenses.points} />
  </div>
 
- <RevenueMixDonuts
- revenueMix={data.revenueMix}
- paymentMethods={data.paymentMethodsMix}
- />
+ <RevenueMixDonuts data={data} />
 
- <TopRankingsList packages={data.topPackages} customers={data.topCustomers} />
+ <TopRankingsList data={data} />
 
- <RouterPerformanceTable routers={data.routerPerformance} />
+ <RouterPerformanceTable data={data} />
  </div>
  </div>
  );

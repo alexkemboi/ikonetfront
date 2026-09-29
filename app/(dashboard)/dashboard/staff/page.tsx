@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { resolveDashboardPathForRole } from "@/lib/utils/dashboardRouting";
 import { getCustomers } from "@/actions/customer";
 import { StaffDashboardShell } from "./_components/StaffDashboardShell";
+import { addDaysToDateOnly, todayEatIso } from "@/lib/dates";
 
 export const metadata = { title: "Staff Dashboard — Beesmart Billing" };
 
@@ -14,8 +15,8 @@ export default async function StaffDashboardPage() {
  redirect(correctPath);
  }
 
- const sevenDaysFromNow = new Date();
- sevenDaysFromNow.setDate(sevenDaysFromNow.getDate() + 7);
+ const today = todayEatIso();
+ const sevenDaysFromNow = addDaysToDateOnly(today, 7);
 
  const [allCustomersRes, activeCustomersRes, pppoeCustomersRes, recentCustomersRes] =
  await Promise.all([
@@ -35,9 +36,7 @@ export default async function StaffDashboardPage() {
   // Customers whose subscription expires within 7 days
   const urgentRenewals = allPPPoE.filter((c: { expiryDate: string | null }) => {
     if (!c.expiryDate) return false;
-    const expiry = new Date(c.expiryDate);
-    const now = new Date();
-    return expiry >= now && expiry <= sevenDaysFromNow;
+    return c.expiryDate >= today && c.expiryDate <= sevenDaysFromNow;
   });
 
  const greeting = `Good day, ${session?.user?.fname ?? "Staff"}!`;

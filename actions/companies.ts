@@ -58,12 +58,6 @@ export type MpesaProbeResult = {
   latencyMs: number;
 };
 
-const FALLBACK_COMPANIES: CompanySummary[] = [
-  { id: "bootstrap-bsm", code: "CMP-BSM-001", name: "Beesmart High-Speed Wi-Fi", alias: "BSM" },
-  { id: "bootstrap-bdk", code: "CMP-BDK-001", name: "Bedak Networks", alias: "BDK" },
-  { id: "bootstrap-adr", code: "CMP-ADR-001", name: "Adrinold Broadband", alias: "ADR" },
-];
-
 export async function listCompanies(): Promise<CompanySummary[]> {
   const session = await auth();
   const token = session?.user?.apiToken;
@@ -80,7 +74,7 @@ export async function listCompanies(): Promise<CompanySummary[]> {
 
     if (!res.ok) {
       if (res.status === 401 || res.status === 403) return [];
-      return FALLBACK_COMPANIES;
+      return [];
     }
 
     const body = (await res.json()) as unknown;
@@ -92,9 +86,9 @@ export async function listCompanies(): Promise<CompanySummary[]> {
       return null;
     };
     const rows = unwrap(body);
-    return rows && rows.length > 0 ? rows : FALLBACK_COMPANIES;
+    return rows ?? [];
   } catch {
-    return FALLBACK_COMPANIES;
+    return [];
   }
 }
 

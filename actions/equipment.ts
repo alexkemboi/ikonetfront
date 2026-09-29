@@ -1,166 +1,44 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { auth } from "@/lib/auth";
-import { BASE_URL } from "@/lib/constants";
-import {
-  AddEquipmentRequest,
-  EquipmentItem,
-  EquipmentKpis,
-  EquipmentType,
-} from "@/lib/types/equipment";
-import { getMikrotikDevices } from "@/actions/mikrotik";
+import { apiFetch } from "@/lib/apiClient";
 import { getPermissionForRoute } from "@/lib/data/nav";
+import type { AddEquipmentRequest, EquipmentItem, EquipmentKpis, EquipmentListResult, EquipmentStatus, EquipmentType } from "@/lib/types/equipment";
 
-const FALLBACK_EQUIPMENT_KPIS: EquipmentKpis = {
-  inStockCount: 3,
-  assignedCount: 2,
-  inventoryCostBasis: 45000,
-  totalCollected: 15000,
-  allCount: 5,
-  returnedCount: 0,
-  damagedCount: 0,
-  soldCount: 0,
-};
-
-const FALLBACK_EQUIPMENT_LIST: EquipmentItem[] = [
-  {
-    id: "eq-1",
-    name: "MikroTik hAP ac3",
-    type: "router",
-    model: "RBD53iG-5HacD2HnD",
-    serialNumber: "HE90892AC301",
-    status: "in_stock",
-    costPrice: 9500,
-    paidSoFar: 0,
-    createdAt: "2026-08-01",
-  },
-  {
-    id: "eq-2",
-    name: "Huawei HG8310M GPON ONU",
-    type: "ont_onu",
-    model: "HG8310M",
-    serialNumber: "48575443F890",
-    assignedSubscriberName: "Anwar Hassan",
-    status: "assigned",
-    costPrice: 3200,
-    paidSoFar: 3200,
-    createdAt: "2026-07-28",
-  },
-];
-
-async function getAuthHeaders(): Promise<HeadersInit> {
-  const session = await auth();
-  const headers: HeadersInit = { "Content-Type": "application/json" };
-  if (session?.user?.apiToken) {
-    (headers as Record<string, string>)["Authorization"] =
-      `Bearer ${session.user.apiToken}`;
-  }
-  return headers;
-}
-
-function mapDeviceType(deviceType: string | undefined | null): EquipmentType {
-  const t = (deviceType ?? "").toLowerCase();
-  switch (t) {
-    case "modem":
-      return "modem";
-    case "ont_onu":
-    case "ont-onu":
-    case "onu":
-      return "ont_onu";
-    case "cable":
-      return "cable";
-    case "switch":
-      return "switch";
-    case "access_point":
-    case "access-point":
-    case "accesspoint":
-    case "ap":
-      return "access_point";
-    case "router":
-    default:
-      return "router";
-  }
-}
-
-function mapDeviceToItem(device: {
-  id: number;
-  name: string;
-  deviceType?: string | null;
-  online?: boolean;
-  active?: boolean;
-  createdAt?: string;
-}): EquipmentItem {
-  const deviceType = device.deviceType ?? "—";
-  return {
-    // id/name from the real NAS row; serial/cost fields are synthesized placeholders
-    id: String(device.id),
-    name: device.name,
-    type: mapDeviceType(device.deviceType),
-    model: deviceType,
-    serialNumber: `S${device.id}`,
-    status: device.online || device.active ? "assigned" : "in_stock",
-    costPrice: 0,
-    paidSoFar: 0,
-    createdAt: device.createdAt ?? "—",
-  };
-}
-
-function deriveEquipmentKpis(items: EquipmentItem[]): EquipmentKpis {
-  const count = (status: EquipmentItem["status"]) =>
-    items.filter((i) => i.status === status).length;
-  return {
-    inStockCount: count("in_stock"),
-    assignedCount: count("assigned"),
-    inventoryCostBasis: items.reduce((sum, i) => sum + i.costPrice, 0),
-    totalCollected: items.reduce((sum, i) => sum + i.paidSoFar, 0),
-    allCount: items.length,
-    returnedCount: count("returned"),
-    damagedCount: count("damaged"),
-    soldCount: count("sold"),
-  };
-}
-
-export async function getEquipmentData(): Promise<{
+interface EquipmentApiResponse {
   kpis: EquipmentKpis;
-  items: EquipmentItem[];
-}> {
-  try {
-    const res = await getMikrotikDevices();
-    if (!res.success || !Array.isArray(res.data) || res.data.length === 0) {
-      return { kpis: FALLBACK_EQUIPMENT_KPIS, items: FALLBACK_EQUIPMENT_LIST };
-    }
-    const items = res.data.map(mapDeviceToItem);
-    return { kpis: deriveEquipmentKpis(items), items };
-  } catch (error: unknown) {
-    console.error("Error fetching equipment data:", error);
-    return { kpis: FALLBACK_EQUIPMENT_KPIS, items: FALLBACK_EQUIPMENT_LIST };
-  }
+  items: { content: EquipmentItem[]; totalElements: number; totalPages: number; number: number; size: number };
 }
 
-export async function createEquipment(
-  request: AddEquipmentRequest
-): Promise<{ success: boolean; message: string }> {
+export async function getEquipmentData(options: { page?: number; size?: number; status?: EquipmentStatus | "ALL"; type?: EquipmentType | "ALL"; search?: string; dataQuality?: string } = {}): Promise<EquipmentListResult> {
+  const query = new URLSearchParams({ page: String(Math.max(0, options.page ?? 0)), size: String(Math.min(Math.max(1, options.size ?? 50), 200)) });
+  if (options.status && options.status !== "ALL") query.set("status", options.status);
+  if (options.type && options.type !== "ALL") query.set("type", options.type);
+  if (options.search?.trim()) query.set("search", options.search.trim());
+  if (options.dataQuality) query.set("dataQuality", options.dataQuality);
+  const result = await apiFetch<EquipmentApiResponse>(`/equipment?${query}`, { auth: "required", cache: "no-store" });
+  if (!result.success || !result.data) return { success: false, message: result.message, requestId: result.requestId, kpis: null, items: null };
+  return { success: true, requestId: result.requestId, kpis: result.data.kpis, items: result.data.items };
+}
+
+export async function createEquipment(request: AddEquipmentRequest): Promise<{ success: boolean; message: string; requestId?: string }> {
   const pagePerms = await getPermissionForRoute("/network/equipment");
-  if (!pagePerms.canCreate) {
-    return { success: false, message: "Not authorized to add equipment." };
-  }
-  try {
-    const response = await fetch(`${BASE_URL}network-devices`, {
-      method: "POST",
-      headers: await getAuthHeaders(),
-      body: JSON.stringify(request),
-    });
-    if (!response.ok) {
-      const message = `HTTP ${response.status}: Failed to create equipment record`;
-      console.warn(message);
-      return { success: false, message };
-    }
-    revalidatePath("/network/equipment");
-    return { success: true, message: "Equipment added to inventory successfully." };
-  } catch (error: unknown) {
-    const message =
-      error instanceof Error ? error.message : "Failed to create equipment record";
-    return { success: false, message };
-  }
+  if (!pagePerms.canCreate) return { success: false, message: "Not authorized to add equipment." };
+  const res = await apiFetch<EquipmentItem>("/equipment", { method: "POST", auth: "required", body: request, cache: "no-store" });
+  if (!res.success) return { success: false, message: res.message, requestId: res.requestId };
+  revalidatePath("/network/equipment");
+  return { success: true, message: res.message, requestId: res.requestId };
+}
+
+export async function updateEquipment(assetId: number, patch: Partial<AddEquipmentRequest> & { clearFields?: string[] }): Promise<{ success: boolean; message: string; requestId?: string }> {
+  const pagePerms = await getPermissionForRoute("/network/equipment");
+  if (!pagePerms.canEdit) return { success: false, message: "Not authorized to update equipment." };
+  const res = await apiFetch<EquipmentItem>(`/equipment/${assetId}`, { method: "PATCH", auth: "required", body: patch, cache: "no-store" });
+  if (!res.success) return { success: false, message: res.message, requestId: res.requestId };
+  revalidatePath("/network/equipment");
+  return { success: true, message: res.message, requestId: res.requestId };
+}
+
+export async function getEquipmentHistory(assetId: number) {
+  return apiFetch<Array<{ historyId: number; assetId: number; action: string; snapshot: unknown; operator: string | null; changeTypes: string[] | null; changes: Record<string, { from: unknown; to: unknown }> | null; reason: string | null; createdAt: string }>>(`/equipment/${assetId}/history`, { auth: "required", cache: "no-store" });
 }

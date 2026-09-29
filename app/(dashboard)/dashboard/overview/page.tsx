@@ -32,7 +32,7 @@ export default async function OverviewDashboardPage() {
  <div className="mx-auto max-w-7xl space-y-6">
  {/* 1. Shift Greeting & Header Context */}
  <ShiftGreetingBanner
- tenantName={data.tenantName}
+ tenantName={data.companyName}
  onlineCount={data.onlineSubscribersCount}
  shiftName={data.shiftName}
  expiriesCount={data.expiriesDue24hCount}

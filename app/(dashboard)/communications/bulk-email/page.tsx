@@ -1,15 +1,9 @@
 import BulkEmailWizard from "./_components/BulkEmailWizard";
-import { getEmailTemplates, getAudienceSegments } from "@/actions/communications";
+import { getEmailTemplates } from "@/actions/communications";
+import { getCustomers } from "@/actions/customer";
+import { getSystemUsers } from "@/actions/system";
 
 export const metadata = { title: "Bulk Email — Beesmart" };
-
-export type AudienceSegment = {
- id: string;
- label: string;
- description: string;
- count: number;
- icon: string;
-};
 
 export type EmailTemplate = {
  id: string;
@@ -18,44 +12,64 @@ export type EmailTemplate = {
  body: string;
 };
 
+export type CampaignRecipient = {
+ id: number;
+ name: string;
+ email: string | null;
+ recipientType: "CUSTOMER" | "SYSTEM_USER";
+ selectable: boolean;
+};
+
+const BUILT_IN_TEMPLATES: EmailTemplate[] = [
+ { id: "renewal-reminder", name: "Renewal Reminder", subject: "Your subscription is expiring soon", body: "Hi {{customer_name}},\n\nYour internet subscription is expiring soon. Renew now to avoid interruption.\n\nThank you." },
+ { id: "service-notice", name: "Service Notice", subject: "Scheduled maintenance notice", body: "Hi {{customer_name}},\n\nWe will be performing scheduled maintenance that may briefly affect your service.\n\nThank you for your patience." },
+];
+
 export default async function BulkEmailPage() {
- const [templatesResult, segmentsResult] = await Promise.all([
- getEmailTemplates().catch(() => ({ success: false, data: [] })),
- getAudienceSegments().catch(() => ({ success: false, data: [] })),
+ const [templatesResult, customersResult, systemUsers] = await Promise.all([
+   getEmailTemplates(),
+  getCustomers(0, 200),
+   getSystemUsers(),
  ]);
 
-  const templates: EmailTemplate[] = (templatesResult?.data || []).map((t: {
-    id?: unknown;
-    name?: unknown;
-    subject?: unknown;
-    body?: unknown;
-  }) => ({
-    id: t.id?.toString() || "",
-    name: t.name || "",
-    subject: t.subject || "",
-    body: t.body || "",
+  const customers: CampaignRecipient[] = customersResult.success
+    ? (customersResult.data?.content ?? []).map((customer) => ({
+      id: customer.userIdxno,
+      name: customer.fullName || customer.username,
+      email: customer.email?.trim() || null,
+      recipientType: "CUSTOMER",
+      selectable: Boolean(customer.isActive && customer.canLogin && customer.email?.trim()),
+    }))
+    : [];
+  const staff: CampaignRecipient[] = systemUsers.map((user) => ({
+    id: user.idxno,
+    name: user.fullName || user.username,
+    email: user.email?.trim() || null,
+    recipientType: "SYSTEM_USER",
+    selectable: Boolean(user.isactive && user.canLogin && user.email?.trim()),
   }));
-
-  const segments: AudienceSegment[] = (segmentsResult?.data || []).map((s: {
-    id?: unknown;
-    label?: unknown;
-    name?: unknown;
-    description?: unknown;
-    count?: unknown;
-    icon?: unknown;
-  }) => ({
-    id: s.id?.toString() || "",
-    label: s.label || s.name || "",
-    description: s.description || "",
-    count: s.count || 0,
-    icon: s.icon || "users",
-  }));
+  const templates: EmailTemplate[] = templatesResult.success && templatesResult.data.length > 0
+    ? templatesResult.data.map((value) => {
+      const template = value as Record<string, unknown>;
+      return {
+        id: String(template.id ?? ""),
+        name: String(template.name ?? ""),
+        subject: String(template.subject ?? ""),
+        body: String(template.body ?? ""),
+      };
+    })
+    : BUILT_IN_TEMPLATES;
 
  return (
  <div className="p-6 h-full">
  <BulkEmailWizard
- segments={segments}
+ customers={customers}
+ systemUsers={staff}
  templates={templates}
+ templateNotice={!templatesResult.success || templatesResult.data.length === 0 ? templatesResult.message ?? "Using built-in templates because no saved templates are available." : undefined}
+ templateRequestId={templatesResult.requestId}
+ recipientError={!customersResult.success ? customersResult.message ?? "Customer recipients are unavailable." : undefined}
+ recipientRequestId={customersResult.requestId}
  />
  </div>
  );

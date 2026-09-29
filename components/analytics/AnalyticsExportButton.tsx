@@ -1,33 +1,31 @@
 "use client";
 
-import { NetworkAnalyticsOverview } from "@/lib/types/analytics";
+import { AnalyticsDashboardData } from "@/lib/types/analytics";
 
-export function AnalyticsExportButton({ data }: { data: NetworkAnalyticsOverview }) {
+export function AnalyticsExportButton({ data }: { data: AnalyticsDashboardData }) {
  function handleExport() {
  const lines: string[] = [];
  const push = (r: (string | number)[]) =>
  lines.push(r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(","));
 
  push(["Metric", "Value"]);
- push(["Active Subscribers", data.kpis.activeSubscribersCount]);
- push(["New Subscribers", data.kpis.newSubscribersCount]);
- push(["Total Revenue", data.kpis.revenueAmount]);
- push(["ARPU", data.kpis.arpuAmount]);
- push(["Total Sessions", data.kpis.sessionsCount]);
- push(["Data Transferred (TB)", data.kpis.dataTransferredTb]);
- push(["Online Now", data.kpis.onlineNowCount]);
+ push(["Subscribers", data.kpis.subscriberCount ?? "-"]);
+ push(["Active Subscriptions", data.kpis.activeSubscriptionCount ?? "-"]);
+ push(["Revenue (KES)", data.kpis.revenue30d ?? "-"]);
+ push(["Profit (KES)", data.kpis.profit30d ?? "-"]);
+ push(["ARPU (KES)", data.kpis.arpu30d ?? "-"]);
+ push(["Uncollected (KES)", data.kpis.uncollectedInvoices30d ?? "-"]);
 
  lines.push("");
- push(["Router", "Status", "Subscribers", "Revenue", "Sessions", "Data (TB)", "Share %"]);
+ push(["Router", "Telemetry", "Sessions", "Data (GB)", "Revenue (KES)", "Share %"]);
  for (const r of data.routerPerformance) {
  push([
  r.routerName,
- r.status,
- r.subscriberCount,
- r.revenueAmount,
- r.sessionCount,
- r.dataVolumeTb,
- r.revenueSharePercent,
+ r.telemetryStatus,
+ r.activeSessions,
+ r.dataTransferredGb ?? "-",
+ r.revenueAmount ?? "-",
+ r.revenueSharePercent ?? "-",
  ]);
  }
 

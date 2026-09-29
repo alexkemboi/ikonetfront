@@ -33,6 +33,13 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
 
+      - name: Reject credential logging
+        run: |
+          if rg -n --glob '*.{ts,tsx,js,jsx}' 'console\.[[:alnum:]_]+\([^)]*(apiToken|Authorization)' actions app lib components; then
+            echo "Do not log API tokens or Authorization headers."
+            exit 1
+          fi
+
       - name: Unit & behavioral tests (MSW against contract fixtures)
         run: pnpm test
 

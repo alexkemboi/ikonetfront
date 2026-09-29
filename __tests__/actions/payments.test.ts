@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { server } from "@/mocks/server";
 import { http, HttpResponse } from "msw";
 import { API_PREFIX } from "@/mocks/handlers/auth-guard";
-import { getPaymentsLedgerData, getInvoicesLedgerData, recordManualPayment, getVoucherBatches } from "@/actions/payments";
+import { getPaymentsLedgerData, getInvoicesLedgerData, recordManualPayment } from "@/actions/payments";
 import { auth } from "@/lib/auth";
 import type { AccountPosting } from "@/lib/types/finance";
 
@@ -359,20 +359,4 @@ describe("recordManualPayment — envelope contract", () => {
   });
 });
 
-describe("getVoucherBatches — envelope contract", () => {
-  it("returns empty-safe KPIs when the batch list is empty", async () => {
-    server.use(
-      http.get(`${API_PREFIX}/finance/voucher-batches`, () =>
-        HttpResponse.json({
-          success: true,
-          data: { content: [], totalElements: 0 },
-        })
-      )
-    );
-    const { kpis, batches } = await getVoucherBatches();
-    expect(batches).toEqual([]);
-    expect(kpis.activeCount).toBe(0);
-    expect(kpis.totalValue).toBe(0);
-  });
-});
 

@@ -2,7 +2,9 @@ import SignOutCard from "./_components/SignOutCard";
 
 export const metadata = { title: "Sign out — Beesmart" };
 
-export default function SignOutPage() {
+export default async function SignOutPage({ searchParams }: { searchParams: Promise<{ reason?: string }> }) {
+ const params = await searchParams;
+ const forceSignOut = params.reason === "session-expired";
  return (
  <div className="min-h-screen bg-primary flex flex-col items-center justify-center p-6 relative overflow-hidden">
 
@@ -26,7 +28,7 @@ export default function SignOutPage() {
  </div>
 
  {/* Card */}
- <SignOutCard />
+ <SignOutCard forceSignOut={forceSignOut} />
  </div>
  );
 }

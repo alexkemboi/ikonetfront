@@ -120,23 +120,9 @@ const formatNumber = (value?: number) => {
  safeNumber(value)
  );
 };
-const revenueTrendData = [
- { month: "Jan", revenue: 240000, collected: 210000 },
- { month: "Feb", revenue: 280000, collected: 250000 },
- { month: "Mar", revenue: 320000, collected: 295000 },
- { month: "Apr", revenue: 390000, collected: 340000 },
- { month: "May", revenue: 460000, collected: 410000 },
- { month: "Jun", revenue: 520000, collected: 470000 },
-];
+const revenueTrendData: Array<{ month: string; revenue: number; collected: number }> = [];
 
-const subscriberGrowthData = [
- { month: "Jan", users: 420 },
- { month: "Feb", users: 510 },
- { month: "Mar", users: 680 },
- { month: "Apr", users: 790 },
- { month: "May", users: 920 },
- { month: "Jun", users: 1180 },
-];
+const subscriberGrowthData: Array<{ month: string; users: number }> = [];
 export function DashboardShell({
  metrics,
  devices = [],

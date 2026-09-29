@@ -1,6 +1,6 @@
 "use server";
 
-import { BASE_URL, buildApiUrl } from "@/lib/constants";
+import { BASE_URL, buildApiUrl, resolveApiLink } from "@/lib/constants";
 import { safeJsonParse } from "@/lib/utils/api";
 import {
   ApiResponse,
@@ -262,14 +262,15 @@ export const updateRouter = async (
 export const executeRouterAction = async (
   id: number,
   body: RouterActionRequest,
-  stepUpToken?: string
+  stepUpToken?: string,
+  actionUrl?: string | null
 ): Promise<ApiResponse<RouterActionResponse | null>> => {
   try {
     const headers = await getAuthHeaders();
     if (stepUpToken) {
       (headers as Record<string, string>)["X-Step-Up-Token"] = stepUpToken;
     }
-    const response = await fetch(BASE_URL + `network-routers/${id}/action`, {
+    const response = await fetch(actionUrl ? resolveApiLink(actionUrl) : buildApiUrl(`/network-routers/${id}/action`), {
       method: "PATCH",
       headers,
       body: JSON.stringify({ action: body.action, notes: body.notes ?? "" }),
@@ -417,28 +418,38 @@ function resolveDataArray<T>(parsed: unknown): T[] {
   return [];
 }
 
-export const getRegions = async (tree?: boolean): Promise<RegionResponse[]> => {
+export type RegionsLoadResult =
+  | { success: true; data: RegionResponse[] }
+  | { success: false; status: number; message: string; requestId?: string };
+
+export const getRegions = async (tree?: boolean): Promise<RegionsLoadResult> => {
   try {
     const params = await getRlsScopeParams();
     if (tree) params.append("tree", "true");
     const url = BASE_URL + "network/regions?" + params.toString();
-    console.log("[getRegions] fetching:", url);
     const response = await fetch(url, {
       cache: "no-store",
       headers: await getAuthHeaders(),
     });
-    console.log("[getRegions] status:", response.status);
     const { parsed, ok, error } = await safeJsonParse<unknown>(response, {});
+    const body = parsed && typeof parsed === "object" ? parsed as Record<string, unknown> : {};
+    const bodyData = body.data && typeof body.data === "object" ? body.data as Record<string, unknown> : {};
+    const requestId = response.headers.get("X-Request-Id") ??
+      (typeof body.requestId === "string" ? body.requestId : undefined) ??
+      (typeof bodyData.requestId === "string" ? bodyData.requestId : undefined);
     if (!response.ok || !ok) {
-      console.error("[getRegions] failed — status:", response.status, "ok:", ok, "error:", error, "parsed:", parsed);
-      return [];
+      return {
+        success: false,
+        status: response.status,
+        message: typeof body.message === "string" ? body.message : response.status === 401 ? "TOKEN_INVALID_OR_EXPIRED" : error ?? "Failed to load regions.",
+        requestId,
+      };
     }
     const result = resolveDataArray<RegionResponse>(parsed);
-    console.log("[getRegions] resolved count:", result.length);
-    return result;
-  } catch (error) {
-    console.error("[getRegions] error:", error);
-    return [];
+    return { success: true, data: result };
+  } catch {
+    console.error("[getRegions] request failed.");
+    return { success: false, status: 500, message: "DATA_SOURCE_UNAVAILABLE" };
   }
 };
 
@@ -847,11 +858,12 @@ export const getRouterMonitoringHistory = getRouterHistory;
  * backend lands `GET /network/monitoring/router/{id}/live` (BE-AAA-045).
  */
 export async function getRouterMonitoringLatest(
-  routerId: number
+  routerId: number,
+  latestUrl?: string | null
 ): Promise<RouterHealthSnapshot | null> {
   try {
     const res = await apiFetch<RouterHealthSnapshot>(
-      `/network/monitoring/router/${routerId}/latest`,
+      latestUrl ? resolveApiLink(latestUrl) : `/network/monitoring/router/${routerId}/latest`,
       { auth: "required", revalidate: 0 }
     );
     return res.data ?? null;
@@ -862,10 +874,11 @@ export async function getRouterMonitoringLatest(
 };
 
 export const getNetworkDeviceInterfaces = async (
-  deviceId: number
+  deviceId: number,
+  interfacesUrl?: string | null
 ): Promise<Record<string, unknown>[]> => {
   try {
-    const res = await fetch(buildApiUrl(`/network-devices/${deviceId}/interfaces`), {
+    const res = await fetch(interfacesUrl ? resolveApiLink(interfacesUrl) : buildApiUrl(`/network-devices/${deviceId}/interfaces`), {
       headers: await getAuthHeaders(),
       next: { revalidate: 0 },
     });
@@ -890,14 +903,15 @@ export const getNetworkDeviceInterfaces = async (
  */
 export const deleteNetworkDevice = async (
   id: number,
-  stepUpToken?: string
+  stepUpToken?: string,
+  deleteUrl?: string | null
 ): Promise<AuthApiResponse<{ id: number; name: string; ipAddress: string }>> => {
   try {
     const headers = await getAuthHeaders();
     if (stepUpToken) {
       (headers as Record<string, string>)["X-Step-Up-Token"] = stepUpToken;
     }
-    const response = await fetch(buildApiUrl(`/network-devices/${id}`), {
+    const response = await fetch(deleteUrl ? resolveApiLink(deleteUrl) : buildApiUrl(`/network-devices/${id}`), {
       method: "DELETE",
       headers,
     });
@@ -1018,20 +1032,26 @@ export const getRouters = async (): Promise<RouterResponse[]> => {
 };
 
 /**
- * GET /api/v1/network/ip-pools — admin inventory view of IP pools.
- * NOTE: pool fields are currently hardcoded fixtures in the backend (BE-AAA-046).
+ * GET /api/v1/network/ip-pools — live pool utilization and probe status.
  */
-export async function getIpPools(): Promise<IpPool[]> {
+export async function getIpPoolsResult(): Promise<{ success: true; pools: IpPool[]; requestId?: string } | { success: false; message: string; requestId?: string }> {
   try {
     const res = await apiFetch<IpPool[]>("/network/ip-pools", {
       auth: "required",
       tags: ["network"],
+      cache: "no-store",
     });
-    return res.data ?? [];
+    if (!res.success) return { success: false, message: res.message, requestId: res.requestId };
+    return { success: true, pools: res.data ?? [], requestId: res.requestId };
   } catch (error) {
     console.error("[Network Action] getIpPools error:", error);
-    return [];
+    return { success: false, message: "DATA_SOURCE_UNAVAILABLE" };
   }
+}
+
+export async function getIpPools(): Promise<IpPool[]> {
+  const result = await getIpPoolsResult();
+  return result.success ? result.pools : [];
 }
 
 /**

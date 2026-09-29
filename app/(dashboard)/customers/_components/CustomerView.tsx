@@ -1,5 +1,6 @@
 "use client";
 
+import { formatDateOnly } from "@/lib/dates";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -78,7 +79,7 @@ const CustomerView = ({ customer }: CustomerViewProps) => {
  </div>
  <div className="space-y-1">
  <p className="text-sm font-medium text-muted-foreground">Expiry Date</p>
- <p className="text-base font-semibold">{customer.expiryDate ? new Date(customer.expiryDate).toLocaleDateString() : "N/A"}</p>
+ <p className="text-base font-semibold">{formatDateOnly(customer.expiryDate)}</p>
  </div>
  <div className="space-y-1">
  <p className="text-sm font-medium text-muted-foreground">Last Active Date</p>

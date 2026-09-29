@@ -1,55 +1,14 @@
-import React from "react";
-import type { PaymentsVsExpensesPoint } from "@/lib/types/analytics";
-import { CHART_MAX_VAL } from "@/components/analytics/chart-constants";
+"use client";
 
-interface Props {
- paymentsTotal: number;
- expensesTotal: number;
- netProfit: number;
- points: PaymentsVsExpensesPoint[];
-}
+import type { AnalyticsDashboardData } from "@/lib/types/analytics";
 
-export function PaymentsVsExpensesChart({
- paymentsTotal,
- expensesTotal,
- netProfit,
- points,
-}: Props) {
- return (
- <div className="rounded-2xl border border-border bg-card p-6 shadow-xl">
- <div className="border-b border-border pb-4">
- <h2 className="text-lg font-normal text-foreground">Payments vs expenses · Monthly</h2>
- <p className="text-xs text-muted-foreground">Money in (bars) vs money out (line)</p>
- </div>
-
- <div className="mt-6 h-48 w-full flex items-end gap-1.5 pt-4">
- {points.map((p) => {
- const barHeight = Math.min(
- 100,
- Math.max(5, (p.paymentsAmount / CHART_MAX_VAL) * 100)
- );
- return (
- <div key={p.day} className="flex-1 flex flex-col items-center gap-2 group relative">
- <div className="absolute -top-8 hidden rounded bg-secondary px-2 py-1 text-[10px] font-sans tabular-nums text-foreground group-hover:block z-10 whitespace-nowrap">
- Day {p.day}: Ksh {p.paymentsAmount.toLocaleString()}
- </div>
- <div
- className="w-full rounded-t bg-amber-500/80 hover:bg-amber-400 transition"
- style={{ height: `${barHeight}%` }}
- />
- <span className="text-[9px] font-sans tabular-nums text-muted-foreground">{p.day}</span>
- </div>
- );
- })}
- </div>
-
- <div className="mt-4 flex flex-wrap items-center justify-between border-t border-border pt-4 text-xs font-sans tabular-nums text-muted-foreground">
- <div>
- Payments <strong className="text-foreground">Ksh {paymentsTotal.toLocaleString()}</strong> · Expenses{" "}
- <strong className="text-muted-foreground">Ksh {expensesTotal.toLocaleString()}</strong>
- </div>
- <div className="text-emerald-400 font-bold">Net Ksh {netProfit.toLocaleString()}</div>
- </div>
- </div>
- );
+export function PaymentsVsExpensesChart({ points }: { points: AnalyticsDashboardData["paymentsVsExpenses"]["points"] }) {
+  const max = Math.max(1, ...points.map((point) => Number.parseFloat(point.revenue) || 0), ...points.map((point) => Number.parseFloat(point.expense) || 0));
+  return <section className="rounded-lg border border-border bg-card p-4"><div className="border-b border-border pb-3"><h2 className="text-sm font-medium">Revenue vs expenses · Monthly</h2><p className="text-xs text-muted-foreground">Money strings are shown directly from the ledger summary</p></div>
+    <div className="mt-4 flex h-44 items-end gap-1 overflow-x-auto">{points.map((point) => {
+      const revenue = Number.parseFloat(point.revenue) || 0;
+      const expense = Number.parseFloat(point.expense) || 0;
+      return <div key={point.date} className="group relative flex h-full min-w-4 flex-1 flex-col justify-end gap-0.5"><div className="w-full rounded-t bg-emerald-600" style={{ height: `${Math.max(2, revenue / max * 100)}%` }} /><div className="w-full bg-amber-500" style={{ height: `${Math.max(1, expense / max * 100)}%` }} /><div className="absolute bottom-full z-10 mb-1 hidden whitespace-nowrap rounded border bg-background p-2 text-[10px] shadow group-hover:block"><p>{point.date}</p><p>Revenue: KES {point.revenue}</p><p>Expense: KES {point.expense}</p><p>Profit: KES {point.profit}</p></div></div>;
+    })}</div><div className="mt-3 text-[11px] text-muted-foreground">Green: revenue · Amber: expense · Tooltip includes backend profit</div>
+  </section>;
 }

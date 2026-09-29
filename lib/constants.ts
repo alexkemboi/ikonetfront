@@ -25,3 +25,21 @@ export function buildApiUrl(path: string): string {
   const cleanPath = path.replace(/^\/+/, "");
   return cleanPath ? `${base}/${cleanPath}` : base;
 }
+
+/** Resolve a backend-provided link without duplicating an existing /api/v1 prefix. */
+export function resolveApiLink(link: string): string {
+  if (/^https?:\/\//i.test(link)) return link;
+  const base = BASE_URL.replace(/\/+$/, "");
+  const clean = `/${link.replace(/^\/+/, "")}`;
+  let basePath = base;
+  let origin = "";
+  try {
+    const parsed = new URL(base);
+    origin = parsed.origin;
+    basePath = parsed.pathname.replace(/\/+$/, "");
+  } catch {
+    basePath = base;
+  }
+  if (basePath && (clean === basePath || clean.startsWith(`${basePath}/`))) return `${origin}${clean}`;
+  return buildApiUrl(clean);
+}

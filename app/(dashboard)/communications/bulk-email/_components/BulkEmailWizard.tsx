@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,10 +15,6 @@ import {
 } from "@/components/ui/select";
 import {
  Users,
- Wifi,
- Radio,
- Clock,
- Bell,
  UserX,
  Mail,
  Eye,
@@ -29,23 +25,21 @@ import {
  FileText,
  Sparkles,
  AlertCircle,
+ MessageSquare,
 } from "lucide-react";
-import type { AudienceSegment, EmailTemplate } from "../page";
+import type { CampaignRecipient, EmailTemplate } from "../page";
 import { sendBulkEmailAction } from "@/actions/communications";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface Props {
- segments: AudienceSegment[];
+ customers: CampaignRecipient[];
+ systemUsers: CampaignRecipient[];
  templates: EmailTemplate[];
+ templateNotice?: string;
+ templateRequestId?: string;
+ recipientError?: string;
+ recipientRequestId?: string;
 }
-
-const ICON_MAP: Record<string, React.ElementType> = {
- users: Users,
- wifi: Wifi,
- radio: Radio,
- clock: Clock,
- bell: Bell,
- "user-x": UserX,
-};
 
 const STEPS = [
  { id: 1, label: "Audience", icon: Users },
@@ -101,65 +95,16 @@ function StepIndicator({ current }: { current: number }) {
  );
 }
 
-function SegmentCard({
- segment,
- selected,
- onSelect,
-}: {
- segment: AudienceSegment;
- selected: boolean;
- onSelect: () => void;
-}) {
- const Icon = ICON_MAP[segment.icon] ?? Users;
- return (
- <button
- onClick={onSelect}
- className={`w-full text-left p-4 rounded-xl border-2 transition-all hover:shadow-sm ${
- selected
- ? "border-primary bg-primary/5 shadow-sm"
- : "border-border bg-card hover:border-primary/40"
- }`}
- >
- <div className="flex items-start gap-3">
- <div
- className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
- selected ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
- }`}
- >
- <Icon className="w-4.5 h-4.5" />
- </div>
- <div className="flex-1 min-w-0">
- <div className="flex items-center justify-between gap-2">
- <span className="text-sm font-semibold text-foreground">
- {segment.label}
- </span>
- <span
- className={`text-sm font-bold tabular-nums ${
- selected ? "text-primary" : "text-foreground"
- }`}
- >
- {segment.count.toLocaleString()}
- </span>
- </div>
- <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
- {segment.description}
- </p>
- </div>
- </div>
- </button>
- );
-}
-
 function EmailPreview({
  subject,
  body,
  recipientCount,
- segmentLabel,
+ recipientLabel,
 }: {
  subject: string;
  body: string;
  recipientCount: number;
- segmentLabel: string;
+ recipientLabel: string;
 }) {
  return (
  <div className="space-y-4">
@@ -167,7 +112,7 @@ function EmailPreview({
  <div className="flex items-center gap-2 text-sm">
  <span className="text-muted-foreground">To:</span>
  <Badge variant="outline" className="text-xs">
- {segmentLabel}
+ {recipientLabel}
  </Badge>
  <span className="text-muted-foreground text-xs">
  ({recipientCount.toLocaleString()} recipients)
@@ -209,15 +154,48 @@ function EmailPreview({
   );
 }
 
-export default function BulkEmailWizard({ segments, templates }: Props) {
+export default function BulkEmailWizard({ customers, systemUsers, templates, templateNotice, templateRequestId, recipientError, recipientRequestId }: Props) {
  const [step, setStep] = useState(1);
- const [selectedSegmentId, setSelectedSegmentId] = useState<string | null>(null);
+ const [recipientType, setRecipientType] = useState<CampaignRecipient["recipientType"]>("CUSTOMER");
+ const [recipientSearch, setRecipientSearch] = useState("");
+ const [selectedRecipientKeys, setSelectedRecipientKeys] = useState<Set<string>>(new Set());
+ const [channel, setChannel] = useState<"EMAIL" | "SMS">("EMAIL");
  const [selectedTemplateId, setSelectedTemplateId] = useState("blank");
  const [subject, setSubject] = useState("");
  const [body, setBody] = useState("");
  const [sent, setSent] = useState(false);
+ const [sendError, setSendError] = useState<string | null>(null);
+ const [sendRequestId, setSendRequestId] = useState<string | undefined>();
 
- const selectedSegment = segments.find((s) => s.id === selectedSegmentId);
+ const recipients = recipientType === "CUSTOMER" ? customers : systemUsers;
+ const visibleRecipients = useMemo(() => {
+   const query = recipientSearch.trim().toLowerCase();
+  return recipients.filter((recipient) => !query || recipient.name.toLowerCase().includes(query) || (recipient.email ?? "").toLowerCase().includes(query));
+ }, [recipients, recipientSearch]);
+ const selectedRecipients = useMemo(() => [...customers, ...systemUsers].filter((recipient) => selectedRecipientKeys.has(`${recipient.recipientType}:${recipient.id}`)), [customers, systemUsers, selectedRecipientKeys]);
+ const selectedRecipientLabel = `${selectedRecipients.length} selected recipients`;
+ const selectableVisible = visibleRecipients.filter((recipient) => recipient.selectable);
+ const allVisibleSelected = selectableVisible.length > 0 && selectableVisible.every((recipient) => selectedRecipientKeys.has(`${recipient.recipientType}:${recipient.id}`));
+
+ function toggleRecipient(recipient: CampaignRecipient) {
+   if (!recipient.selectable) return;
+   const key = `${recipient.recipientType}:${recipient.id}`;
+   setSelectedRecipientKeys((current) => {
+     const next = new Set(current);
+     if (next.has(key)) next.delete(key);
+     else next.add(key);
+     return next;
+   });
+ }
+
+ function toggleVisibleRecipients() {
+   setSelectedRecipientKeys((current) => {
+     const next = new Set(current);
+    if (allVisibleSelected) selectableVisible.forEach((recipient) => next.delete(`${recipient.recipientType}:${recipient.id}`));
+    else selectableVisible.forEach((recipient) => next.add(`${recipient.recipientType}:${recipient.id}`));
+     return next;
+   });
+ }
 
  function handleTemplateChange(templateId: string) {
  setSelectedTemplateId(templateId);
@@ -232,8 +210,11 @@ export default function BulkEmailWizard({ segments, templates }: Props) {
  }
 
  async function handleSend() {
+ if (selectedRecipients.length === 0 || recipientError || channel !== "EMAIL") return;
+ setSendError(null);
+ setSendRequestId(undefined);
  const result = await sendBulkEmailAction({
- segmentId: selectedSegmentId || "",
+ recipients: selectedRecipients.map(({ recipientType: type, id }) => ({ recipientType: type, recipientId: id })),
  templateId: selectedTemplateId,
  subject,
  body: body,
@@ -241,8 +222,8 @@ export default function BulkEmailWizard({ segments, templates }: Props) {
  if (result.success) {
  setSent(true);
  } else {
- // TODO: show error toast when toast system is available
- console.error("[BulkEmail] send failed:", result.message);
+ setSendError(result.message || "Failed to send campaign.");
+ setSendRequestId(result.requestId);
  }
  }
 
@@ -254,15 +235,13 @@ export default function BulkEmailWizard({ segments, templates }: Props) {
  </div>
  <h2 className="text-2xl font-normal text-foreground">Campaign Sent!</h2>
  <p className="text-sm text-muted-foreground text-center max-w-xs">
- Your email has been queued for delivery to{" "}
- <strong>{selectedSegment?.count.toLocaleString()} recipients</strong> in the{" "}
- <strong>{selectedSegment?.label}</strong> segment.
+ Your email has been queued for delivery to <strong>{selectedRecipients.length.toLocaleString()} recipients</strong>.
  </p>
  <Button
  onClick={() => {
  setSent(false);
  setStep(1);
- setSelectedSegmentId(null);
+ setSelectedRecipientKeys(new Set());
  setSelectedTemplateId("blank");
  setSubject("");
  setBody("");
@@ -287,6 +266,10 @@ export default function BulkEmailWizard({ segments, templates }: Props) {
  {/* Step indicator */}
  <StepIndicator current={step} />
 
+ {recipientError && <p role="alert" className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm">Customer recipients unavailable: {recipientError}{recipientRequestId ? ` · Ref: ${recipientRequestId}` : ""}</p>}
+ {templateNotice && step === 2 && <p role="status" className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">Using built-in templates. {templateNotice}{templateRequestId ? ` · Ref: ${templateRequestId}` : ""}</p>}
+ {sendError && <p role="alert" className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm">{sendError}{sendRequestId ? ` · Ref: ${sendRequestId}` : ""}</p>}
+
  {/* Step content */}
  <Card className="border-border shadow-sm">
  <CardContent className="p-6">
@@ -297,19 +280,34 @@ export default function BulkEmailWizard({ segments, templates }: Props) {
  <h2 className="text-base font-normal text-foreground">
  Who will receive this email?
  </h2>
- <p className="text-xs text-muted-foreground mt-0.5">
- Choose a segment. You can refine the audience further with filters in a future release.
- </p>
+ <p className="text-xs text-muted-foreground mt-0.5">Choose a channel and select recipients individually.</p>
  </div>
- <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
- {segments.map((seg) => (
- <SegmentCard
- key={seg.id}
- segment={seg}
- selected={selectedSegmentId === seg.id}
- onSelect={() => setSelectedSegmentId(seg.id)}
- />
- ))}
+ <div className="flex flex-wrap gap-2" role="group" aria-label="Delivery channel">
+ <Button type="button" variant={channel === "EMAIL" ? "default" : "outline"} onClick={() => setChannel("EMAIL")} className="gap-1.5"><Mail className="h-4 w-4"/>Email</Button>
+ <Button type="button" variant="outline" disabled title="SMS campaign delivery is not available in the configured backend API"><MessageSquare className="h-4 w-4"/>SMS unavailable</Button>
+ </div>
+ <div className="flex flex-wrap items-center justify-between gap-3">
+ <div className="flex gap-2" role="group" aria-label="Recipient type">
+ <Button type="button" size="sm" variant={recipientType === "CUSTOMER" ? "default" : "outline"} onClick={() => setRecipientType("CUSTOMER")} className="gap-1.5"><Users className="h-3.5 w-3.5"/>Customers</Button>
+ <Button type="button" size="sm" variant={recipientType === "SYSTEM_USER" ? "default" : "outline"} onClick={() => setRecipientType("SYSTEM_USER")} className="gap-1.5"><UserX className="h-3.5 w-3.5"/>System Users</Button>
+ </div>
+ <Input aria-label="Search recipients" placeholder="Search by name" value={recipientSearch} onChange={(event) => setRecipientSearch(event.target.value)} className="h-8 w-full sm:w-56" />
+ </div>
+ <div className="overflow-hidden rounded-lg border border-border">
+ <div className="flex items-center justify-between border-b border-border bg-muted/40 px-4 py-2">
+ <label className="flex cursor-pointer items-center gap-2 text-xs font-medium"><Checkbox checked={allVisibleSelected} onCheckedChange={toggleVisibleRecipients} />Select all visible</label>
+ <span className="text-xs tabular-nums text-muted-foreground">{selectedRecipients.length} selected</span>
+ </div>
+ <div className="max-h-72 divide-y divide-border overflow-y-auto">
+ {visibleRecipients.map((recipient) => {
+   const key = `${recipient.recipientType}:${recipient.id}`;
+   return <label key={key} className="flex cursor-pointer items-center gap-3 px-4 py-2.5 transition-colors hover:bg-muted/40">
+    <Checkbox checked={selectedRecipientKeys.has(key)} disabled={!recipient.selectable} onCheckedChange={() => toggleRecipient(recipient)} />
+    <span className="min-w-0 flex-1"><span className="block truncate text-sm font-medium">{recipient.name}</span><span className="block truncate text-xs text-muted-foreground">{recipient.email ?? "No email on file"}</span></span>
+   </label>;
+ })}
+ {visibleRecipients.length === 0 && <p className="px-4 py-8 text-center text-sm text-muted-foreground">No recipients with email addresses match this search.</p>}
+ </div>
  </div>
  </div>
  )}
@@ -335,6 +333,7 @@ export default function BulkEmailWizard({ segments, templates }: Props) {
  <SelectValue placeholder="Choose a template" />
  </SelectTrigger>
  <SelectContent>
+                 <SelectItem value="blank">Write from scratch</SelectItem>
  {templates.map((t) => (
  <SelectItem key={t.id} value={t.id}>
  {t.name}
@@ -392,8 +391,8 @@ export default function BulkEmailWizard({ segments, templates }: Props) {
  <EmailPreview
  subject={subject}
  body={body}
- recipientCount={selectedSegment?.count ?? 0}
- segmentLabel={selectedSegment?.label ?? ""}
+ recipientCount={selectedRecipients.length}
+ recipientLabel={selectedRecipientLabel}
  />
  </div>
  )}
@@ -410,7 +409,8 @@ export default function BulkEmailWizard({ segments, templates }: Props) {
 
  <div className="space-y-3">
  {[
- { label: "Audience", value: `${selectedSegment?.label} (${selectedSegment?.count.toLocaleString()} recipients)` },
+ { label: "Recipients", value: `${selectedRecipients.length.toLocaleString()} selected` },
+ { label: "Channel", value: channel === "EMAIL" ? "Email" : "SMS" },
  { label: "Subject", value: subject || "(no subject)" },
  { label: "Body length", value: `${body.length} characters` },
  { label: "Template", value: templates.find((t) => t.id === selectedTemplateId)?.name ?? "Custom" },
@@ -425,7 +425,7 @@ export default function BulkEmailWizard({ segments, templates }: Props) {
  <div className="flex items-start gap-2 p-3 rounded-lg bg-[oklch(0.97_0.02_25)] border border-[oklch(0.88_0.06_25)]">
  <AlertCircle className="w-4 h-4 text-[oklch(0.55_0.18_25)] shrink-0 mt-0.5" />
  <p className="text-xs text-[oklch(0.48_0.14_25)]">
- Sending to <strong>{selectedSegment?.count.toLocaleString()}</strong> customers is irreversible. Ensure your message is accurate and professional before proceeding.
+ Sending to <strong>{selectedRecipients.length.toLocaleString()}</strong> selected recipients is irreversible. Ensure your message is accurate and professional before proceeding.
  </p>
  </div>
  </div>
@@ -449,7 +449,7 @@ export default function BulkEmailWizard({ segments, templates }: Props) {
  {step < 4 ? (
  <Button
  onClick={() => setStep((s) => s + 1)}
- disabled={step === 1 && !selectedSegmentId}
+ disabled={(step === 1 && (selectedRecipients.length === 0 || Boolean(recipientError))) || (step === 2 && Boolean(recipientError))}
  className="gap-1.5"
  >
  {step === 3 ? "Confirm & Review" : "Continue"}
@@ -458,7 +458,7 @@ export default function BulkEmailWizard({ segments, templates }: Props) {
  ) : (
  <Button
  onClick={handleSend}
- disabled={!subject.trim() || !body.trim()}
+ disabled={!subject.trim() || !body.trim() || selectedRecipients.length === 0 || Boolean(recipientError) || channel !== "EMAIL"}
  className="gap-2 bg-[oklch(0.38_0.12_155)] hover:bg-[oklch(0.32_0.12_155)] text-foreground"
  >
  <Send className="w-4 h-4" />

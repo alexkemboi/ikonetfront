@@ -28,12 +28,15 @@ export default function CheckoutModal({
 }: CheckoutModalProps) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [phoneNumber, setPhoneNumber] = useState("");
-  const fallbackMac = "00:00:00:00:00:00";
   const brand = getCustomerFacingBrand(companyCode);
 
   const handleConfirm = async () => {
     if (!phoneNumber.trim()) {
       alert("Please enter a phone number");
+      return;
+    }
+    if (!clientMac?.trim()) {
+      toast.error("This hotspot page is missing the router-provided device identity. Reopen it from the Wi-Fi login page.");
       return;
     }
     setIsProcessing(true);
@@ -42,12 +45,8 @@ export default function CheckoutModal({
         packageId: pkg.idxno,
         phone: phoneNumber.trim(),
         paymentMode: "MPESA",
-        // Use the REAL client MAC/IP from the MikroTik redirect when present.
-        // The zero MAC fallback only applies when the page was opened outside
-        // a router redirect (e.g. admin preview) — for captive-portal users the
-        // real MAC is mandatory, otherwise FreeRADIUS can't match the device.
-        macAddress: clientMac || fallbackMac,
-        clientMac: clientMac || fallbackMac,
+        macAddress: clientMac.trim(),
+        clientMac: clientMac.trim(),
         clientIp: clientIp || "",
       });
 
@@ -117,7 +116,7 @@ export default function CheckoutModal({
             </div>
             <div className="pt-2 border-t border-border flex justify-between items-center">
               <span className="text-sm font-medium text-foreground">Total Price:</span>
-              <span className="text-xl font-bold text-primary">KES {pkg.price.toLocaleString()}</span>
+              <span className="text-xl font-bold text-primary">KES {pkg.price}</span>
             </div>
           </div>
 

@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 
 const mockEmptyResponse = () => ({
   data: {
-    tenantName: "",
+    companyName: "",
     shiftName: "",
     onlineSubscribersCount: 0,
     expiriesDue24hCount: 0,
@@ -45,10 +45,14 @@ describe("getDashboardOverview", () => {
 
     global.fetch = vi.fn().mockResolvedValue({
       ok: false,
-    }) as any;
+    }) as unknown as typeof fetch;
 
     const { getDashboardOverview } = await import("@/actions/dashboard");
     const result = await getDashboardOverview();
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringMatching(/\/api\/v1\/dashboard\/operations-cockpit$/),
+      expect.any(Object)
+    );
     expect(result.smsCreditsCount).toBeNull();
     expect(result.revenueToday).toBe(0);
     expect(result.renewalsDue).toEqual([]);
@@ -63,7 +67,7 @@ describe("getDashboardOverview", () => {
     global.fetch = vi.fn().mockResolvedValue({
       ok: true,
       json: vi.fn().mockResolvedValue(mockEmptyResponse()),
-    }) as any;
+    }) as unknown as typeof fetch;
 
     const { getDashboardOverview } = await import("@/actions/dashboard");
     const result = await getDashboardOverview();

@@ -10,6 +10,7 @@ export interface ApiResponse<T = unknown> {
   message: string;
   data: T | null;
   timestamp?: string;
+  requestId?: string;
 }
 
 export interface Sort {
@@ -49,7 +50,7 @@ export interface PageResponse<T> {
 export interface NetPackage {
   idxno: number;
   packageName: string;
-  price: number;
+  price: string;
   packageCategory?: string;
   validityType?: string;
   validityValue?: number;
@@ -62,18 +63,25 @@ export interface NetPackage {
 }
 
 /**
- * `IpPool` DTO returned by `GET /api/v1/network/ip-pools`.
- * NOTE: pool fields are currently hardcoded fixtures in the backend (BE-AAA-046).
+ * Live IP pool utilization returned by `GET /api/v1/network/ip-pools`.
  */
 export interface IpPool {
   poolName: string;
   subnet: string;
-  gateway: string;
+  gateway: string | null;
   totalIps: number;
   usedIps: number;
   availableIps: number;
   utilizationPercentage: number;
   serviceType: string;
+  poolId: number;
+  rawUsedIps: number;
+  overCapacity: boolean;
+  probeStatus: "OK" | "FAILED" | "NO_DEVICE" | "INVALID_SUBNET";
+  stale: boolean;
+  probeError: "ROUTER_UNREACHABLE" | "ROUTER_AUTH_FAILED" | "PROBE_FAILED" | "USAGE_QUERY_FAILED" | "POOL_NOT_LINKED" | "NO_NAS_SCOPE" | "INVALID_SUBNET" | null;
+  lastProbedAt: string | null;
+  usageSource: "MIKROTIK_DHCP_LEASES" | "RADIUS_ACTIVE_SESSIONS" | "WIREGUARD_PEERS";
 }
 
 /**

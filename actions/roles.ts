@@ -9,7 +9,6 @@ import { NAV_MENUS_TAG } from "@/lib/data/nav";
 
 async function getAuthHeaders(): Promise<HeadersInit> {
   const session = await auth();
-  console.log("Current session in getAuthHeaders:", session?.user?.apiToken);
   const headers: HeadersInit = { "Content-Type": "application/json" };
   if (session?.user?.apiToken) {
     (headers as Record<string, string>)["Authorization"] =
@@ -160,8 +159,6 @@ export async function saveRoleMenusAction(
 ): Promise<{ success: number; failed: number }> {
   const headers = await getAuthHeaders();
   const url = buildApiUrl(`/system-setup/${roleCode}/menus`);
-
-  console.log("Saving role menus:", { roleCode, assignments, url, headers });
 
   try {
     const res = await fetch(url, {

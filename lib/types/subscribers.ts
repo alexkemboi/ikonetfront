@@ -1,6 +1,5 @@
-export type SubscriberType = "HOTSPOT" | "PPPOE" | "BINDING";
-
-export type OnlineStatus = "ONLINE" | "OFFLINE";
+export type SubscriberType = "HOTSPOT" | "PPPOE" | "TV_BUNDLED";
+export type SubscriberAccountStatus = "ACTIVE" | "GRACE" | "EXPIRED" | "SUSPENDED";
 
 export interface SubscriberItem {
   id: string;
@@ -11,13 +10,15 @@ export interface SubscriberItem {
   type: SubscriberType;
   planName: string;
   planSpeed: string;
-  planPrice: number;
+  planPrice: string | null;
   expiryText: string;
   expiryDate?: string;
   isExpiringToday?: boolean;
-  status: OnlineStatus;
+  status: SubscriberAccountStatus;
+  isOnline: boolean;
+  lastSeenAt: string | null;
+  activeSessionId: string | null;
   nasName: string;
-  isDeviceBinding?: boolean;
   deviceType?: string;
   macAddress?: string;
   ipAddress?: string;
@@ -30,6 +31,23 @@ export interface SubscriberKpis {
   onlineCount: number;
   onlinePercentage: number;
   atRiskCount: number;
+  statusCounts: Record<SubscriberAccountStatus, number>;
+}
+
+export interface SubscriberRowsPage {
+  content: SubscriberItem[];
+  totalElements: number;
+  totalPages: number;
+  number: number;
+  size: number;
+}
+
+export interface SubscriberHubResult {
+  success: boolean;
+  message?: string;
+  requestId?: string;
+  kpis: SubscriberKpis | null;
+  rows: SubscriberRowsPage | null;
 }
 
 export interface OutageCompensationRequest {

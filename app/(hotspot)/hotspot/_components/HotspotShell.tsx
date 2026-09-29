@@ -17,6 +17,7 @@ interface HotspotShellProps {
   initialCompanyCode?: string | null;
   clientMac?: string;
   clientIp?: string;
+  routerIdentity?: string;
 }
 
 /**
@@ -28,7 +29,7 @@ interface HotspotShellProps {
  * `companyId`, which re-hydrates the brand here — updating the header/footer,
  * not just the checkout modal.
  */
-export default function HotspotShell({ packages, initialCompanyCode, clientMac, clientIp, initialTvDevice, tvPackages, tvPackagesError }: HotspotShellProps) {
+export default function HotspotShell({ packages, initialCompanyCode, clientMac, clientIp, routerIdentity, initialTvDevice, tvPackages, tvPackagesError }: HotspotShellProps) {
   const [companyCode, setCompanyCode] = useState<string | null>(
     initialCompanyCode ?? null
   );
@@ -78,7 +79,7 @@ export default function HotspotShell({ packages, initialCompanyCode, clientMac, 
           ))}
         </div>
         <div id="tv-service-panel" hidden={service !== "tv"}>
-          <TvDeviceSetup brand={brand} initialDevice={initialTvDevice} packages={tvPackages} packagesError={tvPackagesError} />
+          <TvDeviceSetup brand={brand} initialDevice={initialTvDevice} packages={tvPackages} packagesError={tvPackagesError} routerIdentity={routerIdentity} />
         </div>
         <div id="hotspot-service-panel" hidden={service !== "hotspot"} className="flex-1 w-full max-w-2xl">
           <HotspotFlow
@@ -87,6 +88,7 @@ export default function HotspotShell({ packages, initialCompanyCode, clientMac, 
             onCompanyResolved={handleCompanyResolved}
             clientMac={clientMac}
             clientIp={clientIp}
+            routerIdentity={routerIdentity}
           />
         </div>
       </div>

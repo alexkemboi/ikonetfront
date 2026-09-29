@@ -3,15 +3,11 @@
 import { useState } from "react";
 import { CheckCircle2, XCircle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-
-// Voucher activation is gated off pending the backend HTTP route
-// `POST /hotspot/activate` (BE gap ticket). See actions/hotspot.ts
-// `activateVoucherAction` — it returns a 503 envelope without hitting network.
-const VOUCHER_ACTIVATION_DISABLED = false;
+import { activateVoucherAction } from "@/actions/hotspot";
 
 type ValidationState = "idle" | "validating" | "valid" | "invalid";
 
-export default function ActivateTab() {
+export default function ActivateTab({ clientMac, clientIp, routerIdentity, companyId }: { clientMac?: string; clientIp?: string; routerIdentity?: string; companyId?: string | null }) {
  const [voucher, setVoucher] = useState("");
  const [validationState, setValidationState] = useState<ValidationState>("idle");
  const [message, setMessage] = useState("");
@@ -44,7 +40,6 @@ export default function ActivateTab() {
  };
 
     const handleSubmit = async () => {
-        if (VOUCHER_ACTIVATION_DISABLED) return;
         if (!validateVoucher(voucher)) {
             setValidationState("invalid");
             return;
@@ -53,10 +48,21 @@ export default function ActivateTab() {
  setIsSubmitting(true);
  setValidationState("validating");
 
-        try {
-            setValidationState("invalid");
-            setMessage("Voucher activation is temporarily unavailable (backend route pending).");
-        } catch {
+                try {
+                        if (!clientMac?.trim()) {
+                            setValidationState("invalid");
+                            setMessage("This hotspot page is missing the router-provided device identity. Reopen it from the Wi-Fi login page.");
+                            return;
+                        }
+                        const result = await activateVoucherAction({ voucherCode: voucher, macAddress: clientMac, clientIp: clientIp ?? "", routerIdentity, companyId: companyId ?? undefined });
+                        if (result.success) {
+                            setValidationState("valid");
+                            setMessage(`Voucher activated. ${result.data?.packageName ?? "Internet access"} · ${result.data?.expiresAt ?? "Validity starts on first use"}`);
+                            return;
+                        }
+                        setValidationState("invalid");
+                        setMessage(`${result.message}${result.requestId ? ` · Ref: ${result.requestId}` : ""}`);
+                } catch {
             setValidationState("invalid");
             setMessage("Failed to activate voucher. Please try again.");
         } finally {
@@ -114,13 +120,11 @@ export default function ActivateTab() {
             {/* Submit button */}
             <Button
                 onClick={handleSubmit}
-                disabled={VOUCHER_ACTIVATION_DISABLED || validationState !== "valid" || isSubmitting}
+                disabled={validationState !== "valid" || isSubmitting}
                 className="w-full"
-                title="Pending backend route — leave a comment or contact support"
+                title={!clientMac ? "Missing router-provided device identity" : "Activate this voucher on the connected device"}
             >
-                {VOUCHER_ACTIVATION_DISABLED ? (
-                    "Voucher Activation Pending"
-                ) : isSubmitting ? (
+                {isSubmitting ? (
                     <>
                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                         Activating...

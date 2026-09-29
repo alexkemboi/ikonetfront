@@ -1,4 +1,4 @@
-export type RouterOnlineStatus = "ONLINE" | "OFFLINE";
+export type RouterOnlineStatus = "ONLINE" | "DEGRADED" | "OFFLINE" | "NOT_PROVISIONED";
 
 export interface NasRouterItem {
   id: string;
@@ -7,7 +7,7 @@ export interface NasRouterItem {
   status: RouterOnlineStatus;
   /** Raw online flag when the source row carries a boolean (device API). */
   online?: boolean;
-  activeSessions: number;
+  activeSessions: number | null;
   managementIp: string; // e.g. "10.9.86.246"
   lastOnlineText: string; // e.g. "Jul 20, 03:34 AM"
   /** network_routers.idxno — the id the telemetry/action endpoints expect. */
@@ -28,6 +28,18 @@ export interface NasRouterItem {
   webConsoleUrl?: string | null;
   /** Track 1: lease expiry (ISO) — hides WebConsole/re-enables after it passes. */
   tunnelExpiresAt?: string | null;
+  serialNumber?: string | null;
+  telemetryStatus?: "LIVE" | "STALE" | "UNAVAILABLE";
+  companyCode?: string | null;
+  stationName?: string | null;
+  links?: {
+    router: string | null;
+    routerAction: string | null;
+    telemetryLatest: string | null;
+    deviceInterfaces: string | null;
+    deviceStatus: string | null;
+    deviceDelete: string | null;
+  };
 }
 
 export interface NasRouterKpis {
@@ -35,6 +47,12 @@ export interface NasRouterKpis {
   onlineCount: number;
   offlineCount: number;
   liveSessionsCount: number;
+  healthyCount?: number;
+  degradedCount?: number;
+  notProvisionedCount?: number;
+  cpuAvg?: number | null;
+  memoryAvg?: number | null;
+  rowsWithTelemetry?: number;
 }
 
 export interface ProvisioningScriptResponse {

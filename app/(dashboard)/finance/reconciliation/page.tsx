@@ -3,9 +3,9 @@ import { redirect } from "next/navigation";
 
 import { auth } from "@/lib/auth";
 import { getDarajaReconciliation } from "@/actions/payments";
-import { getPermissionForRoute } from "@/lib/data/nav";
 import { todayEatIso } from "@/lib/dates";
 import { normalizeRole, ROLE_NAME } from "@/lib/types/roles";
+import { canAccessReconciliation } from "@/lib/utils/reconciliationAccess";
 import { DarajaPullTrigger } from "@/components/finance/DarajaPullTrigger";
 
 export const dynamic = "force-dynamic";
@@ -17,17 +17,17 @@ export const metadata: Metadata = {
 
 export default async function ReconciliationPage() {
   const session = await auth();
-  const role = normalizeRole(session?.user?.role);
+  const roleValue = session?.user?.role;
+  const role = normalizeRole(roleValue);
 
   // 01 Admin / 02 Management only. Staff, investor, and customer are redirected
   // to their own landing routes; the reconciliation UI stays hidden from them.
-  if (role === ROLE_NAME.STAFF) redirect("/customers");
-  if (role === ROLE_NAME.INVESTOR) redirect("/finance/investor");
-  if (role === ROLE_NAME.CUSTOMER) redirect("/portal/pppoe");
-  if (role !== ROLE_NAME.ADMIN && role !== ROLE_NAME.MANAGEMENT) redirect("/dashboard");
-
-  const pagePerms = await getPermissionForRoute("/finance/reconciliation");
-  if (!pagePerms.canView) redirect("/dashboard");
+  if (!canAccessReconciliation(roleValue)) {
+    if (role === ROLE_NAME.STAFF) redirect("/customers");
+    if (role === ROLE_NAME.INVESTOR) redirect("/finance/investor");
+    if (role === ROLE_NAME.CUSTOMER) redirect("/portal/pppoe");
+    redirect("/dashboard");
+  }
 
   const day = todayEatIso();
   const { entries, summary, message } = await getDarajaReconciliation(day);

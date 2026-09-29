@@ -1,5 +1,4 @@
 import Image from "next/image";
-import { getTvPackagesAction } from "@/actions/tv";
 import HotspotShell from "./_components/HotspotShell";
 import { Wifi, Zap, Shield, Clock } from "lucide-react";
 import { getPublicHotspotPackagesAction } from "@/actions/hotspot";
@@ -29,10 +28,11 @@ export default async function HotspotPage({ searchParams }: HotspotPageProps) {
   const clientMac = params?.mac?.trim() || "";
   const clientIp = params?.ip?.trim() || "";
 
-  const [packagesResponse, tvPackagesResult] = await Promise.all([
-    getPublicHotspotPackagesAction(),
-    getTvPackagesAction(),
-  ]);
+  const packagesResponse = await getPublicHotspotPackagesAction({
+      routerIdentity: params?.router?.trim() || undefined,
+      clientIp: clientIp || undefined,
+      companyId: initialCompanyCode ?? undefined,
+    });
   const packages: HotspotPackage[] = packagesResponse.success
     ? packagesResponse.data || []
     : [];
@@ -120,12 +120,12 @@ export default async function HotspotPage({ searchParams }: HotspotPageProps) {
         <div className="flex-1 w-full max-w-2xl">
           <HotspotShell
             packages={packages}
-            tvPackages={tvPackagesResult.packages}
-            tvPackagesError={tvPackagesResult.error}
-            initialTvDevice={{ macAddress: "" }}
+            tvPackages={[]}
+            initialTvDevice={{ macAddress: "", customerPhone: "" }}
             initialCompanyCode={initialCompanyCode}
             clientMac={clientMac}
             clientIp={clientIp}
+            routerIdentity={params?.router}
           />
         </div>
       </div>

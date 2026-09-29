@@ -12,16 +12,22 @@ import { normalizeTvMacAddress, tvDeviceSchema, type TvDeviceDetails } from "@/l
 import TvPurchaseReview from "./TvPurchaseReview";
 import TvPackageSelection from "./TvPackageSelection";
 import type { TvPackage } from "@/lib/types/tv";
+import type { TvPortalSession } from "@/lib/types/tv";
 
 interface Props {
   brand: string;
   initialDevice: TvDeviceDetails;
   packages: TvPackage[];
   packagesError?: string;
+  routerIdentity?: string;
 }
 
-export default function TvDeviceSetup({ brand, initialDevice, packages, packagesError }: Props) {
+export default function TvDeviceSetup({ brand, initialDevice, packages: initialPackages, packagesError: initialPackagesError, routerIdentity }: Props) {
   const [device, setDevice] = useState<TvDeviceDetails | null>(null);
+  const [portal, setPortal] = useState<TvPortalSession | null>(null);
+  const [packages, setPackages] = useState<TvPackage[]>(initialPackages);
+  const [packagesError, setPackagesError] = useState(initialPackagesError ?? "");
+  const [warnings, setWarnings] = useState<string[]>([]);
   const [confirmed, setConfirmed] = useState(false);
   const [selectedPackageId, setSelectedPackageId] = useState("");
   const [reviewPurchase, setReviewPurchase] = useState(false);
@@ -37,9 +43,14 @@ export default function TvDeviceSetup({ brand, initialDevice, packages, packages
     onSubmit: async (values) => {
       setError("");
       try {
-        const result = await prepareTvDeviceAction(values);
+        const result = await prepareTvDeviceAction({ ...values, routerIdentity });
         if (!result.success) { setError(result.error); return; }
         setDevice(result.device);
+        setPortal(result.portal);
+        setPackages(result.recommendedPackages);
+        setWarnings(result.warnings);
+        setPackagesError("");
+        setSelectedPackageId("");
         setConfirmed(false);
         requestAnimationFrame(() => headingRef.current?.focus());
       } catch {
@@ -51,6 +62,9 @@ export default function TvDeviceSetup({ brand, initialDevice, packages, packages
   function editDevice() {
     setReviewPurchase(false);
     setDevice(null);
+    setPortal(null);
+    setPackages(initialPackages);
+    setPackagesError(initialPackagesError ?? "");
     setConfirmed(false);
     requestAnimationFrame(() => inputRef.current?.focus());
   }
@@ -63,10 +77,10 @@ export default function TvDeviceSetup({ brand, initialDevice, packages, packages
         <li aria-current={isPaymentStep ? "step" : undefined} className={isPaymentStep ? "font-medium text-primary" : ""}>3. Payment</li>
       </ol>
 
-      {device && isPaymentStep && selectedPackage ? (
-        <TvPurchaseReview macAddress={device.macAddress} pkg={selectedPackage} phone={paymentPhone} onPhoneChange={setPaymentPhone} onEditDevice={editDevice} onEditPackage={() => setReviewPurchase(false)} />
+      {device && portal && isPaymentStep && selectedPackage ? (
+        <TvPurchaseReview portal={portal} onPortalRefreshed={setPortal} customerPhone={device.customerPhone ?? ""} macAddress={device.macAddress} pkg={selectedPackage} phone={paymentPhone} onPhoneChange={setPaymentPhone} onEditDevice={editDevice} onEditPackage={() => setReviewPurchase(false)} />
       ) : device && confirmed ? (
-        <TvPackageSelection macAddress={device.macAddress} packages={packages} error={packagesError} selectedPackageId={selectedPackageId} onSelect={(id) => { setSelectedPackageId(id); setReviewPurchase(true); }} onEditDevice={editDevice} />
+        <><TvPackageSelection macAddress={device.macAddress} packages={packages} error={packagesError} selectedPackageId={selectedPackageId} onSelect={(id) => { setSelectedPackageId(id); setReviewPurchase(true); }} onEditDevice={editDevice} />{warnings.length > 0 && <p className="text-sm text-amber-800">{warnings.join(" · ")}</p>}</>
       ) : device ? (
         <div className="rounded-lg border border-border bg-card p-6 space-y-5">
           <h3 ref={headingRef} tabIndex={-1} className="text-2xl outline-none">Is this the correct TV?</h3>
@@ -91,6 +105,21 @@ export default function TvDeviceSetup({ brand, initialDevice, packages, packages
           <div className="rounded-md bg-muted p-4 space-y-2 text-sm">
             <p className="font-medium">Before you begin</p>
             <p>Connect your TV to {brand}, then keep this portal open on your phone to set it up.</p>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="tv-customer-phone">Customer phone number</Label>
+            <Input
+              id="tv-customer-phone"
+              name="customerPhone"
+              type="tel"
+              value={formik.values.customerPhone}
+              onChange={formik.handleChange}
+              onBlur={formik.handleBlur}
+              placeholder="0712 345 678"
+              autoComplete="tel"
+              required
+            />
+            {formik.touched.customerPhone && formik.errors.customerPhone && <p role="alert" className="text-sm text-destructive">{formik.errors.customerPhone}</p>}
           </div>
           <div className="space-y-2">
             <Label htmlFor="tv-mac-address">TV MAC address</Label>

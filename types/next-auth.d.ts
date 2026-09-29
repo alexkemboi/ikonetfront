@@ -4,7 +4,7 @@ import type { DefaultSession } from "next-auth";
 declare module "next-auth" {
   interface User {
     role: string;
-    apiToken: string;
+    apiToken?: string;
     fname: string;
     middleName?: string;
     otherName?: string;
@@ -24,8 +24,8 @@ declare module "next-auth" {
     error?: string;
     user: {
       role: string;
-      /** Bearer token for downstream API calls */
-      apiToken: string;
+      /** Present only in server-side auth() results; never sent by the session endpoint. */
+      apiToken?: string;
       fname: string;
       middleName?: string;
       otherName?: string;

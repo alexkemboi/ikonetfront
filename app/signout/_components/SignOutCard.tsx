@@ -1,30 +1,38 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { signOut, useSession } from "next-auth/react";
+import { signOut } from "next-auth/react";
 import { LogOut, ArrowLeft, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { logoutAction } from "@/actions/auth";
 import { clearCompanyContextCookie } from "@/lib/companyContextClient";
 
-export default function SignOutCard() {
+export default function SignOutCard({ forceSignOut = false }: { forceSignOut?: boolean }) {
   const router = useRouter();
-  const { data: session } = useSession();
   const [loading, setLoading] = useState(false);
+  const autoSignOutStarted = useRef(false);
+  const forceSignOutOnLoad = useRef(forceSignOut);
 
   async function handleSignOut() {
   setLoading(true);
   try {
   // R-16: drop the tenant-context cookie so the next login starts clean.
   clearCompanyContextCookie();
-  await logoutAction(session?.user?.apiToken ?? "").catch((err) =>
+  await logoutAction().catch((err) =>
   console.warn("Backend logout notification failed:", err)
   );
   } finally {
   await signOut({ callbackUrl: "/login" });
   }
   }
+
+  useEffect(() => {
+    if (!forceSignOutOnLoad.current || autoSignOutStarted.current) return;
+    autoSignOutStarted.current = true;
+    clearCompanyContextCookie();
+    void signOut({ callbackUrl: "/login" });
+  }, []);
 
  return (
  <div className="w-full max-w-sm">

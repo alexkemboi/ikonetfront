@@ -1,11 +1,24 @@
 "use server";
 
 import { auth } from "@/lib/auth";
-import { BASE_URL } from "@/lib/constants";
+import { buildApiUrl } from "@/lib/constants";
 import { DashboardOverviewData } from "@/lib/types/dashboard";
+import { apiFetch } from "@/lib/apiClient";
+import type { AdminDashboardLoadResult, AdminDashboardResponse } from "@/lib/types/dashboard";
+
+export async function getAdminDashboardData(): Promise<AdminDashboardLoadResult> {
+  const res = await apiFetch<AdminDashboardResponse>("/dashboard/admin", {
+    auth: "required",
+    cache: "no-store",
+  });
+  if (!res.success || !res.data) {
+    return { success: false, message: res.message, requestId: res.requestId };
+  }
+  return { success: true, data: res.data, requestId: res.requestId };
+}
 
 const EMPTY_DASHBOARD: DashboardOverviewData = {
-  tenantName: "",
+  companyName: "",
   shiftName: "",
   onlineSubscribersCount: 0,
   expiriesDue24hCount: 0,
@@ -52,7 +65,7 @@ export async function getDashboardOverview(): Promise<DashboardOverviewData> {
   }
 
   try {
-    const res = await fetch(`${BASE_URL}api/v1/dashboard/operations-cockpit`, {
+    const res = await fetch(buildApiUrl("/dashboard/operations-cockpit"), {
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
@@ -64,12 +77,16 @@ export async function getDashboardOverview(): Promise<DashboardOverviewData> {
       return EMPTY_DASHBOARD;
     }
 
-    const data = (await res.json()) as { data?: Partial<DashboardOverviewData> };
+    const data = (await res.json()) as { data?: Partial<DashboardOverviewData> & { tenantName?: string; companyName?: string } };
     if (!data.data) {
       return EMPTY_DASHBOARD;
     }
 
-    return { ...EMPTY_DASHBOARD, ...data.data };
+    return {
+      ...EMPTY_DASHBOARD,
+      ...data.data,
+      companyName: data.data.companyName ?? data.data.tenantName ?? "",
+    };
   } catch (error) {
     console.warn("Failed to fetch live dashboard telemetry. Returning empty state:", error);
     return EMPTY_DASHBOARD;

@@ -20,6 +20,7 @@ import {
 } from "@/actions/network";
 import type { RouterHealthSnapshot } from "@/lib/types/network";
 import type { MikrotikInterface } from "@/lib/types/mikrotik";
+import { formatBytes } from "@/lib/utils/formatBytes";
 
 type Tab = "vitals" | "interfaces" | "sessions";
 
@@ -32,18 +33,14 @@ interface TelemetryRouter {
   managementIp?: string;
   vpnIp?: string;
   winboxTunnelAddress?: string | null;
+  links?: {
+    telemetryLatest: string | null;
+    deviceInterfaces: string | null;
+  };
 }
 
 const POLL_MS = 5000;
 const CONNECT_MS = 10000;
-
-function formatBytes(bytes: string | number): string {
-  const n = typeof bytes === "string" ? Number(bytes) || 0 : bytes;
-  if (n >= 1073741824) return `${(n / 1073741824).toFixed(2)} GiB`;
-  if (n >= 1048576) return `${(n / 1048576).toFixed(1)} MiB`;
-  if (n >= 1024) return `${(n / 1024).toFixed(0)} KiB`;
-  return `${n} B`;
-}
 
 export function RouterTelemetryDrawer({
   router,
@@ -61,14 +58,14 @@ export function RouterTelemetryDrawer({
   const [loadingInterfaces, setLoadingInterfaces] = useState(false);
 
   const deviceId = Number(router.id);
-  const telemetryRouterId = Number(router.routerId) || deviceId;
+  const telemetryRouterId = Number(router.routerId);
   const hasNumericDevice = Number.isFinite(deviceId) && deviceId > 0;
   const hasNumericRouter = Number.isFinite(telemetryRouterId) && telemetryRouterId > 0;
+  const displayMode = hasNumericRouter ? mode : "offline";
 
   // ── Live telemetry: SSE via the same-origin relay, fall back to /latest polling ──
   useEffect(() => {
     if (!hasNumericRouter) {
-      setMode("offline");
       return;
     }
 
@@ -90,7 +87,7 @@ export function RouterTelemetryDrawer({
       if (cancelled || inFlight) return;
       inFlight = true;
       try {
-        const snap = await getRouterMonitoringLatest(telemetryRouterId);
+        const snap = await getRouterMonitoringLatest(telemetryRouterId, router.links?.telemetryLatest);
         if (!cancelled) {
           if (snap) {
             apply(snap);
@@ -163,23 +160,33 @@ export function RouterTelemetryDrawer({
       source?.close();
       stopTimers();
     };
-  }, [hasNumericRouter, telemetryRouterId]);
+  }, [hasNumericRouter, telemetryRouterId, router.links?.telemetryLatest]);
 
   // ── Interfaces (fetched on demand; refresh button re-fetches) ──
+  const fetchInterfaces = useCallback(async (): Promise<MikrotikInterface[]> => {
+    if (!hasNumericDevice) return [];
+    const rows = await getNetworkDeviceInterfaces(deviceId, router.links?.deviceInterfaces);
+    return rows as unknown as MikrotikInterface[];
+  }, [hasNumericDevice, deviceId, router.links?.deviceInterfaces]);
+
   const loadInterfaces = useCallback(async () => {
     if (!hasNumericDevice) return;
     setLoadingInterfaces(true);
     try {
-      const rows = await getNetworkDeviceInterfaces(deviceId);
-      setInterfaces(rows as unknown as MikrotikInterface[]);
+      setInterfaces(await fetchInterfaces());
     } finally {
       setLoadingInterfaces(false);
     }
-  }, [hasNumericDevice, deviceId]);
+  }, [hasNumericDevice, fetchInterfaces]);
 
   useEffect(() => {
-    if (tab === "interfaces") loadInterfaces();
-  }, [tab, loadInterfaces]);
+    if (tab !== "interfaces" || !hasNumericDevice) return;
+    let cancelled = false;
+    void fetchInterfaces().then((rows) => {
+      if (!cancelled) setInterfaces(rows);
+    });
+    return () => { cancelled = true; };
+  }, [tab, hasNumericDevice, fetchInterfaces]);
 
   const memPct =
     latest && latest.totalMemory > 0
@@ -199,14 +206,14 @@ export function RouterTelemetryDrawer({
               {router.name}
               <span
                 className={`text-[11px] font-sans tabular-nums px-2 py-0.5 rounded-full border ${
-                  mode === "offline"
+                  displayMode === "offline"
                     ? "bg-destructive/10 text-destructive border-destructive/20"
                     : "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
                 }`}
               >
-                {mode === "streaming"
+                {displayMode === "streaming"
                   ? "LIVE"
-                  : mode === "polling"
+                  : displayMode === "polling"
                     ? "POLLING"
                     : "OFFLINE"}
               </span>
@@ -384,8 +391,8 @@ export function RouterTelemetryDrawer({
                       </div>
                     </div>
                     <div className="text-right font-sans tabular-nums">
-                      <div className="text-emerald-600">▲ {formatBytes(iface["tx-byte"] ?? 0)}</div>
-                      <div className="text-blue-600">▼ {formatBytes(iface["rx-byte"] ?? 0)}</div>
+                      <div className="text-emerald-600">▲ {formatBytes(typeof iface["tx-byte"] === "string" || typeof iface["tx-byte"] === "number" ? iface["tx-byte"] : null)}</div>
+                      <div className="text-blue-600">▼ {formatBytes(typeof iface["rx-byte"] === "string" || typeof iface["rx-byte"] === "number" ? iface["rx-byte"] : null)}</div>
                     </div>
                   </div>
                 ))
@@ -435,9 +442,9 @@ export function RouterTelemetryDrawer({
         {/* Footer action */}
         <div className="border-t border-border px-6 py-4">
           <p className="text-[11px] text-muted-foreground">
-            {mode === "streaming"
+            {displayMode === "streaming"
               ? "Streaming live via SSE · auto-fallback to polling on disconnect."
-              : mode === "polling"
+              : displayMode === "polling"
                 ? "Polling /latest every 5s — SSE relay unavailable."
                 : "Device unreachable or not yet onboarded."}
           </p>

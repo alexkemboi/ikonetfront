@@ -5,6 +5,7 @@ import { Formik, Form, Field } from "formik";
 import * as Yup from "yup";
 import { RegionResponse, LocationResponse, StationResponse, RouterOnboardRequest, RouterValidationResponse } from "@/lib/types/network";
 import { validateRouterConnectivity, onboardRouter } from "@/actions/network";
+import { listCompanies, type CompanySummary } from "@/actions/companies";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,12 +20,6 @@ interface OnboardingWizardProps {
   companyScope?: string | null;
   isPlatformAdmin?: boolean;
 }
-
-const COMPANY_OPTIONS = [
-  { code: "CMP-BSM-001", label: "Beesmart" },
-  { code: "CMP-BDK-001", label: "Bedak" },
-  { code: "CMP-ADR-001", label: "Adrinold" },
-];
 
 export function OnboardingWizard({ regionsTree, companyScope, isPlatformAdmin }: OnboardingWizardProps) {
   const router = useRouter();
@@ -47,8 +42,23 @@ export function OnboardingWizard({ regionsTree, companyScope, isPlatformAdmin }:
     pppoeEnabled: true,
     hotspotEnabled: false,
     monitoringEnabled: true,
-    companyCode: companyScope || "CMP-BDK-001",
+    companyCode: companyScope || "",
   });
+  const [companies, setCompanies] = useState<CompanySummary[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    listCompanies().then((rows) => {
+      if (cancelled) return;
+      const allowed = companyScope ? rows.filter((row) => row.code === companyScope) : rows;
+      setCompanies(allowed);
+      setWizardData((current) => ({
+        ...current,
+        companyCode: current.companyCode || allowed[0]?.code || "",
+      }));
+    });
+    return () => { cancelled = true; };
+  }, [companyScope]);
 
   const validateStep1 = async (values: {
   ipAddress: string;
@@ -297,11 +307,11 @@ const handleOnboard = async () => {
   <Label htmlFor="companyCode">Operating Company</Label>
   {isPlatformAdmin ? (
   <Field as="select" id="companyCode" name="companyCode" className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
-  {COMPANY_OPTIONS.map(c => <option key={c.code} value={c.code}>{c.label}</option>)}
+  {companies.map(c => <option key={c.code} value={c.code}>{c.name}</option>)}
   </Field>
   ) : (
   <div className="flex h-10 w-full items-center rounded-md border border-input bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
-  {COMPANY_OPTIONS.find(c => c.code === wizardData.companyCode)?.label ?? wizardData.companyCode}
+  {(companies.find(c => c.code === wizardData.companyCode)?.name ?? wizardData.companyCode) || "Unavailable"}
   <span className="ml-2 text-xs">— locked to your login scope</span>
   </div>
   )}
@@ -475,8 +485,7 @@ const handleOnboard = async () => {
   <div><span className="text-muted-foreground block text-xs">Interrogation User</span> {wizardData.username}</div>
   <div><span className="text-muted-foreground block text-xs">Device Role Constraint</span> {wizardData.routerRole}</div>
   <div><span className="text-muted-foreground block text-xs">Assigned Station POP</span> Station ID #{wizardData.stationIdxno}</div>
-  <div><span className="text-muted-foreground block text-xs">Operating Company</span> {COMPANY_OPTIONS.find(c => c.code === wizardData.companyCode)?.label ?? wizardData.companyCode}</div>
-  <div><span className="text-muted-foreground block text-xs">Asset Tag (auto)</span> <span className="font-sans tabular-nums">RTR-{wizardData.companyCode === "CMP-BSM-001" ? "BSM" : wizardData.companyCode === "CMP-ADR-001" ? "ADR" : "BDK"}-A</span></div>
+  <div><span className="text-muted-foreground block text-xs">Operating Company</span> {(companies.find(c => c.code === wizardData.companyCode)?.name ?? wizardData.companyCode) || "Unavailable"}</div>
   <div><span className="text-muted-foreground block text-xs">PPPoE Enabled</span> {wizardData.pppoeEnabled ? "Yes" : "No"}</div>
   <div><span className="text-muted-foreground block text-xs">Hotspot Captive Portal</span> {wizardData.hotspotEnabled ? "Yes" : "No"}</div>
   </div>

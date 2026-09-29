@@ -28,8 +28,12 @@ import { apiFetch } from '@/lib/apiClient';
  * endpoint per plan decision D2.
  */
 
-export async function getPublicHotspotPackagesAction(): Promise<HotspotPackagesResponse> {
-  const res = await apiFetch<HotspotPackage[]>('/hotspot/packages', {
+export async function getPublicHotspotPackagesAction(scope: { routerIdentity?: string; clientIp?: string; companyId?: string } = {}): Promise<HotspotPackagesResponse> {
+  const query = new URLSearchParams({ serviceType: "HOTSPOT" });
+  if (scope.routerIdentity) query.set("routerIdentity", scope.routerIdentity);
+  if (scope.clientIp) query.set("clientIp", scope.clientIp);
+  if (scope.companyId) query.set("companyId", scope.companyId);
+  const res = await apiFetch<HotspotPackage[]>(`/hotspot/packages?${query.toString()}`, {
     auth: 'public',
     tags: ['hotspot-packages'],
     revalidate: 60,
@@ -65,16 +69,21 @@ export async function initiateHotspotPayment(
  * docs). Keep the action returning a readable envelope so the UI can explain
  * the state instead of 404ing. Re-enable once the backend route lands.
  */
-export async function activateVoucherAction(code: string): Promise<ApiResponse<null>> {
-  void code;
-  return {
-    status: 503,
-    success: false,
-    message:
-      "Voucher activation is temporarily unavailable — pending the backend route (POST /hotspot/activate) being verified. Tier-2 BE ticket.",
-    data: null,
-    timestamp: new Date().toISOString(),
-  };
+export async function activateVoucherAction(input: { voucherCode: string; macAddress: string; clientIp: string; routerIdentity?: string; companyId?: string }): Promise<ApiResponse<HotspotSessionResponse>> {
+  const result = await apiFetch<HotspotSessionResponse>("/hotspot/activate", {
+    method: "POST",
+    auth: "public",
+    cache: "no-store",
+    body: {
+      voucherCode: input.voucherCode.trim().toUpperCase(),
+      macAddress: input.macAddress.trim().toUpperCase(),
+      clientIp: input.clientIp,
+      routerIdentity: input.routerIdentity,
+      companyId: input.companyId,
+    },
+  });
+  if (result.success) revalidateTag("hotspot-packages", "max");
+  return result as ApiResponse<HotspotSessionResponse>;
 }
 
 export async function checkActiveSession(

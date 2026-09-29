@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { auth } from "./lib/auth";
+import { authMiddleware } from "./lib/auth";
 
 const publicRoutes = ["/hotspot"];
 const apiAuthPrefix = "/api/auth";
@@ -7,7 +7,7 @@ const authRoutes = ["/login", "/forgot-password", "/reset-password", "/signout"]
 const DEFAULT_LOGIN_REDIRECT = "/dashboard";
 
 // Assign the auth-wrapped function to a variable named `proxy`
-export const proxy = auth((req) => {
+export const proxy = authMiddleware((req) => {
     const { nextUrl } = req;
     const isAuthenticated = !!req.auth;
     const hasTokenError = req.auth?.error === "RefreshAccessTokenError";
@@ -21,7 +21,7 @@ export const proxy = auth((req) => {
 
     // On login/reset pages: send already-authed users to dashboard
     if (isAuthRoute) {
-        if (isAuthenticated && !hasTokenError && req.auth?.user?.apiToken && nextUrl.pathname !== "/signout") {
+        if (isAuthenticated && !hasTokenError && req.auth?.user && nextUrl.pathname !== "/signout") {
             return NextResponse.redirect(new URL(DEFAULT_LOGIN_REDIRECT, req.url));
         }
         return NextResponse.next();

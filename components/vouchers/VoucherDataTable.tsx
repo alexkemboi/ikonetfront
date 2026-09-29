@@ -1,205 +1,28 @@
 "use client";
 
-import React, { useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Search, Download, Printer, MoreHorizontal } from "lucide-react";
-import {
- VoucherItem,
- VoucherStatus,
-} from "@/lib/types/vouchers";
+import { Download, Printer, Search } from "lucide-react";
+import type { VoucherItem, VoucherStatus } from "@/lib/types/vouchers";
 
-interface Props {
- vouchers: VoucherItem[];
-}
+const states: Array<"ALL" | VoucherStatus> = ["ALL", "UNUSED", "USED", "EXPIRED", "VOID", "PENDING", "FAILED"];
+const statusStyles: Record<VoucherStatus, string> = { UNUSED: "bg-emerald-100 text-emerald-800", USED: "bg-amber-100 text-amber-900", EXPIRED: "bg-zinc-100 text-zinc-700", VOID: "bg-red-100 text-red-800", PENDING: "bg-sky-100 text-sky-800", FAILED: "bg-red-100 text-red-800" };
 
-const STATUS_PILLS: Record<VoucherStatus, string> = {
- UNUSED: "bg-emerald-500/15 text-emerald-400",
- USED: "bg-amber-500/15 text-amber-400",
- EXPIRED: "bg-secondary text-muted-foreground",
- VOID: "bg-red-500/15 text-red-400",
-};
-
-const TABS: Array<"ALL" | VoucherStatus> = [
- "ALL",
- "UNUSED",
- "USED",
- "EXPIRED",
- "VOID",
-];
-
-export function VoucherDataTable({ vouchers }: Props) {
- const [tab, setTab] = useState<"ALL" | VoucherStatus>("UNUSED");
- const [search, setSearch] = useState("");
-
- const filtered = vouchers.filter((v) => {
- if (tab !== "ALL" && v.status !== tab) return false;
- if (search.trim()) {
- const q = search.toLowerCase();
- return (
- v.code.toLowerCase().includes(q) ||
- (v.packageName ?? "").toLowerCase().includes(q) ||
- (v.batchNumber ?? "").toLowerCase().includes(q)
- );
- }
- return true;
- });
-
- function exportCsv() {
- const header = [
- "Code",
- "Batch",
- "Package",
- "Status",
- "Expires",
- "Created",
- "Redeemed",
- ];
- const rows = filtered
- .filter((v) => !v.isFallback)
- .map((v) => [
- v.code,
- v.batchNumber ?? "",
- v.packageName ?? "",
- v.status,
- v.expiresText ?? "",
- v.createdAt ?? "",
- v.redeemedByPhone ?? v.redeemedByMac ?? "",
- ]);
- const csv = [header, ...rows]
- .map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(","))
- .join("\n");
- const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
- const url = URL.createObjectURL(blob);
- const a = document.createElement("a");
- a.href = url;
- a.download = `vouchers-${tab.toLowerCase()}-${new Date().toISOString().slice(0, 10)}.csv`;
- document.body.appendChild(a);
- a.click();
- document.body.removeChild(a);
- URL.revokeObjectURL(url);
- }
-
- return (
- <div className="rounded-2xl border border-border bg-card p-6 shadow-xl">
- {/* Top Filter Strip */}
- <div className="flex flex-col gap-4 border-b border-border pb-4 sm:flex-row sm:items-center sm:justify-between">
- {/* Status Tabs */}
- <div className="flex flex-wrap items-center gap-1 rounded-full border border-border bg-muted p-1">
- {TABS.map((s) => (
- <button
- key={s}
- onClick={() => setTab(s)}
- className={`rounded-full px-3.5 py-1 text-xs font-medium transition ${
- tab === s ? "bg-secondary text-foreground" : "text-muted-foreground hover:text-accent-foreground"
- }`}
- >
- {s === "ALL" ? "All" : s.charAt(0) + s.slice(1).toLowerCase()}{" "}
- <span className="font-sans tabular-nums text-muted-foreground">
- {s === "ALL" ? vouchers.length : vouchers.filter((v) => v.status === s).length}
- </span>
- </button>
- ))}
- </div>
-
- {/* Actions */}
- <div className="flex items-center gap-2">
- <div className="relative">
- <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
- <input
- type="text"
- value={search}
- onChange={(e) => setSearch(e.target.value)}
- placeholder="Search code, package, batch..."
- className="h-9 w-64 rounded-lg border border-border bg-muted pl-9 pr-4 text-xs text-foreground placeholder-zinc-500 focus:border-amber-500 focus:outline-none"
- />
- </div>
- <button
- onClick={exportCsv}
- className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-xs font-medium text-muted-foreground hover:bg-accent"
- title="Export filtered rows to CSV"
- >
- <Download className="h-3.5 w-3.5" /> CSV
- </button>
- <Link
- href="/finance/vouchers/print"
- className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-xs font-medium text-muted-foreground hover:bg-accent"
- >
- <Printer className="h-3.5 w-3.5" /> Print Sheet
- </Link>
- </div>
- </div>
-
- {/* Table */}
- <div className="mt-4 overflow-x-auto">
- <table className="w-full text-left text-xs">
- <thead>
- <tr className="border-b border-border text-[11px] font-sans tabular-nums tracking-wider text-muted-foreground uppercase">
- <th className="px-3 py-3">CODE</th>
- <th className="px-3 py-3">PACKAGE</th>
- <th className="px-3 py-3">STATUS</th>
- <th className="px-3 py-3">EXPIRES</th>
- <th className="px-3 py-3">CREATED</th>
- <th className="px-3 py-3">REDEEMED</th>
- <th className="px-3 py-3 text-right" />
- </tr>
- </thead>
- <tbody className="divide-y divide-zinc-800/50">
- {filtered.length === 0 ? (
- <tr>
- <td colSpan={7} className="py-12 text-center font-sans tabular-nums text-muted-foreground">
- No vouchers match this filter.
- </td>
- </tr>
- ) : (
- filtered.map((v) => (
- <tr key={v.id} className="transition hover:bg-zinc-800/30">
- <td className="px-3 py-3.5 font-sans tabular-nums font-semibold tracking-wider text-amber-400">
- {v.code}
- </td>
- <td className="px-3 py-3.5 font-sans">
- <div className="font-semibold text-foreground">
- {v.packageName || "—"}
- </div>
- <div className="font-sans tabular-nums text-[11px] text-muted-foreground">
- {v.planSpeed || "—"}
- {v.durationText ? ` · ${v.durationText}` : ""}
- {v.planPrice ? ` · ${v.planPrice}` : ""}
- </div>
- </td>
- <td className="px-3 py-3.5">
- <div className="flex items-center gap-1.5">
- <span
- className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium uppercase ${STATUS_PILLS[v.status]}`}
- >
- {v.status}
- </span>
- {v.isFallback && (
- <span className="inline-flex items-center rounded-full bg-secondary px-2 py-0.5 text-[10px] font-medium uppercase text-muted-foreground">
- demo
- </span>
- )}
- </div>
- </td>
- <td className="px-3 py-3.5 font-sans tabular-nums text-muted-foreground">
- {v.expiresText || "—"}
- </td>
- <td className="px-3 py-3.5 font-sans tabular-nums text-muted-foreground">
- {v.createdAt || "—"}
- </td>
- <td className="px-3 py-3.5 font-sans tabular-nums text-muted-foreground">
- {v.redeemedByPhone ?? v.redeemedByMac ?? "—"}
- </td>
- <td className="px-3 py-3.5 text-right">
- <button className="text-muted-foreground hover:text-accent-foreground">
- <MoreHorizontal className="h-4 w-4" />
- </button>
- </td>
- </tr>
- ))
- )}
- </tbody>
- </table>
- </div>
- </div>
- );
+export function VoucherDataTable({ vouchers, page, totalPages, totalElements, size, state, search, source }: { vouchers: VoucherItem[]; page: number; totalPages: number; totalElements: number; size: number; state: "ALL" | VoucherStatus; search: string; source: "ALL" | "MINTED" | "PURCHASED" }) {
+  const router = useRouter();
+  function update(values: Record<string, string | null>) {
+    const params = new URLSearchParams(window.location.search);
+    for (const [key, value] of Object.entries(values)) value ? params.set(key, value) : params.delete(key);
+    router.push(`/finance/vouchers${params.size ? `?${params}` : ""}`);
+  }
+  function exportCsv() {
+    const rows = [["Code", "Batch", "Package", "State", "Expires", "Created", "Redeemed"], ...vouchers.map((v) => [v.code, v.voucherBatchId ?? "", v.packageName ?? "", v.status, v.expiresText ?? "", v.createdAt ?? "", v.redeemedByPhone ?? v.redeemedByMac ?? ""])];
+    const csv = rows.map((row) => row.map((value) => `"${String(value).replace(/"/g, '""')}"`).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" }); const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = `vouchers-${state.toLowerCase()}.csv`; a.click(); URL.revokeObjectURL(url);
+  }
+  return <section className="overflow-hidden rounded-lg border border-border bg-card">
+    <div className="flex flex-col gap-3 border-b p-4"><div className="flex flex-wrap gap-1">{states.map((item) => <button key={item} type="button" onClick={() => update({ voucherState: item === "ALL" ? null : item, page: null })} className={`rounded-md px-2 py-1.5 text-xs ${state === item ? "bg-foreground text-background" : "text-muted-foreground"}`}>{item === "ALL" ? "All" : item}</button>)}</div><div className="flex flex-wrap gap-1">{(["ALL", "MINTED", "PURCHASED"] as const).map((item) => <button key={item} type="button" onClick={() => update({ source: item === "ALL" ? null : item, page: null })} className={`rounded-md px-2 py-1 text-xs ${source === item ? "bg-muted text-foreground" : "text-muted-foreground"}`}>{item === "ALL" ? "All sources" : item}</button>)}</div><div className="flex flex-wrap items-center justify-between gap-2"><form className="relative" onSubmit={(e) => { e.preventDefault(); update({ search: (e.currentTarget.elements.namedItem("search") as HTMLInputElement).value || null, page: null }); }}><Search className="absolute left-2.5 top-2.5 size-3.5 text-muted-foreground"/><input name="search" defaultValue={search} placeholder="Search voucher, phone, batch..." className="h-9 w-64 rounded-md border bg-background pl-8 pr-3 text-sm"/></form><div className="flex gap-2"><button type="button" onClick={exportCsv} className="inline-flex items-center gap-1.5 rounded-md border px-3 py-2 text-xs"><Download className="size-3.5"/>CSV</button><Link href="/finance/vouchers/print" className="inline-flex items-center gap-1.5 rounded-md border px-3 py-2 text-xs"><Printer className="size-3.5"/>Print</Link></div></div></div>
+    <div className="overflow-x-auto"><table className="w-full min-w-[850px] text-left text-sm"><thead><tr className="border-b text-[11px] uppercase text-muted-foreground"><th className="p-3">Code</th><th className="p-3">Package</th><th className="p-3">State</th><th className="p-3">Expires</th><th className="p-3">Created</th><th className="p-3">Redeemed by</th></tr></thead><tbody>{vouchers.length ? vouchers.map((v) => <tr key={v.id} className="border-b"><td className="p-3 font-mono font-medium">{v.code}</td><td className="p-3">{v.packageName ?? "—"}<p className="text-xs text-muted-foreground">{v.packageSpeed ?? v.planSpeed ?? ""}{v.packageValidityLabel ? ` · ${v.packageValidityLabel}` : v.durationText ? ` · ${v.durationText}` : ""}</p></td><td className="p-3"><span className={`rounded-full px-2 py-1 text-xs ${statusStyles[v.status]}`}>{v.status}</span></td><td className="p-3">{v.expiryStartsOnFirstUse ? "Starts on first use" : v.expiresText ?? "—"}</td><td className="p-3">{v.createdAt ?? "—"}</td><td className="p-3">{v.redeemedByPhone ?? v.redeemedByMac ?? "—"}</td></tr>) : <tr><td colSpan={6} className="p-12 text-center text-sm text-muted-foreground">No vouchers match this query.</td></tr>}</tbody></table></div>
+    <div className="flex items-center justify-between border-t p-3 text-xs text-muted-foreground"><span>Showing {totalElements === 0 ? 0 : page * size + 1}-{Math.min((page + 1) * size, totalElements)} of {totalElements}</span><div className="flex items-center gap-2"><button type="button" disabled={page <= 0} onClick={() => update({ page: String(page - 1) })} className="rounded border px-2 py-1 disabled:opacity-40">Previous</button><span>{page + 1}/{Math.max(1, totalPages)}</span><button type="button" disabled={page + 1 >= totalPages} onClick={() => update({ page: String(page + 1) })} className="rounded border px-2 py-1 disabled:opacity-40">Next</button></div></div>
+  </section>;
 }

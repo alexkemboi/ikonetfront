@@ -142,14 +142,11 @@ export async function getSystemUsers(): Promise<ApiRoleUser[]> {
   let lastError: unknown = null;
   const attempts: { url: string; status?: number; error?: string }[] = [];
 
-  console.log("[System Users] BASE_API_URL:", process.env.BASE_API_URL);
   const headers = await getAuthHeaders();
-  console.log("[System Users] Auth headers:", headers);
 
   for (const url of candidateUrls) {
     try {
       const fullUrl = buildApiUrl(url);
-      console.log(`[System Users] Attempting fetch from: ${fullUrl}`);
       const response = await fetch(fullUrl, {
         headers,
         cache: "no-store",
@@ -166,7 +163,6 @@ export async function getSystemUsers(): Promise<ApiRoleUser[]> {
       const users = extractUsersPayload(result);
 
       if (Array.isArray(users)) {
-        console.log(`[System Users] Fetched from ${fullUrl}:`, users.length, "users");
         return users.map(normalizeUserRecord);
       }
 

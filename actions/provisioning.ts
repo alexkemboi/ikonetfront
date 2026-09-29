@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
+import { apiFetch } from "@/lib/apiClient";
 import { BASE_URL, buildApiUrl } from "@/lib/constants";
 import {
   NasRouterItem,
@@ -9,41 +10,45 @@ import {
   ProvisioningScriptResponse,
   RouterServicesConfigRequest,
 } from "@/lib/types/provisioning";
-import { getMikrotikDevices, getMikrotikDeviceStatus } from "@/actions/mikrotik";
-import { getRouterMonitoringLatest, getRouters } from "@/actions/network";
-import type { RouterHealthSnapshot, RouterResponse } from "@/lib/types/network";
-import { isRouterOnline } from "@/lib/utils/router-status";
+import { getMikrotikDeviceStatus } from "@/actions/mikrotik";
 import { getPermissionForRoute } from "@/lib/data/nav";
 
-const FALLBACK_NAS_KPIS: NasRouterKpis = {
-  totalRoutersCount: 2,
-  onlineCount: 2,
-  offlineCount: 0,
-  liveSessionsCount: 50,
+type NasRouterApiResponse = {
+  kpis: {
+    totalCount: number;
+    onlineCount: number;
+    offlineCount: number;
+    activeSessionsTotal: number;
+    healthyCount: number;
+    degradedCount: number;
+    notProvisionedCount: number;
+    cpuAvg: number | null;
+    memoryAvg: number | null;
+    rowsWithTelemetry: number;
+  };
+  rows: Array<{
+    routerId: number | null;
+    deviceId: number | null;
+    name: string;
+    model: string | null;
+    serialNumber: string | null;
+    status: "ONLINE" | "OFFLINE" | "DEGRADED" | "NOT_PROVISIONED";
+    online: boolean;
+    managementIp: string | null;
+    winboxTunnelAddress: string | null;
+    winboxTunnelPort: number | null;
+    activeSessions: number | null;
+    cpuUsage: number | null;
+    freeMemory: number | null;
+    totalMemory: number | null;
+    uptime: string | null;
+    snapshotAt: string | null;
+    telemetryStatus: "LIVE" | "STALE" | "UNAVAILABLE";
+    companyCode: string | null;
+    stationName: string | null;
+    links: NonNullable<NasRouterItem["links"]>;
+  }>;
 };
-
-const FALLBACK_NAS_ROUTERS: NasRouterItem[] = [
-  {
-    id: "rtr-1",
-    name: "Beedak LKN",
-    model: "RouterOS RB5009UG+S+",
-    status: "ONLINE",
-    activeSessions: 18,
-    winboxTunnelAddress: "winbox.beesmartbedak.com:54910",
-    managementIp: "10.9.189.88",
-    lastOnlineText: "Jul 20, 03:34 AM",
-  },
-  {
-    id: "rtr-2",
-    name: "Beedak Consolata",
-    model: "RouterOS RB5009UG+S+",
-    status: "ONLINE",
-    activeSessions: 32,
-    winboxTunnelAddress: "winbox.beesmartbedak.com:56021",
-    managementIp: "10.9.86.246",
-    lastOnlineText: "Jul 17, 09:44 AM",
-  },
-];
 
 async function getAuthHeaders(): Promise<HeadersInit> {
   const session = await auth();
@@ -55,133 +60,60 @@ async function getAuthHeaders(): Promise<HeadersInit> {
   return headers;
 }
 
-function mapDeviceToNasRouter(device: {
-  id: number;
-  name: string;
-  deviceType?: string | null;
-  online?: boolean;
-  ipAddress?: string;
-  uptime?: string | null;
-  cpuLoad?: string | null;
-  winboxTunnelPort?: number | null;
-  webfigProxyEnabled?: boolean | null;
-  tunnelExpiresAt?: string | null;
-  winboxTunnelAddress?: string | null;
-  webConsoleUrl?: string | null;
-}, routerIdxno?: number): NasRouterItem {
-  return {
-    // id/name/status/managementIp come from the real network-devices row;
-    // activeSessions fills from telemetry, winbox/webfig from the real tunnel
-    // lease (Track 1) instead of a synthesized mock.
-    id: String(device.id),
-    deviceId: device.id,
-    routerId: routerIdxno,
-    name: device.name,
-    model: device.deviceType ?? "—",
-    status: device.online ? "ONLINE" : "OFFLINE",
-    online: device.online ?? false,
-    activeSessions: 0,
-    winboxTunnelAddress: device.winboxTunnelAddress ?? null,
-    winboxTunnelPort: device.winboxTunnelPort ?? null,
-    webConsoleUrl: device.webConsoleUrl ?? null,
-    tunnelExpiresAt: device.tunnelExpiresAt ?? null,
-    managementIp: device.ipAddress ?? "—",
-    lastOnlineText: device.uptime ?? "—",
-    // Surface the device row's own raw telemetry; `getNasRoutersData` layers the
-    // latest RouterHealthSnapshot on top (CPU %, memory bytes, live sessions).
-    cpuUsage: device.cpuLoad ? Number.parseInt(device.cpuLoad, 10) || null : null,
-    uptime: device.uptime ?? null,
-    freeMemory: null,
-    totalMemory: null,
-  };
-}
+export type NasRouterLoadResult =
+  | { success: true; kpis: NasRouterKpis; routers: NasRouterItem[] }
+  | { success: false; message: string; requestId?: string };
 
-/** Merge the latest RouterHealthSnapshot into a NAS row (best-effort, non-fatal). */
-function enrichWithLatestSnapshot(row: NasRouterItem, snapshot: RouterHealthSnapshot | null): NasRouterItem {
-  if (!snapshot) return row;
-  // A fresh telemetry snapshot is authoritative proof the router is reachable —
-  // the device.online flag (set by the ARP discovery scheduler) can lag behind
-  // the telemetry worker, which is what caused "live RAM/uptime next to an
-  // Offline badge". Elevate status when the snapshot is recent (< 5 min old).
-  let status = row.status;
-  let snapshotAt = null;
+export async function getNasRoutersData(): Promise<NasRouterLoadResult> {
   try {
-    const ts = new Date(snapshot.createdAt ?? snapshot.idxno).getTime();
-    if (Number.isFinite(ts)) {
-      snapshotAt = new Date(ts).toISOString();
-      if (Date.now() - ts < 5 * 60 * 1000) {
-        status = "ONLINE";
-      }
-    }
+    const res = await apiFetch<NasRouterApiResponse>("/provisioning/nas-routers", {
+      auth: "required",
+      cache: "no-store",
+      tags: ["nas-routers"],
+    });
+    if (!res.success || !res.data) return { success: false, message: res.message, requestId: res.requestId };
+    const routers: NasRouterItem[] = res.data.rows.map((row) => ({
+      id: String(row.routerId ?? row.deviceId ?? `${row.name}`),
+      routerId: row.routerId ?? undefined,
+      deviceId: row.deviceId ?? undefined,
+      name: row.name,
+      model: row.model ?? "—",
+      status: row.status,
+      online: row.online,
+      activeSessions: row.activeSessions,
+      managementIp: row.managementIp ?? "—",
+      lastOnlineText: row.uptime ?? "—",
+      winboxTunnelAddress: row.winboxTunnelAddress,
+      winboxTunnelPort: row.winboxTunnelPort,
+      cpuUsage: row.cpuUsage,
+      freeMemory: row.freeMemory,
+      totalMemory: row.totalMemory,
+      uptime: row.uptime,
+      snapshotAt: row.snapshotAt,
+      telemetryStatus: row.telemetryStatus,
+      companyCode: row.companyCode,
+      stationName: row.stationName,
+      links: row.links,
+    }));
+    return {
+      success: true,
+      kpis: {
+        totalRoutersCount: res.data.kpis.totalCount,
+        onlineCount: res.data.kpis.onlineCount,
+        offlineCount: res.data.kpis.offlineCount,
+        liveSessionsCount: res.data.kpis.activeSessionsTotal,
+        healthyCount: res.data.kpis.healthyCount,
+        degradedCount: res.data.kpis.degradedCount,
+        notProvisionedCount: res.data.kpis.notProvisionedCount,
+        cpuAvg: res.data.kpis.cpuAvg,
+        memoryAvg: res.data.kpis.memoryAvg,
+        rowsWithTelemetry: res.data.kpis.rowsWithTelemetry,
+      },
+      routers,
+    };
   } catch {
-    // unparseable timestamp — keep the device-row derived status
-  }
-  return {
-    ...row,
-    status,
-    snapshotAt,
-    cpuUsage: snapshot.cpuUsage ?? row.cpuUsage,
-    freeMemory: snapshot.freeMemory ?? row.freeMemory,
-    totalMemory: snapshot.totalMemory ?? row.totalMemory,
-    uptime: snapshot.uptime ?? row.uptime,
-    activeSessions:
-      snapshot.activePppoeSessions + snapshot.activeHotspotSessions || row.activeSessions,
-  };
-}
-
-function deriveNasKpis(routers: NasRouterItem[]): NasRouterKpis {
-  const online = routers.filter(isRouterOnline).length;
-  const live = routers.reduce((sum, r) => sum + r.activeSessions, 0);
-  return {
-    totalRoutersCount: routers.length,
-    onlineCount: online,
-    offlineCount: routers.length - online,
-    liveSessionsCount: live,
-  };
-}
-
-export async function getNasRoutersData(): Promise<{
-  kpis: NasRouterKpis;
-  routers: NasRouterItem[];
-}> {
-  try {
-    const res = await getMikrotikDevices();
-    if (!res.success || !Array.isArray(res.data) || res.data.length === 0) {
-      return { kpis: FALLBACK_NAS_KPIS, routers: FALLBACK_NAS_ROUTERS };
-    }
-
-    // Join network_device → network_routers by IP address. The telemetry and
-    // router-action endpoints key off `network_routers.idxno`, while the list
-    // itself comes from `network_device`. Threading both ids lets the UI send
-    // the right one per call (routerId for monitoring/actions, deviceId for
-    // interfaces/delete).
-    const inventory = await getRouters().catch(() => [] as RouterResponse[]);
-    const routerByIp = new Map<string, number>();
-    for (const r of inventory) {
-      if (r.ipAddress) routerByIp.set(r.ipAddress.toLowerCase(), r.id);
-    }
-
-    // Enrich each row with the live RouterHealthSnapshot (CPU %, memory bytes,
-    // active PPPoE+Hotspot sessions) so the table shows operational telemetry
-    // at a glance. Best-effort: a failed snapshot simply leaves placeholders.
-    const routers = await Promise.all(
-      res.data.map(async (device) => {
-        const routerIdxno = device.ipAddress
-          ? routerByIp.get(device.ipAddress.toLowerCase())
-          : undefined;
-        const base = mapDeviceToNasRouter(device, routerIdxno);
-        if (!device.id || device.id <= 0) return base;
-        // Telemetry snapshots store routerId = network_routers.idxno.
-        const snapshotRouterId = routerIdxno ?? device.id;
-        const snapshot = await getRouterMonitoringLatest(snapshotRouterId).catch(() => null);
-        return enrichWithLatestSnapshot(base, snapshot);
-      })
-    );
-
-    return { kpis: deriveNasKpis(routers), routers };
-  } catch (error: unknown) {
-    console.error("Error fetching NAS routers:", error);
-    return { kpis: FALLBACK_NAS_KPIS, routers: FALLBACK_NAS_ROUTERS };
+    console.error("Error fetching NAS routers.");
+    return { success: false, message: "DATA_SOURCE_UNAVAILABLE" };
   }
 }
 

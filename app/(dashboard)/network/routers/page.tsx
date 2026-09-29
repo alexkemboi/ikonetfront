@@ -2,7 +2,6 @@ import React from "react";
 import Link from "next/link";
 import { Plus, Search, ExternalLink } from "lucide-react";
 import { getNasRoutersData } from "@/actions/provisioning";
-import { isRouterOnline } from "@/lib/utils/router-status";
 import { getPermissionForRoute } from "@/lib/data/nav";
 import { redirect } from "next/navigation";
 import { RouterActionsDropdown } from "@/components/network/RouterActionsDropdown";
@@ -19,7 +18,11 @@ export default async function NasRoutersPage() {
  const pagePerms = await getPermissionForRoute("/network/routers");
  if (!pagePerms.canView) redirect("/dashboard");
 
- const { kpis, routers } = await getNasRoutersData();
+ const result = await getNasRoutersData();
+ if (!result.success) {
+  return <div className="min-h-screen p-4 sm:p-6 lg:p-8"><div role="alert" className="mx-auto max-w-7xl rounded-lg border border-destructive/30 bg-destructive/5 p-5 text-sm"><h1 className="font-medium">Router data unavailable</h1><p className="mt-1 text-muted-foreground">{result.message}{result.requestId ? ` · Ref: ${result.requestId}` : ""}</p></div></div>;
+ }
+ const { kpis, routers } = result;
 
  return (
  <div className="min-h-screen p-4 text-foreground sm:p-6 lg:p-8">
@@ -137,17 +140,14 @@ export default async function NasRoutersPage() {
   <span className="text-foreground font-sans tabular-nums text-xs">{r.managementIp}</span>
   </td>
   <td className="py-4 px-6">
-  {isRouterOnline(r) ? (
-  <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-[11px] font-medium text-emerald-400">
-  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-  Online
+  <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-medium ${
+    r.status === "ONLINE" ? "bg-emerald-500/15 text-emerald-700" :
+    r.status === "DEGRADED" ? "bg-amber-500/15 text-amber-800" :
+    r.status === "NOT_PROVISIONED" ? "bg-zinc-100 text-zinc-700" : "bg-red-500/10 text-red-700"
+  }`}>
+    <span className={`h-1.5 w-1.5 rounded-full ${r.status === "ONLINE" ? "bg-emerald-500" : r.status === "DEGRADED" ? "bg-amber-500" : r.status === "NOT_PROVISIONED" ? "bg-zinc-500" : "bg-red-500"}`} />
+    {r.status.replaceAll("_", " ")}
   </span>
-  ) : (
-  <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground">
-  <span className="w-1.5 h-1.5 rounded-full bg-gray-500" />
-  Offline
-  </span>
-  )}
   </td>
   <td className="py-4 px-6">
   {cpu != null ? (
@@ -167,7 +167,7 @@ export default async function NasRoutersPage() {
   <td className="py-4 px-6 text-xs font-sans tabular-nums text-foreground">
   {freeMemMB != null ? `${freeMemMB} MB free` : "—"}
   </td>
-  <td className="py-4 px-6 font-sans tabular-nums font-bold text-foreground">{r.activeSessions}</td>
+  <td className="py-4 px-6 font-sans tabular-nums font-bold text-foreground">{r.activeSessions ?? "—"}</td>
   <td className="py-4 px-6 text-xs text-muted-foreground font-sans tabular-nums">
   {r.uptime || r.lastOnlineText || "—"}
   </td>
@@ -212,6 +212,7 @@ export default async function NasRoutersPage() {
   winboxTunnelAddress: r.winboxTunnelAddress,
   webConsoleUrl: r.webConsoleUrl,
   tunnelExpiresAt: r.tunnelExpiresAt,
+  links: r.links,
   }}
   />
   </td>

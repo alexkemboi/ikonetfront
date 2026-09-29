@@ -8,11 +8,15 @@ import { VoucherItem } from "@/lib/types/vouchers";
 interface Props {
  vouchers: VoucherItem[];
  networkName?: string;
+ error?: string;
+ requestId?: string;
 }
 
 export function VoucherPrintSheet({
  vouchers,
  networkName = "ADRINOLD NETWORK",
+ error,
+ requestId,
 }: Props) {
  const router = useRouter();
 
@@ -20,12 +24,14 @@ export function VoucherPrintSheet({
  return (
  <div className="flex min-h-screen items-center justify-center bg-white p-8">
  <div className="text-center">
+ {error ? <><h1 className="text-lg font-normal text-zinc-900">Voucher data unavailable</h1><p role="alert" className="mt-1 text-sm text-muted-foreground">{error}{requestId ? ` · Ref: ${requestId}` : ""}</p></> : <>
  <h1 className="text-lg font-normal text-zinc-900">
  No un-issued vouchers to print
  </h1>
  <p className="mt-1 text-sm text-muted-foreground">
  Mint vouchers first, then revisit this print sheet.
  </p>
+ </>}
  <button
  onClick={() => router.push("/finance/vouchers")}
  className="mt-4 inline-flex items-center gap-1.5 rounded-md bg-card px-4 py-2 text-xs font-semibold text-foreground hover:bg-zinc-700"

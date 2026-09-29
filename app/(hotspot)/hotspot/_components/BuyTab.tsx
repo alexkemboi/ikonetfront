@@ -18,6 +18,20 @@ interface BuyTabProps {
 
 type SortBy = "price-asc" | "price-desc" | "data-asc" | "data-desc";
 
+function compareMoneyStrings(left: string, right: string): number {
+  const toMinorUnits = (value: string): bigint | null => {
+    const match = /^(-?)(\d+)(?:\.(\d{1,2}))?$/.exec(value.trim());
+    if (!match) return null;
+    const sign = match[1] === "-" ? BigInt(-1) : BigInt(1);
+    const fraction = (match[3] ?? "").padEnd(2, "0");
+    return sign * (BigInt(match[2]) * BigInt(100) + BigInt(fraction || "0"));
+  };
+  const leftCents = toMinorUnits(left);
+  const rightCents = toMinorUnits(right);
+  if (leftCents === null || rightCents === null) return leftCents === rightCents ? 0 : leftCents === null ? 1 : -1;
+  return leftCents < rightCents ? -1 : leftCents > rightCents ? 1 : 0;
+}
+
 export default function BuyTab({ packages, companyCode, onCompanyResolved, onBack, clientMac, clientIp }: BuyTabProps) {
  const [searchQuery, setSearchQuery] = useState("");
  const [sortBy, setSortBy] = useState<SortBy>("price-asc");
@@ -34,9 +48,9 @@ export default function BuyTab({ packages, companyCode, onCompanyResolved, onBac
         result.sort((a, b) => {
             switch (sortBy) {
                 case "price-asc":
-                    return a.price - b.price;
+                  return compareMoneyStrings(a.price, b.price);
                 case "price-desc":
-                    return b.price - a.price;
+                  return compareMoneyStrings(b.price, a.price);
                 case "data-asc":
                     return (a.speedDownload ?? 0) - (b.speedDownload ?? 0);
                 case "data-desc":

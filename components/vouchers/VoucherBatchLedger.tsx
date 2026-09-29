@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Loader2, Plus } from "lucide-react";
 import type { VoucherBatchItem, VoucherBatchKpis } from "@/lib/types/payments";
@@ -26,23 +27,23 @@ import {
 interface Props {
   kpis: VoucherBatchKpis;
   batches: VoucherBatchItem[];
-  packageOptions: { value: string; label: string }[];
+  page: { totalElements: number; totalPages: number; number: number; size: number };
+  packageOptions: { value: string; label: string; unitPrice: string }[];
 }
 
-function toKsh(value: number): string {
-  return Number(value).toLocaleString(undefined, {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
-}
+function toKsh(value: string): string { return value; }
 
-export function VoucherBatchLedger({ kpis, batches, packageOptions }: Props) {
+export function VoucherBatchLedger({ kpis, batches, page, packageOptions }: Props) {
+  const router = useRouter();
   const [mintOpen, setMintOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [packageId, setPackageId] = useState("");
   const [quantity, setQuantity] = useState("");
   const [channel, setChannel] = useState<"CASH" | "BANK_TRANSFER">("CASH");
   const [codePrefix, setCodePrefix] = useState("");
+  const [idempotencyKey, setIdempotencyKey] = useState("");
+  const [confirmDuplicate, setConfirmDuplicate] = useState(false);
+  const [priceOverride, setPriceOverride] = useState<string | null>(null);
 
   const summaryCards = useMemo(
     () => [
@@ -66,19 +67,38 @@ export function VoucherBatchLedger({ kpis, batches, packageOptions }: Props) {
     }
     setSaving(true);
     try {
+      const selected = packageOptions.find((option) => option.value === packageId);
+      if (!selected) { toast.error("Selected package is no longer available."); return; }
+      const key = idempotencyKey || crypto.randomUUID();
+      setIdempotencyKey(key);
+      const expectedUnitPrice = priceOverride ?? selected.unitPrice;
       const res = await generateVoucherBatch({
         packageId: pkgId,
         quantity: qty,
         channel,
         codePrefix: codePrefix.trim() || undefined,
+        expectedUnitPrice,
+        idempotencyKey: key,
+        confirmDuplicate,
       });
       if (res.success && res.data) {
         toast.success(`Batch ${res.data.batchNumber} minted (${qty} codes).`);
         setMintOpen(false);
         setQuantity("");
         setCodePrefix("");
+        setIdempotencyKey("");
+        setConfirmDuplicate(false);
+        setPriceOverride(null);
       } else {
-        toast.error(res.message);
+        if (res.message === "POSSIBLE_DUPLICATE_BATCH") {
+          setConfirmDuplicate(true);
+          setIdempotencyKey(crypto.randomUUID());
+          toast.error("A matching batch was created in the last minute. Confirm and retry to create another.");
+        } else if (res.code === "PACKAGE_CHANGED" && res.serverUnitPrice) {
+          setPriceOverride(res.serverUnitPrice);
+          setIdempotencyKey("");
+          toast.error(`Package price changed to KES ${res.serverUnitPrice}. Click Mint batch again to confirm.`);
+        } else toast.error(res.message);
       }
     } finally {
       setSaving(false);
@@ -109,6 +129,7 @@ export function VoucherBatchLedger({ kpis, batches, packageOptions }: Props) {
         </span>
         <Button
           onClick={() => setMintOpen(true)}
+          disabled={packageOptions.length === 0}
           className="bg-amber-500 text-black hover:bg-amber-400"
           size="sm"
         >
@@ -116,7 +137,7 @@ export function VoucherBatchLedger({ kpis, batches, packageOptions }: Props) {
         </Button>
       </div>
 
-      <div className="rounded-2xl border border-border bg-card shadow-xl">
+      <div className="rounded-lg border border-border bg-card">
         {batches.length === 0 ? (
           <div className="p-12 text-center">
             <p className="text-sm text-muted-foreground">
@@ -171,6 +192,8 @@ export function VoucherBatchLedger({ kpis, batches, packageOptions }: Props) {
         )}
       </div>
 
+      <div className="flex items-center justify-between border-t px-3 py-3 text-xs text-muted-foreground"><span>Showing {page.totalElements === 0 ? 0 : page.number * page.size + 1}-{Math.min((page.number + 1) * page.size, page.totalElements)} of {page.totalElements} batches</span><div className="flex items-center gap-2"><button type="button" disabled={page.number <= 0} onClick={() => { const query = new URLSearchParams(window.location.search); query.set("batchPage", String(page.number - 1)); router.push(`/finance/vouchers?${query}`); }} className="rounded border px-2 py-1 disabled:opacity-40">Previous</button><span>{page.number + 1}/{Math.max(1, page.totalPages)}</span><button type="button" disabled={page.number + 1 >= page.totalPages} onClick={() => { const query = new URLSearchParams(window.location.search); query.set("batchPage", String(page.number + 1)); router.push(`/finance/vouchers?${query}`); }} className="rounded border px-2 py-1 disabled:opacity-40">Next</button></div></div>
+
       <Dialog open={mintOpen} onOpenChange={setMintOpen}>
         <DialogContent className="bg-card border-border text-foreground">
           <DialogHeader>
@@ -183,7 +206,7 @@ export function VoucherBatchLedger({ kpis, batches, packageOptions }: Props) {
           <div className="space-y-3 font-sans tabular-nums text-xs">
             <div className="space-y-1.5">
               <label className="text-muted-foreground">Package</label>
-              <Select value={packageId} onValueChange={setPackageId}>
+              <Select value={packageId} onValueChange={(value) => { setPackageId(value); setIdempotencyKey(""); setPriceOverride(null); }}>
                 <SelectTrigger className="border-border bg-muted text-foreground">
                   <SelectValue placeholder="Select a package" />
                 </SelectTrigger>
@@ -195,13 +218,14 @@ export function VoucherBatchLedger({ kpis, batches, packageOptions }: Props) {
                   ))}
                 </SelectContent>
               </Select>
+              {packageId && <p className="text-xs text-muted-foreground">Expected unit price: KES {priceOverride ?? packageOptions.find((option) => option.value === packageId)?.unitPrice ?? "-"}</p>}
             </div>
             <div className="space-y-1.5">
               <label className="text-muted-foreground">Quantity (1–500)</label>
               <Input
                 type="number"
                 value={quantity}
-                onChange={(e) => setQuantity(e.target.value)}
+                onChange={(e) => { setQuantity(e.target.value); setIdempotencyKey(""); }}
                 placeholder="e.g. 100"
                 className="border-border bg-muted text-foreground placeholder:text-zinc-600"
               />
@@ -210,7 +234,7 @@ export function VoucherBatchLedger({ kpis, batches, packageOptions }: Props) {
               <label className="text-muted-foreground">Channel</label>
               <Select
                 value={channel}
-                onValueChange={(v) => setChannel(v as "CASH" | "BANK_TRANSFER")}
+                onValueChange={(v) => { setChannel(v as "CASH" | "BANK_TRANSFER"); setIdempotencyKey(""); }}
               >
                 <SelectTrigger className="border-border bg-muted text-foreground">
                   <SelectValue placeholder="Channel" />
@@ -225,7 +249,7 @@ export function VoucherBatchLedger({ kpis, batches, packageOptions }: Props) {
               <label className="text-muted-foreground">Code prefix (optional)</label>
               <Input
                 value={codePrefix}
-                onChange={(e) => setCodePrefix(e.target.value.toUpperCase())}
+                onChange={(e) => { setCodePrefix(e.target.value.toUpperCase()); setIdempotencyKey(""); }}
                 placeholder="e.g. ADR"
                 className="border-border bg-muted text-foreground placeholder:text-zinc-600"
               />

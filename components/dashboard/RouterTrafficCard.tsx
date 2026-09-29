@@ -21,8 +21,8 @@ export function RouterTrafficCard({ items, healthyRouters, totalRouters }: Props
  </div>
 
  <div className="mt-6 space-y-6">
- {items.map((r) => (
- <div key={r.id}>
+ {items.map((r, index) => (
+ <div key={`${r.id || "router"}-${r.routerName || "unnamed"}-${index}`}>
  <div className="flex items-baseline justify-between text-sm">
  <span className="font-semibold text-foreground">{r.routerName}</span>
  <span className="font-sans tabular-nums text-xs text-amber-400">

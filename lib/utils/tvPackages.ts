@@ -19,7 +19,7 @@ export function mapToTvPackage(net: NetPackage): TvPackage {
   return {
     idxno: net.idxno,
     packageName: net.packageName,
-    price: net.price,
+    price: String(net.price),
     validity,
     speedDownload: net.speedDownload ?? 0,
     speedUpload: net.speedUpload ?? 0,
