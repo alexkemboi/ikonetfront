@@ -4,9 +4,14 @@ import userEvent from "@testing-library/user-event";
 import { RouterTelemetryDrawer } from "@/components/network/RouterTelemetryDrawer";
 
 const router = {
-  id: "1",
+  deviceId: 1,
+  routerId: 1,
   name: "RTR-BDK-MSA-001",
   managementIp: "10.8.1.10",
+  links: {
+    telemetryLatest: "/network/monitoring/router/1/latest",
+    deviceInterfaces: "/network-devices/1/interfaces",
+  },
 };
 
 // Mock the monitoring latest + interfaces server actions (MSW fixtures would
@@ -48,8 +53,8 @@ describe("RouterTelemetryDrawer", () => {
 
     await waitFor(() => {
       // Polled snapshot renders CPU + RAM values
-      expect(screen.getByText(/3\.5%/i)).toBeInTheDocument();
-      expect(screen.getByText(/208\.4 MiB/i)).toBeInTheDocument();
+      expect(screen.getByText("CPU Load").parentElement).toHaveTextContent("3.5%");
+      expect(screen.getByText(/218\.5 MB free/i)).toBeInTheDocument();
       expect(screen.getByText(/1d 04:22:15/i)).toBeInTheDocument();
     });
   });
@@ -88,11 +93,11 @@ describe("RouterTelemetryDrawer", () => {
 
     await user.click(screen.getByRole("tab", { name: /interfaces/i }));
 
-    expect(mockInterfaces).toHaveBeenCalledWith(1);
+    expect(mockInterfaces).toHaveBeenCalledWith(1, "/network-devices/1/interfaces");
     await waitFor(() => {
       expect(screen.getByText(/ether1/i)).toBeInTheDocument();
-      expect(screen.getByText(/1\.40 GiB/i)).toBeInTheDocument(); // rx-byte formatted
-      expect(screen.getByText(/85\.4 MiB/i)).toBeInTheDocument(); // tx-byte formatted
+      expect(screen.getByText(/1\.5 GB/i)).toBeInTheDocument(); // rx-byte formatted in decimal units
+      expect(screen.getByText(/89\.5 MB/i)).toBeInTheDocument(); // tx-byte formatted in decimal units
     });
   });
 
@@ -108,7 +113,15 @@ describe("RouterTelemetryDrawer", () => {
   });
 
   it("uses routerId (network_routers.idxno) for telemetry and device id for interfaces", async () => {
-    const splitRouter = { ...router, id: "99", routerId: 7 };
+    const splitRouter = {
+      ...router,
+      deviceId: 99,
+      routerId: 7,
+      links: {
+        telemetryLatest: "/network/monitoring/router/7/latest",
+        deviceInterfaces: "/network-devices/99/interfaces",
+      },
+    };
     mockInterfaces.mockResolvedValue([]);
     const user = userEvent.setup();
 
@@ -118,14 +131,14 @@ describe("RouterTelemetryDrawer", () => {
 
     // Telemetry /latest must be polled against the router idxno (7), not the device id (99).
     await waitFor(() => {
-      expect(mockLatest).toHaveBeenCalledWith(7);
+      expect(mockLatest).toHaveBeenCalledWith(7, "/network/monitoring/router/7/latest");
     });
-    expect(mockLatest).not.toHaveBeenCalledWith(99);
+    expect(mockLatest).not.toHaveBeenCalledWith(99, expect.anything());
 
     // Interfaces must hit the device id (99).
     await user.click(screen.getByRole("tab", { name: /interfaces/i }));
     await waitFor(() => {
-      expect(mockInterfaces).toHaveBeenCalledWith(99);
+      expect(mockInterfaces).toHaveBeenCalledWith(99, "/network-devices/99/interfaces");
     });
   });
 });
