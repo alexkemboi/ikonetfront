@@ -65,17 +65,19 @@ export type NasRouterLoadResult =
   | { success: false; message: string; requestId?: string };
 
 export async function getNasRoutersData(): Promise<NasRouterLoadResult> {
+  const requestId = crypto.randomUUID();
   try {
     const res = await apiFetch<NasRouterApiResponse>("/provisioning/nas-routers", {
       auth: "required",
       cache: "no-store",
       tags: ["nas-routers"],
+      headers: { "X-Request-Id": requestId },
     });
     if (!res.success || !res.data) return { success: false, message: res.message, requestId: res.requestId };
     const routers: NasRouterItem[] = res.data.rows.map((row) => ({
-      id: String(row.routerId ?? row.deviceId ?? `${row.name}`),
       routerId: row.routerId ?? undefined,
       deviceId: row.deviceId ?? undefined,
+      serialNumber: row.serialNumber,
       name: row.name,
       model: row.model ?? "—",
       status: row.status,
@@ -113,7 +115,7 @@ export async function getNasRoutersData(): Promise<NasRouterLoadResult> {
     };
   } catch {
     console.error("Error fetching NAS routers.");
-    return { success: false, message: "DATA_SOURCE_UNAVAILABLE" };
+    return { success: false, message: "DATA_SOURCE_UNAVAILABLE", requestId };
   }
 }
 

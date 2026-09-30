@@ -26,7 +26,7 @@ type Tab = "vitals" | "interfaces" | "sessions";
 
 interface TelemetryRouter {
   /** network_device.id — used for the interfaces fetch. */
-  id: string | number;
+  deviceId?: number;
   /** network_routers.idxno — used for the telemetry latest/live fetch. */
   routerId?: number;
   name: string;
@@ -57,7 +57,7 @@ export function RouterTelemetryDrawer({
   const [interfaces, setInterfaces] = useState<MikrotikInterface[]>([]);
   const [loadingInterfaces, setLoadingInterfaces] = useState(false);
 
-  const deviceId = Number(router.id);
+  const deviceId = Number(router.deviceId);
   const telemetryRouterId = Number(router.routerId);
   const hasNumericDevice = Number.isFinite(deviceId) && deviceId > 0;
   const hasNumericRouter = Number.isFinite(telemetryRouterId) && telemetryRouterId > 0;

@@ -37,8 +37,8 @@ import type {
 } from "@/lib/types/network-router";
 
 export interface RouterActionsRow {
-  /** network_device.id (string) — used for interfaces + delete + tunnels. */
-  id: string;
+  /** network_device.id — used for interfaces + delete + tunnels. */
+  deviceId?: number;
   /** network_routers.idxno — used for telemetry + remote actions. */
   routerId?: number;
   name: string;
@@ -103,7 +103,7 @@ export function RouterActionsDropdown({
   const menuRef = useRef<HTMLDivElement>(null);
   const didClampRef = useRef(false);
 
-  const deviceId = Number(router.id);
+  const deviceId = Number(router.deviceId);
   const actionRouterId = Number(router.routerId);
   const hasNumericDevice = Number.isFinite(deviceId) && deviceId > 0 && Boolean(router.links?.deviceDelete);
   const hasRouterAction = Number.isFinite(actionRouterId) && actionRouterId > 0 && Boolean(router.links?.routerAction);

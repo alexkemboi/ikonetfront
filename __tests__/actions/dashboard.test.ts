@@ -37,7 +37,7 @@ const mockEmptyResponse = () => ({
 });
 
 describe("getDashboardOverview", () => {
-  it("returns empty state on fetch failure", async () => {
+  it("returns an unavailable result on fetch failure", async () => {
     vi.resetModules();
     vi.doMock("@/lib/auth", () => ({
       auth: vi.fn().mockResolvedValue({ user: { apiToken: "token" } }),
@@ -45,6 +45,14 @@ describe("getDashboardOverview", () => {
 
     global.fetch = vi.fn().mockResolvedValue({
       ok: false,
+      status: 503,
+      headers: { get: (name: string) => name === "content-type" ? "application/json" : null },
+      json: vi.fn().mockResolvedValue({
+        status: 503,
+        success: false,
+        message: "DASHBOARD_UNAVAILABLE",
+        data: { requestId: "req-dashboard-1" },
+      }),
     }) as unknown as typeof fetch;
 
     const { getDashboardOverview } = await import("@/actions/dashboard");
@@ -53,12 +61,14 @@ describe("getDashboardOverview", () => {
       expect.stringMatching(/\/api\/v1\/dashboard\/operations-cockpit$/),
       expect.any(Object)
     );
-    expect(result.smsCreditsCount).toBeNull();
-    expect(result.revenueToday).toBe(0);
-    expect(result.renewalsDue).toEqual([]);
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.message).toBe("DASHBOARD_UNAVAILABLE");
+      expect(result.requestId).toBe("req-dashboard-1");
+    }
   });
 
-  it("merges live data into empty state on success", async () => {
+  it("returns live dashboard data on success", async () => {
     vi.resetModules();
     vi.doMock("@/lib/auth", () => ({
       auth: vi.fn().mockResolvedValue({ user: { apiToken: "token" } }),
@@ -66,13 +76,24 @@ describe("getDashboardOverview", () => {
 
     global.fetch = vi.fn().mockResolvedValue({
       ok: true,
-      json: vi.fn().mockResolvedValue(mockEmptyResponse()),
+      status: 200,
+      headers: { get: (name: string) => name === "content-type" ? "application/json" : null },
+      json: vi.fn().mockResolvedValue({
+        status: 200,
+        success: true,
+        message: "OK",
+        ...mockEmptyResponse(),
+        timestamp: "2026-09-30T10:00:00Z",
+      }),
     }) as unknown as typeof fetch;
 
     const { getDashboardOverview } = await import("@/actions/dashboard");
     const result = await getDashboardOverview();
-    expect(result.smsCreditsCount).toBeNull();
-    expect(result.renewalsDue).toEqual([]);
-    expect(result.heatmap.cells.length).toBe(0);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.smsCreditsCount).toBeNull();
+      expect(result.data.renewalsDue).toEqual([]);
+      expect(result.data.heatmap.cells.length).toBe(0);
+    }
   });
 });

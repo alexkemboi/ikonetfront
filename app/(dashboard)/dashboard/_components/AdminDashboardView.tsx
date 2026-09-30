@@ -33,7 +33,7 @@ export function AdminDashboardView({ data }: { data: AdminDashboardResponse }) {
 
   return <div className="space-y-6">
     <div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-xs uppercase tracking-wider text-muted-foreground">Administration · Network overview</p><h1 className="mt-1 text-2xl font-normal">Dashboard</h1><p className="mt-1 text-sm text-muted-foreground">{data.period.from} to {data.period.to} · {data.period.timezone} · {data.companyId ?? "All companies"}</p></div><p className="text-xs text-muted-foreground">Updated {new Date(data.generatedAt).toLocaleString()}</p></div>
-    {partial && <div role="status" className="rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-950">Some figures could not be loaded. Unavailable fields are marked individually.</div>}
+    {partial && <div role="status" className="rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-950"><p>Some figures could not be loaded. Affected fields and reasons:</p>{data.unavailableMetrics.length > 0 && <ul className="mt-2 space-y-1">{data.unavailableMetrics.map(({ metric, reason }) => <li key={`${metric}-${reason}`}><span className="font-medium">{metric}</span>: {reason}</li>)}</ul>}</div>}
     <section aria-label="Customers and network" className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
       <Metric title="Total customers" value={show("customers.total", data.customers?.total)} note={`${display(data.customers?.active)} active · ${display(data.customers?.inactive)} inactive`} icon={Users} tone="blue" />
       <Metric title="Packages" value={show("packages.total", data.packages?.total)} note={`${display(data.packages?.active)} active`} icon={Wifi} />
@@ -49,6 +49,8 @@ export function AdminDashboardView({ data }: { data: AdminDashboardResponse }) {
       <Metric title="Outstanding" value={show("revenue.outstanding", revenue?.outstanding, true)} note="Open invoices now" icon={AlertTriangle} tone="amber" />
       <Metric title="Failed payments" value={show("revenue.failedPayments", revenue?.failedPayments)} icon={AlertTriangle} tone="red" />
       <Metric title="Hotspot revenue · MTD" value={show("revenue.hotspot", revenue?.hotspot, true)} icon={Wallet} />
+      <Metric title="PPPoE revenue · MTD" value={show("revenue.pppoe", revenue?.pppoe, true)} icon={Wallet} />
+      <Metric title="TV revenue · MTD" value={show("revenue.tv", revenue?.tv, true)} icon={Wallet} />
     </section>
     <section className="grid gap-4 xl:grid-cols-2">
       <div className="rounded-lg border bg-card p-4"><h2 className="text-sm font-medium">Revenue and collections</h2><p className="mb-3 text-xs text-muted-foreground">KES · monthly GL revenue and received payments</p><div className="h-64">{trend.length ? <ResponsiveContainer width="100%" height="100%"><AreaChart data={trend}><CartesianGrid strokeDasharray="3 3" vertical={false} /><XAxis dataKey="period" /><YAxis /><Tooltip content={<TrendTooltip />} /><Area dataKey="revenuePlot" name="Revenue" stroke="#059669" fill="#a7f3d0" /><Area dataKey="collectedPlot" name="Collected" stroke="#0284c7" fill="#bae6fd" /></AreaChart></ResponsiveContainer> : <p className="py-16 text-center text-sm text-muted-foreground">No revenue trend data.</p>}</div></div>

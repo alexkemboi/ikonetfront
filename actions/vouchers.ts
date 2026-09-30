@@ -72,6 +72,8 @@ export async function getVouchersData(options: { page?: number; size?: number; s
   requestId?: string;
   error?: string;
 }> {
+  const listRequestId = crypto.randomUUID();
+  const statsRequestId = crypto.randomUUID();
   try {
     const query = new URLSearchParams({ page: String(options.page ?? 0), size: String(options.size ?? 20), issuedOnly: "false" });
     const statsQuery = new URLSearchParams();
@@ -92,20 +94,28 @@ export async function getVouchersData(options: { page?: number; size?: number; s
       auth: "required",
       tags: ["vouchers"],
       cache: "no-store",
+      headers: { "X-Request-Id": listRequestId },
       }),
-      apiFetch<VoucherKpis>(`/hotspot/vouchers/statistics${statsQuery.size ? `?${statsQuery}` : ""}`, { auth: "required", cache: "no-store" }),
+      apiFetch<VoucherKpis>(`/hotspot/vouchers/statistics${statsQuery.size ? `?${statsQuery}` : ""}`, { auth: "required", cache: "no-store", headers: { "X-Request-Id": statsRequestId } }),
     ]);
     if (!res.success || !res.data || !stats.success || !stats.data) return { kpis: null, vouchers: [], page: { totalElements: 0, totalPages: 0, number: 0, size: options.size ?? 20 }, requestId: res.requestId ?? stats.requestId, error: res.message ?? stats.message };
     return { kpis: stats.data, vouchers: res.data.content.map(mapRowToVoucher), page: res.data, requestId: res.requestId };
   } catch (error) {
     console.warn("Failed to fetch vouchers:", error);
-    return { kpis: null, vouchers: [], page: { totalElements: 0, totalPages: 0, number: 0, size: options.size ?? 20 }, error: "DATA_SOURCE_UNAVAILABLE" };
+    return { kpis: null, vouchers: [], page: { totalElements: 0, totalPages: 0, number: 0, size: options.size ?? 20 }, requestId: listRequestId, error: "DATA_SOURCE_UNAVAILABLE" };
   }
 }
 
 export async function generateVouchers(
   request: GenerateVouchersRequest
-): Promise<{ success: boolean; message: string; count?: number }> {
+): Promise<{
+  success: boolean;
+  message: string;
+  count?: number;
+  code?: string;
+  serverUnitPrice?: string;
+  requestId?: string;
+}> {
   const pagePerms = await getPermissionForRoute("/finance/vouchers");
   if (!pagePerms.canCreate) {
     return { success: false, message: "Not authorized to mint vouchers." };
@@ -127,6 +137,7 @@ export async function generateVouchers(
     };
   }
 
+  const requestId = crypto.randomUUID();
   try {
     // Backend ManualVoucherRequest: POST /hotspot/vouchers/create
     // accepts { packageId, count, stationId, companyId }. stationId/companyId
@@ -134,7 +145,7 @@ export async function generateVouchers(
     const res = await apiFetch<unknown>("/hotspot/vouchers/create", {
       method: "POST",
       auth: "required",
-      headers: { "Idempotency-Key": request.idempotencyKey },
+      headers: { "Idempotency-Key": request.idempotencyKey, "X-Request-Id": requestId },
       body: {
         packageId: Number(request.packageId),
         count: quantity,
@@ -150,13 +161,22 @@ export async function generateVouchers(
     });
 
     if (!res.success) {
-      return { success: false, message: res.message, count: quantity };
+      const errorData = (res.data ?? {}) as { code?: string; serverUnitPrice?: string };
+      return {
+        success: false,
+        message: res.message,
+        count: quantity,
+        code: errorData.code ?? res.message,
+        serverUnitPrice: errorData.serverUnitPrice,
+        requestId: res.requestId,
+      };
     }
 
     return {
       success: true,
       message: `Successfully minted ${quantity} vouchers.`,
       count: quantity,
+      requestId: res.requestId,
     };
   } catch (error: unknown) {
     const detail = error instanceof Error ? error.message : "fetch failed";
@@ -164,6 +184,7 @@ export async function generateVouchers(
     return {
       success: false,
       message: "Failed to reach voucher minting service. Please retry.",
+      requestId,
     };
   }
 }

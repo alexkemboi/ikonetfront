@@ -27,49 +27,54 @@ export default async function OverviewDashboardPage() {
 
  const data = await getDashboardOverview();
 
+ if (!data.success) {
+  return <div className="min-h-screen p-4 sm:p-6 lg:p-8"><div role="alert" className="mx-auto max-w-7xl rounded-lg border border-destructive/30 bg-destructive/5 p-5"><h1 className="text-lg font-medium">Dashboard unavailable</h1><p className="mt-1 text-sm text-muted-foreground">{data.message}{data.requestId ? ` · Ref: ${data.requestId}` : ""}</p></div></div>;
+ }
+ const overview = data.data;
+
  return (
  <div className="min-h-screen p-4 text-foreground sm:p-6 lg:p-8">
  <div className="mx-auto max-w-7xl space-y-6">
  {/* 1. Shift Greeting & Header Context */}
  <ShiftGreetingBanner
- tenantName={data.companyName}
- onlineCount={data.onlineSubscribersCount}
- shiftName={data.shiftName}
- expiriesCount={data.expiriesDue24hCount}
- smsCreditLow={data.smsCreditLow}
- lastHourTrafficGb={data.lastHourTrafficGb}
+ tenantName={overview.companyName}
+ onlineCount={overview.onlineSubscribersCount}
+ shiftName={overview.shiftName}
+ expiriesCount={overview.expiriesDue24hCount}
+ smsCreditLow={overview.smsCreditLow}
+ lastHourTrafficGb={overview.lastHourTrafficGb}
  />
 
  {/* 2. Live M-Pesa Ticker & Router Health */}
- <LiveTransactionTicker ticker={data.liveTicker} />
+ <LiveTransactionTicker ticker={overview.liveTicker} />
 
  {/* 3. Primary KPI Metric Cards */}
  <OverviewKpiCards
- revenueToday={data.revenueToday}
- revenueChangePercent={data.revenueTodayChangePercent}
- mobileMoneyToday={data.mobileMoneyRevenueToday}
- activeSubscriptions={data.activeSubscriptionsCount}
- onlinePercentage={data.onlinePercentage}
- onlineCount={data.onlineSubscribersCount}
- smsCredits={data.smsCreditsCount}
+ revenueToday={overview.revenueToday}
+ revenueChangePercent={overview.revenueTodayChangePercent}
+ mobileMoneyToday={overview.mobileMoneyRevenueToday}
+ activeSubscriptions={overview.activeSubscriptionsCount}
+ onlinePercentage={overview.onlinePercentage}
+ onlineCount={overview.onlineSubscribersCount}
+ smsCredits={overview.smsCreditsCount}
  />
 
  {/* 4. Two-Column Operational Split */}
  <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
- <RenewalsDueCard items={data.renewalsDue} />
- <RouterTrafficCard items={data.routerTraffic} />
+ <RenewalsDueCard items={overview.renewalsDue} />
+ <RouterTrafficCard items={overview.routerTraffic} />
  </div>
 
  {/* 5. What's Next Action Queue | Today Activity Feed */}
  <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
  <div className="lg:col-span-2">
- <WhatsNextActionQueue items={data.whatsNextQueue} />
+ <WhatsNextActionQueue items={overview.whatsNextQueue} />
  </div>
- <TodayActivityFeed eventsCount={data.todayEventsCount} payments={data.todayRecentPayments} />
+ <TodayActivityFeed eventsCount={overview.todayEventsCount} payments={overview.todayRecentPayments} />
  </div>
 
  {/* 6. 7x24 Traffic Heatmap */}
- <NetworkPulseHeatmap heatmap={data.heatmap} />
+ <NetworkPulseHeatmap heatmap={overview.heatmap} />
  </div>
  </div>
  );

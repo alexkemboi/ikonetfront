@@ -1,11 +1,12 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Loader2, Plus } from "lucide-react";
 import type { VoucherBatchItem, VoucherBatchKpis } from "@/lib/types/payments";
-import { generateVoucherBatch } from "@/actions/payments";
+import { generateVoucherBatch, getVoucherBatchDetails } from "@/actions/payments";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -35,6 +36,10 @@ function toKsh(value: string): string { return value; }
 
 export function VoucherBatchLedger({ kpis, batches, page, packageOptions }: Props) {
   const router = useRouter();
+  const [selectedBatch, setSelectedBatch] = useState<VoucherBatchItem | null>(null);
+  const [batchDetails, setBatchDetails] = useState<VoucherBatchItem | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailError, setDetailError] = useState("");
   const [mintOpen, setMintOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [packageId, setPackageId] = useState("");
@@ -53,6 +58,17 @@ export function VoucherBatchLedger({ kpis, batches, page, packageOptions }: Prop
     ],
     [kpis]
   );
+
+  async function openBatchDetails(batch: VoucherBatchItem) {
+    setSelectedBatch(batch);
+    setBatchDetails(null);
+    setDetailError("");
+    setDetailLoading(true);
+    const result = await getVoucherBatchDetails(batch.batchId);
+    setDetailLoading(false);
+    if (result.success && result.data) setBatchDetails(result.data);
+    else setDetailError(`${result.message}${result.requestId ? ` · Ref: ${result.requestId}` : ""}`);
+  }
 
   async function handleMint() {
     const pkgId = Number(packageId);
@@ -158,6 +174,7 @@ export function VoucherBatchLedger({ kpis, batches, page, packageOptions }: Prop
                   <th className="py-3 px-3">STATUS</th>
                   <th className="py-3 px-3">BY</th>
                   <th className="py-3 px-3">CREATED</th>
+                  <th className="py-3 px-3">DETAILS / CODES</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-800/50">
@@ -183,6 +200,12 @@ export function VoucherBatchLedger({ kpis, batches, page, packageOptions }: Prop
                     <td className="py-3.5 px-3 text-muted-foreground">{b.createdByUsername}</td>
                     <td className="py-3.5 px-3 text-muted-foreground">
                       {b.createdAt ? new Date(b.createdAt).toLocaleDateString() : "—"}
+                    </td>
+                    <td className="py-3.5 px-3">
+                      <div className="flex items-center gap-3">
+                        <button type="button" className="text-primary underline" onClick={() => void openBatchDetails(b)}>Details</button>
+                        {b.sessionBatchId ? <Link className="text-primary underline" href={`/api/vouchers/batch-print?voucherBatchId=${encodeURIComponent(b.sessionBatchId)}`} target="_blank" rel="noreferrer">Print codes</Link> : <span className="text-muted-foreground">Codes unavailable</span>}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -266,6 +289,29 @@ export function VoucherBatchLedger({ kpis, batches, page, packageOptions }: Prop
             >
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Mint batch"}
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={Boolean(selectedBatch)} onOpenChange={(open) => { if (!open) { setSelectedBatch(null); setBatchDetails(null); setDetailError(""); } }}>
+        <DialogContent className="bg-card border-border text-foreground">
+          <DialogHeader>
+            <DialogTitle>Voucher batch details</DialogTitle>
+            <DialogDescription>{(batchDetails ?? selectedBatch)?.batchNumber}</DialogDescription>
+          </DialogHeader>
+          {detailLoading ? <p className="py-4 text-sm text-muted-foreground">Loading batch details…</p> : detailError ? <p role="alert" className="py-4 text-sm text-destructive">{detailError}</p> : (batchDetails ?? selectedBatch) && <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+            <dt className="text-muted-foreground">Batch ID</dt><dd className="break-all font-mono text-xs">{(batchDetails ?? selectedBatch)?.batchId}</dd>
+            <dt className="text-muted-foreground">Session batch ID</dt><dd className="break-all font-mono text-xs">{(batchDetails ?? selectedBatch)?.sessionBatchId ?? "—"}</dd>
+            <dt className="text-muted-foreground">Package</dt><dd>{(batchDetails ?? selectedBatch)?.packageName}</dd>
+            <dt className="text-muted-foreground">Quantity</dt><dd>{(batchDetails ?? selectedBatch)?.quantity}</dd>
+            <dt className="text-muted-foreground">Unit price</dt><dd>KES {(batchDetails ?? selectedBatch)?.unitPrice}</dd>
+            <dt className="text-muted-foreground">Total value</dt><dd>KES {(batchDetails ?? selectedBatch)?.totalValue}</dd>
+            <dt className="text-muted-foreground">Minted / redeemed</dt><dd>{(batchDetails ?? selectedBatch)?.mintedCount} / {(batchDetails ?? selectedBatch)?.redeemedCount}</dd>
+            <dt className="text-muted-foreground">Status</dt><dd>{(batchDetails ?? selectedBatch)?.status}</dd>
+          </dl>}
+          <DialogFooter>
+            {(batchDetails ?? selectedBatch)?.sessionBatchId && <Link className="text-sm text-primary underline" target="_blank" rel="noreferrer" href={`/api/vouchers/batch-print?voucherBatchId=${encodeURIComponent((batchDetails ?? selectedBatch)!.sessionBatchId!)}`}>Print codes</Link>}
+            <Button type="button" variant="outline" onClick={() => setSelectedBatch(null)}>Close</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

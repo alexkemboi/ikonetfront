@@ -2,7 +2,7 @@ import { getIpPoolsResult } from "@/actions/network";
 import type { IpPool } from "@/lib/types/api";
 import { getPermissionForRoute } from "@/lib/data/nav";
 import { redirect } from "next/navigation";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
   Table,
@@ -17,6 +17,36 @@ import { Layers } from "lucide-react";
 export const dynamic = "force-dynamic";
 
 export const metadata = { title: "IP Pools — IBS" };
+
+const probeErrorMessages: Record<NonNullable<IpPool["probeError"]>, string> = {
+  ROUTER_UNREACHABLE: "Router not reachable; showing the last known value.",
+  ROUTER_AUTH_FAILED: "Router authentication failed; showing the last known value.",
+  PROBE_FAILED: "The router probe failed; showing the last known value.",
+  USAGE_QUERY_FAILED: "Usage could not be queried; showing the last known value.",
+  POOL_NOT_LINKED: "This pool is not linked to a router.",
+  NO_NAS_SCOPE: "No NAS scope is available for this pool.",
+  INVALID_SUBNET: "The pool subnet is invalid, so utilization could not be calculated.",
+};
+
+function usageDescription(source: IpPool["usageSource"]): string {
+  if (source === "MIKROTIK_DHCP_LEASES") {
+    return "Used counts bound, enabled DHCP leases; expired, waiting, offered, and disabled leases are excluded.";
+  }
+  if (source === "RADIUS_ACTIVE_SESSIONS") {
+    return "Used counts distinct IPs from live RADIUS sessions updated in the last 60 minutes.";
+  }
+  return "Used counts enabled WireGuard peers with addresses inside this subnet.";
+}
+
+function sampledAgo(timestamp: string | null): string {
+  if (!timestamp) return "sample time unavailable";
+  const elapsedSeconds = Math.max(0, Math.floor((Date.now() - new Date(timestamp).getTime()) / 1000));
+  if (!Number.isFinite(elapsedSeconds)) return "sample time unavailable";
+  if (elapsedSeconds < 60) return `${elapsedSeconds}s ago`;
+  if (elapsedSeconds < 3600) return `${Math.floor(elapsedSeconds / 60)}m ago`;
+  if (elapsedSeconds < 86400) return `${Math.floor(elapsedSeconds / 3600)}h ago`;
+  return `${Math.floor(elapsedSeconds / 86400)}d ago`;
+}
 
 export default async function IpPoolsPage() {
   const pagePerms = await getPermissionForRoute("/network/ip-pools");
@@ -73,12 +103,12 @@ export default async function IpPoolsPage() {
                     <TableCell className="font-sans tabular-nums text-sm">{pool.gateway ?? "—"}</TableCell>
                     <TableCell>
                       <div className="flex flex-wrap gap-1">
-                        <Badge variant="default" className="text-xs">{pool.usedIps}/{pool.totalIps} used · {pool.utilizationPercentage}%</Badge>
+                        <Badge variant="default" title={usageDescription(pool.usageSource)} className="text-xs">{pool.usedIps}/{pool.totalIps} used · {pool.utilizationPercentage}%</Badge>
                         <Badge variant={pool.probeStatus === "OK" ? "outline" : "destructive"} className="text-xs">{pool.probeStatus}</Badge>
-                        {pool.stale && <Badge variant="outline" className="text-xs">Stale{pool.lastProbedAt ? ` · ${pool.lastProbedAt}` : ""}</Badge>}
+                        {pool.stale && <Badge variant="outline" title={pool.lastProbedAt ?? "No successful sample time recorded"} className="text-xs">Stale · last sampled {sampledAgo(pool.lastProbedAt)}</Badge>}
                         {pool.overCapacity && <Badge variant="destructive" className="text-xs">Over capacity · {pool.rawUsedIps} in use</Badge>}
                       </div>
-                      {pool.probeError && <p className="mt-1 text-xs text-destructive">{pool.probeError.replaceAll("_", " ")}</p>}
+                      {pool.probeError && <p className="mt-1 text-xs text-destructive">{probeErrorMessages[pool.probeError]}</p>}
                     </TableCell>
                   </TableRow>
                 ))}

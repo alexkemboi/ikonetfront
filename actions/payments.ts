@@ -434,6 +434,22 @@ export async function markInvoicePaid(
 /**
  * Fetch the voucher-batch ledger (page + KPI derivation).
  */
+export async function getVoucherBatchDetails(batchId: string): Promise<{
+  success: boolean;
+  data?: VoucherBatchItem;
+  message: string;
+  requestId?: string;
+}> {
+  const res = await apiFetch<VoucherBatchItem>(`/finance/voucher-batches/${encodeURIComponent(batchId)}`, {
+    auth: "required",
+    cache: "no-store",
+  });
+  if (!res.success || !res.data) {
+    return { success: false, message: res.message, requestId: res.requestId };
+  }
+  return { success: true, data: res.data, message: res.message, requestId: res.requestId };
+}
+
 export async function getVoucherBatches(page = 0, size = 50): Promise<{
   kpis: VoucherBatchKpis | null;
   batches: VoucherBatchItem[];

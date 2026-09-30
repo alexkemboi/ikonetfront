@@ -48,6 +48,7 @@ type SubscriberHubResponse = {
 // ── Subscribers hub data (KPI derivation locked) ─────────────────────────────
 
 export async function getSubscribersData(options: { page?: number; size?: number; statusFilter?: SubscriberAccountStatus | "ALL"; search?: string } = {}): Promise<SubscriberHubResult> {
+  const requestId = crypto.randomUUID();
   try {
     const query = new URLSearchParams({ page: String(Math.max(0, options.page ?? 0)), size: String(Math.min(Math.max(1, options.size ?? 25), 200)) });
     if (options.statusFilter && options.statusFilter !== "ALL") query.set("statusFilter", options.statusFilter);
@@ -56,6 +57,7 @@ export async function getSubscribersData(options: { page?: number; size?: number
       auth: "required",
       cache: "no-store",
       tags: ["subscribers:hub"],
+      headers: { "X-Request-Id": requestId },
     });
     if (!res.success || !res.data) return { success: false, message: res.message, requestId: res.requestId, kpis: null, rows: null };
 
@@ -85,7 +87,7 @@ export async function getSubscribersData(options: { page?: number; size?: number
     return { success: true, requestId: res.requestId, kpis: res.data.kpis, rows: { ...res.data.rows, content } };
   } catch (error) {
     console.warn("Failed to fetch subscriber hub data:", error);
-    return { success: false, message: "DATA_SOURCE_UNAVAILABLE", kpis: null, rows: null };
+    return { success: false, message: "DATA_SOURCE_UNAVAILABLE", requestId, kpis: null, rows: null };
   }
 }
 

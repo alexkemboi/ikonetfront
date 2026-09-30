@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { getVoucherBatches } from "@/actions/payments";
+import { getVoucherBatchDetails, getVoucherBatches } from "@/actions/payments";
 import { apiFetch } from "@/lib/apiClient";
 
 vi.mock("@/lib/apiClient", () => ({ apiFetch: vi.fn() }));
@@ -36,5 +36,18 @@ describe("getVoucherBatches", () => {
     expect(result.kpis?.activeCount).toBe(0);
     expect(result.kpis?.totalValue).toBe("0.00");
     expect(result.error).toBeUndefined();
+  });
+});
+
+describe("getVoucherBatchDetails", () => {
+  it("loads details by stable batch ID", async () => {
+    const batch = { batchId: "batch-uuid", batchNumber: "VB-001", sessionBatchId: "VBH-001" };
+    mockedApiFetch.mockResolvedValueOnce(response(true, batch) as never);
+
+    const result = await getVoucherBatchDetails("batch-uuid");
+
+    expect(mockedApiFetch).toHaveBeenCalledWith("/finance/voucher-batches/batch-uuid", expect.objectContaining({ auth: "required" }));
+    expect(result.success).toBe(true);
+    expect(result.data?.sessionBatchId).toBe("VBH-001");
   });
 });

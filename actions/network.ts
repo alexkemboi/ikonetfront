@@ -1035,17 +1035,19 @@ export const getRouters = async (): Promise<RouterResponse[]> => {
  * GET /api/v1/network/ip-pools — live pool utilization and probe status.
  */
 export async function getIpPoolsResult(): Promise<{ success: true; pools: IpPool[]; requestId?: string } | { success: false; message: string; requestId?: string }> {
+  const requestId = crypto.randomUUID();
   try {
     const res = await apiFetch<IpPool[]>("/network/ip-pools", {
       auth: "required",
       tags: ["network"],
       cache: "no-store",
+      headers: { "X-Request-Id": requestId },
     });
     if (!res.success) return { success: false, message: res.message, requestId: res.requestId };
     return { success: true, pools: res.data ?? [], requestId: res.requestId };
   } catch (error) {
     console.error("[Network Action] getIpPools error:", error);
-    return { success: false, message: "DATA_SOURCE_UNAVAILABLE" };
+    return { success: false, message: "DATA_SOURCE_UNAVAILABLE", requestId };
   }
 }
 

@@ -41,7 +41,7 @@ export default async function AnalyticsDashboardPage() {
  <AnalyticsExportButton data={data} />
  </div>
 
- {data.dataStatus === "PARTIAL" && <div role="status" className="rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-950">Some analytics are unavailable. Null values are shown as unavailable and are listed by the backend.</div>}
+ {data.dataStatus === "PARTIAL" && <div role="status" className="rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-950"><p>Some analytics could not be loaded. A dash marks a value that is unavailable.</p>{data.unavailableMetrics.length > 0 && <ul className="mt-2 space-y-1">{data.unavailableMetrics.map(({ metric, reason }) => <li key={`${metric}-${reason}`}><span className="font-medium">{metric}</span>: {reason}</li>)}</ul>}</div>}
  <AnalyticsKpiCards kpis={data.kpis} />
 
  <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">

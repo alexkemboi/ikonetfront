@@ -14,11 +14,13 @@ type LiveSessionApiResponse = {
 };
 
 export async function getLiveSessionsData(page = 0, size = 50): Promise<LiveSessionsResult> {
+  const requestId = crypto.randomUUID();
   try {
     const query = new URLSearchParams({ page: String(Math.max(0, page)), size: String(Math.min(Math.max(1, size), 200)) });
     const res = await apiFetch<LiveSessionApiResponse>(`/sessions/live?${query.toString()}`, {
       auth: "required",
       cache: "no-store",
+      headers: { "X-Request-Id": requestId },
     });
     if (!res.success || !res.data) {
       return { success: false, status: res.status, requestId: res.requestId, message: res.message, kpis: null, sessions: null, refreshIntervalSeconds: 30 };
@@ -44,6 +46,7 @@ export async function getLiveSessionsData(page = 0, size = 50): Promise<LiveSess
     return {
       success: false,
       message: "LIVE_SESSIONS_UNAVAILABLE",
+      requestId,
       kpis: null,
       sessions: null,
       refreshIntervalSeconds: 30,

@@ -131,7 +131,7 @@ export default async function NasRoutersPage() {
   const cpu = Number.isFinite(Number(r.cpuUsage)) ? Number(r.cpuUsage) : null;
   const freeMemMB = r.freeMemory ? Math.round(r.freeMemory / (1024 * 1024)) : null;
   return (
-  <tr key={r.id} data-row-id={String(r.id)} className="hover:bg-zinc-800/30 transition">
+  <tr key={`${r.routerId ?? "no-router"}-${r.deviceId ?? "no-device"}-${r.name}`} data-row-id={`${r.routerId ?? "no-router"}-${r.deviceId ?? "no-device"}`} className="hover:bg-zinc-800/30 transition">
   <td className="py-4 px-6 font-sans">
   <div className="font-semibold text-foreground">{r.name}</div>
   <div className="text-[11px] text-muted-foreground font-sans tabular-nums">{r.model}</div>
@@ -203,7 +203,7 @@ export default async function NasRoutersPage() {
   <td className="py-4 px-6 text-right">
   <RouterActionsDropdown
   router={{
-  id: r.id,
+  deviceId: r.deviceId,
   routerId: r.routerId,
   name: r.name,
   model: r.model,

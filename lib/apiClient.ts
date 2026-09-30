@@ -110,7 +110,7 @@ export async function apiFetch<T = unknown>(
   } else if (authPolicy !== "public") {
     const session = await auth();
     if (authPolicy === "required" && !session?.user?.apiToken) {
-      return envelopeError<T>(401, "Not authenticated. Please sign in again.");
+      return { ...envelopeError<T>(401, "Not authenticated. Please sign in again."), requestId };
     }
     if (session?.user?.apiToken) {
       headers.Authorization = `Bearer ${session.user.apiToken}`;

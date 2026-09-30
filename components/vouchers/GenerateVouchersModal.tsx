@@ -51,6 +51,8 @@ export function GenerateVouchersModal({ isOpen, onClose }: Props) {
  const [codeLength, setCodeLength] = useState("6");
  const [prefix, setPrefix] = useState("");
  const [error, setError] = useState<string | null>(null);
+ const [requestId, setRequestId] = useState<string | null>(null);
+ const [priceOverride, setPriceOverride] = useState<string | null>(null);
  const [isSubmitting, setIsSubmitting] = useState(false);
 
  useEffect(() => {
@@ -90,11 +92,14 @@ export function GenerateVouchersModal({ isOpen, onClose }: Props) {
  function selectPackage(id: number) {
  setPackageId(id);
  setIdempotencyKey("");
+	setPriceOverride(null);
  setError(null);
+	setRequestId(null);
  }
 
  async function handleGenerate() {
  setError(null);
+ setRequestId(null);
  if (!packageId) {
  setError("Select a package first.");
  return;
@@ -124,17 +129,23 @@ export function GenerateVouchersModal({ isOpen, onClose }: Props) {
  voucherType,
  codeLength: len,
  prefix: prefix.trim(),
- expectedUnitPrice: selected.unitPrice,
+ expectedUnitPrice: priceOverride ?? selected.unitPrice,
  idempotencyKey: key,
  });
  setIsSubmitting(false);
+ setRequestId(res.requestId ?? null);
  if (res.success) {
  setStep(1);
  setQuantity("");
  setPrefix("");
  setIdempotencyKey("");
+	setPriceOverride(null);
  setError(null);
  onClose();
+ } else if (res.code === "PACKAGE_CHANGED" && res.serverUnitPrice) {
+	setPriceOverride(res.serverUnitPrice);
+	setIdempotencyKey("");
+	setError(`Package price changed to KES ${res.serverUnitPrice}. Confirm the updated price to continue.`);
  } else {
  setError(res.message);
  }
@@ -258,7 +269,7 @@ export function GenerateVouchersModal({ isOpen, onClose }: Props) {
  {error && (
  <div className="flex items-center gap-2 rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-400">
  <AlertCircle className="h-4 w-4 shrink-0" />
- <span>{error}</span>
+ <span>{error}{requestId ? ` Ref: ${requestId}` : ""}</span>
  </div>
  )}
 
@@ -282,7 +293,7 @@ export function GenerateVouchersModal({ isOpen, onClose }: Props) {
  >
  {isSubmitting
  ? "Minting..."
- : "Mint Vouchers"}
+ : priceOverride ? `Confirm new price · KES ${priceOverride}` : "Mint Vouchers"}
  </button>
  </>
  ) : (

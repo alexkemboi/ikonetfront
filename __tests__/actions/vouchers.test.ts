@@ -1,8 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { getVouchersData } from "@/actions/vouchers";
+import { generateVouchers, getVouchersData } from "@/actions/vouchers";
 import { apiFetch } from "@/lib/apiClient";
 
+const { mockGetPermissionForRoute } = vi.hoisted(() => ({ mockGetPermissionForRoute: vi.fn() }));
+
 vi.mock("@/lib/apiClient", () => ({ apiFetch: vi.fn() }));
+vi.mock("@/lib/data/nav", () => ({ getPermissionForRoute: mockGetPermissionForRoute }));
 
 const mockedApiFetch = vi.mocked(apiFetch);
 const response = (success: boolean, data: unknown, message = "OK", requestId = "req-vouchers") => ({
@@ -14,7 +17,10 @@ const response = (success: boolean, data: unknown, message = "OK", requestId = "
   timestamp: "2026-09-29T07:00:00Z",
 });
 
-beforeEach(() => { vi.clearAllMocks(); });
+beforeEach(() => {
+  vi.clearAllMocks();
+  mockGetPermissionForRoute.mockResolvedValue({ canCreate: true });
+});
 
 describe("getVouchersData", () => {
   it("does not turn a backend failure into zero voucher KPIs", async () => {
@@ -34,5 +40,31 @@ describe("getVouchersData", () => {
     await getVouchersData({ voucherState: "USED", source: "MINTED" });
     expect(mockedApiFetch.mock.calls[0]?.[0]).toContain("voucherState=USED");
     expect(mockedApiFetch.mock.calls[1]?.[0]).toBe("/hotspot/vouchers/statistics?source=MINTED");
+  });
+});
+
+describe("generateVouchers", () => {
+  it("preserves package price-change details and request ID", async () => {
+    mockedApiFetch.mockResolvedValueOnce(response(
+      false,
+      { code: "PACKAGE_CHANGED", serverUnitPrice: "75.00" },
+      "PACKAGE_CHANGED",
+      "req-price-changed"
+    ) as never);
+
+    const result = await generateVouchers({
+      packageId: 1,
+      quantity: 2,
+      voucherType: "DEMO",
+      expectedUnitPrice: "50.00",
+      idempotencyKey: "voucher-attempt-1",
+    });
+
+    expect(result).toMatchObject({
+      success: false,
+      code: "PACKAGE_CHANGED",
+      serverUnitPrice: "75.00",
+      requestId: "req-price-changed",
+    });
   });
 });

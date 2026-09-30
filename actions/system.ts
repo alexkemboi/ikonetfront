@@ -139,22 +139,27 @@ export async function getSystemUsers(): Promise<ApiRoleUser[]> {
     "/system-setup/all-users",
   ];
 
-  let lastError: unknown = null;
-  const attempts: { url: string; status?: number; error?: string }[] = [];
-
   const headers = await getAuthHeaders();
+  const hasToken = Boolean((headers as Record<string, string>).Authorization);
+  const roleCode = candidateUrls
+    .map((url) => url.match(/system-setup\/([^/]+)\/users/)?.[1])
+    .find(Boolean) ?? null;
+  let lastStatus: number | undefined;
+  let lastRequestId: string | undefined;
 
   for (const url of candidateUrls) {
     try {
       const fullUrl = buildApiUrl(url);
+      const requestId = crypto.randomUUID();
+      lastRequestId = requestId;
       const response = await fetch(fullUrl, {
-        headers,
+        headers: { ...(headers as Record<string, string>), "X-Request-Id": requestId },
         cache: "no-store",
       });
+      lastStatus = response.status;
+      lastRequestId = response.headers.get("X-Request-Id") ?? requestId;
 
       if (!response.ok) {
-        attempts.push({ url: fullUrl, status: response.status });
-        lastError = new Error(`Request failed with status ${response.status}`);
         continue;
       }
 
@@ -167,21 +172,18 @@ export async function getSystemUsers(): Promise<ApiRoleUser[]> {
       }
 
       if (result?.success === false) {
-        attempts.push({ url: fullUrl, error: result?.message });
-        throw new Error(result?.message || "Failed to fetch system users");
+        continue;
       }
-    } catch (error) {
-      const msg = error instanceof Error ? error.message : String(error);
-      attempts.push({ url, error: msg });
-      lastError = error;
+    } catch {
+      lastStatus = undefined;
     }
   }
 
-  console.error(
-    "[System Users] Failed to load users. Attempted URLs:",
-    JSON.stringify(attempts, null, 2),
-    "Last error:",
-    lastError instanceof Error ? lastError.message : lastError
-  );
+  console.error("[System Users] Failed to load users.", {
+    hasToken,
+    roleCode,
+    status: lastStatus,
+    requestId: lastRequestId,
+  });
   return [];
 }
