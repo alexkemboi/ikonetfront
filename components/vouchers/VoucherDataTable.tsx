@@ -12,7 +12,10 @@ export function VoucherDataTable({ vouchers, page, totalPages, totalElements, si
   const router = useRouter();
   function update(values: Record<string, string | null>) {
     const params = new URLSearchParams(window.location.search);
-    for (const [key, value] of Object.entries(values)) value ? params.set(key, value) : params.delete(key);
+    for (const [key, value] of Object.entries(values)) {
+      if (value) params.set(key, value);
+      else params.delete(key);
+    }
     router.push(`/finance/vouchers${params.size ? `?${params}` : ""}`);
   }
   function exportCsv() {

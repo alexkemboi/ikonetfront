@@ -1,6 +1,6 @@
 import Image from "next/image";
 import HotspotShell from "./_components/HotspotShell";
-import { Wifi, Zap, Shield, Clock } from "lucide-react";
+import { Zap, Shield, Clock } from "lucide-react";
 import { getPublicHotspotPackagesAction } from "@/actions/hotspot";
 import { HotspotPackage } from "@/lib/types/hotspot";
 import { normalizeCompanyCode, resolveCompanyFromRouterTag } from "@/lib/brand";
