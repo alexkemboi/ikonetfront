@@ -280,7 +280,7 @@ export default function BulkEmailWizard({ customers, systemUsers, templates, tem
  <h2 className="text-base font-normal text-foreground">
  Who will receive this email?
  </h2>
- <p className="text-xs text-muted-foreground mt-0.5">Choose a channel and select recipients individually.</p>
+ <p className="text-xs text-muted-foreground mt-0.5">Choose a channel and select recipients individually. Only records with an email address can be selected.</p>
  </div>
  <div className="flex flex-wrap gap-2" role="group" aria-label="Delivery channel">
  <Button type="button" variant={channel === "EMAIL" ? "default" : "outline"} onClick={() => setChannel("EMAIL")} className="gap-1.5"><Mail className="h-4 w-4"/>Email</Button>
@@ -301,8 +301,8 @@ export default function BulkEmailWizard({ customers, systemUsers, templates, tem
  <div className="max-h-72 divide-y divide-border overflow-y-auto">
  {visibleRecipients.map((recipient) => {
    const key = `${recipient.recipientType}:${recipient.id}`;
-   return <label key={key} className="flex cursor-pointer items-center gap-3 px-4 py-2.5 transition-colors hover:bg-muted/40">
-    <Checkbox checked={selectedRecipientKeys.has(key)} disabled={!recipient.selectable} onCheckedChange={() => toggleRecipient(recipient)} />
+  return <label key={key} title={!recipient.selectable ? "Cannot select this recipient: no email address on file." : undefined} className={`flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-muted/40 ${recipient.selectable ? "cursor-pointer" : "cursor-not-allowed opacity-60"}`}>
+   <Checkbox checked={selectedRecipientKeys.has(key)} disabled={!recipient.selectable} onCheckedChange={() => toggleRecipient(recipient)} />
     <span className="min-w-0 flex-1"><span className="block truncate text-sm font-medium">{recipient.name}</span><span className="block truncate text-xs text-muted-foreground">{recipient.email ?? "No email on file"}</span></span>
    </label>;
  })}

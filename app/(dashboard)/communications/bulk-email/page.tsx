@@ -38,7 +38,7 @@ export default async function BulkEmailPage() {
       name: customer.fullName || customer.username,
       email: customer.email?.trim() || null,
       recipientType: "CUSTOMER",
-      selectable: Boolean(customer.isActive && customer.canLogin && customer.email?.trim()),
+      selectable: Boolean(customer.email?.trim()),
     }))
     : [];
   const staff: CampaignRecipient[] = systemUsers.map((user) => ({
@@ -46,7 +46,7 @@ export default async function BulkEmailPage() {
     name: user.fullName || user.username,
     email: user.email?.trim() || null,
     recipientType: "SYSTEM_USER",
-    selectable: Boolean(user.isactive && user.canLogin && user.email?.trim()),
+    selectable: Boolean(user.email?.trim()),
   }));
   const templates: EmailTemplate[] = templatesResult.success && templatesResult.data.length > 0
     ? templatesResult.data.map((value) => {
