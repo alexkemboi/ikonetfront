@@ -46,7 +46,7 @@ export default async function OverviewDashboardPage() {
  />
 
  {/* 2. Live M-Pesa Ticker & Router Health */}
- <LiveTransactionTicker ticker={overview.liveTicker} />
+        <LiveTransactionTicker ticker={overview.liveTicker} routerTraffic={overview.routerTraffic} />
 
  {/* 3. Primary KPI Metric Cards */}
  <OverviewKpiCards
@@ -57,6 +57,7 @@ export default async function OverviewDashboardPage() {
  onlinePercentage={overview.onlinePercentage}
  onlineCount={overview.onlineSubscribersCount}
  smsCredits={overview.smsCreditsCount}
+ smsCreditLow={overview.smsCreditLow}
  />
 
  {/* 4. Two-Column Operational Split */}
