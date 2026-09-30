@@ -18,13 +18,11 @@ import { managementNavGroups } from "@/config/nav-management";
 import { staffNavGroups }      from "@/config/nav-staff";
 import { customerNavGroups }   from "@/config/nav-customer";
 import { investorNavGroups }   from "@/config/nav-investor";
+import { NO_PERMISSIONS } from "@/lib/data/nav-constants";
+
+export { NO_PERMISSIONS } from "@/lib/data/nav-constants";
 
 export const NAV_MENUS_TAG = "nav-menus";
-
-// All-false default used when a route is missing from the map
-export const NO_PERMISSIONS: PermissionFlags = {
-  canView: false, canCreate: false, canEdit: false, canDelete: false,
-};
 
 export function normalizeMenuRoute(route: string): string {
   const clean = route?.trim();

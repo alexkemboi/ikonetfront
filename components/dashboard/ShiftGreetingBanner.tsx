@@ -1,4 +1,6 @@
-import React from "react";
+"use client";
+
+import React, { useEffect, useState } from "react";
 import { Sparkles } from "lucide-react";
 
 interface Props {
@@ -18,6 +20,24 @@ export function ShiftGreetingBanner({
  smsCreditLow,
  lastHourTrafficGb,
 }: Props) {
+ const [greeting, setGreeting] = useState("Good morning");
+
+ useEffect(() => {
+	const updateGreeting = () => {
+	 const hour = new Date().getHours();
+	 const nextGreeting = hour >= 5 && hour < 12
+		? "Good morning"
+		: hour >= 12 && hour < 17
+		 ? "Good afternoon"
+		 : "Good evening";
+	 setGreeting(nextGreeting);
+	};
+
+	updateGreeting();
+	const interval = window.setInterval(updateGreeting, 60_000);
+	return () => window.clearInterval(interval);
+ }, []);
+
  return (
  <div className="relative overflow-hidden rounded-2xl border border-border bg-card p-6 shadow-2xl">
  {/* Subtle top amber glow */}
@@ -36,7 +56,7 @@ export function ShiftGreetingBanner({
 
  {/* Warm Editorial Heading */}
  <h1 className="mt-2 text-3xl font-sans tracking-normal text-foreground sm:text-4xl">
- Good morning,{" "}
+ {greeting},{" "}
  <span className="text-amber-500 font-sans font-medium lowercase">
  {tenantName.replace(/\s+/g, "")}.
  </span>

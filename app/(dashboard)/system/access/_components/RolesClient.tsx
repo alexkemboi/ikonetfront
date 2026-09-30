@@ -32,7 +32,7 @@ import {
  startEditingRole,
  stopEditingRole,
 } from "@/store/slices/rolesSlice";
-import { NO_PERMISSIONS } from "@/lib/data/nav";
+import { NO_PERMISSIONS } from "@/lib/data/nav-constants";
 import type { MenuNode } from "@/lib/nav";
 import type { PermissionFlags, PermissionMap } from "@/lib/types/roles";
 import type { Role, RoleUser, ApiRoleUser } from "../page";
