@@ -21,7 +21,6 @@ export interface LiveSessionItem {
   expiryDate: string | null;
   expiresAt: string | null;
   expiryFormatted: string;
-  connectedAt?: string;
   leaseExpiry?: string;
   isFallback?: boolean;
   // ── Identity chain (hotspot): RADIUS row → session → M-Pesa payment ──

@@ -55,4 +55,8 @@ export interface GenerateVouchersRequest {
   deviceId?: number;
   /** SALE only — how the batch was paid for: Dr 1130 (cash) or Dr 1120 (bank) / Cr 4100. */
   channel?: "CASH" | "BANK_TRANSFER";
+  /** SALE only — the price the operator saw; the backend rejects the batch if it has moved. */
+  expectedUnitPrice?: string;
+  /** Stable across retries so a repeated submit cannot mint a second batch. */
+  idempotencyKey?: string;
 }

@@ -180,6 +180,10 @@ export interface GenerateVoucherBatchRequest {
   stationId?: string;
   /** Router the batch is minted for; its vouchers are redeemable only there. */
   deviceId?: number;
+  /** The price the operator confirmed; the backend rejects the batch if it has moved. */
+  expectedUnitPrice?: string;
+  /** Stable across retries so a repeated submit cannot mint a second batch. */
+  idempotencyKey?: string;
 }
 
 export interface CreateInvoiceRequest {
