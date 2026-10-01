@@ -8,31 +8,44 @@ import { VoucherDataTable } from "./VoucherDataTable";
 import { GenerateVouchersModal } from "./GenerateVouchersModal";
 import { VoucherBatchLedger } from "./VoucherBatchLedger";
 import { CompensatePaymentModal } from "./CompensatePaymentModal";
-import { VoucherItem, VoucherKpis } from "@/lib/types/vouchers";
+import { VoucherItem, VoucherKpis, VoucherStatus } from "@/lib/types/vouchers";
 import type { VoucherBatchItem, VoucherBatchKpis } from "@/lib/types/payments";
 
 interface Props {
   initialKpis: VoucherKpis | null;
   initialVouchers: VoucherItem[];
+  kpiError?: string;
   batchKpis?: VoucherBatchKpis;
   batches?: VoucherBatchItem[];
-  packageOptions?: { value: string; label: string }[];
+  batchPage: { totalElements: number; totalPages: number; number: number; size: number };
+  packageOptions?: { value: string; label: string; unitPrice?: string }[];
   routerOptions?: { value: string; label: string }[];
+  voucherPage: { totalElements: number; totalPages: number; number: number; size: number };
+  voucherState: "ALL" | VoucherStatus;
+  search: string;
+  source: "ALL" | "MINTED" | "PURCHASED";
 }
 
 const EMPTY_BATCH_KPIS: VoucherBatchKpis = {
   activeCount: 0,
-  activeValue: 0,
-  totalValue: 0,
+  activeValue: "0",
+  totalValue: "0",
+  vouchers: 0,
 };
 
 export function VouchersClient({
   initialKpis,
   initialVouchers,
+  kpiError,
   batchKpis = EMPTY_BATCH_KPIS,
   batches = [],
+  batchPage,
   packageOptions = [],
   routerOptions = [],
+  voucherPage,
+  voucherState,
+  search,
+  source,
 }: Props) {
   const router = useRouter();
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -69,12 +82,22 @@ export function VouchersClient({
   </div>
   </div>
 
-  <VoucherKpiCards kpis={initialKpis} />
-  <VoucherDataTable vouchers={initialVouchers} />
+  <VoucherKpiCards kpis={initialKpis} error={kpiError} />
+  <VoucherDataTable
+  vouchers={initialVouchers}
+  page={voucherPage.number}
+  totalPages={voucherPage.totalPages}
+  totalElements={voucherPage.totalElements}
+  size={voucherPage.size}
+  state={voucherState}
+  search={search}
+  source={source}
+  />
 
   <VoucherBatchLedger
   kpis={batchKpis}
   batches={batches}
+  page={batchPage}
   packageOptions={packageOptions}
   routerOptions={routerOptions}
   />

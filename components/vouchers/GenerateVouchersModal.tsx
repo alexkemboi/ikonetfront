@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { AlertCircle, ChevronLeft, ArrowRight } from "lucide-react";
 import { getActiveHotspotPackagesAction, type VoucherPackageOption } from "@/actions/packages";
 import { generateVouchers } from "@/actions/vouchers";
@@ -23,13 +23,10 @@ interface PackageOption {
  unitPrice: string;
 }
 
-function fmtSpeed(p: VoucherPackageOption): string {
-}
-
 type PaymentChannel = "CASH" | "BANK_TRANSFER";
 type Source = "SALE" | "MIGRATION";
 
-function fmtSpeed(p: InternetPackage): string {
+function fmtSpeed(p: VoucherPackageOption): string {
  if (p.speedDownload > 0 || p.speedUpload > 0) {
  return `${p.speedDownload}M/${p.speedUpload}M`;
  }
@@ -140,16 +137,18 @@ export function GenerateVouchersModal({ isOpen, onClose, routerOptions = [] }: P
  }
  const key = idempotencyKey || crypto.randomUUID();
  setIdempotencyKey(key);
- const res = await generateVouchers({
- source,
- deviceId: deviceId ? Number(deviceId) : undefined,
- packageId,
- quantity: qty,
- voucherType,
- codeLength: len,
- prefix: prefix.trim(),
- channel: source === "SALE" ? channel : undefined,
- });
+const res = await generateVouchers({
+  source,
+  deviceId: deviceId ? Number(deviceId) : undefined,
+  packageId,
+  quantity: qty,
+  voucherType,
+  codeLength: len,
+  prefix: prefix.trim(),
+  channel: source === "SALE" ? channel : undefined,
+  expectedUnitPrice: priceOverride ?? selected.unitPrice,
+  idempotencyKey: key,
+});
  setIsSubmitting(false);
  setRequestId(res.requestId ?? null);
  if (res.success) {
@@ -242,9 +241,8 @@ export function GenerateVouchersModal({ isOpen, onClose, routerOptions = [] }: P
  onChange={(e) => { setQuantity(e.target.value); setIdempotencyKey(""); }}
  placeholder="e.g. 100"
  min={1}
- max={500}
- max={500}
- className="mt-1 w-full rounded-lg border border-border bg-muted p-2.5 text-sm text-foreground placeholder-zinc-600 focus:border-amber-500 focus:outline-none"
+max={500}
+  className="mt-1 w-full rounded-lg border border-border bg-muted p-2.5 text-sm text-foreground placeholder-zinc-600 focus:border-amber-500 focus:outline-none"
  />
  </div>
  <div>
@@ -387,10 +385,9 @@ export function GenerateVouchersModal({ isOpen, onClose, routerOptions = [] }: P
  setError(null);
  setStep(2);
  }}
- className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500 px-5 py-2.5 text-xs font-semibold text-black hover:bg-amber-400 disabled:opacity-50"
- className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500 px-5 py-2.5 text-xs font-semibold text-black hover:bg-amber-400 disabled:opacity-50"
- >
- Next: Configure <ArrowRight className="h-3.5 w-3.5" />
+className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500 px-5 py-2.5 text-xs font-semibold text-black hover:bg-amber-400 disabled:opacity-50"
+  >
+  Next: Configure <ArrowRight className="h-3.5 w-3.5" />
  </button>
  )}
  </div>
