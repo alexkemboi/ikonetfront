@@ -188,6 +188,7 @@ export function NasRoutersTable({
                       <RouterActionsDropdown
                         router={{
                           id: r.id,
+                          deviceId: r.deviceId,
                           routerId: r.routerId,
                           name: r.name,
                           model: r.model,

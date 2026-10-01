@@ -49,6 +49,8 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
 export interface RouterActionsRow {
+  /** network_device.id as a string — row identity. */
+  id: string;
   /** network_device.id — used for interfaces + delete + tunnels. */
   deviceId?: number;
   /** network_routers.idxno — used for telemetry + remote actions. */
@@ -124,6 +126,10 @@ export function RouterActionsDropdown({
   // belongs to a different table and would target another router.
   const actionRouterId = Number(router.routerId);
   const hasRouterRecord = Number.isFinite(actionRouterId) && actionRouterId > 0;
+  // Router actions and telemetry both act on network_routers.idxno, so both are
+  // gated on the same linked-router check that runAction() enforces.
+  const hasRouterAction = hasRouterRecord;
+  const canReadTelemetry = hasRouterRecord;
   const hasNumericDevice = Number.isFinite(deviceId) && deviceId > 0;
   const winboxUri = router.winboxTunnelAddress
     ? `winbox://${router.winboxTunnelAddress}`

@@ -49,14 +49,6 @@ const CONNECT_MS = 10000;
 const INTERFACES_POLL_MS = 5000;
 const SESSIONS_POLL_MS = 15000;
 
-function formatBytes(bytes: string | number | null | undefined): string {
-  const n = typeof bytes === "string" ? Number(bytes) || 0 : bytes ?? 0;
-  if (n >= 1073741824) return `${(n / 1073741824).toFixed(2)} GiB`;
-  if (n >= 1048576) return `${(n / 1048576).toFixed(1)} MiB`;
-  if (n >= 1024) return `${(n / 1024).toFixed(0)} KiB`;
-  return `${n} B`;
-}
-
 function formatBps(bps: number | null | undefined): string {
   const n = bps ?? 0;
   if (n >= 1_000_000_000) return `${(n / 1_000_000_000).toFixed(2)} Gbps`;
@@ -121,20 +113,20 @@ export function RouterTelemetryDrawer({
   const [tab, setTab] = useState<Tab>(defaultTab);
   const [latest, setLatest] = useState<RouterHealthSnapshot | null>(null);
   const [mode, setMode] = useState<"streaming" | "polling" | "offline">("streaming");
-  const [interfaces, setInterfaces] = useState<MikrotikInterface[]>([]);
-  const [loadingInterfaces, setLoadingInterfaces] = useState(false);
 
   const deviceId = Number(router.deviceId);
-  const telemetryRouterId = Number(router.routerId);
   const hasNumericDevice = Number.isFinite(deviceId) && deviceId > 0;
+  const telemetryRouterId = Number(router.routerId);
   const hasNumericRouter = Number.isFinite(telemetryRouterId) && telemetryRouterId > 0;
 
+  // Interfaces belong to network_device (device id + its HALO link); telemetry
+  // and sessions belong to network_routers (idxno). Never cross the two.
   const loadInterfaces = useCallback(
-    () => getRouterLiveInterfaces(telemetryRouterId),
-    [telemetryRouterId]
+    () => getRouterLiveInterfaces(deviceId, router.links?.deviceInterfaces),
+    [deviceId, router.links?.deviceInterfaces]
   );
   const liveInterfaces = useLivePoll<RouterLiveInterface[]>(
-    hasNumericRouter && tab === "interfaces",
+    hasNumericDevice && tab === "interfaces",
     INTERFACES_POLL_MS,
     loadInterfaces
   );
@@ -251,32 +243,6 @@ export function RouterTelemetryDrawer({
       stopTimers();
     };
   }, [hasNumericRouter, telemetryRouterId, router.links?.telemetryLatest]);
-
-  // ── Interfaces (fetched on demand; refresh button re-fetches) ──
-  const fetchInterfaces = useCallback(async (): Promise<MikrotikInterface[]> => {
-    if (!hasNumericDevice) return [];
-    const rows = await getNetworkDeviceInterfaces(deviceId, router.links?.deviceInterfaces);
-    return rows as unknown as MikrotikInterface[];
-  }, [hasNumericDevice, deviceId, router.links?.deviceInterfaces]);
-
-  const loadInterfaces = useCallback(async () => {
-    if (!hasNumericDevice) return;
-    setLoadingInterfaces(true);
-    try {
-      setInterfaces(await fetchInterfaces());
-    } finally {
-      setLoadingInterfaces(false);
-    }
-  }, [hasNumericDevice, fetchInterfaces]);
-
-  useEffect(() => {
-    if (tab !== "interfaces" || !hasNumericDevice) return;
-    let cancelled = false;
-    void fetchInterfaces().then((rows) => {
-      if (!cancelled) setInterfaces(rows);
-    });
-    return () => { cancelled = true; };
-  }, [tab, hasNumericDevice, fetchInterfaces]);
 
   const memPct =
     latest && latest.totalMemory > 0
@@ -445,7 +411,7 @@ export function RouterTelemetryDrawer({
             </div>
           )}
 
-          {hasNumericRouter && tab === "interfaces" && (
+          {hasNumericDevice && tab === "interfaces" && (
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <p className="text-xs text-muted-foreground font-medium">
