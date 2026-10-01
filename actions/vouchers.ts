@@ -1,5 +1,9 @@
 "use server";
 
+import { withCompanyContext } from "@/lib/companyContext";
+import { revalidatePath } from "next/cache";
+import { auth } from "@/lib/auth";
+import { BASE_URL } from "@/lib/constants";
 import { apiFetch } from "@/lib/apiClient";
 import { getPermissionForRoute } from "@/lib/data/nav";
 import type {
@@ -8,6 +12,17 @@ import type {
   VoucherKpis,
   VoucherStatus,
 } from "@/lib/types/vouchers";
+
+async function getAuthHeaders(): Promise<HeadersInit> {
+  const session = await auth();
+  const headers: HeadersInit = { "Content-Type": "application/json" };
+  if (session?.user?.apiToken) {
+    (headers as Record<string, string>)["Authorization"] =
+      `Bearer ${session.user.apiToken}`;
+  }
+  // Forward the SYSADMIN-selected company so the backend scopes the call.
+  return withCompanyContext(headers as Record<string, string>);
+}
 
 function normalizeStatus(status: unknown): VoucherStatus {
   const s = String(status ?? "").toUpperCase();
@@ -19,6 +34,7 @@ function str(value: unknown): string | undefined {
   return String(value);
 }
 
+/** Maps a backend HotspotSessionResponse (GET /hotspot/vouchers). */
 function mapRowToVoucher(row: unknown): VoucherItem {
   const r = (row ?? {}) as Record<string, unknown>;
   const pkg = (r.package ?? {}) as Record<string, unknown>;
@@ -26,84 +42,112 @@ function mapRowToVoucher(row: unknown): VoucherItem {
   const speedDown = Number(r.speedDownload ?? pkg.speedDownload ?? 0);
   const speedUp = Number(r.speedUpload ?? pkg.speedUpload ?? 0);
   const planSpeed =
-    str(r.packageSpeedLabel) ?? str(r.planSpeed) ??
+    str(r.packageSpeedLabel) ??
+    str(r.planSpeed) ??
     (speedDown > 0 || speedUp > 0
       ? `${speedDown}M/${speedUp}M`
       : str(pkg.rateLimit) ?? "—");
   const validityValue = str(r.validityValue) ?? str(pkg.validityValue);
   const validityType = str(r.validityType) ?? str(pkg.validityType);
+  const price = Number(str(r.packageCurrencyAmount) ?? str(r.price) ?? str(pkg.price) ?? 0);
   const durationText =
+    str(r.packageValidityLabel) ??
     str(r.durationText) ??
     (validityValue && validityType ? `${validityValue} ${validityType}` : "—");
 
   return {
     id: str(r.sessionId) ?? str(r.id) ?? str(r.voucherId) ?? "—",
-    code: str(r.voucherCode) ?? str(r.code) ?? "—",
-    batchNumber: str(r.voucherBatchId),
-    voucherBatchId: str(r.voucherBatchId),
-    voucherType: str(r.voucherType),
-    source: str(r.source) === "PURCHASED" ? "PURCHASED" : "MINTED",
+    code: str(r.code) ?? str(r.voucherCode) ?? "—",
+    batchNumber: str(r.voucherBatchId) ?? str(r.batchNumber),
     packageId: str(r.packageId) ?? str(pkg.id),
     packageName: str(r.packageName) ?? packageName,
     planSpeed,
-    packageSpeed: str(r.packageSpeedLabel) ?? planSpeed,
-    planPrice: str(r.packageCurrencyAmount) ?? str(r.price) ?? str(pkg.price) ?? str(r.planPrice),
+    planPrice: str(r.packageCurrencyAmount) ??
+      (Number.isFinite(price) && price > 0 ? `Ksh ${price}` : undefined),
     durationText,
-    packageValidityLabel: str(r.packageValidityLabel) ?? durationText,
+    // voucherState is derived server-side from session status + redemption.
     status: normalizeStatus(r.voucherState ?? r.status),
-    expiresText: str(r.expiresAt) ?? str(r.expiryDate) ?? "Starts on first use",
-    expiryStartsOnFirstUse: r.expiresAt == null && r.startedAt == null,
-    packageCurrencyAmount: str(r.packageCurrencyAmount),
-    amountPaid: str(r.amountPaid) ?? null,
-    sessionStatus: str(r.sessionStatus),
-    minutesRemaining: r.minutesRemaining == null ? null : Number(r.minutesRemaining),
+    expiresText: str(r.expiresAt) ?? str(r.expiryDate) ?? "—",
     createdAt: str(r.createdAt),
     redeemedAt: str(r.redeemedAt),
-    redeemedByPhone: str(r.clientPhone) ?? str(r.redeemedByPhone),
-    redeemedByMac: str(r.macAddress) ?? str(r.redeemedByMac),
-    mpesaReceipt: str(r.mpesaReference),
+    redeemedByPhone: str(r.redeemedByPhone),
+    redeemedByMac: str(r.redeemedByMac) ?? (r.redeemedAt ? str(r.macAddress) : undefined),
   };
 }
 
-export async function getVouchersData(options: { page?: number; size?: number; search?: string; voucherState?: VoucherStatus | "ALL"; source?: "ALL" | "MINTED" | "PURCHASED"; from?: string; to?: string; stationId?: string; companyId?: string } = {}): Promise<{
+export interface GetVouchersFilters {
+  page?: number;
+  size?: number;
+  search?: string;
+  voucherState?: string;
+  source?: string;
+}
+
+/**
+ * Voucher list + KPIs.
+ *
+ * The list endpoint is row-filtered; the statistics endpoint is NOT — passing
+ * `voucherState` there would report only that slice's totals. A failed read
+ * returns `kpis: null` (never zeroed) so the UI can tell "no vouchers" from
+ * "could not load".
+ */
+export async function getVouchersData(filters: GetVouchersFilters = {}): Promise<{
   kpis: VoucherKpis | null;
   vouchers: VoucherItem[];
   page: { totalElements: number; totalPages: number; number: number; size: number };
   requestId?: string;
   error?: string;
 }> {
-  const listRequestId = crypto.randomUUID();
-  const statsRequestId = crypto.randomUUID();
-  try {
-    const query = new URLSearchParams({ page: String(options.page ?? 0), size: String(options.size ?? 20), issuedOnly: "false" });
-    const statsQuery = new URLSearchParams();
-    if (options.search) query.set("search", options.search);
-    if (options.voucherState && options.voucherState !== "ALL") {
-      query.set("voucherState", options.voucherState);
-    }
-    if (options.source && options.source !== "ALL") {
-      query.set("source", options.source);
-      statsQuery.set("source", options.source);
-    }
-    if (options.from) { query.set("from", options.from); statsQuery.set("from", options.from); }
-    if (options.to) { query.set("to", options.to); statsQuery.set("to", options.to); }
-    if (options.stationId) { query.set("stationId", options.stationId); statsQuery.set("stationId", options.stationId); }
-    if (options.companyId) { query.set("companyId", options.companyId); statsQuery.set("companyId", options.companyId); }
-    const [res, stats] = await Promise.all([
-      apiFetch<{ content: unknown[]; totalElements: number; totalPages: number; number: number; size: number }>(`/hotspot/vouchers?${query}`, {
+  const { page = 0, size = 50, search, voucherState, source } = filters;
+  const params = new URLSearchParams({
+    issuedOnly: "true",
+    sort: "createdAt,desc",
+    page: String(page),
+    size: String(size),
+  });
+  if (search) params.set("search", search);
+  if (voucherState) params.set("voucherState", voucherState);
+  if (source) params.set("source", source);
+
+  // Statistics is scoped by source only, never by row-state filter.
+  const statsParams = new URLSearchParams();
+  if (source) statsParams.set("source", source);
+  const statsQuery = statsParams.toString();
+
+  const [list, stats] = await Promise.all([
+    apiFetch<{ content?: unknown[]; totalElements: number; totalPages: number; number: number; size: number }>(
+      `/hotspot/vouchers?${params.toString()}`,
+      { auth: "required", cache: "no-store" }
+    ),
+    apiFetch<VoucherKpis>(`/hotspot/vouchers/statistics${statsQuery ? `?${statsQuery}` : ""}`, {
       auth: "required",
-      tags: ["vouchers"],
       cache: "no-store",
-      headers: { "X-Request-Id": listRequestId },
-      }),
-      apiFetch<VoucherKpis>(`/hotspot/vouchers/statistics${statsQuery.size ? `?${statsQuery}` : ""}`, { auth: "required", cache: "no-store", headers: { "X-Request-Id": statsRequestId } }),
-    ]);
-    if (!res.success || !res.data || !stats.success || !stats.data) return { kpis: null, vouchers: [], page: { totalElements: 0, totalPages: 0, number: 0, size: options.size ?? 20 }, requestId: res.requestId ?? stats.requestId, error: res.message ?? stats.message };
-    return { kpis: stats.data, vouchers: res.data.content.map(mapRowToVoucher), page: res.data, requestId: res.requestId };
-  } catch (error) {
-    console.warn("Failed to fetch vouchers:", error);
-    return { kpis: null, vouchers: [], page: { totalElements: 0, totalPages: 0, number: 0, size: options.size ?? 20 }, requestId: listRequestId, error: "DATA_SOURCE_UNAVAILABLE" };
+    }),
+  ]);
+
+  if (!list.success || !stats.success || !list.data || !stats.data) {
+    return {
+      kpis: null,
+      vouchers: [],
+      page: { totalElements: 0, totalPages: 0, number: page, size },
+      requestId: list.requestId ?? stats.requestId,
+      error: list.message ?? stats.message ?? "DATA_SOURCE_UNAVAILABLE",
+    };
   }
+
+  const raw = list.data.content ?? [];
+  const vouchers = raw.map(mapRowToVoucher);
+  return {
+    kpis: stats.data,
+    vouchers,
+    page: {
+      totalElements: list.data.totalElements,
+      totalPages: list.data.totalPages,
+      number: list.data.number,
+      size: list.data.size,
+    },
+    requestId: list.requestId,
+  };
 }
 
 export async function generateVouchers(
@@ -112,7 +156,10 @@ export async function generateVouchers(
   success: boolean;
   message: string;
   count?: number;
+  batchNumber?: string;
+  /** Machine-readable rejection reason, e.g. PACKAGE_CHANGED. */
   code?: string;
+  /** Current server-side unit price when the submitted one is stale. */
   serverUnitPrice?: string;
   requestId?: string;
 }> {
@@ -122,12 +169,13 @@ export async function generateVouchers(
   }
 
   const quantity = Math.floor(Number(request.quantity));
-  const codeLength = Math.floor(Number(request.codeLength ?? 6));
+  const codeLength = Math.floor(Number(request.codeLength ?? 8));
+  const isSale = request.source === "SALE";
 
   if (!Number.isInteger(quantity) || quantity < 1 || quantity > 500) {
     return {
       success: false,
-      message: "Quantity must be a whole number between 1 and 500.",
+      message: "Quantity must be a whole number between 1 and 500 per batch.",
     };
   }
   if (!Number.isInteger(codeLength) || codeLength < 4 || codeLength > 12) {
@@ -136,46 +184,75 @@ export async function generateVouchers(
       message: "Code length must be between 4 and 12 characters.",
     };
   }
+  if (isSale && !request.deviceId) {
+    return { success: false, message: "Select the router these vouchers are sold for." };
+  }
+  if (isSale && request.channel !== "CASH" && request.channel !== "BANK_TRANSFER") {
+    return { success: false, message: "Select how the batch was paid for (cash or bank transfer)." };
+  }
 
-  const requestId = crypto.randomUUID();
   try {
-    // Backend ManualVoucherRequest: POST /hotspot/vouchers/create
-    // accepts { packageId, count, stationId, companyId }. stationId/companyId
-    // are optional (backend derives them from JWT/device); pass stationId when known.
-    const res = await apiFetch<unknown>("/hotspot/vouchers/create", {
-      method: "POST",
-      auth: "required",
-      headers: { "Idempotency-Key": request.idempotencyKey, "X-Request-Id": requestId },
-      body: {
-        packageId: Number(request.packageId),
-        count: quantity,
-        voucherType: request.voucherType,
-        stationId: request.stationId,
-        companyId: request.companyId,
-        expectedUnitPrice: request.expectedUnitPrice,
-        deviceId: request.deviceId,
-        prefix: request.prefix,
-        codeLength,
-      },
-      cache: "no-store",
-    });
+    const session = await auth();
+    const stationId = session?.user?.stationId
+      ? String(session.user.stationId)
+      : undefined;
+    const prefix = request.prefix?.trim() || undefined;
+    const deviceId = request.deviceId ? Number(request.deviceId) : undefined;
+
+    // SALE: /finance/voucher-batches creates the sessions AND posts the sale
+    // (Dr 1130/1120, Cr 4100) in one transaction.
+    // MIGRATION: /hotspot/vouchers/create — no revenue (the customer paid their
+    // previous ISP), still tenant-scoped and optionally locked to a router.
+    const res = await apiFetch<{ batchNumber?: string }>(
+      isSale ? "/finance/voucher-batches" : "/hotspot/vouchers/create",
+      {
+        method: "POST",
+        auth: "required",
+        cache: "no-store",
+        headers: request.idempotencyKey ? { "Idempotency-Key": request.idempotencyKey } : undefined,
+        body: isSale
+          ? {
+              packageId: Number(request.packageId),
+              quantity,
+              codeLength,
+              codePrefix: prefix,
+              channel: request.channel,
+              stationId,
+              deviceId,
+              expectedUnitPrice: request.expectedUnitPrice,
+            }
+          : {
+              packageId: Number(request.packageId),
+              count: quantity,
+              codeLength,
+              prefix,
+              voucherType: "MIGRATION",
+              stationId,
+              deviceId,
+            },
+      }
+    );
 
     if (!res.success) {
       const errorData = (res.data ?? {}) as { code?: string; serverUnitPrice?: string };
+      console.warn("Voucher mint rejected:", res.message);
       return {
         success: false,
-        message: res.message,
+        message: res.message || "Failed to mint vouchers",
         count: quantity,
-        code: errorData.code ?? res.message,
+        code: errorData.code,
         serverUnitPrice: errorData.serverUnitPrice,
         requestId: res.requestId,
       };
     }
 
+    revalidatePath("/finance/vouchers");
+    const batchNumber = isSale ? res.data?.batchNumber : undefined;
     return {
       success: true,
-      message: `Successfully minted ${quantity} vouchers.`,
+      message: `Minted ${quantity} ${isSale ? "" : "migration "}vouchers${batchNumber ? ` in batch ${batchNumber}` : ""}.`,
       count: quantity,
+      batchNumber,
       requestId: res.requestId,
     };
   } catch (error: unknown) {
@@ -184,7 +261,48 @@ export async function generateVouchers(
     return {
       success: false,
       message: "Failed to reach voucher minting service. Please retry.",
-      requestId,
     };
+  }
+}
+
+/**
+ * Re-instate a settled M-Pesa hotspot purchase that never connected.
+ * POST /hotspot/vouchers/compensate — no GL (the sale was posted at settlement);
+ * the original session is revoked; idempotent per payment.
+ */
+export async function compensateHotspotPayment(
+  mpesaReceipt: string,
+  reason?: string
+): Promise<{ success: boolean; message: string; voucherCode?: string; packageName?: string }> {
+  const pagePerms = await getPermissionForRoute("/finance/vouchers");
+  if (!pagePerms.canCreate) {
+    return { success: false, message: "Not authorized to issue compensation vouchers." };
+  }
+  const receipt = mpesaReceipt.trim().toUpperCase();
+  if (!/^[A-Z0-9]{8,12}$/.test(receipt)) {
+    return { success: false, message: "Enter the M-Pesa receipt code from the customer's SMS (e.g. UIOAC7SJ5A)." };
+  }
+  try {
+    const res = await fetch(`${BASE_URL}hotspot/vouchers/compensate`, {
+      method: "POST",
+      headers: await getAuthHeaders(),
+      body: JSON.stringify({ mpesaReceipt: receipt, reason: reason?.trim() || undefined }),
+    });
+    const body: { message?: string; data?: { voucherCode?: string; packageName?: string } } | null = await res
+      .json()
+      .catch(() => null);
+    if (!res.ok || !body?.data?.voucherCode) {
+      return { success: false, message: body?.message || `Failed to issue voucher (HTTP ${res.status}).` };
+    }
+    revalidatePath("/finance/vouchers");
+    return {
+      success: true,
+      message: body.message || "Compensation voucher issued",
+      voucherCode: body.data.voucherCode,
+      packageName: body.data.packageName,
+    };
+  } catch (error: unknown) {
+    console.warn("Compensation voucher network error:", error instanceof Error ? error.message : error);
+    return { success: false, message: "Failed to reach the voucher service. Please retry." };
   }
 }

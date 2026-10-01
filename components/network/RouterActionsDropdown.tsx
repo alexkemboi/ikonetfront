@@ -19,6 +19,7 @@ import {
   Copy,
   Monitor,
   Gift,
+  Pencil,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -26,6 +27,7 @@ import {
   deleteNetworkDevice,
   allocateTunnel,
   deallocateTunnel,
+  updateRouter,
 } from "@/actions/network";
 import { withStepUp } from "@/lib/stepUp";
 import { RouterTelemetryDrawer } from "./RouterTelemetryDrawer";
@@ -35,8 +37,20 @@ import type {
   DiagnoseDetails,
   RouterAction,
 } from "@/lib/types/network-router";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 
 export interface RouterActionsRow {
+  /** network_device.id as a string — row identity. */
+  id: string;
   /** network_device.id — used for interfaces + delete + tunnels. */
   deviceId?: number;
   /** network_routers.idxno — used for telemetry + remote actions. */
@@ -99,15 +113,24 @@ export function RouterActionsDropdown({
   const [busyAction, setBusyAction] = useState<RouterAction | "DELETE" | "TUNNEL_REGEN" | null>(null);
   const [copied, setCopied] = useState(false);
   const [compensateOpen, setCompensateOpen] = useState(false);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [friendlyName, setFriendlyName] = useState(router.name);
+  const [renameBusy, setRenameBusy] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const didClampRef = useRef(false);
 
-  const deviceId = Number(router.deviceId);
+  const deviceId = Number(router.id);
+  // Router actions, telemetry and rename act on network_routers.idxno. A device
+  // with no linked router row has none — never substitute the device id, it
+  // belongs to a different table and would target another router.
   const actionRouterId = Number(router.routerId);
-  const hasNumericDevice = Number.isFinite(deviceId) && deviceId > 0 && Boolean(router.links?.deviceDelete);
-  const hasRouterAction = Number.isFinite(actionRouterId) && actionRouterId > 0 && Boolean(router.links?.routerAction);
-  const canReadTelemetry = Boolean(router.links?.telemetryLatest);
+  const hasRouterRecord = Number.isFinite(actionRouterId) && actionRouterId > 0;
+  // Router actions and telemetry both act on network_routers.idxno, so both are
+  // gated on the same linked-router check that runAction() enforces.
+  const hasRouterAction = hasRouterRecord;
+  const canReadTelemetry = hasRouterRecord;
+  const hasNumericDevice = Number.isFinite(deviceId) && deviceId > 0;
   const winboxUri = router.winboxTunnelAddress
     ? `winbox://${router.winboxTunnelAddress}`
     : null;
@@ -197,8 +220,8 @@ export function RouterActionsDropdown({
   };
 
   const runAction = async (action: RouterAction) => {
-    if (!hasRouterAction) {
-      toast.error("This router does not have a router-action link.");
+    if (!hasRouterRecord) {
+      toast.error("This device has no linked router record, so router actions are unavailable. Re-run onboarding to link it.");
       closeMenu();
       return;
     }
@@ -218,9 +241,15 @@ export function RouterActionsDropdown({
           closeMenu();
           return;
         }
-        toast[res.data.executionStatus === "FAILED" ? "error" : "success"](
+        const failed = res.data.executionStatus === "FAILED";
+        toast[failed ? "error" : "success"](
           res.data.message || `${action} executed on ${router.name}`
         );
+        if (!failed && action === "REFRESH") {
+          // The backend collects a fresh snapshot asynchronously; re-read the
+          // table once it has had time to land.
+          window.setTimeout(() => routerNav.refresh(), 4000);
+        }
       } else {
         toast.error(res.message || `Failed to execute ${action}.`);
       }
@@ -280,6 +309,36 @@ export function RouterActionsDropdown({
       toast.error("Unexpected error deleting router.");
     } finally {
       setBusyAction(null);
+    }
+  };
+
+  const handleSaveRename = async () => {
+    if (!hasRouterRecord) {
+      toast.error("This device has no linked router record to rename.");
+      return;
+    }
+    if (friendlyName.trim() === router.name) {
+      setEditModalOpen(false);
+      return;
+    }
+    setRenameBusy(true);
+    try {
+      // Send only the name: the backend applies present fields, so blank
+      // serviceMode/credentials here would overwrite the router's real config.
+      const res = await updateRouter(actionRouterId, {
+        routerName: friendlyName.trim(),
+      });
+      if (res.success) {
+        toast.success(`Router renamed to "${friendlyName.trim()}"`);
+        routerNav.refresh(); // Re-fetch the routers table
+      } else {
+        toast.error(res.message || "Failed to rename router");
+      }
+    } catch {
+      toast.error("Unexpected error renaming router");
+    } finally {
+      setRenameBusy(false);
+      setEditModalOpen(false);
     }
   };
 
@@ -374,6 +433,18 @@ export function RouterActionsDropdown({
       >
         <Users className="h-4 w-4 text-amber-500" />
         Active Subscriber Sessions
+      </button>
+
+      <div className="h-px bg-border my-1" />
+
+      <button
+        type="button"
+        role="menuitem"
+        onClick={() => { setFriendlyName(router.name); setEditModalOpen(true); }}
+        className="flex items-center w-full px-4 py-2.5 hover:bg-muted hover:text-foreground gap-2.5 transition text-left"
+      >
+        <Pencil className="h-4 w-4 text-amber-500" />
+        <span>Edit / Rename Router</span>
       </button>
 
       <div className="h-px bg-border my-1" />
@@ -575,6 +646,46 @@ export function RouterActionsDropdown({
           targetLabel={router.name}
         />
       )}
+
+      <Dialog open={editModalOpen} onOpenChange={setEditModalOpen}>
+        <DialogContent className="bg-zinc-900 border-zinc-800 text-white sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Edit Router Identity</DialogTitle>
+            <DialogDescription className="text-zinc-400 text-xs">
+              Update the human-friendly display name for this router across all dashboards.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-3">
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-zinc-300">Friendly Display Name</label>
+              <Input
+                value={friendlyName}
+                onChange={(e) => setFriendlyName(e.target.value)}
+                placeholder="e.g. Adrinold Ukunda B"
+                className="bg-black/50 border-zinc-700 text-white text-sm"
+              />
+              <p className="text-[11px] text-zinc-500">
+                Machine Asset Tag: <span className="font-mono text-zinc-400">{router.name}</span>
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="ghost" size="sm" onClick={() => setEditModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              className="bg-amber-500 hover:bg-amber-600 text-black font-semibold text-xs"
+              onClick={handleSaveRename}
+              disabled={renameBusy || friendlyName.trim() === router.name}
+            >
+              {renameBusy ? "Saving..." : "Save Changes"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

@@ -19,7 +19,9 @@ interface HotspotFlowProps {
   companyCode?: string | null;
   onCompanyResolved?: (companyCode?: string | null) => void;
   clientMac?: string;
+  redirectClientMac?: string;
   clientIp?: string;
+  /** RouterOS $(identity) of the serving router (redirect `identity`/`router`). */
   routerIdentity?: string;
 }
 
@@ -28,6 +30,7 @@ export default function HotspotFlow({
   companyCode,
   onCompanyResolved,
   clientMac,
+  redirectClientMac,
   clientIp,
   routerIdentity,
 }: HotspotFlowProps) {
@@ -82,7 +85,9 @@ export default function HotspotFlow({
 
       {/* Tab content */}
       <div>
-        {activeTab === "activate" && <ActivateTab clientMac={clientMac} clientIp={clientIp} routerIdentity={routerIdentity} companyId={companyCode ?? undefined} />}
+        {activeTab === "activate" && (
+          <ActivateTab clientMac={clientMac} clientIp={clientIp} routerIdentity={routerIdentity} />
+        )}
         {activeTab === "buy" && (
           <BuyTab
             packages={packages}
@@ -90,7 +95,9 @@ export default function HotspotFlow({
             onCompanyResolved={onCompanyResolved}
             onBack={() => handleTabChange("activate")}
             clientMac={clientMac}
+            redirectClientMac={redirectClientMac}
             clientIp={clientIp}
+            routerIdentity={routerIdentity}
           />
         )}
       </div>

@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { server } from "@/mocks/server";
 import { http, HttpResponse } from "msw";
 import { API_PREFIX } from "@/mocks/handlers/auth-guard";
-import { getPaymentsLedgerData, getInvoicesLedgerData, recordManualPayment } from "@/actions/payments";
+import { getPaymentsLedgerData, getInvoicesLedgerData, recordManualPayment, getVoucherBatches, getReconciliationDay } from "@/actions/payments";
 import { auth } from "@/lib/auth";
 import type { AccountPosting } from "@/lib/types/finance";
 
@@ -47,6 +47,51 @@ function withPage(content: AccountPosting[]) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+});
+
+describe("getPaymentsLedgerData — payments received (payer identity)", () => {
+  it("uses /finance/payments/received when available: phone, receipt and connection outcome", async () => {
+    let glCalled = false;
+    server.use(
+      http.get(`${API_PREFIX}/finance/payments/received`, ({ request }) => {
+        expect(request.headers.get("authorization")).toBe(`Bearer ${TOKEN}`);
+        return HttpResponse.json({
+          success: true,
+          data: {
+            kpis: { today: "3.00", thisWeek: "61.00", thisMonth: "84.00", total: "84.00", paymentCount: 45, notConnectedCount: 4, compensatedCount: 1 },
+            payments: {
+              content: [
+                {
+                  postingId: "p-1", paymentId: "tp-1", occurredAt: "2026-09-24T17:48:14Z", amount: "1.00", currency: "KES",
+                  service: "HOTSPOT", phone: "254790721501", customerName: null, mpesaReceipt: "UIOAC7SD8C",
+                  packageName: "HOTSPOT INUA", routerName: "ADRINOLD-WESTLANDS", voucherCode: "AF726A22", sessionId: 175,
+                  connection: "NOT_CONNECTED", compensationVoucher: null,
+                },
+              ],
+            },
+          },
+        });
+      }),
+      http.get(`${API_PREFIX}/finance/transactions`, () => {
+        glCalled = true;
+        return HttpResponse.json(withPage([]));
+      })
+    );
+
+    const { kpis, payments, source } = await getPaymentsLedgerData();
+
+    expect(source).toBe("RECEIVED");
+    expect(glCalled).toBe(false);
+    expect(kpis.todayAmount).toBe(3);
+    expect(kpis.totalRecordedCount).toBe(45);
+    expect(kpis.notConnectedCount).toBe(4);
+    const row = payments[0];
+    expect(row.subscriberCode).toBe("0790 721 501");
+    expect(row.receiptNumber).toBe("UIOAC7SD8C");
+    expect(row.connection).toBe("NOT_CONNECTED");
+    expect(row.routerName).toBe("ADRINOLD-WESTLANDS");
+    expect(row.subscriberCode).not.toBe("GUEST-USER");
+  });
 });
 
 describe("getPaymentsLedgerData — Account 1110 binding", () => {
@@ -359,4 +404,52 @@ describe("recordManualPayment — envelope contract", () => {
   });
 });
 
+describe("getVoucherBatches — envelope contract", () => {
+  it("returns empty-safe KPIs when the batch list is empty", async () => {
+    server.use(
+      http.get(`${API_PREFIX}/finance/voucher-batches`, () =>
+        HttpResponse.json({
+          success: true,
+          data: { content: [], totalElements: 0 },
+        })
+      )
+    );
+    const { kpis, batches } = await getVoucherBatches();
+    expect(batches).toEqual([]);
+    // The summary endpoint is stubbed only with `content`, so KPIs are unknown
+    // here — the action must report null rather than invent zeroes.
+    expect(kpis).toBeNull();
+  });
+});
 
+
+
+describe("getReconciliationDay — outcomes for one day", () => {
+  it("returns the day's story, attention items and Safaricom status", async () => {
+    server.use(
+      http.get(`${API_PREFIX}/finance/reconciliation/day`, ({ request }) => {
+        expect(new URL(request.url).searchParams.get("date")).toBe("2026-09-25");
+        return HttpResponse.json({
+          success: true,
+          data: {
+            date: "2026-09-25",
+            companyId: null,
+            story: { received: "7.00", payments: 7, customers: 2, connected: 5, connecting: 0, notConnected: 2, compensated: 0, needsAttention: 2, currency: "KES" },
+            attention: [
+              { kind: "PAID_NOT_CONNECTED", action: "ISSUE_VOUCHER", reason: "Paid, but the router never reported this customer's device online.",
+                phone: "254112420773", mpesaReceipt: "UIP388QTLG", amount: "1.00", routerName: "RTR-BDK-A" },
+            ],
+            safaricomCheck: { status: "UNAVAILABLE", explanation: "Safaricom returned no transactions…", safaricomTransactions: 0, ibsPayments: 7, differences: 0 },
+          },
+        });
+      })
+    );
+
+    const { data, message } = await getReconciliationDay("2026-09-25");
+
+    expect(message).toBeUndefined();
+    expect(data?.story.connected).toBe(5);
+    expect(data?.attention[0].action).toBe("ISSUE_VOUCHER");
+    expect(data?.safaricomCheck.status).toBe("UNAVAILABLE");
+  });
+});

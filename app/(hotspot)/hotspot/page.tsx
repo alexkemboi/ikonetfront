@@ -12,7 +12,7 @@ export const metadata = {
 export const dynamic = "force-dynamic"; // Ensure the page is always rendered on the server
 
 interface HotspotPageProps {
-  searchParams: Promise<{ company?: string; router?: string; mac?: string; ip?: string }>;
+  searchParams: Promise<{ company?: string; router?: string; mac?: string; clientMac?: string; ip?: string; identity?: string }>;
 }
 
 export default async function HotspotPage({ searchParams }: HotspotPageProps) {
@@ -26,13 +26,15 @@ export default async function HotspotPage({ searchParams }: HotspotPageProps) {
   // empty IP, which FreeRADIUS/MikroTik cannot match to a physical phone —
   // payment succeeds but the device never gets internet.
   const clientMac = params?.mac?.trim() || "";
+  const redirectClientMac = params?.clientMac?.trim() || "";
   const clientIp = params?.ip?.trim() || "";
+  // Every router hands out the same hotspot subnet, so the backend pins the
+  // serving router (tenant + auto-login target) by its RouterOS identity.
+  const routerIdentity = params?.identity?.trim() || params?.router?.trim() || "";
 
-  const packagesResponse = await getPublicHotspotPackagesAction({
-      routerIdentity: params?.router?.trim() || undefined,
-      clientIp: clientIp || undefined,
-      companyId: initialCompanyCode ?? undefined,
-    });
+  // TV packages are per-device (the backend checks the MAC against the portal
+  // session), so they are fetched client-side by TvDeviceSetup, not here.
+  const packagesResponse = await getPublicHotspotPackagesAction();
   const packages: HotspotPackage[] = packagesResponse.success
     ? packagesResponse.data || []
     : [];
@@ -124,8 +126,9 @@ export default async function HotspotPage({ searchParams }: HotspotPageProps) {
             initialTvDevice={{ macAddress: "", customerPhone: "" }}
             initialCompanyCode={initialCompanyCode}
             clientMac={clientMac}
+            redirectClientMac={redirectClientMac}
             clientIp={clientIp}
-            routerIdentity={params?.router}
+            routerIdentity={routerIdentity}
           />
         </div>
       </div>

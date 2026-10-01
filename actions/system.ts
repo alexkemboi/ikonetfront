@@ -1,5 +1,6 @@
 "use server";
 
+import { withCompanyContext } from "@/lib/companyContext";
 import { auth } from "@/lib/auth";
 import { buildApiUrl } from "@/lib/constants";
 import { revalidatePath } from "next/cache";
@@ -13,7 +14,8 @@ async function getAuthHeaders(): Promise<HeadersInit> {
     (headers as Record<string, string>)["Authorization"] =
       `Bearer ${session.user.apiToken}`;
   }
-  return headers;
+  // Forward the SYSADMIN-selected company so the backend scopes the call.
+  return withCompanyContext(headers as Record<string, string>);
 }
 
 function normalizeUserRecord(raw: unknown): ApiRoleUser {
@@ -88,6 +90,7 @@ export async function addSystemUser(
         body: JSON.stringify(payload),
         cache: "no-store",
       });
+      console.log(await response.json(), url)
 
       const text = await response.text();
       const result = text ? JSON.parse(text) : null;

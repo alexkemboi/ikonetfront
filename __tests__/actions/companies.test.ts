@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, type Mock } from "vitest";
 
 describe("companies actions", () => {
   beforeEach(() => {
@@ -21,7 +21,10 @@ describe("companies actions", () => {
       auth: vi.fn().mockResolvedValue({ user: { apiToken: "token" } }),
     }));
 
-    vi.mocked(global.fetch).mockResolvedValue(new Response(null, { status: 403 }));
+    (global.fetch as Mock).mockResolvedValue({
+      ok: false,
+      status: 403,
+    });
 
     const { listCompanies } = await import("@/actions/companies");
     const result = await listCompanies();
@@ -33,10 +36,11 @@ describe("companies actions", () => {
       auth: vi.fn().mockResolvedValue({ user: { apiToken: "token" } }),
     }));
 
-    vi.mocked(global.fetch).mockResolvedValue(new Response(
-      JSON.stringify({ success: true, data: [] }),
-      { status: 200, headers: { "content-type": "application/json" } }
-    ));
+    (global.fetch as Mock).mockResolvedValue({
+      ok: true,
+      headers: new Headers({ "content-type": "application/json" }),
+      json: vi.fn().mockResolvedValue({ success: true, data: [] }),
+    });
 
     const { getCompanyPaymentAccounts } = await import("@/actions/companies");
     const result = await getCompanyPaymentAccounts("CMP-BSM-001");
@@ -52,10 +56,11 @@ describe("companies actions", () => {
       auth: vi.fn().mockResolvedValue({ user: { apiToken: "token" } }),
     }));
 
-    vi.mocked(global.fetch).mockResolvedValue(new Response(
-      JSON.stringify({ success: true, data: { code: "CMP-BSM-001" } }),
-      { status: 200, headers: { "content-type": "application/json" } }
-    ));
+    (global.fetch as Mock).mockResolvedValue({
+      ok: true,
+      headers: new Headers({ "content-type": "application/json" }),
+      json: vi.fn().mockResolvedValue({ success: true, data: { code: "CMP-BSM-001" } }),
+    });
 
     const { updateCompanyBranding } = await import("@/actions/companies");
     const result = await updateCompanyBranding("CMP-BSM-001", { primaryColor: "#ff0000" });
@@ -71,10 +76,11 @@ describe("companies actions", () => {
       auth: vi.fn().mockResolvedValue({ user: { apiToken: "token" } }),
     }));
 
-    vi.mocked(global.fetch).mockResolvedValue(new Response(
-      JSON.stringify({ success: true, data: { ok: true, message: "OK", latencyMs: 100 } }),
-      { status: 200, headers: { "content-type": "application/json" } }
-    ));
+    (global.fetch as Mock).mockResolvedValue({
+      ok: true,
+      headers: new Headers({ "content-type": "application/json" }),
+      json: vi.fn().mockResolvedValue({ success: true, data: { ok: true, message: "OK", latencyMs: 100 } }),
+    });
 
     const { testCompanyPaymentAccount } = await import("@/actions/companies");
     const result = await testCompanyPaymentAccount("CMP-BSM-001");

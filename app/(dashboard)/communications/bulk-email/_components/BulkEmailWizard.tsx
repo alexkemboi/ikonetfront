@@ -1,35 +1,47 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
+import { useFormik } from "formik";
+import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import {
- Select,
- SelectContent,
- SelectItem,
- SelectTrigger,
- SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import {
- Users,
- UserX,
- Mail,
- Eye,
- Send,
- CheckCircle2,
- ChevronRight,
- ChevronLeft,
- FileText,
- Sparkles,
- AlertCircle,
- MessageSquare,
+  Users,
+  UserCog,
+  Mail,
+  MessageSquare,
+  Eye,
+  Send,
+  Search,
+  CheckCircle2,
+  ChevronRight,
+  ChevronLeft,
+  FileText,
+  Sparkles,
+  AlertCircle,
+  Loader2,
 } from "lucide-react";
-import type { CampaignRecipient, EmailTemplate } from "../page";
+import { cn } from "@/lib/utils";
 import { sendBulkEmailAction } from "@/actions/communications";
-import { Checkbox } from "@/components/ui/checkbox";
+import type { CampaignRecipient, EmailTemplate } from "../page";
+import {
+  bulkEmailSchema,
+  BULK_EMAIL_INITIAL_VALUES,
+  type BulkEmailValues,
+  type NotificationChannel,
+  type AudienceSource,
+} from "@/lib/validation/bulk-email";
 
 interface Props {
  customers: CampaignRecipient[];
@@ -41,432 +53,683 @@ interface Props {
  recipientRequestId?: string;
 }
 
+type Recipient = {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  recipientType: "CUSTOMER" | "SYSTEM_USER";
+};
+
+function campaignToRecipient(c: CampaignRecipient): Recipient {
+  return {
+    id: String(c.id),
+    name: c.name,
+    email: c.email ?? "",
+    phone: c.phoneNumber ?? "",
+    recipientType: c.recipientType,
+  };
+}
+
+function hasContactForChannel(recipient: Recipient, channel: NotificationChannel): boolean {
+  return channel === "EMAIL" ? !!recipient.email : !!recipient.phone;
+}
+
 const STEPS = [
- { id: 1, label: "Audience", icon: Users },
- { id: 2, label: "Compose", icon: Mail },
- { id: 3, label: "Preview", icon: Eye },
- { id: 4, label: "Send", icon: Send },
+  { id: 1, label: "Audience", icon: Users },
+  { id: 2, label: "Compose", icon: Mail },
+  { id: 3, label: "Preview", icon: Eye },
+  { id: 4, label: "Send", icon: Send },
+];
+
+const CHANNEL_OPTIONS: { id: NotificationChannel; label: string; icon: React.ElementType }[] = [
+  { id: "EMAIL", label: "Email", icon: Mail },
+  { id: "SMS", label: "SMS", icon: MessageSquare },
+];
+
+const SOURCE_OPTIONS: { id: AudienceSource; label: string; icon: React.ElementType }[] = [
+  { id: "customers", label: "Customers", icon: Users },
+  { id: "users", label: "System Users", icon: UserCog },
 ];
 
 function StepIndicator({ current }: { current: number }) {
- return (
- <div className="flex items-center justify-center gap-0">
- {STEPS.map((step, i) => {
- const done = current > step.id;
- const active = current === step.id;
- const Icon = step.icon;
- return (
- <div key={step.id} className="flex items-center">
- <div className="flex flex-col items-center gap-1.5">
- <div
- className={`w-9 h-9 rounded-full flex items-center justify-center border-2 transition-all ${
- done
- ? "bg-primary border-primary text-primary-foreground"
- : active
- ? "border-primary bg-primary/10 text-primary"
- : "border-border bg-card text-muted-foreground"
- }`}
- >
- {done ? (
- <CheckCircle2 className="w-4 h-4" />
- ) : (
- <Icon className="w-4 h-4" />
- )}
- </div>
- <span
- className={`text-[11px] font-medium whitespace-nowrap ${
- active ? "text-primary" : done ? "text-foreground" : "text-muted-foreground"
- }`}
- >
- {step.label}
- </span>
- </div>
- {i < STEPS.length - 1 && (
- <div
- className={`w-16 h-0.5 mb-4 mx-1 transition-colors ${
- current > step.id ? "bg-primary" : "bg-border"
- }`}
- />
- )}
- </div>
- );
- })}
- </div>
- );
+  return (
+    <div className="flex items-center justify-center gap-0">
+      {STEPS.map((step, i) => {
+        const done = current > step.id;
+        const active = current === step.id;
+        const Icon = step.icon;
+        return (
+          <div key={step.id} className="flex items-center">
+            <div className="flex flex-col items-center gap-1.5">
+              <div
+                className={`w-9 h-9 rounded-full flex items-center justify-center border-2 transition-all ${
+                  done
+                    ? "bg-primary border-primary text-primary-foreground"
+                    : active
+                    ? "border-primary bg-primary/10 text-primary"
+                    : "border-secondary bg-secondary text-secondary-foreground"
+                }`}
+              >
+                {done ? (
+                  <CheckCircle2 className="w-4 h-4" />
+                ) : (
+                  <Icon className="w-4 h-4" />
+                )}
+              </div>
+              <span
+                className={`text-[11px] font-medium whitespace-nowrap ${
+                  active ? "text-primary" : done ? "text-foreground" : "text-muted-foreground"
+                }`}
+              >
+                {step.label}
+              </span>
+            </div>
+            {i < STEPS.length - 1 && (
+              <div
+                className={`w-16 h-0.5 mb-4 mx-1 transition-colors ${
+                  current > step.id ? "bg-primary" : "bg-secondary"
+                }`}
+              />
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function ToggleGroup<T extends string>({
+  options,
+  value,
+  onChange,
+  size = "default",
+}: {
+  options: { id: T; label: string; icon: React.ElementType }[];
+  value: T;
+  onChange: (id: T) => void;
+  size?: "default" | "sm";
+}) {
+  return (
+    <div className="flex gap-2">
+      {options.map((opt) => {
+        const Icon = opt.icon;
+        const selected = value === opt.id;
+        return (
+          <button
+            key={opt.id}
+            type="button"
+            onClick={() => onChange(opt.id)}
+            className={cn(
+              "flex items-center gap-1.5 rounded-lg border font-medium transition-all",
+              size === "sm" ? "px-3 py-1.5 text-xs" : "px-4 py-2.5 text-sm",
+              selected
+                ? "border-primary bg-primary/5 text-primary"
+                : "border-border text-muted-foreground hover:bg-muted/50"
+            )}
+          >
+            <Icon className={size === "sm" ? "w-3.5 h-3.5" : "w-4 h-4"} />
+            {opt.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function RecipientRow({
+  recipient,
+  channel,
+  selected,
+  onToggle,
+}: {
+  recipient: Recipient;
+  channel: NotificationChannel;
+  selected: boolean;
+  onToggle: () => void;
+}) {
+  const contact = channel === "EMAIL" ? recipient.email : recipient.phone;
+  const reachable = !!contact;
+  return (
+    <label
+      className={cn(
+        "flex items-center gap-3 px-4 py-2.5 transition-colors",
+        reachable ? "cursor-pointer hover:bg-muted/40" : "opacity-50 cursor-not-allowed"
+      )}
+    >
+      <Checkbox checked={selected} disabled={!reachable} onCheckedChange={onToggle} />
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium text-foreground truncate">{recipient.name}</p>
+        <p className="text-xs text-muted-foreground truncate">
+          {reachable ? contact : `No ${channel === "EMAIL" ? "email" : "phone number"} on file`}
+        </p>
+      </div>
+    </label>
+  );
 }
 
 function EmailPreview({
- subject,
- body,
- recipientCount,
- recipientLabel,
+  subject,
+  body,
+  recipientCount,
+  audienceLabel,
 }: {
- subject: string;
- body: string;
- recipientCount: number;
- recipientLabel: string;
+  subject: string;
+  body: string;
+  recipientCount: number;
+  audienceLabel: string;
 }) {
- return (
- <div className="space-y-4">
- <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/40 border border-border">
- <div className="flex items-center gap-2 text-sm">
- <span className="text-muted-foreground">To:</span>
- <Badge variant="outline" className="text-xs">
- {recipientLabel}
- </Badge>
- <span className="text-muted-foreground text-xs">
- ({recipientCount.toLocaleString()} recipients)
- </span>
- </div>
- </div>
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/40 border border-border">
+        <div className="flex items-center gap-2 text-sm">
+          <span className="text-muted-foreground">To:</span>
+          <Badge variant="outline" className="text-xs">
+            {audienceLabel}
+          </Badge>
+          <span className="text-muted-foreground text-xs">
+            ({recipientCount.toLocaleString()} recipients)
+          </span>
+        </div>
+      </div>
 
- <div className="rounded-xl border border-border overflow-hidden bg-white">
- {/* Email "chrome" */}
- <div className="px-5 py-4 border-b border-border bg-muted/30">
- <p className="text-xs text-muted-foreground">Subject</p>
- <p className="text-sm font-semibold text-foreground mt-0.5">
- {subject || <em className="text-muted-foreground font-normal">(no subject)</em>}
- </p>
- </div>
- <div className="px-5 py-4">
- <div className="flex items-center gap-2 mb-4 pb-3 border-b border-border">
- <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-xs font-bold text-primary-foreground">
- B
- </div>
- <div>
- <p className="text-xs font-medium text-foreground">Beesmart Internet</p>
- <p className="text-[11px] text-muted-foreground">noreply@beesmart.co.ke</p>
- </div>
- </div>
- <pre className="text-sm text-foreground font-sans whitespace-pre-wrap leading-relaxed">
- {body || <span className="text-muted-foreground italic">(no message body)</span>}
- </pre>
- </div>
- </div>
+      <div className="rounded-xl border border-border overflow-hidden bg-white">
+        <div className="px-5 py-4 border-b border-border bg-muted/30">
+          <p className="text-xs text-muted-foreground">Subject</p>
+          <p className="text-sm font-semibold text-foreground mt-0.5">
+            {subject || <em className="text-muted-foreground font-normal">(no subject)</em>}
+          </p>
+        </div>
+        <div className="px-5 py-4">
+          <div className="flex items-center gap-2 mb-4 pb-3 border-b border-border">
+            <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-xs font-bold text-primary-foreground">
+              B
+            </div>
+            <div>
+              <p className="text-xs font-medium text-foreground">Beesmart Internet</p>
+              <p className="text-[11px] text-muted-foreground">noreply@beesmart.co.ke</p>
+            </div>
+          </div>
+          <pre className="text-sm text-foreground font-sans whitespace-pre-wrap leading-relaxed">
+            {body || <span className="text-muted-foreground italic">(no message body)</span>}
+          </pre>
+        </div>
+      </div>
 
-      <div className="flex items-start gap-2 p-3 rounded-lg bg-[oklch(0.97_0.04_65)] border border-[oklch(0.86_0.1_65)]">
-        <AlertCircle className="w-4 h-4 text-[oklch(0.65_0.18_65)] shrink-0 mt-0.5" />
-        <p className="text-xs text-[oklch(0.5_0.18_65)]">
-          Variables like <code className="font-mono bg-[oklch(0.93_0.04_65)] px-1 rounded">{"{{customer_name}}"}</code> will be replaced with each recipient&apos;s actual details before sending.
+      <div className="flex items-start gap-2 p-3 rounded-lg bg-warning/10 border border-warning/30">
+        <AlertCircle className="w-4 h-4 text-warning shrink-0 mt-0.5" />
+        <p className="text-xs text-warning">
+          Variables like <code className="font-mono bg-warning/15 px-1 rounded">{"{{customer_name}}"}</code> will be replaced with each recipient&apos;s actual details before sending.
         </p>
       </div>
     </div>
   );
 }
 
-export default function BulkEmailWizard({ customers, systemUsers, templates, templateNotice, templateRequestId, recipientError, recipientRequestId }: Props) {
- const [step, setStep] = useState(1);
- const [recipientType, setRecipientType] = useState<CampaignRecipient["recipientType"]>("CUSTOMER");
- const [recipientSearch, setRecipientSearch] = useState("");
- const [selectedRecipientKeys, setSelectedRecipientKeys] = useState<Set<string>>(new Set());
- const [channel, setChannel] = useState<"EMAIL" | "SMS">("EMAIL");
- const [selectedTemplateId, setSelectedTemplateId] = useState("blank");
- const [subject, setSubject] = useState("");
- const [body, setBody] = useState("");
- const [sent, setSent] = useState(false);
- const [sendError, setSendError] = useState<string | null>(null);
- const [sendRequestId, setSendRequestId] = useState<string | undefined>();
+function SmsPreview({ body, recipientCount, audienceLabel }: { body: string; recipientCount: number; audienceLabel: string }) {
+  const segments = body.length === 0 ? 0 : Math.ceil(body.length / 160);
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/40 border border-border">
+        <div className="flex items-center gap-2 text-sm">
+          <span className="text-muted-foreground">To:</span>
+          <Badge variant="outline" className="text-xs">
+            {audienceLabel}
+          </Badge>
+          <span className="text-muted-foreground text-xs">
+            ({recipientCount.toLocaleString()} recipients)
+          </span>
+        </div>
+      </div>
 
- const recipients = recipientType === "CUSTOMER" ? customers : systemUsers;
- const visibleRecipients = useMemo(() => {
-   const query = recipientSearch.trim().toLowerCase();
-  return recipients.filter((recipient) => !query || recipient.name.toLowerCase().includes(query) || (recipient.email ?? "").toLowerCase().includes(query));
- }, [recipients, recipientSearch]);
- const selectedRecipients = useMemo(() => [...customers, ...systemUsers].filter((recipient) => selectedRecipientKeys.has(`${recipient.recipientType}:${recipient.id}`)), [customers, systemUsers, selectedRecipientKeys]);
- const selectedRecipientLabel = `${selectedRecipients.length} selected recipients`;
- const selectableVisible = visibleRecipients.filter((recipient) => recipient.selectable);
- const allVisibleSelected = selectableVisible.length > 0 && selectableVisible.every((recipient) => selectedRecipientKeys.has(`${recipient.recipientType}:${recipient.id}`));
+      <div className="rounded-xl border border-border bg-white p-5">
+        <div className="max-w-xs ml-auto rounded-2xl rounded-tr-sm bg-primary text-primary-foreground px-4 py-2.5 text-sm whitespace-pre-wrap leading-relaxed">
+          {body || <span className="italic opacity-70">(no message body)</span>}
+        </div>
+        <p className="text-[11px] text-muted-foreground text-right mt-2">
+          {body.length} characters · {segments} SMS segment{segments === 1 ? "" : "s"}
+        </p>
+      </div>
 
- function toggleRecipient(recipient: CampaignRecipient) {
-   if (!recipient.selectable) return;
-   const key = `${recipient.recipientType}:${recipient.id}`;
-   setSelectedRecipientKeys((current) => {
-     const next = new Set(current);
-     if (next.has(key)) next.delete(key);
-     else next.add(key);
-     return next;
-   });
- }
+      <div className="flex items-start gap-2 p-3 rounded-lg bg-warning/10 border border-warning/30">
+        <AlertCircle className="w-4 h-4 text-warning shrink-0 mt-0.5" />
+        <p className="text-xs text-warning">
+          Variables like <code className="font-mono bg-warning/15 px-1 rounded">{"{{customer_name}}"}</code> will be replaced with each recipient&apos;s actual details before sending.
+        </p>
+      </div>
+    </div>
+  );
+}
 
- function toggleVisibleRecipients() {
-   setSelectedRecipientKeys((current) => {
-     const next = new Set(current);
-    if (allVisibleSelected) selectableVisible.forEach((recipient) => next.delete(`${recipient.recipientType}:${recipient.id}`));
-    else selectableVisible.forEach((recipient) => next.add(`${recipient.recipientType}:${recipient.id}`));
-     return next;
-   });
- }
+export default function BulkEmailWizard({
+  templates,
+  customers,
+  systemUsers,
+  templateNotice,
+  templateRequestId,
+  recipientError,
+  recipientRequestId,
+}: Props) {
+  const [step, setStep] = useState(1);
+  const [sent, setSent] = useState(false);
+  const [search, setSearch] = useState("");
+  const [sendError, setSendError] = useState<string | null>(null);
+  const [sendRequestId, setSendRequestId] = useState<string | null>(null);
 
- function handleTemplateChange(templateId: string) {
- setSelectedTemplateId(templateId);
- const tpl = templates.find((t) => t.id === templateId);
- if (tpl && templateId !== "blank") {
- setSubject(tpl.subject);
- setBody(tpl.body);
- } else if (templateId === "blank") {
- setSubject("");
- setBody("");
- }
- }
+  // Declared before useFormik so onSubmit can resolve the selected ids to the
+  // backend payload shape ({ recipientType, recipientId: number }).
+  const customerRecipients = customers.map(campaignToRecipient);
+  const userRecipients = systemUsers.map(campaignToRecipient);
 
- async function handleSend() {
- if (selectedRecipients.length === 0 || recipientError || channel !== "EMAIL") return;
- setSendError(null);
- setSendRequestId(undefined);
- const result = await sendBulkEmailAction({
- recipients: selectedRecipients.map(({ recipientType: type, id }) => ({ recipientType: type, recipientId: id })),
- templateId: selectedTemplateId,
- subject,
- body: body,
- });
- if (result.success) {
- setSent(true);
- } else {
- setSendError(result.message || "Failed to send campaign.");
- setSendRequestId(result.requestId);
- }
- }
+  const formik = useFormik<BulkEmailValues>({
+    initialValues: BULK_EMAIL_INITIAL_VALUES,
+    validationSchema: bulkEmailSchema,
+    onSubmit: async (values, helpers) => {
+      const recipients = [...customerRecipients, ...userRecipients]
+        .filter((r) => values.recipientIds.includes(r.id))
+        .map((r) => ({ recipientType: r.recipientType, recipientId: Number(r.id) }))
+        .filter((r) => Number.isFinite(r.recipientId));
 
- if (sent) {
- return (
- <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
- <div className="w-20 h-20 rounded-full bg-[oklch(0.97_0.03_155)] flex items-center justify-center">
- <CheckCircle2 className="w-10 h-10 text-[oklch(0.52_0.16_155)]" />
- </div>
- <h2 className="text-2xl font-normal text-foreground">Campaign Sent!</h2>
- <p className="text-sm text-muted-foreground text-center max-w-xs">
- Your email has been queued for delivery to <strong>{selectedRecipients.length.toLocaleString()} recipients</strong>.
- </p>
- <Button
- onClick={() => {
- setSent(false);
- setStep(1);
- setSelectedRecipientKeys(new Set());
- setSelectedTemplateId("blank");
- setSubject("");
- setBody("");
- }}
- >
- Send Another Campaign
- </Button>
- </div>
- );
- }
+      setSendError(null);
+      setSendRequestId(null);
 
- return (
- <div className="max-w-3xl mx-auto space-y-8">
- {/* Header */}
- <div>
- <h1 className="text-2xl font-normal text-foreground">Bulk Email</h1>
- <p className="text-sm text-muted-foreground mt-0.5">
- Reach customers at scale — renewals, promos, and notices in a few clicks
- </p>
- </div>
+      const result = await sendBulkEmailAction({
+        recipients,
+        templateId: values.templateId,
+        subject: values.subject,
+        body: values.body,
+      });
+      if (result.success) {
+        setSent(true);
+      } else {
+        setSendError(result.message);
+        setSendRequestId(result.requestId ?? null);
+        toast.error("Failed to send campaign", { description: result.message });
+      }
+      helpers.setSubmitting(false);
+    },
+  });
 
- {/* Step indicator */}
- <StepIndicator current={step} />
+  const { values, errors, touched } = formik;
+
+  // `source` only filters which list is shown; a campaign may target customers
+  // AND system users at once, so selections are tracked across both pools and
+  // the send payload resolves ids against the union.
+  const allRecipients = [...customerRecipients, ...userRecipients];
+  const sourceRecipients = values.source === "customers" ? customerRecipients : userRecipients;
+  const selectedRecipients = allRecipients.filter((r) => values.recipientIds.includes(r.id));
+  const audienceLabel = values.source === "customers" ? "Customers" : "System Users";
+
+  const visibleRecipients = sourceRecipients.filter(
+    (r) => !search.trim() || r.name.toLowerCase().includes(search.trim().toLowerCase())
+  );
+  const reachableVisibleIds = visibleRecipients
+    .filter((r) => hasContactForChannel(r, values.channel))
+    .map((r) => r.id);
+  const allVisibleSelected =
+    reachableVisibleIds.length > 0 && reachableVisibleIds.every((id) => values.recipientIds.includes(id));
+
+  const step1Valid = values.recipientIds.length > 0;
+  const step2Valid =
+    values.channel === "EMAIL"
+      ? !!values.subject.trim() && !!values.body.trim()
+      : !!values.body.trim();
+
+  function applyTemplate(templateId: string) {
+    const tpl = templates.find((t) => t.id === templateId);
+    formik.setFieldValue("templateId", templateId);
+    formik.setFieldValue("subject", tpl?.subject ?? "");
+    formik.setFieldValue("body", tpl?.body ?? "");
+  }
+
+  function handleChannelChange(channel: NotificationChannel) {
+    formik.setFieldValue("channel", channel);
+    const stillReachable = sourceRecipients
+      .filter((r) => hasContactForChannel(r, channel))
+      .map((r) => r.id);
+    formik.setFieldValue(
+      "recipientIds",
+      values.recipientIds.filter((id) => stillReachable.includes(id))
+    );
+  }
+
+  function handleSourceChange(source: AudienceSource) {
+    // Switching the list must not drop recipients already picked from the other.
+    formik.setFieldValue("source", source);
+    setSearch("");
+  }
+
+  function toggleRecipient(id: string) {
+    const next = values.recipientIds.includes(id)
+      ? values.recipientIds.filter((r) => r !== id)
+      : [...values.recipientIds, id];
+    formik.setFieldValue("recipientIds", next);
+  }
+
+  function toggleSelectAllVisible() {
+    formik.setFieldValue(
+      "recipientIds",
+      allVisibleSelected
+        ? values.recipientIds.filter((id) => !reachableVisibleIds.includes(id))
+        : Array.from(new Set([...values.recipientIds, ...reachableVisibleIds]))
+    );
+  }
+
+  function goBack() {
+    setStep((s) => s - 1);
+  }
+
+  function goNext() {
+    if (step === 1 && !step1Valid) {
+      formik.setFieldTouched("recipientIds", true);
+      return;
+    }
+    if (step === 2 && !step2Valid) {
+      formik.setFieldTouched("subject", true);
+      formik.setFieldTouched("body", true);
+      return;
+    }
+    setStep((s) => s + 1);
+  }
+
+  function startNewCampaign() {
+    setSent(false);
+    setStep(1);
+    setSearch("");
+    formik.resetForm();
+  }
+
+  if (sent) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
+        <div className="w-20 h-20 rounded-full bg-success/10 flex items-center justify-center">
+          <CheckCircle2 className="w-10 h-10 text-success" />
+        </div>
+        <h2 className="text-2xl font-normal text-foreground">Campaign Sent!</h2>
+        <p className="text-sm text-muted-foreground text-center max-w-xs">
+          Your {values.channel === "EMAIL" ? "email" : "SMS"} has been queued for delivery to{" "}
+          <strong>{values.recipientIds.length.toLocaleString()} recipients</strong> in{" "}
+          <strong>{audienceLabel}</strong>.
+        </p>
+        <Button onClick={startNewCampaign}>Send Another Campaign</Button>
+      </div>
+    );
+  }
+
+  return (
+    <form onSubmit={formik.handleSubmit} className="w-full max-w-5xl mx-auto space-y-8">
+      {/* Header */}
+      <div>
+        <h1 className="text-2xl font-normal text-foreground">Bulk Email</h1>
+        <p className="text-sm text-muted-foreground mt-0.5">
+          Reach customers at scale — renewals, promos, and notices in a few clicks
+        </p>
+      </div>
+
+      {/* Step indicator */}
+      <StepIndicator current={step} />
 
  {recipientError && <p role="alert" className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm">Customer recipients unavailable: {recipientError}{recipientRequestId ? ` · Ref: ${recipientRequestId}` : ""}</p>}
  {templateNotice && step === 2 && <p role="status" className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">Using built-in templates. {templateNotice}{templateRequestId ? ` · Ref: ${templateRequestId}` : ""}</p>}
  {sendError && <p role="alert" className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm">{sendError}{sendRequestId ? ` · Ref: ${sendRequestId}` : ""}</p>}
 
- {/* Step content */}
- <Card className="border-border shadow-sm">
- <CardContent className="p-6">
- {/* ── Step 1: Audience ── */}
- {step === 1 && (
- <div className="space-y-4">
- <div>
- <h2 className="text-base font-normal text-foreground">
- Who will receive this email?
- </h2>
- <p className="text-xs text-muted-foreground mt-0.5">Choose a channel and select recipients individually. Only records with an email address can be selected.</p>
- </div>
- <div className="flex flex-wrap gap-2" role="group" aria-label="Delivery channel">
- <Button type="button" variant={channel === "EMAIL" ? "default" : "outline"} onClick={() => setChannel("EMAIL")} className="gap-1.5"><Mail className="h-4 w-4"/>Email</Button>
- <Button type="button" variant="outline" disabled title="SMS campaign delivery is not available in the configured backend API"><MessageSquare className="h-4 w-4"/>SMS unavailable</Button>
- </div>
- <div className="flex flex-wrap items-center justify-between gap-3">
- <div className="flex gap-2" role="group" aria-label="Recipient type">
- <Button type="button" size="sm" variant={recipientType === "CUSTOMER" ? "default" : "outline"} onClick={() => setRecipientType("CUSTOMER")} className="gap-1.5"><Users className="h-3.5 w-3.5"/>Customers</Button>
- <Button type="button" size="sm" variant={recipientType === "SYSTEM_USER" ? "default" : "outline"} onClick={() => setRecipientType("SYSTEM_USER")} className="gap-1.5"><UserX className="h-3.5 w-3.5"/>System Users</Button>
- </div>
- <Input aria-label="Search recipients" placeholder="Search by name" value={recipientSearch} onChange={(event) => setRecipientSearch(event.target.value)} className="h-8 w-full sm:w-56" />
- </div>
- <div className="overflow-hidden rounded-lg border border-border">
- <div className="flex items-center justify-between border-b border-border bg-muted/40 px-4 py-2">
- <label className="flex cursor-pointer items-center gap-2 text-xs font-medium"><Checkbox checked={allVisibleSelected} onCheckedChange={toggleVisibleRecipients} />Select all visible</label>
- <span className="text-xs tabular-nums text-muted-foreground">{selectedRecipients.length} selected</span>
- </div>
- <div className="max-h-72 divide-y divide-border overflow-y-auto">
- {visibleRecipients.map((recipient) => {
-   const key = `${recipient.recipientType}:${recipient.id}`;
-  return <label key={key} title={!recipient.selectable ? "Cannot select this recipient: no email address on file." : undefined} className={`flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-muted/40 ${recipient.selectable ? "cursor-pointer" : "cursor-not-allowed opacity-60"}`}>
-   <Checkbox checked={selectedRecipientKeys.has(key)} disabled={!recipient.selectable} onCheckedChange={() => toggleRecipient(recipient)} />
-    <span className="min-w-0 flex-1"><span className="block truncate text-sm font-medium">{recipient.name}</span><span className="block truncate text-xs text-muted-foreground">{recipient.email ?? "No email on file"}</span></span>
-   </label>;
- })}
- {visibleRecipients.length === 0 && <p className="px-4 py-8 text-center text-sm text-muted-foreground">No recipients with email addresses match this search.</p>}
- </div>
- </div>
- </div>
- )}
+      {/* Step content */}
+      <Card className="border-border shadow-sm">
+        <CardContent className="p-8">
+          {/* ── Step 1: Audience ── */}
+          {step === 1 && (
+            <div className="space-y-6">
+              <div>
+                <h2 className="text-base font-normal text-foreground">How should we reach them?</h2>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Choose a channel, then select recipients individually from customers or system users.
+                </p>
+              </div>
 
- {/* ── Step 2: Compose ── */}
- {step === 2 && (
- <div className="space-y-5">
- <div>
- <h2 className="text-base font-normal text-foreground">Compose your email</h2>
- <p className="text-xs text-muted-foreground mt-0.5">
- Start from a template or write your own. Use{" "}
- <code className="font-mono bg-muted px-1 rounded text-[11px]">{"{{customer_name}}"}</code>{" "}
- as a placeholder — it gets replaced automatically.
- </p>
- </div>
+              <ToggleGroup options={CHANNEL_OPTIONS} value={values.channel} onChange={handleChannelChange} />
 
- {/* Template picker */}
- <div className="flex items-center gap-3">
- <Sparkles className="w-4 h-4 text-muted-foreground shrink-0" />
- <div className="flex-1">
- <Select value={selectedTemplateId} onValueChange={handleTemplateChange}>
- <SelectTrigger className="h-9">
- <SelectValue placeholder="Choose a template" />
- </SelectTrigger>
- <SelectContent>
-                 <SelectItem value="blank">Write from scratch</SelectItem>
+              <Separator />
+
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <ToggleGroup options={SOURCE_OPTIONS} value={values.source} onChange={handleSourceChange} size="sm" />
+                <div className="relative w-full sm:w-56">
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                  <Input
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Search by name"
+                    className="h-8 pl-8 text-xs"
+                  />
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-border overflow-hidden">
+                <div className="flex items-center justify-between px-4 py-2 bg-muted/40 border-b border-border">
+                  <label className="flex items-center gap-2 text-xs font-medium text-foreground cursor-pointer">
+                    <Checkbox
+                      checked={allVisibleSelected}
+                      disabled={reachableVisibleIds.length === 0}
+                      onCheckedChange={toggleSelectAllVisible}
+                    />
+                    Select all visible
+                  </label>
+                  <span className="text-xs text-muted-foreground tabular-nums">
+                    {values.recipientIds.length.toLocaleString()} selected
+                  </span>
+                </div>
+                <div className="max-h-72 overflow-y-auto divide-y divide-border">
+                  {visibleRecipients.length === 0 ? (
+                    <p className="px-4 py-6 text-xs text-muted-foreground text-center">
+                      No {audienceLabel.toLowerCase()} found.
+                    </p>
+                  ) : (
+                    visibleRecipients.map((r) => (
+                      <RecipientRow
+                        key={r.id}
+                        recipient={r}
+                        channel={values.channel}
+                        selected={values.recipientIds.includes(r.id)}
+                        onToggle={() => toggleRecipient(r.id)}
+                      />
+                    ))
+                  )}
+                </div>
+              </div>
+
+              {touched.recipientIds && errors.recipientIds && (
+                <p className="text-xs text-danger">{errors.recipientIds as string}</p>
+              )}
+            </div>
+          )}
+
+          {/* ── Step 2: Compose ── */}
+          {step === 2 && (
+            <div className="space-y-5">
+              <div>
+                <h2 className="text-base font-normal text-foreground">
+                  Compose your {values.channel === "EMAIL" ? "email" : "SMS"}
+                </h2>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Start from a template or write your own. Use{" "}
+                  <code className="font-mono bg-muted px-1 rounded text-[11px]">{"{{customer_name}}"}</code>{" "}
+                  as a placeholder — it gets replaced automatically.
+                </p>
+              </div>
+
+              {/* Template picker */}
+              <div className="flex items-center gap-3">
+                <Sparkles className="w-4 h-4 text-muted-foreground shrink-0" />
+                <div className="flex-1">
+                  <Select value={values.templateId} onValueChange={applyTemplate}>
+                    <SelectTrigger className="h-9">
+                      <SelectValue placeholder="Choose a template" />
+                    </SelectTrigger>
+                    <SelectContent>
+                                      <SelectItem value="blank">Write from scratch</SelectItem>
  {templates.map((t) => (
- <SelectItem key={t.id} value={t.id}>
- {t.name}
- </SelectItem>
- ))}
- </SelectContent>
- </Select>
- </div>
- </div>
+                        <SelectItem key={t.id} value={t.id}>
+                          {t.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
 
- <Separator />
+              <Separator />
 
- {/* Subject */}
- <div className="space-y-1.5">
- <label className="text-xs font-medium text-foreground">
- Subject line
- </label>
- <Input
- placeholder="e.g. Your subscription is expiring soon"
- value={subject}
- onChange={(e) => setSubject(e.target.value)}
- className="h-10"
- />
- </div>
+              {/* Subject — email only */}
+              {values.channel === "EMAIL" && (
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-foreground">
+                    Subject line
+                  </label>
+                  <Input
+                    placeholder="e.g. Your subscription is expiring soon"
+                    className={cn("h-10", touched.subject && errors.subject && "border-danger")}
+                    {...formik.getFieldProps("subject")}
+                  />
+                  {touched.subject && errors.subject && (
+                    <p className="text-xs text-danger">{errors.subject}</p>
+                  )}
+                </div>
+              )}
 
- {/* Body */}
- <div className="space-y-1.5">
- <label className="text-xs font-medium text-foreground flex items-center gap-1.5">
- <FileText className="w-3.5 h-3.5 text-muted-foreground" />
- Message body
- </label>
- <textarea
- rows={12}
- placeholder="Write your message here..."
- value={body}
- onChange={(e) => setBody(e.target.value)}
- className="w-full rounded-lg border border-input bg-background px-3 py-2.5 text-sm font-sans tabular-nums resize-none focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary placeholder:text-muted-foreground"
- />
- <p className="text-[11px] text-muted-foreground text-right">
- {body.length} characters
- </p>
- </div>
- </div>
- )}
+              {/* Body */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-foreground flex items-center gap-1.5">
+                  <FileText className="w-3.5 h-3.5 text-muted-foreground" />
+                  Message body
+                </label>
+                <textarea
+                  rows={values.channel === "EMAIL" ? 12 : 6}
+                  placeholder="Write your message here..."
+                  className={cn(
+                    "w-full rounded-lg border border-input bg-background px-3 py-2.5 text-sm font-sans tabular-nums resize-none focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary placeholder:text-muted-foreground",
+                    touched.body && errors.body && "border-danger"
+                  )}
+                  {...formik.getFieldProps("body")}
+                />
+                <div className="flex items-center justify-between">
+                  {touched.body && errors.body ? (
+                    <p className="text-xs text-danger">{errors.body}</p>
+                  ) : (
+                    <span />
+                  )}
+                  <p className="text-[11px] text-muted-foreground text-right">
+                    {values.channel === "SMS"
+                      ? `${values.body.length} characters · ${values.body.length === 0 ? 0 : Math.ceil(values.body.length / 160)} SMS segment${Math.ceil(values.body.length / 160) === 1 ? "" : "s"}`
+                      : `${values.body.length} characters`}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
 
- {/* ── Step 3: Preview ── */}
- {step === 3 && (
- <div className="space-y-4">
- <div>
- <h2 className="text-base font-normal text-foreground">Review before sending</h2>
- <p className="text-xs text-muted-foreground mt-0.5">
- This is how your email will appear. Check subject, body, and recipient count carefully.
- </p>
- </div>
- <EmailPreview
- subject={subject}
- body={body}
- recipientCount={selectedRecipients.length}
- recipientLabel={selectedRecipientLabel}
- />
- </div>
- )}
+          {/* ── Step 3: Preview ── */}
+          {step === 3 && (
+            <div className="space-y-4">
+              <div>
+                <h2 className="text-base font-normal text-foreground">Review before sending</h2>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  This is how your {values.channel === "EMAIL" ? "email" : "SMS"} will appear. Check the message and recipient count carefully.
+                </p>
+              </div>
+              {values.channel === "EMAIL" ? (
+                <EmailPreview
+                  subject={values.subject}
+                  body={values.body}
+                  recipientCount={selectedRecipients.length}
+                  audienceLabel={audienceLabel}
+                />
+              ) : (
+                <SmsPreview
+                  body={values.body}
+                  recipientCount={selectedRecipients.length}
+                  audienceLabel={audienceLabel}
+                />
+              )}
+            </div>
+          )}
 
- {/* ── Step 4: Confirm ── */}
- {step === 4 && (
- <div className="space-y-6">
- <div>
- <h2 className="text-base font-normal text-foreground">Ready to send?</h2>
- <p className="text-xs text-muted-foreground mt-0.5">
- Double-check the summary below. Once sent, this cannot be undone.
- </p>
- </div>
+          {/* ── Step 4: Confirm ── */}
+          {step === 4 && (
+            <div className="space-y-6">
+              <div>
+                <h2 className="text-base font-normal text-foreground">Ready to send?</h2>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Double-check the summary below. Once sent, this cannot be undone.
+                </p>
+              </div>
 
- <div className="space-y-3">
- {[
- { label: "Recipients", value: `${selectedRecipients.length.toLocaleString()} selected` },
- { label: "Channel", value: channel === "EMAIL" ? "Email" : "SMS" },
- { label: "Subject", value: subject || "(no subject)" },
- { label: "Body length", value: `${body.length} characters` },
- { label: "Template", value: templates.find((t) => t.id === selectedTemplateId)?.name ?? "Custom" },
- ].map(({ label, value }) => (
- <div key={label} className="flex items-start justify-between gap-4 py-2.5 border-b border-border last:border-0">
- <span className="text-xs text-muted-foreground w-28 shrink-0">{label}</span>
- <span className="text-sm text-foreground font-medium text-right">{value}</span>
- </div>
- ))}
- </div>
+              <div className="space-y-3">
+                {[
+                  { label: "Channel", value: values.channel === "EMAIL" ? "Email" : "SMS" },
+                  { label: "Audience", value: `${values.recipientIds.length.toLocaleString()} ${audienceLabel}` },
+                  ...(values.channel === "EMAIL"
+                    ? [{ label: "Subject", value: values.subject || "(no subject)" }]
+                    : []),
+                  { label: "Body length", value: `${values.body.length} characters` },
+                  { label: "Template", value: templates.find((t) => t.id === values.templateId)?.name ?? "Custom" },
+                ].map(({ label, value }) => (
+                  <div key={label} className="flex items-start justify-between gap-4 py-2.5 border-b border-border last:border-0">
+                    <span className="text-xs text-muted-foreground w-28 shrink-0">{label}</span>
+                    <span className="text-sm text-foreground font-medium text-right">{value}</span>
+                  </div>
+                ))}
+              </div>
 
- <div className="flex items-start gap-2 p-3 rounded-lg bg-[oklch(0.97_0.02_25)] border border-[oklch(0.88_0.06_25)]">
- <AlertCircle className="w-4 h-4 text-[oklch(0.55_0.18_25)] shrink-0 mt-0.5" />
- <p className="text-xs text-[oklch(0.48_0.14_25)]">
- Sending to <strong>{selectedRecipients.length.toLocaleString()}</strong> selected recipients is irreversible. Ensure your message is accurate and professional before proceeding.
- </p>
- </div>
- </div>
- )}
- </CardContent>
- </Card>
+              <div className="flex items-start gap-2 p-3 rounded-lg bg-danger/10 border border-danger/30">
+                <AlertCircle className="w-4 h-4 text-danger shrink-0 mt-0.5" />
+                <p className="text-xs text-danger">
+                  Sending to <strong>{values.recipientIds.length.toLocaleString()}</strong> recipients is irreversible. Ensure your message is accurate and professional before proceeding.
+                </p>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
- {/* Navigation */}
- <div className="flex items-center justify-between">
- <Button
- variant="outline"
- onClick={() => setStep((s) => s - 1)}
- disabled={step === 1}
- className="gap-1.5"
- >
- <ChevronLeft className="w-4 h-4" />
- Back
- </Button>
+      {/* Navigation */}
+      <div className="flex items-center justify-between">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={goBack}
+          disabled={step === 1}
+          className="gap-1.5"
+        >
+          <ChevronLeft className="w-4 h-4" />
+          Back
+        </Button>
 
- <div className="flex items-center gap-2">
- {step < 4 ? (
- <Button
- onClick={() => setStep((s) => s + 1)}
- disabled={(step === 1 && (selectedRecipients.length === 0 || Boolean(recipientError))) || (step === 2 && Boolean(recipientError))}
- className="gap-1.5"
- >
- {step === 3 ? "Confirm & Review" : "Continue"}
- <ChevronRight className="w-4 h-4" />
- </Button>
- ) : (
- <Button
- onClick={handleSend}
- disabled={!subject.trim() || !body.trim() || selectedRecipients.length === 0 || Boolean(recipientError) || channel !== "EMAIL"}
- className="gap-2 bg-[oklch(0.38_0.12_155)] hover:bg-[oklch(0.32_0.12_155)] text-foreground"
- >
- <Send className="w-4 h-4" />
- Send Campaign
- </Button>
- )}
- </div>
- </div>
- </div>
- );
+        <div className="flex items-center gap-2">
+          {step < 4 ? (
+            <Button
+              type="button"
+              onClick={goNext}
+              disabled={(step === 1 && !step1Valid) || (step === 2 && !step2Valid)}
+              className="gap-1.5"
+            >
+              {step === 3 ? "Confirm & Review" : "Continue"}
+              <ChevronRight className="w-4 h-4" />
+            </Button>
+          ) : (
+            <Button
+              type="submit"
+              disabled={formik.isSubmitting || !step2Valid}
+              className="gap-2"
+            >
+              {formik.isSubmitting ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Send className="w-4 h-4" />
+              )}
+              Send Campaign
+            </Button>
+          )}
+        </div>
+      </div>
+    </form>
+  );
 }

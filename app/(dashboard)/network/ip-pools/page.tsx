@@ -116,7 +116,6 @@ export default async function IpPoolsPage() {
             </Table>
           </div>
         )}
-
       </div>
     </div>
   );

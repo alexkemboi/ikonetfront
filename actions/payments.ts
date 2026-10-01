@@ -25,6 +25,8 @@ import type {
   InvoiceItem as InvoiceEntry,
   VoucherBatchItem,
   VoucherBatchKpis,
+  PaymentConnection,
+  ReconciliationDay,
 } from "@/lib/types/payments";
 
 // Zero-safe KPIs — the ledger never fabricates numbers when Account 1110 has
@@ -178,7 +180,7 @@ export async function getPaymentsLedgerData(
 ): Promise<{
   kpis: PaymentLedgerKpis;
   payments: PaymentLedgerItem[];
-  source: "GL" | "GATEWAY";
+  source: "GL" | "GATEWAY" | "RECEIVED";
 }> {
   const session = await auth();
   const token = session?.user?.apiToken;
@@ -237,6 +239,12 @@ export async function getPaymentsLedgerData(
       return zeroGateway;
     }
   };
+
+  // Primary: M-Pesa receipts traced to the payer (phone, receipt, package, router)
+  // and whether the purchase connected. Falls through to the GL/gateway reads
+  // below when the endpoint is unavailable (e.g. frontend deployed before backend).
+  const received = await fetchPaymentsReceived(token, companyScope);
+  if (received) return received;
 
   let postings: AccountPosting[] = [];
   try {
@@ -479,12 +487,12 @@ export async function getVoucherBatches(page = 0, size = 50): Promise<{
 export async function generateVoucherBatch(
   req: import("@/lib/types/payments").GenerateVoucherBatchRequest
 ): Promise<{ success: boolean; data?: VoucherBatchItem; message: string; code?: string; serverUnitPrice?: string; requestId?: string }> {
-  const { idempotencyKey, ...body } = req;
+  const { idempotencyKey, expectedUnitPrice, ...body } = req;
   const res = await apiFetch<VoucherBatchItem>("/finance/voucher-batches", {
     method: "POST",
-    body,
+    body: { ...body, expectedUnitPrice },
     auth: "required",
-    headers: { "Idempotency-Key": idempotencyKey },
+    headers: idempotencyKey ? { "Idempotency-Key": idempotencyKey } : undefined,
     cache: "no-store",
   });
   if (!res.success) {
@@ -585,7 +593,8 @@ async function getAuthHeaders(): Promise<HeadersInit> {
     (headers as Record<string, string>)["Authorization"] =
       `Bearer ${session.user.apiToken}`;
   }
-  return headers;
+  // Forward the SYSADMIN-selected company so the backend scopes the call.
+  return withCompanyContext(headers as Record<string, string>);
 }
 
 /** Defensive unwrap: bare payloads pass through; wrapped `{ data }` is unwrapped. */
@@ -746,4 +755,165 @@ export async function forcePostReconcile(
     console.error("[Payments] forcePostReconcile error:", error);
     return { success: false, message: "Failed to reach the force-post endpoint." };
   }
+}
+
+
+// ── GET /finance/payments/received ───────────────────────────────────────────
+
+interface PaymentReceivedRow {
+  postingId: string;
+  paymentId?: string | null;
+  occurredAt?: string | null;
+  amount?: string | number | null;
+  currency?: string | null;
+  service?: string | null;
+  phone?: string | null;
+  customerName?: string | null;
+  mpesaReceipt?: string | null;
+  packageName?: string | null;
+  routerName?: string | null;
+  voucherCode?: string | null;
+  sessionId?: number | null;
+  connection?: PaymentConnection | null;
+  compensationVoucher?: string | null;
+}
+
+interface PaymentsReceivedPayload {
+  kpis?: {
+    today?: string | number;
+    thisWeek?: string | number;
+    thisMonth?: string | number;
+    total?: string | number;
+    paymentCount?: number;
+    notConnectedCount?: number;
+    compensatedCount?: number;
+  };
+  payments?: { content?: PaymentReceivedRow[] };
+}
+
+/** 254725134318 → 0725 134 318 (the format staff read and dial). */
+function formatKenyanPhone(phone?: string | null): string | undefined {
+  if (!phone) return undefined;
+  const digits = phone.replace(/\D/g, "");
+  const local = digits.startsWith("254") && digits.length === 12 ? `0${digits.slice(3)}` : digits;
+  return local.length === 10 ? `${local.slice(0, 4)} ${local.slice(4, 7)} ${local.slice(7)}` : phone;
+}
+
+function toServiceType(service?: string | null): ServiceType {
+  const s = String(service ?? "").toUpperCase();
+  return s === "HOTSPOT" || s === "PPPOE" || s === "TV" ? (s as ServiceType) : "OTHER";
+}
+
+function toReceivedLedgerItem(r: PaymentReceivedRow): PaymentLedgerItem {
+  const occurred = r.occurredAt ? new Date(r.occurredAt) : new Date(NaN);
+  const phone = formatKenyanPhone(r.phone);
+  return {
+    id: r.postingId,
+    subscriberCode: r.customerName || phone || "Unknown payer",
+    subscriberPhone: phone ?? "—",
+    receiptNumber: r.mpesaReceipt || "—",
+    paymentMethod: "M-Pesa",
+    serviceType: toServiceType(r.service),
+    isReconciled: true,
+    payoutType: "Direct",
+    amount: Number(r.amount ?? 0),
+    currency: r.currency || "KES",
+    dateFormatted: isNaN(occurred.getTime())
+      ? r.occurredAt || "—"
+      : occurred.toLocaleString("en-US", {
+          month: "short",
+          day: "numeric",
+          hour: "numeric",
+          minute: "2-digit",
+          hour12: true,
+          timeZone: "Africa/Nairobi",
+        }),
+    latencyText: "",
+    paymentId: r.paymentId ?? undefined,
+    phone: r.phone ?? undefined,
+    customerName: r.customerName ?? undefined,
+    mpesaReceipt: r.mpesaReceipt ?? undefined,
+    packageName: r.packageName ?? undefined,
+    routerName: r.routerName ?? undefined,
+    voucherCode: r.voucherCode ?? undefined,
+    sessionId: r.sessionId ?? undefined,
+    connection: r.connection ?? undefined,
+    compensationVoucher: r.compensationVoucher ?? undefined,
+  };
+}
+
+async function fetchPaymentsReceived(
+  token: string,
+  companyScope: string | null | undefined
+): Promise<{ kpis: PaymentLedgerKpis; payments: PaymentLedgerItem[]; source: "RECEIVED" } | null> {
+  try {
+    const res = await fetch(buildApiUrl("/finance/payments/received?page=0&size=200"), {
+      headers: await withCompanyContext(
+        { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        companyScope
+      ),
+      cache: "no-store",
+      signal: timeoutSignal(),
+    });
+    if (!res.ok) return null;
+    const data = unwrapData<PaymentsReceivedPayload>(await res.json());
+    if (!data || !data.kpis) return null;
+    const k = data.kpis;
+    return {
+      kpis: {
+        todayAmount: Number(k.today ?? 0),
+        thisWeekAmount: Number(k.thisWeek ?? 0),
+        mobileMoneyMonthAmount: Number(k.thisMonth ?? 0),
+        voucherMonthAmount: 0,
+        totalRecordedCount: Number(k.paymentCount ?? 0),
+        notConnectedCount: Number(k.notConnectedCount ?? 0),
+        compensatedCount: Number(k.compensatedCount ?? 0),
+      },
+      payments: (data.payments?.content ?? []).map(toReceivedLedgerItem),
+      source: "RECEIVED",
+    };
+  } catch {
+    return null;
+  }
+}
+
+
+// ── Reconciliation as outcomes (GET /finance/reconciliation/day) ─────────────
+
+/** One Africa/Nairobi day: money in, who connected, and what needs a person. */
+export async function getReconciliationDay(
+  date?: string
+): Promise<{ data: ReconciliationDay | null; message?: string }> {
+  const perms = await getPermissionForRoute("/finance/reconciliation");
+  if (!perms.canView) {
+    return { data: null, message: "You don't have permission to view reconciliation." };
+  }
+  const targetDate = isValidDateString(date) ? date : todayEatIso();
+  const res = await apiFetch<ReconciliationDay>(`/finance/reconciliation/day?date=${targetDate}`, {
+    auth: "required",
+  });
+  if (!res.success || !res.data) {
+    return { data: null, message: res.message || "Reconciliation is unavailable." };
+  }
+  return { data: res.data };
+}
+
+/** Book a confirmed payment whose revenue never reached the ledger (idempotent). */
+export async function postPaymentToLedgerAction(
+  paymentId: string
+): Promise<{ success: boolean; message: string; posted?: boolean }> {
+  const perms = await getPermissionForRoute("/finance/reconciliation");
+  if (!perms.canCreate && !perms.canEdit) {
+    return { success: false, message: "You don't have permission to post to the ledger." };
+  }
+  const res = await apiFetch<{ posted?: boolean; message?: string }>(
+    `/finance/reconciliation/post-to-ledger?paymentId=${encodeURIComponent(paymentId)}`,
+    { method: "POST", auth: "required" }
+  );
+  if (!res.success) {
+    return { success: false, message: res.message || "Could not post the payment to the ledger." };
+  }
+  revalidatePath("/finance/reconciliation");
+  revalidatePath("/finance/billing/payments");
+  return { success: true, posted: res.data?.posted, message: res.message || "Posted to the ledger." };
 }

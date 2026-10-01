@@ -1,15 +1,37 @@
 import type { LiveSessionKpis } from "@/lib/types/sessions";
-import { formatBytes } from "@/lib/utils/formatBytes";
 
 export function LiveSessionHeaderCards({ kpis }: { kpis: LiveSessionKpis }) {
-  const cards = [
-    { label: "CONNECTED", value: kpis.currentlyConnected.toLocaleString(), footer: `${kpis.pppoeCount} PPPoE · ${kpis.hotspotCount} Hotspot · ${kpis.tvCount} TV`, color: "text-emerald-600" },
-    { label: "PAID, NOT CONNECTED", value: kpis.paidNotConnected.toLocaleString(), footer: "Paid hotspot sessions not online", color: "text-amber-600" },
-    { label: "LOST CONTACT", value: kpis.lostContact.toLocaleString(), footer: "Router stopped reporting", color: "text-destructive" },
-    { label: "DOWNLOAD", value: formatBytes(kpis.downloadBytesTotal), footer: "Cumulative session bytes", color: "text-foreground" },
-    { label: "UPLOAD", value: formatBytes(kpis.uploadBytesTotal), footer: "Cumulative session bytes", color: "text-foreground" },
-    { label: "TOTAL", value: formatBytes(kpis.totalBytesTotal), footer: kpis.sessionsWithoutCounters > 0 ? `${kpis.sessionsWithoutCounters} sessions missing counters; total is a lower bound` : "Cumulative session bytes", color: "text-amber-600" },
-  ];
+ const cards = [
+ {
+ label: "ONLINE",
+ value: kpis.currentlyConnected,
+ footer: `${kpis.hotspotCount} hotspot · ${kpis.pppoeCount} PPPoE${
+ kpis.lostContact > 0 ? ` · ${kpis.lostContact} lost contact` : ""
+ }`,
+ color: "text-emerald-400",
+ },
+ {
+ label: "PAID, NOT CONNECTED",
+ value: kpis.paidNotConnected,
+ footer:
+ kpis.paidNotConnected > 0
+ ? "paid hotspot time with no device online"
+ : "every paid customer is online",
+ color: kpis.paidNotConnected > 0 ? "text-amber-400" : "text-foreground",
+ },
+ {
+ label: "DOWNLOAD",
+ value: `${kpis.downloadTrafficGb.toFixed(1)} GB`,
+ footer: "reported by the routers",
+ color: "text-foreground",
+ },
+ {
+ label: "UPLOAD",
+ value: `${kpis.uploadTrafficGb.toFixed(1)} GB`,
+ footer: "reported by the routers",
+ color: "text-foreground",
+ },
+ ];
 
   return (
     <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">

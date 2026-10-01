@@ -1,10 +1,12 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useCallback, useMemo, useState, useSyncExternalStore } from "react";
 import { Search, SortAsc, Filter } from "lucide-react";
 import { HotspotPackage } from "@/lib/types/hotspot";
 import PackageCard from "./PackageCard";
 import CheckoutModal from "./CheckoutModal";
+import type { PendingHotspotPurchase } from "@/lib/types/hotspot";
+import { PENDING_HOTSPOT_PURCHASE_KEY } from "@/lib/hotspotPublicClient";
 
 
 interface BuyTabProps {
@@ -13,30 +15,75 @@ interface BuyTabProps {
   onCompanyResolved?: (companyCode?: string | null) => void;
   onBack: () => void;
   clientMac?: string;
+  redirectClientMac?: string;
   clientIp?: string;
+  /** RouterOS $(identity) of the serving router (redirect `identity`/`router`). */
+  routerIdentity?: string;
 }
 
 type SortBy = "price-asc" | "price-desc" | "data-asc" | "data-desc";
 
-function compareMoneyStrings(left: string, right: string): number {
-  const toMinorUnits = (value: string): bigint | null => {
-    const match = /^(-?)(\d+)(?:\.(\d{1,2}))?$/.exec(value.trim());
-    if (!match) return null;
-    const sign = match[1] === "-" ? BigInt(-1) : BigInt(1);
-    const fraction = (match[3] ?? "").padEnd(2, "0");
-    return sign * (BigInt(match[2]) * BigInt(100) + BigInt(fraction || "0"));
-  };
-  const leftCents = toMinorUnits(left);
-  const rightCents = toMinorUnits(right);
-  if (leftCents === null || rightCents === null) return leftCents === rightCents ? 0 : leftCents === null ? 1 : -1;
-  return leftCents < rightCents ? -1 : leftCents > rightCents ? 1 : 0;
+/** Reads the parked purchase, discarding anything incomplete or corrupt. */
+function readPendingPurchase(): PendingHotspotPurchase | null {
+  try {
+    const stored = window.sessionStorage.getItem(PENDING_HOTSPOT_PURCHASE_KEY);
+    if (!stored) return null;
+    const parsed = JSON.parse(stored) as PendingHotspotPurchase;
+    if (parsed.voucherCode && parsed.sessionId !== undefined && parsed.startedAt) {
+      return parsed;
+    }
+    return null;
+  } catch {
+    window.sessionStorage.removeItem(PENDING_HOTSPOT_PURCHASE_KEY);
+    return null;
+  }
 }
 
-export default function BuyTab({ packages, companyCode, onCompanyResolved, onBack, clientMac, clientIp }: BuyTabProps) {
+function getPendingPurchase(): PendingHotspotPurchase | null {
+  return readPendingPurchase();
+}
+
+/** Server render: nothing parked yet, so the modal starts closed. */
+function getServerPendingPurchase(): PendingHotspotPurchase | null {
+  return null;
+}
+
+function subscribeToPendingPurchase(onChange: () => void): () => void {
+  window.addEventListener("storage", onChange);
+  window.addEventListener(PENDING_HOTSPOT_PURCHASE_KEY, onChange);
+  return () => {
+    window.removeEventListener("storage", onChange);
+    window.removeEventListener(PENDING_HOTSPOT_PURCHASE_KEY, onChange);
+  };
+}
+
+/**
+ * Prices arrive as decimal strings (e.g. "1,250.00"), so numeric comparison has
+ * to go through Number() — and unparseable values sort last rather than NaN.
+ */
+function compareMoneyStrings(a: string, b: string): number {
+  const left = Number(String(a).replace(/[^0-9.-]/g, ""));
+  const right = Number(String(b).replace(/[^0-9.-]/g, ""));
+  if (!Number.isFinite(left)) return Number.isFinite(right) ? 1 : 0;
+  if (!Number.isFinite(right)) return -1;
+  return left - right;
+}
+
+export default function BuyTab({ packages, companyCode, onCompanyResolved, onBack, clientMac, redirectClientMac, clientIp, routerIdentity }: BuyTabProps) {
  const [searchQuery, setSearchQuery] = useState("");
  const [sortBy, setSortBy] = useState<SortBy>("price-asc");
  const [selectedPackage, setSelectedPackage] = useState<HotspotPackage | null>(null);
- const [showCheckout, setShowCheckout] = useState(false);
+const [showCheckout, setShowCheckout] = useState(false);
+
+  // A purchase interrupted by a redirect is parked in sessionStorage by the
+  // checkout modal. Read it through useSyncExternalStore so the server snapshot
+  // stays null (no hydration mismatch) and the client picks it up on mount,
+  // rather than setting state from an effect.
+  const pendingPurchase = useSyncExternalStore(
+    subscribeToPendingPurchase,
+    getPendingPurchase,
+    getServerPendingPurchase
+  );
 
     // Filter and sort packages
     const filteredAndSorted = useMemo(() => {
@@ -146,21 +193,34 @@ export default function BuyTab({ packages, companyCode, onCompanyResolved, onBac
  </div>
 
 {/* Checkout Modal */}
-  {showCheckout && selectedPackage && (
+  {(showCheckout || pendingPurchase) && (selectedPackage || pendingPurchase) && (
     <CheckoutModal
-      package={selectedPackage}
+      package={selectedPackage ?? undefined}
+      pendingPurchase={pendingPurchase ?? undefined}
       companyCode={companyCode}
       onCompanyResolved={onCompanyResolved}
       clientMac={clientMac}
+      redirectClientMac={redirectClientMac}
       clientIp={clientIp}
+      routerIdentity={routerIdentity}
       onClose={() => {
         setShowCheckout(false);
         setSelectedPackage(null);
       }}
-      onConfirm={() => {
-        // Handle purchase confirmation
-        setShowCheckout(false);
-        setSelectedPackage(null);
+      onPendingPurchase={(purchase) => {
+        // The modal owns the parked purchase in sessionStorage; mirror its
+        // clear/refresh back into the store so the modal re-reads correctly.
+        if (purchase) {
+          window.sessionStorage.setItem(
+            PENDING_HOTSPOT_PURCHASE_KEY,
+            JSON.stringify(purchase)
+          );
+        } else {
+          window.sessionStorage.removeItem(PENDING_HOTSPOT_PURCHASE_KEY);
+          setShowCheckout(false);
+          setSelectedPackage(null);
+        }
+        window.dispatchEvent(new Event(PENDING_HOTSPOT_PURCHASE_KEY));
       }}
     />
   )}

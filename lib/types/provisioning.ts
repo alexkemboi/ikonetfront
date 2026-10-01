@@ -1,6 +1,8 @@
 export type RouterOnlineStatus = "ONLINE" | "DEGRADED" | "OFFLINE" | "NOT_PROVISIONED";
 
 export interface NasRouterItem {
+  /** network_device.id as a string — stable React row key. */
+  id: string;
   name: string; // e.g. "Adrinold Ukunda", "ADRNOLDNETWORKS"
   model: string; // e.g. "RouterOS RB5009UG+S+"
   status: RouterOnlineStatus;

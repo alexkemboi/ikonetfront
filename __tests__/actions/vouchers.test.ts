@@ -56,6 +56,9 @@ describe("generateVouchers", () => {
       packageId: 1,
       quantity: 2,
       voucherType: "DEMO",
+      source: "SALE",
+      deviceId: 8,
+      channel: "CASH",
       expectedUnitPrice: "50.00",
       idempotencyKey: "voucher-attempt-1",
     });

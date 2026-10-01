@@ -28,27 +28,34 @@ import {
 interface Props {
   kpis: VoucherBatchKpis;
   batches: VoucherBatchItem[];
+  packageOptions: { value: string; label: string; unitPrice?: string }[];
+  routerOptions?: { value: string; label: string }[];
   page: { totalElements: number; totalPages: number; number: number; size: number };
-  packageOptions: { value: string; label: string; unitPrice: string }[];
 }
 
-function toKsh(value: string): string { return value; }
+function toKsh(value: string | number): string {
+  return Number(value).toLocaleString(undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
 
-export function VoucherBatchLedger({ kpis, batches, page, packageOptions }: Props) {
+export function VoucherBatchLedger({ kpis, batches, packageOptions, routerOptions = [], page }: Props) {
   const router = useRouter();
-  const [selectedBatch, setSelectedBatch] = useState<VoucherBatchItem | null>(null);
-  const [batchDetails, setBatchDetails] = useState<VoucherBatchItem | null>(null);
-  const [detailLoading, setDetailLoading] = useState(false);
-  const [detailError, setDetailError] = useState("");
   const [mintOpen, setMintOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [packageId, setPackageId] = useState("");
+  const [deviceId, setDeviceId] = useState("");
   const [quantity, setQuantity] = useState("");
   const [channel, setChannel] = useState<"CASH" | "BANK_TRANSFER">("CASH");
   const [codePrefix, setCodePrefix] = useState("");
   const [idempotencyKey, setIdempotencyKey] = useState("");
   const [confirmDuplicate, setConfirmDuplicate] = useState(false);
   const [priceOverride, setPriceOverride] = useState<string | null>(null);
+  const [selectedBatch, setSelectedBatch] = useState<VoucherBatchItem | null>(null);
+  const [batchDetails, setBatchDetails] = useState<VoucherBatchItem | null>(null);
+  const [detailError, setDetailError] = useState("");
+  const [detailLoading, setDetailLoading] = useState(false);
 
   const summaryCards = useMemo(
     () => [
@@ -81,11 +88,15 @@ export function VoucherBatchLedger({ kpis, batches, page, packageOptions }: Prop
       toast.error("Quantity must be between 1 and 500.");
       return;
     }
+    if (!deviceId) {
+      toast.error("Select the router these vouchers are sold for.");
+      return;
+    }
     setSaving(true);
     try {
       const selected = packageOptions.find((option) => option.value === packageId);
       if (!selected) { toast.error("Selected package is no longer available."); return; }
-      const key = idempotencyKey || crypto.randomUUID();
+      const key = confirmDuplicate ? crypto.randomUUID() : idempotencyKey || crypto.randomUUID();
       setIdempotencyKey(key);
       const expectedUnitPrice = priceOverride ?? selected.unitPrice;
       const res = await generateVoucherBatch({
@@ -93,9 +104,9 @@ export function VoucherBatchLedger({ kpis, batches, page, packageOptions }: Prop
         quantity: qty,
         channel,
         codePrefix: codePrefix.trim() || undefined,
+        deviceId: Number(deviceId),
         expectedUnitPrice,
         idempotencyKey: key,
-        confirmDuplicate,
       });
       if (res.success && res.data) {
         toast.success(`Batch ${res.data.batchNumber} minted (${qty} codes).`);
@@ -241,7 +252,21 @@ export function VoucherBatchLedger({ kpis, batches, page, packageOptions }: Prop
                   ))}
                 </SelectContent>
               </Select>
-              {packageId && <p className="text-xs text-muted-foreground">Expected unit price: KES {priceOverride ?? packageOptions.find((option) => option.value === packageId)?.unitPrice ?? "-"}</p>}
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-muted-foreground">Router (vouchers work only here)</label>
+              <Select value={deviceId} onValueChange={setDeviceId}>
+                <SelectTrigger className="border-border bg-muted text-foreground">
+                  <SelectValue placeholder={routerOptions.length ? "Select a router" : "No active routers"} />
+                </SelectTrigger>
+                <SelectContent className="bg-popover border-border text-foreground">
+                  {routerOptions.map((r) => (
+                    <SelectItem key={r.value} value={r.value}>
+                      {r.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-1.5">
               <label className="text-muted-foreground">Quantity (1–500)</label>

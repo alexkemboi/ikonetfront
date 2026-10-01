@@ -1,4 +1,8 @@
-export type SessionProtocol = "PPPoE" | "Hotspot" | "TV_MAB";
+import type { IpMappingResponse as BaseIpMappingResponse } from "@/lib/types/api";
+
+export type SessionProtocol = "PPPOE" | "HOTSPOT" | "TV";
+
+export type IpMappingResponse = BaseIpMappingResponse;
 
 export interface LiveSessionItem {
   id: string;
@@ -17,45 +21,42 @@ export interface LiveSessionItem {
   expiryDate: string | null;
   expiresAt: string | null;
   expiryFormatted: string;
-  sessionId: number | null;
-  phone: string | null;
-  packageName: string | null;
-  voucherCode: string | null;
-  mpesaReceipt: string | null;
-  amountPaid: string | null;
-  nasIp: string | null;
-  minutesRemaining: number | null;
+  leaseExpiry?: string;
+  isFallback?: boolean;
+  // ── Identity chain (hotspot): RADIUS row → session → M-Pesa payment ──
+  /** hotspot_session.id — target of the hotspot disconnect action. */
+  sessionId?: number;
+  /** Payer phone (hotspot) or customer phone (PPPoE). */
+  phone?: string;
+  packageName?: string;
+  voucherCode?: string;
+  mpesaReceipt?: string;
+  amountPaid?: string;
+  nasIp?: string;
+  /** false = paid, unexpired entitlement but the router reports no traffic session. */
   online: boolean;
-  lastSeenAt: string | null;
+  minutesRemaining?: number | null;
+  /** Last time the router reported the session; absent = never connected. */
+  lastSeenAt?: string;
+}
+
+/** online: router reporting now · lost: router stopped reporting (no Stop) · waiting: paid, never connected. */
+export type SessionState = "ONLINE" | "LOST" | "WAITING";
+
+export function sessionState(s: Pick<LiveSessionItem, "online" | "lastSeenAt">): SessionState {
+  if (s.online) return "ONLINE";
+  return s.lastSeenAt ? "LOST" : "WAITING";
 }
 
 export interface LiveSessionKpis {
   currentlyConnected: number;
   pppoeCount: number;
   hotspotCount: number;
-  tvCount: number;
+  /** Hotspot customers with a paid, unexpired session who are not online now. */
   paidNotConnected: number;
+  /** Sessions the router stopped reporting without a Stop (router/CPE lost power or link). */
   lostContact: number;
-  sessionsWithoutCounters: number;
-  downloadBytesTotal: string;
-  uploadBytesTotal: string;
-  totalBytesTotal: string;
-}
-
-export interface LiveSessionsPage {
-  content: LiveSessionItem[];
-  totalElements: number;
-  totalPages: number;
-  number: number;
-  size: number;
-}
-
-export interface LiveSessionsResult {
-  success: boolean;
-  status?: number;
-  requestId?: string;
-  message?: string;
-  kpis: LiveSessionKpis | null;
-  sessions: LiveSessionsPage | null;
-  refreshIntervalSeconds: number;
+  downloadTrafficGb: number;
+  uploadTrafficGb: number;
+  totalTrafficGb: number;
 }

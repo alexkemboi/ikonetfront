@@ -92,12 +92,57 @@ export interface RouterHealthSnapshot {
   cpuUsage: number;
   totalMemory: number;
   freeMemory: number;
-  temperature?: number;
+  /** Null when the board has no temperature sensor. */
+  temperature?: number | null;
   activePppoeSessions: number;
   activeHotspotSessions: number;
   uptime: string;
   latencyMs: number;
   createdAt: string;
+}
+
+/** `GET /network/monitoring/router/{id}/interfaces` — read live from RouterOS. */
+export interface RouterLiveInterface {
+  name: string;
+  type: string | null;
+  comment: string | null;
+  macAddress: string | null;
+  running: boolean;
+  disabled: boolean;
+  lastLinkUpTime: string | null;
+  rxBytes: number | null;
+  txBytes: number | null;
+  /** Current rate from a one-second monitor-traffic sample (running interfaces only). */
+  rxBitsPerSecond: number | null;
+  txBitsPerSecond: number | null;
+}
+
+export interface RouterLivePppoeSession {
+  username: string | null;
+  address: string | null;
+  callerId: string | null;
+  service: string | null;
+  uptime: string | null;
+  /** Billing customer owning this PPPoE username, when one exists. */
+  customerId: number | null;
+  customerName: string | null;
+  customerPhone: string | null;
+}
+
+export interface RouterLiveHotspotSession {
+  username: string | null;
+  address: string | null;
+  macAddress: string | null;
+  uptime: string | null;
+  loginBy: string | null;
+  bytesIn: number | null;
+  bytesOut: number | null;
+}
+
+/** `GET /network/monitoring/router/{id}/sessions` — who is online right now. */
+export interface RouterLiveSessions {
+  pppoe: RouterLivePppoeSession[];
+  hotspot: RouterLiveHotspotSession[];
 }
 
 /**

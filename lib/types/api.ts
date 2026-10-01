@@ -96,7 +96,8 @@ export interface IpMappingResponse {
   serviceType: string;
   stationName: string;
   routerName: string;
-  status: "ONLINE" | "EXPIRED";
+  /** ONLINE: router reporting · LOST: open but missed 3 interim updates (no Stop) · EXPIRED: ended. */
+  status: "ONLINE" | "LOST" | "EXPIRED";
   lastSeen: string;
   subscriberPhone?: string;
   mpesaReceipt?: string;
@@ -105,4 +106,9 @@ export interface IpMappingResponse {
   nasIp?: string;
   bytesIn?: number;
   bytesOut?: number;
+  packageName?: string;
+  subscriberName?: string;
+  /** hotspot_session.id when the binding belongs to a hotspot purchase/voucher. */
+  sessionId?: number;
+  companyId?: string;
 }

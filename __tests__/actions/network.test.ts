@@ -71,7 +71,7 @@ describe("IP pools", () => {
     const pools = await getIpPools();
     expect(pools).toHaveLength(3);
     const names = pools.map((p) => p.poolName);
-    expect(names).toContain("hs-pool-magunas");
+    expect(names).toContain("hs-pool-mombasa");
     expect(names).toContain("pppoe-pool-residential");
     expect(names).toContain("wireguard-tunnel-pool");
     expect(pools.every((p) => p.serviceType)).toBe(true);

@@ -7,6 +7,7 @@ import type { RouterActionsRow } from "@/components/network/RouterActionsDropdow
 
 const router: RouterActionsRow = {
   // device id and router idxno are deliberately different (two tables).
+  id: "42",
   deviceId: 42,
   routerId: 7,
   name: "RTR-BDK-MSA-001",

@@ -1,5 +1,6 @@
 "use server";
 
+import { withCompanyContext } from "@/lib/companyContext";
 import { BASE_URL, buildApiUrl, resolveApiLink } from "@/lib/constants";
 import { safeJsonParse } from "@/lib/utils/api";
 import {
@@ -25,6 +26,8 @@ import {
   RouterCapacityResponse,
   SubscriberProvisioningRequest,
   RouterResponse,
+  RouterLiveInterface,
+  RouterLiveSessions,
 } from "@/lib/types/network";
 import { revalidatePath, revalidateTag, updateTag } from "next/cache";
 import { auth } from "@/lib/auth";
@@ -50,7 +53,8 @@ async function getAuthHeaders(): Promise<HeadersInit> {
     headers["Authorization"] = `Bearer ${session.user.apiToken}`;
   }
   
-  return headers;
+  // Forward the SYSADMIN-selected company so the backend scopes the call.
+  return withCompanyContext(headers as Record<string, string>);
 }
   
 
@@ -216,7 +220,8 @@ export const finalizeRouter = async (
 
 export const updateRouter = async (
   id: number,
-  body: RouterConfigRequest
+  // Partial: the backend only applies the fields that are present.
+  body: Partial<RouterConfigRequest>
 ): Promise<ApiResponse<NetworkRouter | null>> => {
   try {
     const response = await fetch(BASE_URL + `network-routers/${id}`, {
@@ -873,6 +878,20 @@ export async function getRouterMonitoringLatest(
   }
 };
 
+/** Interfaces read live from the router, with current rx/tx rates. */
+/** PPPoE and Hotspot sessions active on the router right now. */
+export async function getRouterLiveSessions(
+  routerId: number
+): Promise<{ data: RouterLiveSessions | null; error: string | null }> {
+  const res = await apiFetch<RouterLiveSessions>(
+    `/network/monitoring/router/${routerId}/sessions`,
+    { auth: "required", cache: "no-store", timeoutMs: 20_000 }
+  );
+  return res.success
+    ? { data: res.data ?? { pppoe: [], hotspot: [] }, error: null }
+    : { data: null, error: res.message || "Could not read sessions from the router." };
+}
+
 export const getNetworkDeviceInterfaces = async (
   deviceId: number,
   interfacesUrl?: string | null
@@ -891,6 +910,21 @@ export const getNetworkDeviceInterfaces = async (
     return [];
   }
 };
+
+/**
+ * Live interface list for a router's device row.
+ *
+ * Interfaces hang off network_device, so this keys on the DEVICE id and prefers
+ * the HALO link when the caller has one. Telemetry and sessions key on
+ * network_routers.idxno instead — the two must never be interchanged.
+ */
+export async function getRouterLiveInterfaces(
+  deviceId: number,
+  interfacesUrl?: string | null
+): Promise<{ data: RouterLiveInterface[]; error: string | null }> {
+  const rows = await getNetworkDeviceInterfaces(deviceId, interfacesUrl);
+  return { data: rows as unknown as RouterLiveInterface[], error: null };
+}
 
 /**
  * Delete a network device (the authoritative `network_device` row).
@@ -1060,9 +1094,20 @@ export async function getIpPools(): Promise<IpPool[]> {
  * GET /api/v1/network/ip-mappings — active/expired session bindings from RADIUS accounting logs.
  * Returns `ApiResponse<Page<IpMappingResponse>>`. Unwrap the Page envelope to `content[]`.
  */
+/** Same as getIpMappings, but keeps the backend error so the page can show it. */
+export async function getIpMappingsResult(): Promise<{ items: IpMappingResponse[]; error?: string }> {
+  const res = await apiFetch<PageResponse<IpMappingResponse>>("/network/ip-mappings?page=0&size=200", {
+    auth: "required",
+    tags: ["network"],
+  });
+  if (!res.success) return { items: [], error: res.message || "IP mappings are unavailable." };
+  return { items: res.data?.content ?? [] };
+}
+
 export async function getIpMappings(): Promise<IpMappingResponse[]> {
   try {
-    const res = await apiFetch<PageResponse<IpMappingResponse>>("/network/ip-mappings", {
+    // Online bindings first (backend order), latest 200 — the default page is only 20.
+    const res = await apiFetch<PageResponse<IpMappingResponse>>("/network/ip-mappings?page=0&size=200", {
       auth: "required",
       tags: ["network"],
     });

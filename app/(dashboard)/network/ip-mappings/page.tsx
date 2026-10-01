@@ -1,4 +1,4 @@
-import { getIpMappings } from "@/actions/network";
+import { getIpMappingsResult } from "@/actions/network";
 import type { IpMappingResponse } from "@/lib/types/api";
 import { getPermissionForRoute } from "@/lib/data/nav";
 import { redirect } from "next/navigation";
@@ -30,14 +30,30 @@ function formatExpiryCountdown(expiresAt?: string): string {
   return `${diffDays}d left`;
 }
 
+/** 254725134318 → 0725 134 318 */
+function formatPhone(phone?: string): string | undefined {
+  if (!phone) return undefined;
+  const digits = phone.replace(/\D/g, "");
+  const local = digits.startsWith("254") && digits.length === 12 ? `0${digits.slice(3)}` : digits;
+  return local.length === 10 ? `${local.slice(0, 4)} ${local.slice(4, 7)} ${local.slice(7)}` : phone;
+}
+
+function formatBytes(bytes?: number): string {
+  if (!bytes || bytes <= 0) return "0 B";
+  const units = ["B", "KB", "MB", "GB", "TB"];
+  const i = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
+  return `${(bytes / Math.pow(1024, i)).toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
+}
+
 export default async function IpMappingsPage() {
   const pagePerms = await getPermissionForRoute("/network/ip-mappings");
   if (!pagePerms.canView) redirect("/dashboard");
 
-  const mappings = await getIpMappings();
+  const { items: mappings, error } = await getIpMappingsResult();
 
   const onlineCount = mappings.filter((mapping: IpMappingResponse) => mapping.status === "ONLINE").length;
   const expiredCount = mappings.filter((mapping: IpMappingResponse) => mapping.status === "EXPIRED").length;
+  const lostCount = mappings.filter((mapping: IpMappingResponse) => mapping.status === "LOST").length;
 
   return (
     <div className="min-h-screen p-4 text-foreground sm:p-6 lg:p-8">
@@ -52,10 +68,16 @@ export default async function IpMappingsPage() {
               Active Session Bindings.
             </h1>
             <p className="mt-1 text-xs text-muted-foreground">
-              {mappings.length} total mappings · {onlineCount} online · {expiredCount} expired
+              Latest {mappings.length} bindings · {onlineCount} online · {lostCount} lost contact · {expiredCount} ended — each tied to its customer, payment and router
             </p>
           </div>
         </div>
+
+        {error && (
+          <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-400">
+            IP mappings could not be loaded: {error}
+          </div>
+        )}
 
         {/* KPI Cards */}
         <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
@@ -120,6 +142,9 @@ export default async function IpMappingsPage() {
                       Receipt / Voucher
                     </TableHead>
                     <TableHead className="border-b border-border text-[11px] font-sans tabular-nums tracking-wider text-muted-foreground uppercase">
+                      Traffic
+                    </TableHead>
+                    <TableHead className="border-b border-border text-[11px] font-sans tabular-nums tracking-wider text-muted-foreground uppercase">
                       Status
                     </TableHead>
                     <TableHead className="border-b border-border text-right text-[11px] font-sans tabular-nums tracking-wider text-muted-foreground uppercase">
@@ -139,17 +164,27 @@ export default async function IpMappingsPage() {
                       <TableCell className="font-sans tabular-nums text-sm font-medium">{mapping.ipAddress}</TableCell>
                       <TableCell className="font-sans tabular-nums text-sm">{mapping.macAddress}</TableCell>
                       <TableCell className="text-sm">
-                        <div className="font-medium text-foreground">{mapping.subscriberPhone || mapping.username || "—"}</div>
-                        <div className="text-xs text-muted-foreground font-mono">{mapping.username}</div>
+                        <div className="font-medium text-foreground">
+                          {formatPhone(mapping.subscriberPhone) || mapping.subscriberName || mapping.username || "—"}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {mapping.packageName
+                            ? mapping.packageName
+                            : mapping.serviceType === "PPPOE"
+                              ? `PPPoE · ${mapping.username}`
+                              : "Not linked to a purchase"}
+                        </div>
                       </TableCell>
                       <TableCell className="text-sm">
                         <div className="text-foreground">{mapping.routerName || "—"}</div>
-                        <div className="text-xs text-muted-foreground">{mapping.stationName}</div>
+                        <div className="text-xs text-muted-foreground">{mapping.stationName || mapping.nasIp || "—"}</div>
                       </TableCell>
                       <TableCell className="text-sm">
-                        {mapping.mpesaReceipt ? (
+                        {mapping.mpesaReceipt || mapping.voucher ? (
                           <>
-                            <div className="font-mono text-xs font-semibold text-emerald-400">{mapping.mpesaReceipt}</div>
+                            {mapping.mpesaReceipt && (
+                              <div className="font-mono text-xs font-semibold text-emerald-400">{mapping.mpesaReceipt}</div>
+                            )}
                             {mapping.voucher && (
                               <div className="text-xs text-muted-foreground font-mono">Voucher: {mapping.voucher}</div>
                             )}
@@ -158,15 +193,26 @@ export default async function IpMappingsPage() {
                           <span className="text-muted-foreground">—</span>
                         )}
                       </TableCell>
+                      <TableCell className="whitespace-nowrap font-sans tabular-nums text-sm">
+                        <div className="text-foreground">{formatBytes(mapping.bytesOut)} ↓</div>
+                        <div className="text-xs text-muted-foreground">{formatBytes(mapping.bytesIn)} ↑</div>
+                      </TableCell>
                       <TableCell>
                         <span
                           className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-medium ${
                             mapping.status === "ONLINE"
                               ? "bg-success/10 text-success border-success/20"
-                              : "bg-destructive/10 text-destructive border-destructive/20"
+                              : mapping.status === "LOST"
+                                ? "bg-amber-500/10 text-amber-500 border-amber-500/20"
+                                : "bg-destructive/10 text-destructive border-destructive/20"
                           }`}
+                          title={
+                            mapping.status === "LOST"
+                              ? "The router stopped reporting this session without ending it — router or CPE lost power/link."
+                              : undefined
+                          }
                         >
-                          {mapping.status || "—"}
+                          {mapping.status === "LOST" ? "LOST CONTACT" : mapping.status === "EXPIRED" ? "ENDED" : mapping.status || "—"}
                         </span>
                       </TableCell>
                       <TableCell className="text-right text-sm text-muted-foreground">

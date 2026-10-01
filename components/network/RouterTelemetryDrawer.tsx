@@ -16,10 +16,14 @@ import {
 } from "lucide-react";
 import {
   getRouterMonitoringLatest,
-  getNetworkDeviceInterfaces,
+  getRouterLiveInterfaces,
+  getRouterLiveSessions,
 } from "@/actions/network";
-import type { RouterHealthSnapshot } from "@/lib/types/network";
-import type { MikrotikInterface } from "@/lib/types/mikrotik";
+import type {
+  RouterHealthSnapshot,
+  RouterLiveInterface,
+  RouterLiveSessions,
+} from "@/lib/types/network";
 import { formatBytes } from "@/lib/utils/formatBytes";
 
 type Tab = "vitals" | "interfaces" | "sessions";
@@ -41,6 +45,61 @@ interface TelemetryRouter {
 
 const POLL_MS = 5000;
 const CONNECT_MS = 10000;
+/** Interfaces carry a one-second traffic sample, so 5s keeps rates current. */
+const INTERFACES_POLL_MS = 5000;
+const SESSIONS_POLL_MS = 15000;
+
+function formatBps(bps: number | null | undefined): string {
+  const n = bps ?? 0;
+  if (n >= 1_000_000_000) return `${(n / 1_000_000_000).toFixed(2)} Gbps`;
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)} Mbps`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(0)} kbps`;
+  return `${n} bps`;
+}
+
+/**
+ * Polls a live router read while `enabled`. Keeps the last good rows on a
+ * failed refresh so a single slow reply doesn't blank the table.
+ */
+function useLivePoll<T>(
+  enabled: boolean,
+  intervalMs: number,
+  load: () => Promise<{ data: T; error: string | null }>
+) {
+  const [data, setData] = useState<T | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const refresh = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await load();
+      setError(res.error);
+      if (!res.error) setData(res.data);
+    } catch {
+      setError("Could not reach the server.");
+    } finally {
+      setLoading(false);
+    }
+  }, [load]);
+
+  useEffect(() => {
+    if (!enabled) return;
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const loop = async () => {
+      await refresh();
+      if (!cancelled) timer = setTimeout(loop, intervalMs);
+    };
+    void loop();
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+    };
+  }, [enabled, intervalMs, refresh]);
+
+  return { data, error, loading, refresh };
+}
 
 export function RouterTelemetryDrawer({
   router,
@@ -54,13 +113,36 @@ export function RouterTelemetryDrawer({
   const [tab, setTab] = useState<Tab>(defaultTab);
   const [latest, setLatest] = useState<RouterHealthSnapshot | null>(null);
   const [mode, setMode] = useState<"streaming" | "polling" | "offline">("streaming");
-  const [interfaces, setInterfaces] = useState<MikrotikInterface[]>([]);
-  const [loadingInterfaces, setLoadingInterfaces] = useState(false);
 
   const deviceId = Number(router.deviceId);
-  const telemetryRouterId = Number(router.routerId);
   const hasNumericDevice = Number.isFinite(deviceId) && deviceId > 0;
+  const telemetryRouterId = Number(router.routerId);
   const hasNumericRouter = Number.isFinite(telemetryRouterId) && telemetryRouterId > 0;
+
+  // Interfaces belong to network_device (device id + its HALO link); telemetry
+  // and sessions belong to network_routers (idxno). Never cross the two.
+  const loadInterfaces = useCallback(
+    () => getRouterLiveInterfaces(deviceId, router.links?.deviceInterfaces),
+    [deviceId, router.links?.deviceInterfaces]
+  );
+  const liveInterfaces = useLivePoll<RouterLiveInterface[]>(
+    hasNumericDevice && tab === "interfaces",
+    INTERFACES_POLL_MS,
+    loadInterfaces
+  );
+  const loadSessions = useCallback(
+    async () => {
+      const res = await getRouterLiveSessions(telemetryRouterId);
+      return { data: res.data ?? { pppoe: [], hotspot: [] }, error: res.error };
+    },
+    [telemetryRouterId]
+  );
+  const liveSessions = useLivePoll<RouterLiveSessions>(
+    hasNumericRouter && tab === "sessions",
+    SESSIONS_POLL_MS,
+    loadSessions
+  );
+  const interfaces = liveInterfaces.data ?? [];
   const displayMode = hasNumericRouter ? mode : "offline";
 
   // ── Live telemetry: SSE via the same-origin relay, fall back to /latest polling ──
@@ -162,32 +244,6 @@ export function RouterTelemetryDrawer({
     };
   }, [hasNumericRouter, telemetryRouterId, router.links?.telemetryLatest]);
 
-  // ── Interfaces (fetched on demand; refresh button re-fetches) ──
-  const fetchInterfaces = useCallback(async (): Promise<MikrotikInterface[]> => {
-    if (!hasNumericDevice) return [];
-    const rows = await getNetworkDeviceInterfaces(deviceId, router.links?.deviceInterfaces);
-    return rows as unknown as MikrotikInterface[];
-  }, [hasNumericDevice, deviceId, router.links?.deviceInterfaces]);
-
-  const loadInterfaces = useCallback(async () => {
-    if (!hasNumericDevice) return;
-    setLoadingInterfaces(true);
-    try {
-      setInterfaces(await fetchInterfaces());
-    } finally {
-      setLoadingInterfaces(false);
-    }
-  }, [hasNumericDevice, fetchInterfaces]);
-
-  useEffect(() => {
-    if (tab !== "interfaces" || !hasNumericDevice) return;
-    let cancelled = false;
-    void fetchInterfaces().then((rows) => {
-      if (!cancelled) setInterfaces(rows);
-    });
-    return () => { cancelled = true; };
-  }, [tab, hasNumericDevice, fetchInterfaces]);
-
   const memPct =
     latest && latest.totalMemory > 0
       ? Math.round(((latest.totalMemory - latest.freeMemory) / latest.totalMemory) * 100)
@@ -254,9 +310,9 @@ export function RouterTelemetryDrawer({
         <div className="flex-1 overflow-y-auto space-y-3 px-6 py-4">
           {!hasNumericRouter && (
             <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-xs text-amber-600">
-              Live telemetry requires a numeric router id. This row is a local
-              placeholder; once it has been onboarded via the backend it will
-              stream live data here.
+              This device isn{"'"}t linked to a router record, so live vitals,
+              interfaces and sessions aren{"'"}t available. Re-run onboarding for
+              this router to link it.
             </div>
           )}
 
@@ -304,7 +360,13 @@ export function RouterTelemetryDrawer({
                 <div>
                   <div className="text-xs text-muted-foreground">Board Temp</div>
                   <div className="text-lg font-bold font-sans tabular-nums">
-                    {latest?.temperature != null ? `${latest.temperature}°C` : "—"}
+                    {latest?.temperature != null ? (
+                      `${latest.temperature}°C`
+                    ) : (
+                      <span className="text-sm font-normal text-muted-foreground">
+                        {latest ? "No sensor" : "—"}
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -353,46 +415,69 @@ export function RouterTelemetryDrawer({
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <p className="text-xs text-muted-foreground font-medium">
-                  Interfaces on device#{deviceId}
+                  {interfaces.length > 0
+                    ? `${interfaces.filter((i) => i.running).length} of ${interfaces.length} interfaces up · live from router`
+                    : "Interfaces · live from router"}
                 </p>
                 <button
-                  onClick={loadInterfaces}
-                  disabled={loadingInterfaces}
+                  onClick={() => void liveInterfaces.refresh()}
+                  disabled={liveInterfaces.loading}
                   className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
                 >
-                  <RefreshCw className={`h-3.5 w-3.5 ${loadingInterfaces ? "animate-spin" : ""}`} />
+                  <RefreshCw className={`h-3.5 w-3.5 ${liveInterfaces.loading ? "animate-spin" : ""}`} />
                   Refresh
                 </button>
               </div>
-              {loadingInterfaces && !interfaces.length ? (
-                <p className="text-xs text-muted-foreground py-6 text-center">Loading interfaces...</p>
-              ) : interfaces.length === 0 ? (
-                <p className="text-xs text-muted-foreground py-6 text-center">
-                  No interface data returned. Verify the device is reachable via API.
+              {liveInterfaces.error && (
+                <p className="rounded-lg border border-destructive/20 bg-destructive/10 p-3 text-xs text-destructive">
+                  {liveInterfaces.error}
                 </p>
+              )}
+              {liveInterfaces.data === null && !liveInterfaces.error ? (
+                <p className="text-xs text-muted-foreground py-6 text-center">Reading interfaces from the router...</p>
+              ) : interfaces.length === 0 && !liveInterfaces.error ? (
+                <p className="text-xs text-muted-foreground py-6 text-center">The router reported no interfaces.</p>
               ) : (
                 interfaces.map((iface) => (
                   <div
-                    key={iface[".id"] ?? iface.name}
-                    className="flex items-center justify-between rounded-xl border border-border bg-card p-3 text-xs"
+                    key={iface.name}
+                    className={`flex items-center justify-between gap-3 rounded-xl border border-border bg-card p-3 text-xs ${
+                      iface.disabled ? "opacity-60" : ""
+                    }`}
                   >
-                    <div>
+                    <div className="min-w-0">
                       <div className="font-semibold flex items-center gap-2">
-                        {iface.running === "true" ? (
-                          <Network className="h-3.5 w-3.5 text-emerald-500" />
-                        ) : (
-                          <Network className="h-3.5 w-3.5 text-muted-foreground" />
-                        )}
-                        {iface.name}
+                        <Network
+                          className={`h-3.5 w-3.5 shrink-0 ${iface.running ? "text-emerald-500" : "text-muted-foreground"}`}
+                        />
+                        <span className="truncate">{iface.name}</span>
+                        <span
+                          className={`rounded-full px-1.5 py-0.5 text-[10px] font-medium ${
+                            iface.disabled
+                              ? "bg-muted text-muted-foreground"
+                              : iface.running
+                                ? "bg-emerald-500/10 text-emerald-600"
+                                : "bg-amber-500/10 text-amber-600"
+                          }`}
+                        >
+                          {iface.disabled ? "disabled" : iface.running ? "up" : "down"}
+                        </span>
                       </div>
-                      <div className="text-[11px] text-muted-foreground font-sans tabular-nums mt-0.5">
-                        {iface.type}
-                        {iface["mac-address"] ? ` · ${iface["mac-address"]}` : ""}
+                      <div className="text-[11px] text-muted-foreground font-sans tabular-nums mt-0.5 truncate">
+                        {iface.type ?? "—"}
+                        {iface.macAddress ? ` · ${iface.macAddress}` : ""}
+                        {iface.comment ? ` · ${iface.comment}` : ""}
                       </div>
                     </div>
-                    <div className="text-right font-sans tabular-nums">
-                      <div className="text-emerald-600">▲ {formatBytes(typeof iface["tx-byte"] === "string" || typeof iface["tx-byte"] === "number" ? iface["tx-byte"] : null)}</div>
-                      <div className="text-blue-600">▼ {formatBytes(typeof iface["rx-byte"] === "string" || typeof iface["rx-byte"] === "number" ? iface["rx-byte"] : null)}</div>
+                    <div className="text-right font-sans tabular-nums shrink-0">
+                      <div className="text-emerald-600" title="Transmit rate (total sent)">
+                        ▲ {iface.running ? formatBps(iface.txBitsPerSecond) : "—"}
+                        <span className="ml-1 text-[10px] text-muted-foreground">{formatBytes(iface.txBytes)}</span>
+                      </div>
+                      <div className="text-blue-600" title="Receive rate (total received)">
+                        ▼ {iface.running ? formatBps(iface.rxBitsPerSecond) : "—"}
+                        <span className="ml-1 text-[10px] text-muted-foreground">{formatBytes(iface.rxBytes)}</span>
+                      </div>
                     </div>
                   </div>
                 ))
@@ -411,7 +496,7 @@ export function RouterTelemetryDrawer({
                     <div>
                       <div className="text-xs text-muted-foreground">PPPoE Clients</div>
                       <div className="text-lg font-bold font-sans tabular-nums">
-                        {latest?.activePppoeSessions ?? 0}
+                        {liveSessions.data?.pppoe.length ?? latest?.activePppoeSessions ?? 0}
                       </div>
                     </div>
                   </div>
@@ -424,17 +509,92 @@ export function RouterTelemetryDrawer({
                     <div>
                       <div className="text-xs text-muted-foreground">Hotspot Clients</div>
                       <div className="text-lg font-bold font-sans tabular-nums">
-                        {latest?.activeHotspotSessions ?? 0}
+                        {liveSessions.data?.hotspot.length ?? latest?.activeHotspotSessions ?? 0}
                       </div>
                     </div>
                   </div>
                 </div>
               </div>
-              <p className="text-[11px] text-muted-foreground leading-relaxed rounded-lg border border-border bg-card p-3">
-                Per-subscriber drill-down (username, MAC, framed-IP, rate-limit) is a
-                follow-up {'\u2014'} the router-scoped session detail endpoint isn{"'"}t wired yet.
-                Counts above are live from the telemetry stream.
-              </p>
+
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-muted-foreground font-medium">Online now · live from router</p>
+                <button
+                  onClick={() => void liveSessions.refresh()}
+                  disabled={liveSessions.loading}
+                  className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+                >
+                  <RefreshCw className={`h-3.5 w-3.5 ${liveSessions.loading ? "animate-spin" : ""}`} />
+                  Refresh
+                </button>
+              </div>
+
+              {liveSessions.error && (
+                <p className="rounded-lg border border-destructive/20 bg-destructive/10 p-3 text-xs text-destructive">
+                  {liveSessions.error}
+                </p>
+              )}
+
+              {liveSessions.data === null && !liveSessions.error ? (
+                <p className="text-xs text-muted-foreground py-6 text-center">Reading sessions from the router...</p>
+              ) : liveSessions.data ? (
+                <>
+                  <SessionSection title="PPPoE" empty="No PPPoE subscribers online.">
+                    {liveSessions.data.pppoe.map((s, i) => (
+                      <div
+                        key={`${s.username ?? "pppoe"}-${i}`}
+                        className="flex items-center justify-between gap-3 rounded-xl border border-border bg-card p-3 text-xs"
+                      >
+                        <div className="min-w-0">
+                          <div className="font-semibold truncate">
+                            {s.customerName ? (
+                              s.customerId ? (
+                                <a href={`/customers/${s.customerId}`} className="hover:underline">
+                                  {s.customerName}
+                                </a>
+                              ) : (
+                                s.customerName
+                              )
+                            ) : (
+                              <span>{s.username ?? "—"}</span>
+                            )}
+                          </div>
+                          <div className="text-[11px] text-muted-foreground font-sans tabular-nums truncate">
+                            {s.customerName ? `${s.username ?? "—"} · ` : ""}
+                            {s.address ?? "no IP"}
+                            {s.callerId ? ` · ${s.callerId}` : ""}
+                            {!s.customerName ? " · not linked to a customer" : ""}
+                          </div>
+                        </div>
+                        <div className="text-right text-[11px] text-muted-foreground font-sans tabular-nums shrink-0">
+                          {s.uptime ?? "—"}
+                        </div>
+                      </div>
+                    ))}
+                  </SessionSection>
+                  <SessionSection title="Hotspot" empty="No hotspot users online.">
+                    {liveSessions.data.hotspot.map((s, i) => (
+                      <div
+                        key={`${s.macAddress ?? s.username ?? "hs"}-${i}`}
+                        className="flex items-center justify-between gap-3 rounded-xl border border-border bg-card p-3 text-xs"
+                      >
+                        <div className="min-w-0">
+                          <div className="font-semibold truncate">{s.username ?? s.macAddress ?? "—"}</div>
+                          <div className="text-[11px] text-muted-foreground font-sans tabular-nums truncate">
+                            {s.address ?? "no IP"}
+                            {s.macAddress ? ` · ${s.macAddress}` : ""}
+                            {s.loginBy ? ` · ${s.loginBy}` : ""}
+                          </div>
+                        </div>
+                        <div className="text-right text-[11px] font-sans tabular-nums shrink-0">
+                          <div className="text-muted-foreground">{s.uptime ?? "—"}</div>
+                          <div className="text-emerald-600">▼ {formatBytes(s.bytesOut)}</div>
+                          <div className="text-blue-600">▲ {formatBytes(s.bytesIn)}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </SessionSection>
+                </>
+              ) : null}
             </div>
           )}
         </div>
@@ -443,13 +603,38 @@ export function RouterTelemetryDrawer({
         <div className="border-t border-border px-6 py-4">
           <p className="text-[11px] text-muted-foreground">
             {displayMode === "streaming"
-              ? "Streaming live via SSE · auto-fallback to polling on disconnect."
+              ? "Vitals stream live as the router reports them."
               : displayMode === "polling"
-                ? "Polling /latest every 5s — SSE relay unavailable."
-                : "Device unreachable or not yet onboarded."}
+                ? "Vitals refresh every 5 seconds."
+                : "No telemetry received from this router yet."}
           </p>
         </div>
       </div>
+    </div>
+  );
+}
+
+function SessionSection({
+  title,
+  empty,
+  children,
+}: {
+  title: string;
+  empty: string;
+  children: React.ReactNode[];
+}) {
+  return (
+    <div className="space-y-2">
+      <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+        {title} <span className="font-sans tabular-nums">({children.length})</span>
+      </p>
+      {children.length === 0 ? (
+        <p className="rounded-xl border border-dashed border-border p-3 text-center text-xs text-muted-foreground">
+          {empty}
+        </p>
+      ) : (
+        children
+      )}
     </div>
   );
 }

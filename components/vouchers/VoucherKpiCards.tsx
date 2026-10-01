@@ -1,12 +1,24 @@
-import React from "react";
 import { VoucherKpis } from "@/lib/types/vouchers";
 
 interface Props {
- kpis: VoucherKpis;
+  /** null when the statistics read failed — rendered as unavailable, never as zero. */
+  kpis: VoucherKpis | null;
+  error?: string;
 }
 
-export function VoucherKpiCards({ kpis }: Props) {
- return (
+export function VoucherKpiCards({ kpis, error }: Props) {
+  if (!kpis) {
+    return (
+    <div role="alert" className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm">
+      <p className="font-medium text-destructive">Voucher totals are unavailable.</p>
+      <p className="mt-1 text-xs text-muted-foreground">
+      {error ?? "The voucher statistics request did not complete, so these figures are unknown — not zero."}
+      </p>
+    </div>
+    );
+  }
+
+  return (
  <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
  {/* Total */}
  <div className="rounded-lg border border-border bg-card p-4">

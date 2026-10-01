@@ -99,7 +99,7 @@ return (
    brandName="Beesmart"
    sidebarUser={sidebarUser}
    />
-<main className="flex-1 overflow-y-auto py-4">
+<main className="flex-1 overflow-y-auto py-4 pb-16">
   {children}
   </main>
   </div>

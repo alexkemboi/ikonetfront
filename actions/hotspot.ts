@@ -62,28 +62,36 @@ export async function initiateHotspotPayment(
 }
 
 /**
- * Voucher activation — TEMPORARILY GATED OFF.
+ * Voucher activation — `POST /api/v1/hotspot/vouchers/activate` (permitAll).
  *
- * The backend has no `POST /hotspot/activate` mapping in HotspotController /
- * HotspotSessionController (BE gap ticket; endpoint exists only in OpenAPI
- * docs). Keep the action returning a readable envelope so the UI can explain
- * the state instead of 404ing. Re-enable once the backend route lands.
+ * Body `VoucherActivationRequest { voucherCode, macAddress, clientIp, routerIdentity }`.
+ * The backend binds the voucher to this device's MAC (recovering it from the
+ * router by `clientIp` when the CNA stripped `mac`), starts the validity clock on
+ * first use, writes the RADIUS rows and auto-logs the device in on the serving
+ * router. Errors come back as readable envelopes (404 unknown code, 409 bound to
+ * another device, 410 expired/revoked, 403 voucher of another provider).
  */
-export async function activateVoucherAction(input: { voucherCode: string; macAddress: string; clientIp: string; routerIdentity?: string; companyId?: string }): Promise<ApiResponse<HotspotSessionResponse>> {
-  const result = await apiFetch<HotspotSessionResponse>("/hotspot/activate", {
-    method: "POST",
-    auth: "public",
-    cache: "no-store",
+export interface ActivateVoucherRequest {
+  voucherCode: string;
+  macAddress?: string;
+  clientIp?: string;
+  routerIdentity?: string;
+}
+
+export async function activateVoucherAction(
+  request: ActivateVoucherRequest
+): Promise<ApiResponse<HotspotSessionResponse | null>> {
+  const res = await apiFetch<HotspotSessionResponse>('/hotspot/vouchers/activate', {
+    method: 'POST',
     body: {
-      voucherCode: input.voucherCode.trim().toUpperCase(),
-      macAddress: input.macAddress.trim().toUpperCase(),
-      clientIp: input.clientIp,
-      routerIdentity: input.routerIdentity,
-      companyId: input.companyId,
+      voucherCode: request.voucherCode.trim().toUpperCase(),
+      macAddress: request.macAddress?.trim() || undefined,
+      clientIp: request.clientIp?.trim() || undefined,
+      routerIdentity: request.routerIdentity?.trim() || undefined,
     },
+    auth: 'public',
   });
-  if (result.success) revalidateTag("hotspot-packages", "max");
-  return result as ApiResponse<HotspotSessionResponse>;
+  return { ...res, data: res.data ?? null };
 }
 
 export async function checkActiveSession(

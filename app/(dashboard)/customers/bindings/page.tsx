@@ -73,7 +73,8 @@ export default async function CustomerIPMappingPage() {
     macAddress: m.macAddress || "",
     serviceType: (String(m.serviceType ?? "").toUpperCase() === "PPPOE" ? "PPPOE" : "HOTSPOT") as "PPPOE" | "HOTSPOT",
     stationName: m.stationName || "—",
-    status: m.status,
+    // Two-state view: a session the router stopped reporting no longer holds a live binding.
+    status: m.status === "LOST" ? "EXPIRED" : m.status,
     lastSeen: m.lastSeen,
   }));
 

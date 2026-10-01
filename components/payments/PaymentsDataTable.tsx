@@ -10,10 +10,12 @@ import {
   Eye,
   Loader2,
   Inbox,
+  RotateCcw,
 } from "lucide-react";
 import { toast } from "sonner";
-import type { PaymentLedgerItem } from "@/lib/types/payments";
+import type { PaymentConnection, PaymentLedgerItem } from "@/lib/types/payments";
 import { downloadReceiptPdf, emailReceipt } from "@/actions/payments";
+import { compensateHotspotPayment } from "@/actions/vouchers";
 import {
   Dialog,
   DialogContent,
@@ -28,9 +30,33 @@ import { Input } from "@/components/ui/input";
 
 interface Props {
   payments: PaymentLedgerItem[];
+  /** Hidden for the customer care desk; the backend refuses them anyway. */
+  canIssueVoucher?: boolean;
 }
 
-export function PaymentsDataTable({ payments }: Props) {
+const CONNECTION_STYLE: Record<PaymentConnection, { label: string; className: string; hint: string }> = {
+  CONNECTED: { label: "Connected", className: "bg-emerald-500/10 text-emerald-400", hint: "The router reported traffic for this purchase." },
+  CONNECTING: { label: "Connecting", className: "bg-sky-500/10 text-sky-400", hint: "Paid in the last 5 minutes; waiting for the router to report." },
+  NOT_CONNECTED: { label: "Paid, not connected", className: "bg-rose-500/10 text-rose-400", hint: "Paid, but the router never reported this device. Issue a voucher." },
+  COMPENSATED: { label: "Compensated", className: "bg-amber-500/10 text-amber-400", hint: "A compensation voucher was issued for this payment." },
+  NO_DEVICE: { label: "No device", className: "bg-zinc-500/10 text-muted-foreground", hint: "Paid through a path that bound no device (legacy)." },
+  NOT_APPLICABLE: { label: "Account renewal", className: "bg-zinc-500/10 text-muted-foreground", hint: "PPPoE renewal — connection is tracked on the account." },
+  UNLINKED: { label: "Unlinked", className: "bg-zinc-500/10 text-muted-foreground", hint: "The ledger line references no payment record." },
+};
+
+function ConnectionBadge({ connection }: { connection: PaymentConnection }) {
+  const style = CONNECTION_STYLE[connection];
+  return (
+    <span
+      title={style.hint}
+      className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${style.className}`}
+    >
+      {style.label}
+    </span>
+  );
+}
+
+export function PaymentsDataTable({ payments, canIssueVoucher = true }: Props) {
   const [search, setSearch] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
@@ -39,17 +65,64 @@ export function PaymentsDataTable({ payments }: Props) {
   const [email, setEmail] = useState("");
   const [sending, setSending] = useState(false);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  // Local changes (e.g. a just-issued compensation) layered over server rows, so a
+  // page refresh still shows fresh data.
+  const [overrides, setOverrides] = useState<Record<string, Partial<PaymentLedgerItem>>>({});
+  const rows = useMemo(
+    () => payments.map((p) => (overrides[p.id] ? { ...p, ...overrides[p.id] } : p)),
+    [payments, overrides]
+  );
+  const [compensateTarget, setCompensateTarget] = useState<PaymentLedgerItem | null>(null);
+  const [compensating, setCompensating] = useState(false);
+  const [issuedVoucher, setIssuedVoucher] = useState<string | null>(null);
 
   const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return payments;
-    return payments.filter(
-      (p) =>
-        (p.receiptNumber ?? "").toLowerCase().includes(q) ||
-        (p.subscriberCode ?? "").toLowerCase().includes(q) ||
-        (p.subscriberPhone ?? "").includes(q)
+    const q = search.trim().toLowerCase().replace(/\s/g, "");
+    if (!q) return rows;
+    return rows.filter((p) =>
+      [
+        p.receiptNumber,
+        p.subscriberCode,
+        p.subscriberPhone,
+        p.phone,
+        p.customerName,
+        p.voucherCode,
+        p.compensationVoucher,
+        p.packageName,
+        p.routerName,
+      ]
+        .filter(Boolean)
+        .some((field) => String(field).toLowerCase().replace(/\s/g, "").includes(q))
     );
-  }, [payments, search]);
+  }, [rows, search]);
+
+  function openCompensate(p: PaymentLedgerItem) {
+    setCompensateTarget(p);
+    setIssuedVoucher(null);
+    setActiveMenuId(null);
+  }
+
+  async function handleCompensate() {
+    if (!compensateTarget?.mpesaReceipt) return;
+    setCompensating(true);
+    try {
+      const res = await compensateHotspotPayment(compensateTarget.mpesaReceipt, "Paid, never connected (Payments ledger)");
+      if (res.success && res.voucherCode) {
+        setIssuedVoucher(res.voucherCode);
+        const target = compensateTarget.id;
+        const voucherCode = res.voucherCode;
+        setOverrides((prev) => ({
+          ...prev,
+          [target]: { connection: "COMPENSATED", compensationVoucher: voucherCode },
+        }));
+        toast.success(`Voucher ${res.voucherCode} issued.`);
+      } else {
+        toast.error(res.message);
+      }
+    } finally {
+      setCompensating(false);
+    }
+  }
 
   const allFilteredSelected = filtered.length > 0 && filtered.every((p) => selectedIds.has(p.id));
   const someFilteredSelected = filtered.some((p) => selectedIds.has(p.id));
@@ -139,7 +212,7 @@ export function PaymentsDataTable({ payments }: Props) {
  type="text"
  value={search}
  onChange={(e) => setSearch(e.target.value)}
- placeholder="Search by Receipt, phone, user..."
+ placeholder="Phone, receipt, voucher, customer, package…"
  className="h-9 w-full rounded-lg border border-border bg-muted pl-9 pr-4 text-xs text-foreground placeholder-zinc-500 focus:border-amber-500 focus:outline-none font-sans tabular-nums"
  />
  </div>
@@ -160,8 +233,8 @@ export function PaymentsDataTable({ payments }: Props) {
  <th className="py-3 px-3">RECEIPT</th>
  <th className="py-3 px-3">METHOD</th>
  <th className="py-3 px-3">TYPE</th>
- <th className="py-3 px-3 text-center">RECONCILED</th>
- <th className="py-3 px-3">PAYOUT</th>
+ <th className="py-3 px-3">CONNECTION</th>
+ <th className="py-3 px-3">PACKAGE · ROUTER</th>
  <th className="py-3 px-3">AMOUNT</th>
  <th className="py-3 px-3">DATE</th>
  <th className="py-3 px-3 text-right" />
@@ -174,7 +247,7 @@ export function PaymentsDataTable({ payments }: Props) {
           colSpan={10}
           className="px-4 py-14 text-center text-sm text-muted-foreground font-sans"
         >
-          {payments.length === 0 ? (
+          {rows.length === 0 ? (
             <div className="flex flex-col items-center gap-2">
               <Inbox className="h-8 w-8 text-muted-foreground/60" />
               <span>
@@ -203,7 +276,7 @@ export function PaymentsDataTable({ payments }: Props) {
           <td className="py-3.5 px-3 font-sans">
             <div className="font-semibold text-foreground">{p.subscriberCode}</div>
             <div className="text-[11px] text-muted-foreground font-sans tabular-nums">
-              {p.subscriberPhone}
+              {p.customerName ? p.subscriberPhone : p.voucherCode ? `Voucher ${p.voucherCode}` : p.subscriberPhone}
             </div>
           </td>
 
@@ -219,8 +292,15 @@ export function PaymentsDataTable({ payments }: Props) {
 
  <td className="py-3.5 px-3 font-sans text-muted-foreground">{p.serviceType}</td>
 
- <td className="py-3.5 px-3 text-center">
- {p.isReconciled ? (
+ <td className="py-3.5 px-3">
+ {p.connection ? (
+ <div>
+ <ConnectionBadge connection={p.connection} />
+ {p.compensationVoucher && (
+ <div className="mt-1 text-[10px] text-muted-foreground">Voucher {p.compensationVoucher}</div>
+ )}
+ </div>
+ ) : p.isReconciled ? (
  <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-amber-500/20 text-amber-400">
  <CheckCircle2 className="h-4 w-4" />
  </span>
@@ -229,7 +309,16 @@ export function PaymentsDataTable({ payments }: Props) {
  )}
  </td>
 
- <td className="py-3.5 px-3 font-sans text-muted-foreground">{p.payoutType}</td>
+ <td className="py-3.5 px-3 font-sans text-muted-foreground">
+ {p.packageName || p.routerName ? (
+ <>
+ <div className="text-foreground">{p.packageName ?? "—"}</div>
+ <div className="text-[11px]">{p.routerName ?? "—"}</div>
+ </>
+ ) : (
+ p.payoutType
+ )}
+ </td>
 
  <td className="py-3.5 px-3 font-bold text-foreground">Ksh {p.amount}</td>
 
@@ -259,6 +348,14 @@ export function PaymentsDataTable({ payments }: Props) {
  >
  <Eye className="h-3.5 w-3.5" /> View payment
  </button>
+ {canIssueVoucher && p.connection === "NOT_CONNECTED" && p.mpesaReceipt && (
+ <button
+ onClick={() => openCompensate(p)}
+ className="flex w-full items-center gap-2 px-3 py-2 text-xs text-rose-400 hover:bg-accent"
+ >
+ <RotateCcw className="h-3.5 w-3.5" /> Issue voucher
+ </button>
+ )}
  <button
  onClick={() => handleDownload(p)}
  disabled={downloadingId === p.id || !p.statementId}
@@ -289,7 +386,7 @@ export function PaymentsDataTable({ payments }: Props) {
  </div>
 
 <div className="mt-2 border-t border-border pt-3 text-xs font-sans tabular-nums text-muted-foreground">
-    Showing {filtered.length} of {payments.length} payments
+    Showing {filtered.length} of {rows.length} payments
     {selectedIds.size > 0 && (
       <span className="text-amber-400"> · {selectedIds.size} selected</span>
     )}
@@ -320,10 +417,27 @@ export function PaymentsDataTable({ payments }: Props) {
  {viewTarget.isReconciled ? "Confirmed" : "Pending"}
  </span>
  </div>
+ {viewTarget.connection && (
  <div className="flex justify-between border-b border-border pb-2">
- <span className="text-muted-foreground">Payout</span>
- <span className="text-foreground">{viewTarget.payoutType}</span>
+ <span className="text-muted-foreground">Connection</span>
+ <ConnectionBadge connection={viewTarget.connection} />
  </div>
+ )}
+ {(viewTarget.packageName || viewTarget.routerName) && (
+ <div className="flex justify-between border-b border-border pb-2">
+ <span className="text-muted-foreground">Package · Router</span>
+ <span className="text-foreground">{viewTarget.packageName ?? "—"} · {viewTarget.routerName ?? "—"}</span>
+ </div>
+ )}
+ {(viewTarget.voucherCode || viewTarget.compensationVoucher) && (
+ <div className="flex justify-between border-b border-border pb-2">
+ <span className="text-muted-foreground">Voucher</span>
+ <span className="text-foreground">
+ {viewTarget.voucherCode ?? "—"}
+ {viewTarget.compensationVoucher ? ` → compensated with ${viewTarget.compensationVoucher}` : ""}
+ </span>
+ </div>
+ )}
  <div className="flex justify-between border-b border-border pb-2">
  <span className="text-muted-foreground">Amount</span>
  <span className="text-amber-400 font-bold">Ksh {viewTarget.amount} {viewTarget.currency}</span>
@@ -338,6 +452,46 @@ export function PaymentsDataTable({ payments }: Props) {
  <Button variant="outline" onClick={() => setViewTarget(null)}>
  Close
  </Button>
+ </DialogFooter>
+ </DialogContent>
+ </Dialog>
+
+ {/* Issue compensation voucher */}
+ <Dialog
+ open={compensateTarget !== null}
+ onOpenChange={(o) => !o && !compensating && setCompensateTarget(null)}
+ >
+ <DialogContent className="bg-card border-border text-foreground">
+ <DialogHeader>
+ <DialogTitle className="text-foreground">
+ {issuedVoucher ? "Voucher issued" : "Issue a voucher for this payment?"}
+ </DialogTitle>
+ <DialogDescription className="text-muted-foreground">
+ {issuedVoucher
+ ? "Give this code to the customer. They enter it on the Wi-Fi page under “Activate Voucher”; validity starts when they activate it."
+ : `${compensateTarget?.subscriberCode ?? ""} paid Ksh ${compensateTarget?.amount ?? ""} (M-Pesa ${compensateTarget?.mpesaReceipt ?? ""}) for ${compensateTarget?.packageName ?? "a package"} but never got connected. Their original session is cancelled and replaced by a voucher for the same package. No new revenue is recorded.`}
+ </DialogDescription>
+ </DialogHeader>
+ {issuedVoucher && (
+ <div className="rounded-lg border border-border bg-muted p-4 text-center font-mono text-2xl tracking-widest">
+ {issuedVoucher}
+ </div>
+ )}
+ <DialogFooter>
+ {issuedVoucher ? (
+ <Button onClick={() => setCompensateTarget(null)} className="bg-amber-500 text-black hover:bg-amber-400">
+ Done
+ </Button>
+ ) : (
+ <>
+ <Button variant="outline" onClick={() => setCompensateTarget(null)} disabled={compensating}>
+ Cancel
+ </Button>
+ <Button onClick={handleCompensate} disabled={compensating} className="bg-amber-500 text-black hover:bg-amber-400">
+ {compensating ? "Issuing…" : "Issue voucher"}
+ </Button>
+ </>
+ )}
  </DialogFooter>
  </DialogContent>
  </Dialog>

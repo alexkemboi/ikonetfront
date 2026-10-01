@@ -24,7 +24,7 @@ describe("public hotspot APIs", () => {
   it("activates a voucher using the router-provided device context", async () => {
     mockedApiFetch.mockResolvedValueOnce({ status: 200, success: true, message: "Activated", data: { voucherCode: "ABCD1234", packageName: "Hotspot 1h" }, timestamp: "2026-09-29T00:00:00Z" } as never);
     const result = await activateVoucherAction({ voucherCode: "abcd1234", macAddress: "AA:BB:CC:DD:EE:FF", clientIp: "10.0.0.2", routerIdentity: "RTR-1" });
-    expect(mockedApiFetch).toHaveBeenCalledWith("/hotspot/activate", expect.objectContaining({ auth: "public", method: "POST", body: expect.objectContaining({ voucherCode: "ABCD1234", macAddress: "AA:BB:CC:DD:EE:FF" }) }));
+    expect(mockedApiFetch).toHaveBeenCalledWith("/hotspot/vouchers/activate", expect.objectContaining({ auth: "public", method: "POST", body: expect.objectContaining({ voucherCode: "ABCD1234", macAddress: "AA:BB:CC:DD:EE:FF" }) }));
     expect(result.success).toBe(true);
   });
 
@@ -33,5 +33,52 @@ describe("public hotspot APIs", () => {
     const result = await checkActiveSession("AA:BB:CC:DD:EE:FF", "10.0.0.2");
     expect(mockedApiFetch).toHaveBeenCalledWith("/hotspot/reconnect", expect.objectContaining({ auth: "public", method: "POST" }));
     expect(result.data?.hasActiveSession).toBe(true);
+  });
+});
+
+describe("voucher activation (POST /hotspot/vouchers/activate)", () => {
+  it("posts the device context without auth and returns the activated session", async () => {
+    mockedApiFetch.mockResolvedValueOnce({
+      status: 200,
+      success: true,
+      message: "Voucher activated successfully",
+      data: { sessionId: 9, sessionStatus: "ACTIVE", voucherCode: "KES7HQ2M", macAddress: "78:F2:38:8C:D1:BC" },
+      timestamp: new Date().toISOString(),
+    } as never);
+
+    const result = await activateVoucherAction({
+      voucherCode: " kes7hq2m ",
+      macAddress: "78:F2:38:8C:D1:BC",
+      clientIp: "10.5.50.20",
+      routerIdentity: "ADRINOLD-WESTLANDS",
+    });
+
+    const [path, init] = mockedApiFetch.mock.calls[0];
+    expect(path).toBe("/hotspot/vouchers/activate");
+    expect(init?.auth).toBe("public");
+    expect(init?.method).toBe("POST");
+    expect(init?.body).toEqual({
+      voucherCode: "KES7HQ2M",
+      macAddress: "78:F2:38:8C:D1:BC",
+      clientIp: "10.5.50.20",
+      routerIdentity: "ADRINOLD-WESTLANDS",
+    });
+    expect(result.success).toBe(true);
+    expect(result.data?.sessionStatus).toBe("ACTIVE");
+  });
+
+  it("surfaces the backend refusal message", async () => {
+    mockedApiFetch.mockResolvedValueOnce({
+      status: 409,
+      success: false,
+      message: "This voucher is already bound to another device.",
+      data: null,
+      timestamp: new Date().toISOString(),
+    } as never);
+
+    const result = await activateVoucherAction({ voucherCode: "KES7HQ2M", macAddress: "AA:BB:CC:DD:EE:FF" });
+
+    expect(result.success).toBe(false);
+    expect(result.message).toMatch(/another device/i);
   });
 });

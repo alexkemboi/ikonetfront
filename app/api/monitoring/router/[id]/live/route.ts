@@ -2,6 +2,7 @@ import { auth } from "@/lib/auth";
 import { NextRequest } from "next/server";
 import { getCurrentUserPermissions, NO_PERMISSIONS } from "@/lib/data/nav";
 import { BASE_URL } from "@/lib/constants";
+import { withCompanyContext } from "@/lib/companyContext";
 
 export const dynamic = "force-dynamic";
 
@@ -45,11 +46,11 @@ export async function GET(
  let upstream: Response;
  try {
  upstream = await fetch(`${BASE_URL}network/monitoring/router/${id}/live`, {
- headers: {
+ headers: await withCompanyContext({
  Authorization: `Bearer ${session.user.apiToken}`,
  Accept: "text/event-stream",
  "Cache-Control": "no-cache",
- },
+ }),
  cache: "no-store",
  signal: controller.signal,
  });
