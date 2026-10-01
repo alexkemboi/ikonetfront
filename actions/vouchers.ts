@@ -4,6 +4,7 @@ import { withCompanyContext } from "@/lib/companyContext";
 import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
 import { BASE_URL } from "@/lib/constants";
+import { apiFetch } from "@/lib/apiClient";
 import { getPermissionForRoute } from "@/lib/data/nav";
 import type {
   GenerateVouchersRequest,
@@ -11,14 +12,6 @@ import type {
   VoucherKpis,
   VoucherStatus,
 } from "@/lib/types/vouchers";
-
-const EMPTY_KPIS: VoucherKpis = {
-  totalGenerated: 0,
-  usedCount: 0,
-  unusedCount: 0,
-  batchesCount: 0,
-  redemptionRatePercent: 0,
-};
 
 async function getAuthHeaders(): Promise<HeadersInit> {
   const session = await auth();
@@ -56,6 +49,7 @@ function mapRowToVoucher(row: unknown): VoucherItem {
       : str(pkg.rateLimit) ?? "—");
   const validityValue = str(r.validityValue) ?? str(pkg.validityValue);
   const validityType = str(r.validityType) ?? str(pkg.validityType);
+  const price = Number(str(r.packageCurrencyAmount) ?? str(r.price) ?? str(pkg.price) ?? 0);
   const durationText =
     str(r.packageValidityLabel) ??
     str(r.durationText) ??
@@ -81,65 +75,94 @@ function mapRowToVoucher(row: unknown): VoucherItem {
   };
 }
 
-function deriveKpis(vouchers: VoucherItem[]): VoucherKpis {
-  const total = vouchers.length;
-  const used = vouchers.filter((v) => v.status === "USED").length;
-  const unused = vouchers.filter((v) => v.status === "UNUSED").length;
-  const batchesCount = new Set(
-    vouchers.map((v) => v.batchNumber).filter(Boolean)
-  ).size;
-  return {
-    totalGenerated: total,
-    usedCount: used,
-    unusedCount: unused,
-    batchesCount,
-    redemptionRatePercent: total === 0 ? 0 : Math.round((used / total) * 100),
-  };
+export interface GetVouchersFilters {
+  page?: number;
+  size?: number;
+  search?: string;
+  voucherState?: string;
+  source?: string;
 }
 
-export async function getVouchersData(): Promise<{
-  kpis: VoucherKpis;
+/**
+ * Voucher list + KPIs.
+ *
+ * The list endpoint is row-filtered; the statistics endpoint is NOT — passing
+ * `voucherState` there would report only that slice's totals. A failed read
+ * returns `kpis: null` (never zeroed) so the UI can tell "no vouchers" from
+ * "could not load".
+ */
+export async function getVouchersData(filters: GetVouchersFilters = {}): Promise<{
+  kpis: VoucherKpis | null;
   vouchers: VoucherItem[];
   page: { totalElements: number; totalPages: number; number: number; size: number };
   requestId?: string;
   error?: string;
 }> {
-  const session = await auth();
-  if (!session?.user?.apiToken) {
-    return { kpis: EMPTY_KPIS, vouchers: [] };
-  }
-  try {
-    // Issued vouchers only (minted / migration / compensation — not raw M-Pesa
-    // purchase sessions), newest first, so today's batch is at the top.
-    const res = await fetch(`${BASE_URL}hotspot/vouchers?issuedOnly=true&size=200&sort=createdAt,desc`, {
-      headers: await getAuthHeaders(),
-      cache: "no-store",
-    });
-    const payload: unknown = await res.json().catch(() => null);
-    const envelope = (payload ?? null) as {
-      data?: unknown;
-      content?: unknown;
-    } | null;
-    const raw = envelope?.data ?? payload;
-    const list = Array.isArray(raw)
-      ? raw
-      : Array.isArray((raw as { content?: unknown } | null)?.content)
-        ? (raw as { content: unknown[] }).content
-        : null;
+  const { page = 0, size = 50, search, voucherState, source } = filters;
+  const params = new URLSearchParams({
+    issuedOnly: "true",
+    sort: "createdAt,desc",
+    page: String(page),
+    size: String(size),
+  });
+  if (search) params.set("search", search);
+  if (voucherState) params.set("voucherState", voucherState);
+  if (source) params.set("source", source);
 
-    if (!Array.isArray(list) || list.length === 0) {
-      return { kpis: EMPTY_KPIS, vouchers: [] };
-    }
-    const vouchers = list.map(mapRowToVoucher);
-    return { kpis: deriveKpis(vouchers), vouchers };
-  } catch {
-    return { kpis: EMPTY_KPIS, vouchers: [] };
+  // Statistics is scoped by source only, never by row-state filter.
+  const statsParams = new URLSearchParams();
+  if (source) statsParams.set("source", source);
+  const statsQuery = statsParams.toString();
+
+  const [list, stats] = await Promise.all([
+    apiFetch<{ content?: unknown[]; totalElements: number; totalPages: number; number: number; size: number }>(
+      `/hotspot/vouchers?${params.toString()}`,
+      { auth: "required", cache: "no-store" }
+    ),
+    apiFetch<VoucherKpis>(`/hotspot/vouchers/statistics${statsQuery ? `?${statsQuery}` : ""}`, {
+      auth: "required",
+      cache: "no-store",
+    }),
+  ]);
+
+  if (!list.success || !stats.success || !list.data || !stats.data) {
+    return {
+      kpis: null,
+      vouchers: [],
+      page: { totalElements: 0, totalPages: 0, number: page, size },
+      requestId: list.requestId ?? stats.requestId,
+      error: list.message ?? stats.message ?? "DATA_SOURCE_UNAVAILABLE",
+    };
   }
+
+  const raw = list.data.content ?? [];
+  const vouchers = raw.map(mapRowToVoucher);
+  return {
+    kpis: stats.data,
+    vouchers,
+    page: {
+      totalElements: list.data.totalElements,
+      totalPages: list.data.totalPages,
+      number: list.data.number,
+      size: list.data.size,
+    },
+    requestId: list.requestId,
+  };
 }
 
 export async function generateVouchers(
   request: GenerateVouchersRequest
-): Promise<{ success: boolean; message: string; count?: number; batchNumber?: string }> {
+): Promise<{
+  success: boolean;
+  message: string;
+  count?: number;
+  batchNumber?: string;
+  /** Machine-readable rejection reason, e.g. PACKAGE_CHANGED. */
+  code?: string;
+  /** Current server-side unit price when the submitted one is stale. */
+  serverUnitPrice?: string;
+  requestId?: string;
+}> {
   const pagePerms = await getPermissionForRoute("/finance/vouchers");
   if (!pagePerms.canCreate) {
     return { success: false, message: "Not authorized to mint vouchers." };
@@ -149,7 +172,6 @@ export async function generateVouchers(
   const codeLength = Math.floor(Number(request.codeLength ?? 8));
   const isSale = request.source === "SALE";
 
-  if (!Number.isInteger(quantity) || quantity < 1 || quantity > 500) {
   if (!Number.isInteger(quantity) || quantity < 1 || quantity > 500) {
     return {
       success: false,
@@ -181,50 +203,57 @@ export async function generateVouchers(
     // (Dr 1130/1120, Cr 4100) in one transaction.
     // MIGRATION: /hotspot/vouchers/create — no revenue (the customer paid their
     // previous ISP), still tenant-scoped and optionally locked to a router.
-    const res = isSale
-      ? await fetch(`${BASE_URL}finance/voucher-batches`, {
-          method: "POST",
-          headers: await getAuthHeaders(),
-          body: JSON.stringify({
-            packageId: Number(request.packageId),
-            quantity,
-            codeLength,
-            codePrefix: prefix,
-            channel: request.channel,
-            stationId,
-            deviceId,
-          }),
-        })
-      : await fetch(`${BASE_URL}hotspot/vouchers/create`, {
-          method: "POST",
-          headers: await getAuthHeaders(),
-          body: JSON.stringify({
-            packageId: Number(request.packageId),
-            count: quantity,
-            codeLength,
-            prefix,
-            voucherType: "MIGRATION",
-            stationId,
-            deviceId,
-          }),
-        });
+    const res = await apiFetch<{ batchNumber?: string }>(
+      isSale ? "/finance/voucher-batches" : "/hotspot/vouchers/create",
+      {
+        method: "POST",
+        auth: "required",
+        cache: "no-store",
+        headers: request.idempotencyKey ? { "Idempotency-Key": request.idempotencyKey } : undefined,
+        body: isSale
+          ? {
+              packageId: Number(request.packageId),
+              quantity,
+              codeLength,
+              codePrefix: prefix,
+              channel: request.channel,
+              stationId,
+              deviceId,
+              expectedUnitPrice: request.expectedUnitPrice,
+            }
+          : {
+              packageId: Number(request.packageId),
+              count: quantity,
+              codeLength,
+              prefix,
+              voucherType: "MIGRATION",
+              stationId,
+              deviceId,
+            },
+      }
+    );
 
-    const body: { message?: string; data?: { batchNumber?: string } } | null = await res
-      .json()
-      .catch(() => null);
-    if (!res.ok) {
-      const message = `HTTP ${res.status}: ${body?.message || "Failed to mint vouchers"}`;
-      console.warn(message);
-      return { success: false, message, count: quantity };
+    if (!res.success) {
+      const errorData = (res.data ?? {}) as { code?: string; serverUnitPrice?: string };
+      console.warn("Voucher mint rejected:", res.message);
+      return {
+        success: false,
+        message: res.message || "Failed to mint vouchers",
+        count: quantity,
+        code: errorData.code,
+        serverUnitPrice: errorData.serverUnitPrice,
+        requestId: res.requestId,
+      };
     }
 
     revalidatePath("/finance/vouchers");
-    const batchNumber = isSale ? body?.data?.batchNumber : undefined;
+    const batchNumber = isSale ? res.data?.batchNumber : undefined;
     return {
       success: true,
       message: `Minted ${quantity} ${isSale ? "" : "migration "}vouchers${batchNumber ? ` in batch ${batchNumber}` : ""}.`,
       count: quantity,
       batchNumber,
+      requestId: res.requestId,
     };
   } catch (error: unknown) {
     const detail = error instanceof Error ? error.message : "fetch failed";
@@ -232,7 +261,6 @@ export async function generateVouchers(
     return {
       success: false,
       message: "Failed to reach voucher minting service. Please retry.",
-      requestId,
     };
   }
 }

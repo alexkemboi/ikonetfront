@@ -487,12 +487,12 @@ export async function getVoucherBatches(page = 0, size = 50): Promise<{
 export async function generateVoucherBatch(
   req: import("@/lib/types/payments").GenerateVoucherBatchRequest
 ): Promise<{ success: boolean; data?: VoucherBatchItem; message: string; code?: string; serverUnitPrice?: string; requestId?: string }> {
-  const { idempotencyKey, ...body } = req;
+  const { idempotencyKey, expectedUnitPrice, ...body } = req;
   const res = await apiFetch<VoucherBatchItem>("/finance/voucher-batches", {
     method: "POST",
-    body,
+    body: { ...body, expectedUnitPrice },
     auth: "required",
-    headers: { "Idempotency-Key": idempotencyKey },
+    headers: idempotencyKey ? { "Idempotency-Key": idempotencyKey } : undefined,
     cache: "no-store",
   });
   if (!res.success) {

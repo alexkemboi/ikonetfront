@@ -3,15 +3,17 @@
 import { withCompanyContext } from "@/lib/companyContext";
 import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
-import { apiFetch } from "@/lib/apiClient";
 import { BASE_URL, buildApiUrl } from "@/lib/constants";
+import type { RouterHealthSnapshot, RouterResponse } from "@/lib/types/network";
+import { getRouters, getRouterMonitoringLatest } from "@/actions/network";
+import { isRouterOnline } from "@/lib/utils/router-status";
 import {
   NasRouterItem,
   NasRouterKpis,
   ProvisioningScriptResponse,
   RouterServicesConfigRequest,
 } from "@/lib/types/provisioning";
-import { getMikrotikDeviceStatus } from "@/actions/mikrotik";
+import { getMikrotikDeviceStatus, getMikrotikDevices } from "@/actions/mikrotik";
 import { getPermissionForRoute } from "@/lib/data/nav";
 
 async function getAuthHeaders(): Promise<HeadersInit> {
@@ -101,7 +103,7 @@ function enrichWithLatestSnapshot(row: NasRouterItem, snapshot: RouterHealthSnap
 
 function deriveNasKpis(routers: NasRouterItem[]): NasRouterKpis {
   const online = routers.filter(isRouterOnline).length;
-  const live = routers.reduce((sum, r) => sum + r.activeSessions, 0);
+  const live = routers.reduce((sum, r) => sum + (r.activeSessions ?? 0), 0);
   return {
     totalRoutersCount: routers.length,
     onlineCount: online,

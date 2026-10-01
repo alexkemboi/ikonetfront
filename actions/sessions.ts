@@ -56,7 +56,7 @@ interface LiveSessionListDto {
 }
 
 const EMPTY_KPIS: LiveSessionKpis = {
-  currentlyConnectedCount: 0,
+  currentlyConnected: 0,
   pppoeCount: 0,
   hotspotCount: 0,
   paidNotConnected: 0,
@@ -69,13 +69,6 @@ const EMPTY_KPIS: LiveSessionKpis = {
 function toNumber(value: unknown): number {
   const n = Number(value ?? 0);
   return Number.isFinite(n) ? n : 0;
-}
-
-function formatBytes(bytes: number): string {
-  if (bytes <= 0) return "0 B";
-  const units = ["B", "KB", "MB", "GB", "TB"];
-  const i = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
-  return `${(bytes / Math.pow(1024, i)).toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
 }
 
 function toGb(bytes: unknown): number {
@@ -97,19 +90,22 @@ function mapSession(dto: LiveSessionDto, index: number): LiveSessionItem {
       ? `hs-${dto.sessionId}`
       : `ra-${dto.subscriberCode ?? ""}-${dto.deviceMac ?? ""}-${index}`,
     subscriberCode: dto.subscriberCode || "—",
-    subscriberName: dto.subscriberName || undefined,
+    subscriberName: dto.subscriberName || "—",
     protocol: toProtocol(dto.protocol),
     deviceMac: dto.deviceMac || "—",
     assignedIp: dto.assignedIp || "—",
     routerName: dto.routerName || "Unknown router",
     routerManagementIp: dto.routerManagementIp || "",
-    downloadBytes,
-    uploadBytes,
-    downloadFormatted: formatBytes(downloadBytes),
-    uploadFormatted: formatBytes(uploadBytes),
+    // The backend sends raw octet counters; they are kept as strings so large
+    // values never lose precision, and formatted on render via formatBytes().
+    downloadBytes: dto.downloadBytes == null ? null : String(dto.downloadBytes),
+    uploadBytes: dto.uploadBytes == null ? null : String(dto.uploadBytes),
+    countersAvailable: downloadBytes > 0 || uploadBytes > 0,
     onlineDurationFormatted: dto.onlineDurationFormatted || "—",
+    connectedAt: dto.connectedAt ?? null,
+    expiryDate: null,
+    expiresAt: dto.expiresAt ?? null,
     expiryFormatted: dto.expiryFormatted || "—",
-    connectedAt: dto.connectedAt ?? undefined,
     leaseExpiry: dto.expiresAt ?? undefined,
     sessionId: dto.sessionId ?? undefined,
     phone: dto.phone ?? undefined,
@@ -138,7 +134,7 @@ export async function getLiveSessionsData(): Promise<{
   const k = res.data.kpis ?? {};
   const sessions = (res.data.sessions?.content ?? []).map(mapSession);
   const kpis: LiveSessionKpis = {
-    currentlyConnectedCount: toNumber(k.currentlyConnected),
+    currentlyConnected: toNumber(k.currentlyConnected),
     pppoeCount: toNumber(k.pppoeCount),
     hotspotCount: toNumber(k.hotspotCount),
     paidNotConnected: toNumber(k.paidNotConnected),
