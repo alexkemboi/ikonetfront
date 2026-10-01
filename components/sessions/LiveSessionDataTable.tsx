@@ -6,6 +6,7 @@ import { Power, Search } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { disconnectLiveSession } from "@/actions/sessions";
+import { formatBytes } from "@/lib/utils/formatBytes";
 import { sessionState, type LiveSessionItem } from "@/lib/types/sessions";
 
 const TABS = [
@@ -91,17 +92,9 @@ function StatusBadge({ session }: { session: LiveSessionItem }) {
 
 export function LiveSessionDataTable({
   sessions,
-  page,
-  totalPages,
-  totalElements,
-  size,
   refreshIntervalSeconds,
 }: {
- sessions: LiveSessionItem[];
-  page: number;
-  totalPages: number;
-  totalElements: number;
-  size: number;
+  sessions: LiveSessionItem[];
   refreshIntervalSeconds: number;
 }) {
  const [items, setItems] = useState<LiveSessionItem[]>(sessions);
@@ -109,6 +102,7 @@ export function LiveSessionDataTable({
  const [search, setSearch] = useState("");
  const [confirmId, setConfirmId] = useState<string | null>(null);
  const [busyId, setBusyId] = useState<string | null>(null);
+  const router = useRouter();
 
     useEffect(() => {
       const timer = setInterval(() => router.refresh(), refreshIntervalSeconds * 1000);

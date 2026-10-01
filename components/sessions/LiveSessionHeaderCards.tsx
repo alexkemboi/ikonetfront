@@ -1,11 +1,10 @@
 import type { LiveSessionKpis } from "@/lib/types/sessions";
-import { formatBytes } from "@/lib/utils/formatBytes";
 
 export function LiveSessionHeaderCards({ kpis }: { kpis: LiveSessionKpis }) {
  const cards = [
  {
  label: "ONLINE",
- value: kpis.currentlyConnectedCount,
+ value: kpis.currentlyConnected,
  footer: `${kpis.hotspotCount} hotspot · ${kpis.pppoeCount} PPPoE${
  kpis.lostContact > 0 ? ` · ${kpis.lostContact} lost contact` : ""
  }`,
