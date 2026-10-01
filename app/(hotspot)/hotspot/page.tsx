@@ -32,10 +32,9 @@ export default async function HotspotPage({ searchParams }: HotspotPageProps) {
   // serving router (tenant + auto-login target) by its RouterOS identity.
   const routerIdentity = params?.identity?.trim() || params?.router?.trim() || "";
 
-  const [packagesResponse, tvPackagesResult] = await Promise.all([
-    getPublicHotspotPackagesAction(),
-    getTvPackagesAction(),
-  ]);
+  // TV packages are per-device (the backend checks the MAC against the portal
+  // session), so they are fetched client-side by TvDeviceSetup, not here.
+  const packagesResponse = await getPublicHotspotPackagesAction();
   const packages: HotspotPackage[] = packagesResponse.success
     ? packagesResponse.data || []
     : [];

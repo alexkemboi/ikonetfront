@@ -33,7 +33,6 @@ export default function HotspotFlow({
   redirectClientMac,
   clientIp,
   routerIdentity,
-  routerIdentity,
 }: HotspotFlowProps) {
   const [activeTab, setActiveTab] = useState<Tab>(resolveInitialTab);
 

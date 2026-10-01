@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useCallback, useMemo, useState, useSyncExternalStore } from "react";
 import { Search, SortAsc, Filter } from "lucide-react";
 import { HotspotPackage } from "@/lib/types/hotspot";
 import PackageCard from "./PackageCard";
@@ -23,26 +23,67 @@ interface BuyTabProps {
 
 type SortBy = "price-asc" | "price-desc" | "data-asc" | "data-desc";
 
+/** Reads the parked purchase, discarding anything incomplete or corrupt. */
+function readPendingPurchase(): PendingHotspotPurchase | null {
+  try {
+    const stored = window.sessionStorage.getItem(PENDING_HOTSPOT_PURCHASE_KEY);
+    if (!stored) return null;
+    const parsed = JSON.parse(stored) as PendingHotspotPurchase;
+    if (parsed.voucherCode && parsed.sessionId !== undefined && parsed.startedAt) {
+      return parsed;
+    }
+    return null;
+  } catch {
+    window.sessionStorage.removeItem(PENDING_HOTSPOT_PURCHASE_KEY);
+    return null;
+  }
+}
+
+function getPendingPurchase(): PendingHotspotPurchase | null {
+  return readPendingPurchase();
+}
+
+/** Server render: nothing parked yet, so the modal starts closed. */
+function getServerPendingPurchase(): PendingHotspotPurchase | null {
+  return null;
+}
+
+function subscribeToPendingPurchase(onChange: () => void): () => void {
+  window.addEventListener("storage", onChange);
+  window.addEventListener(PENDING_HOTSPOT_PURCHASE_KEY, onChange);
+  return () => {
+    window.removeEventListener("storage", onChange);
+    window.removeEventListener(PENDING_HOTSPOT_PURCHASE_KEY, onChange);
+  };
+}
+
+/**
+ * Prices arrive as decimal strings (e.g. "1,250.00"), so numeric comparison has
+ * to go through Number() — and unparseable values sort last rather than NaN.
+ */
+function compareMoneyStrings(a: string, b: string): number {
+  const left = Number(String(a).replace(/[^0-9.-]/g, ""));
+  const right = Number(String(b).replace(/[^0-9.-]/g, ""));
+  if (!Number.isFinite(left)) return Number.isFinite(right) ? 1 : 0;
+  if (!Number.isFinite(right)) return -1;
+  return left - right;
+}
+
 export default function BuyTab({ packages, companyCode, onCompanyResolved, onBack, clientMac, redirectClientMac, clientIp, routerIdentity }: BuyTabProps) {
  const [searchQuery, setSearchQuery] = useState("");
  const [sortBy, setSortBy] = useState<SortBy>("price-asc");
  const [selectedPackage, setSelectedPackage] = useState<HotspotPackage | null>(null);
- const [showCheckout, setShowCheckout] = useState(false);
- const [pendingPurchase, setPendingPurchase] = useState<PendingHotspotPurchase | null>(null);
+const [showCheckout, setShowCheckout] = useState(false);
 
- useEffect(() => {
-   try {
-     const stored = window.sessionStorage.getItem(PENDING_HOTSPOT_PURCHASE_KEY);
-     if (!stored) return;
-     const parsed = JSON.parse(stored) as PendingHotspotPurchase;
-     if (parsed.voucherCode && parsed.sessionId !== undefined && parsed.startedAt) {
-       setPendingPurchase(parsed);
-       setShowCheckout(true);
-     }
-   } catch {
-     window.sessionStorage.removeItem(PENDING_HOTSPOT_PURCHASE_KEY);
-   }
- }, []);
+  // A purchase interrupted by a redirect is parked in sessionStorage by the
+  // checkout modal. Read it through useSyncExternalStore so the server snapshot
+  // stays null (no hydration mismatch) and the client picks it up on mount,
+  // rather than setting state from an effect.
+  const pendingPurchase = useSyncExternalStore(
+    subscribeToPendingPurchase,
+    getPendingPurchase,
+    getServerPendingPurchase
+  );
 
     // Filter and sort packages
     const filteredAndSorted = useMemo(() => {
@@ -152,7 +193,7 @@ export default function BuyTab({ packages, companyCode, onCompanyResolved, onBac
  </div>
 
 {/* Checkout Modal */}
-  {showCheckout && (selectedPackage || pendingPurchase) && (
+  {(showCheckout || pendingPurchase) && (selectedPackage || pendingPurchase) && (
     <CheckoutModal
       package={selectedPackage ?? undefined}
       pendingPurchase={pendingPurchase ?? undefined}
@@ -166,7 +207,21 @@ export default function BuyTab({ packages, companyCode, onCompanyResolved, onBac
         setShowCheckout(false);
         setSelectedPackage(null);
       }}
-      onPendingPurchase={setPendingPurchase}
+      onPendingPurchase={(purchase) => {
+        // The modal owns the parked purchase in sessionStorage; mirror its
+        // clear/refresh back into the store so the modal re-reads correctly.
+        if (purchase) {
+          window.sessionStorage.setItem(
+            PENDING_HOTSPOT_PURCHASE_KEY,
+            JSON.stringify(purchase)
+          );
+        } else {
+          window.sessionStorage.removeItem(PENDING_HOTSPOT_PURCHASE_KEY);
+          setShowCheckout(false);
+          setSelectedPackage(null);
+        }
+        window.dispatchEvent(new Event(PENDING_HOTSPOT_PURCHASE_KEY));
+      }}
     />
   )}
  </div>
