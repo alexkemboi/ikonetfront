@@ -7,17 +7,19 @@ export type IpMappingResponse = BaseIpMappingResponse;
 export interface LiveSessionItem {
   id: string;
   subscriberCode: string;
-  subscriberName?: string;
+  subscriberName: string;
   protocol: SessionProtocol;
   deviceMac: string;
   assignedIp: string;
   routerName: string;
   routerManagementIp: string;
-  downloadBytes: number;
-  uploadBytes: number;
-  downloadFormatted: string;
-  uploadFormatted: string;
+  downloadBytes: string | null;
+  uploadBytes: string | null;
+  countersAvailable: boolean;
   onlineDurationFormatted: string;
+  connectedAt: string | null;
+  expiryDate: string | null;
+  expiresAt: string | null;
   expiryFormatted: string;
   connectedAt?: string;
   leaseExpiry?: string;
@@ -48,7 +50,7 @@ export function sessionState(s: Pick<LiveSessionItem, "online" | "lastSeenAt">):
 }
 
 export interface LiveSessionKpis {
-  currentlyConnectedCount: number;
+  currentlyConnected: number;
   pppoeCount: number;
   hotspotCount: number;
   /** Hotspot customers with a paid, unexpired session who are not online now. */

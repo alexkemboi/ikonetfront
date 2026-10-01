@@ -5,6 +5,7 @@ import { apiFetch } from "@/lib/apiClient";
 import { buildApiUrl } from "@/lib/constants";
 import { getPermissionForRoute } from "@/lib/data/nav";
 import { todayEatIso } from "@/lib/dates";
+import { canAccessReconciliation } from "@/lib/utils/reconciliationAccess";
 import { timeoutSignal, unwrapPostings } from "@/lib/finance/ledger";
 import { withCompanyContext } from "@/lib/companyContext";
 import { revalidatePath } from "next/cache";
@@ -441,39 +442,43 @@ export async function markInvoicePaid(
 /**
  * Fetch the voucher-batch ledger (page + KPI derivation).
  */
-export async function getVoucherBatches(): Promise<{
-  kpis: VoucherBatchKpis;
-  batches: VoucherBatchItem[];
+export async function getVoucherBatchDetails(batchId: string): Promise<{
+  success: boolean;
+  data?: VoucherBatchItem;
+  message: string;
+  requestId?: string;
 }> {
-  const session = await auth();
-  if (!session?.user?.apiToken) {
-    return { kpis: ZERO_VOUCHER_KPIS, batches: [] };
+  const res = await apiFetch<VoucherBatchItem>(`/finance/voucher-batches/${encodeURIComponent(batchId)}`, {
+    auth: "required",
+    cache: "no-store",
+  });
+  if (!res.success || !res.data) {
+    return { success: false, message: res.message, requestId: res.requestId };
   }
-  const res = await apiFetch<{ content: VoucherBatchItem[] }>(
-    "/finance/voucher-batches?page=0&size=100",
-    { auth: "required" }
-  );
-  const batches = res.data?.content ?? [];
-  let activeCount = 0;
-  let activeValue = 0;
-  let totalValue = 0;
-  for (const b of batches) {
-    const v = toNumber(b.totalValue);
-    totalValue += v;
-    if (b.status === "ACTIVE") {
-      activeCount += 1;
-      activeValue += v;
-    }
-  }
-  const kpis: VoucherBatchKpis = { activeCount, activeValue, totalValue };
-  return { kpis, batches };
+  return { success: true, data: res.data, message: res.message, requestId: res.requestId };
 }
 
-const ZERO_VOUCHER_KPIS: VoucherBatchKpis = {
-  activeCount: 0,
-  activeValue: 0,
-  totalValue: 0,
-};
+export async function getVoucherBatches(page = 0, size = 50): Promise<{
+  kpis: VoucherBatchKpis | null;
+  batches: VoucherBatchItem[];
+  page: { totalElements: number; totalPages: number; number: number; size: number };
+  requestId?: string;
+  error?: string;
+}> {
+  const [list, summary] = await Promise.all([
+    apiFetch<{ content: VoucherBatchItem[]; totalElements: number; totalPages: number; number: number; size: number }>(`/finance/voucher-batches?page=${page}&size=${size}`, { auth: "required", cache: "no-store" }),
+    apiFetch<{ companyId: string | null; batches: number; vouchers: number; totalValue: string }>("/finance/voucher-batches/summary", { auth: "required", cache: "no-store" }),
+  ]);
+  if (!list.success || !summary.success || !list.data || !summary.data) {
+    return { kpis: null, batches: [], page: { totalElements: 0, totalPages: 0, number: page, size }, requestId: list.requestId ?? summary.requestId, error: list.message ?? summary.message ?? "DATA_SOURCE_UNAVAILABLE" };
+  }
+  return {
+    kpis: { activeCount: summary.data.batches, activeValue: summary.data.totalValue, totalValue: summary.data.totalValue, vouchers: summary.data.vouchers },
+    batches: list.data.content,
+    page: { totalElements: list.data.totalElements, totalPages: list.data.totalPages, number: list.data.number, size: list.data.size },
+    requestId: list.requestId,
+  };
+}
 
 /**
  * Mint a paid voucher batch through the proven hotspot RADIUS path.
@@ -481,14 +486,18 @@ const ZERO_VOUCHER_KPIS: VoucherBatchKpis = {
  */
 export async function generateVoucherBatch(
   req: import("@/lib/types/payments").GenerateVoucherBatchRequest
-): Promise<{ success: boolean; data?: VoucherBatchItem; message: string }> {
+): Promise<{ success: boolean; data?: VoucherBatchItem; message: string; code?: string; serverUnitPrice?: string; requestId?: string }> {
+  const { idempotencyKey, ...body } = req;
   const res = await apiFetch<VoucherBatchItem>("/finance/voucher-batches", {
     method: "POST",
-    body: req,
+    body,
     auth: "required",
+    headers: { "Idempotency-Key": idempotencyKey },
+    cache: "no-store",
   });
   if (!res.success) {
-    return { success: false, message: res.message || "Failed to mint the voucher batch." };
+    const errorData = (res.data ?? {}) as { code?: string; serverUnitPrice?: string };
+    return { success: false, message: res.message || "Failed to mint the voucher batch.", code: errorData.code ?? res.message, serverUnitPrice: errorData.serverUnitPrice, requestId: res.requestId };
   }
   revalidatePath("/finance/vouchers");
   return { success: true, data: res.data ?? undefined, message: res.message };
@@ -614,8 +623,7 @@ export async function triggerDarajaPull(
   if (!session?.user?.apiToken) {
     return { success: false, message: "You must be signed in to run the Daraja pull." };
   }
-  const perms = await getPermissionForRoute("/finance/reconciliation");
-  if (!perms.canView) {
+  if (!canAccessReconciliation(session.user.role)) {
     return { success: false, message: "You don't have permission to run reconciliation." };
   }
   try {
@@ -663,8 +671,7 @@ export async function getDarajaReconciliation(
   if (!session?.user?.apiToken) {
     return { entries: [], summary: {}, message: "You must be signed in." };
   }
-  const perms = await getPermissionForRoute("/finance/reconciliation");
-  if (!perms.canView) {
+  if (!canAccessReconciliation(session.user.role)) {
     return { entries: [], summary: {}, message: "You don't have permission to view reconciliation." };
   }
   const targetDate = isValidDateString(date) ? date : todayEatIso();
@@ -707,8 +714,7 @@ export async function forcePostReconcile(
   if (!session?.user?.apiToken) {
     return { success: false, message: "You must be signed in to force-post to the ledger." };
   }
-  const perms = await getPermissionForRoute("/finance/reconciliation");
-  if (!perms.canEdit && !perms.canCreate && !perms.canView) {
+  if (!canAccessReconciliation(session.user.role)) {
     return { success: false, message: "You don't have permission to force-post to the ledger." };
   }
   if (!receiptNo.trim() || !isValidDateString(date)) {

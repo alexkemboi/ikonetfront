@@ -24,18 +24,23 @@ import type {
   RouterLiveInterface,
   RouterLiveSessions,
 } from "@/lib/types/network";
+import { formatBytes } from "@/lib/utils/formatBytes";
 
 type Tab = "vitals" | "interfaces" | "sessions";
 
 interface TelemetryRouter {
   /** network_device.id — used for the interfaces fetch. */
-  id: string | number;
+  deviceId?: number;
   /** network_routers.idxno — used for the telemetry latest/live fetch. */
   routerId?: number;
   name: string;
   managementIp?: string;
   vpnIp?: string;
   winboxTunnelAddress?: string | null;
+  links?: {
+    telemetryLatest: string | null;
+    deviceInterfaces: string | null;
+  };
 }
 
 const POLL_MS = 5000;
@@ -116,10 +121,12 @@ export function RouterTelemetryDrawer({
   const [tab, setTab] = useState<Tab>(defaultTab);
   const [latest, setLatest] = useState<RouterHealthSnapshot | null>(null);
   const [mode, setMode] = useState<"streaming" | "polling" | "offline">("streaming");
+  const [interfaces, setInterfaces] = useState<MikrotikInterface[]>([]);
+  const [loadingInterfaces, setLoadingInterfaces] = useState(false);
 
-  // Telemetry, interfaces and sessions are all keyed by network_routers.idxno.
-  // Falling back to the device id would read a different router's data.
+  const deviceId = Number(router.deviceId);
   const telemetryRouterId = Number(router.routerId);
+  const hasNumericDevice = Number.isFinite(deviceId) && deviceId > 0;
   const hasNumericRouter = Number.isFinite(telemetryRouterId) && telemetryRouterId > 0;
 
   const loadInterfaces = useCallback(
@@ -144,11 +151,11 @@ export function RouterTelemetryDrawer({
     loadSessions
   );
   const interfaces = liveInterfaces.data ?? [];
+  const displayMode = hasNumericRouter ? mode : "offline";
 
   // ── Live telemetry: SSE via the same-origin relay, fall back to /latest polling ──
   useEffect(() => {
     if (!hasNumericRouter) {
-      setMode("offline");
       return;
     }
 
@@ -170,7 +177,7 @@ export function RouterTelemetryDrawer({
       if (cancelled || inFlight) return;
       inFlight = true;
       try {
-        const snap = await getRouterMonitoringLatest(telemetryRouterId);
+        const snap = await getRouterMonitoringLatest(telemetryRouterId, router.links?.telemetryLatest);
         if (!cancelled) {
           if (snap) {
             apply(snap);
@@ -243,7 +250,33 @@ export function RouterTelemetryDrawer({
       source?.close();
       stopTimers();
     };
-  }, [hasNumericRouter, telemetryRouterId]);
+  }, [hasNumericRouter, telemetryRouterId, router.links?.telemetryLatest]);
+
+  // ── Interfaces (fetched on demand; refresh button re-fetches) ──
+  const fetchInterfaces = useCallback(async (): Promise<MikrotikInterface[]> => {
+    if (!hasNumericDevice) return [];
+    const rows = await getNetworkDeviceInterfaces(deviceId, router.links?.deviceInterfaces);
+    return rows as unknown as MikrotikInterface[];
+  }, [hasNumericDevice, deviceId, router.links?.deviceInterfaces]);
+
+  const loadInterfaces = useCallback(async () => {
+    if (!hasNumericDevice) return;
+    setLoadingInterfaces(true);
+    try {
+      setInterfaces(await fetchInterfaces());
+    } finally {
+      setLoadingInterfaces(false);
+    }
+  }, [hasNumericDevice, fetchInterfaces]);
+
+  useEffect(() => {
+    if (tab !== "interfaces" || !hasNumericDevice) return;
+    let cancelled = false;
+    void fetchInterfaces().then((rows) => {
+      if (!cancelled) setInterfaces(rows);
+    });
+    return () => { cancelled = true; };
+  }, [tab, hasNumericDevice, fetchInterfaces]);
 
   const memPct =
     latest && latest.totalMemory > 0
@@ -263,14 +296,14 @@ export function RouterTelemetryDrawer({
               {router.name}
               <span
                 className={`text-[11px] font-sans tabular-nums px-2 py-0.5 rounded-full border ${
-                  mode === "offline"
+                  displayMode === "offline"
                     ? "bg-destructive/10 text-destructive border-destructive/20"
                     : "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
                 }`}
               >
-                {mode === "streaming"
+                {displayMode === "streaming"
                   ? "LIVE"
-                  : mode === "polling"
+                  : displayMode === "polling"
                     ? "POLLING"
                     : "OFFLINE"}
               </span>
@@ -603,9 +636,9 @@ export function RouterTelemetryDrawer({
         {/* Footer action */}
         <div className="border-t border-border px-6 py-4">
           <p className="text-[11px] text-muted-foreground">
-            {mode === "streaming"
+            {displayMode === "streaming"
               ? "Vitals stream live as the router reports them."
-              : mode === "polling"
+              : displayMode === "polling"
                 ? "Vitals refresh every 5 seconds."
                 : "No telemetry received from this router yet."}
           </p>

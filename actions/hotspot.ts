@@ -28,8 +28,12 @@ import { apiFetch } from '@/lib/apiClient';
  * endpoint per plan decision D2.
  */
 
-export async function getPublicHotspotPackagesAction(): Promise<HotspotPackagesResponse> {
-  const res = await apiFetch<HotspotPackage[]>('/hotspot/packages', {
+export async function getPublicHotspotPackagesAction(scope: { routerIdentity?: string; clientIp?: string; companyId?: string } = {}): Promise<HotspotPackagesResponse> {
+  const query = new URLSearchParams({ serviceType: "HOTSPOT" });
+  if (scope.routerIdentity) query.set("routerIdentity", scope.routerIdentity);
+  if (scope.clientIp) query.set("clientIp", scope.clientIp);
+  if (scope.companyId) query.set("companyId", scope.companyId);
+  const res = await apiFetch<HotspotPackage[]>(`/hotspot/packages?${query.toString()}`, {
     auth: 'public',
     tags: ['hotspot-packages'],
     revalidate: 60,

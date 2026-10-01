@@ -141,12 +141,12 @@ export default function ExpenseTable({
 // When the server-side seed fails (initialExpenses undefined), fall through and
 // fetch client-side so the page is never left stuck with an empty table and a
 // spinning, disabled Refresh.
-  const mountedRef = useRef(false);
+  const skipInitialFetchRef = useRef(Boolean(initialExpenses));
 
   useEffect(() => {
-    if (!mountedRef.current) {
-      mountedRef.current = true;
-      if (initialExpenses) return;
+    if (skipInitialFetchRef.current) {
+      skipInitialFetchRef.current = false;
+      return;
     }
     fetchData();
   }, [fetchData]);

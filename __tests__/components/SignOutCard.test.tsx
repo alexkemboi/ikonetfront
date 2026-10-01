@@ -21,7 +21,6 @@ it("renders heading and prompt text", async () => {
       expires: "2099-01-01T00:00:00.000Z",
       user: {
         role: "admin",
-        apiToken: "mock-valid-bearer-token",
         fname: "Test",
         username: "testuser",
       },
@@ -47,7 +46,6 @@ it("calls logoutAction and signOut on Yes, sign out click", async () => {
       expires: "2099-01-01T00:00:00.000Z",
       user: {
         role: "admin",
-        apiToken: "mock-valid-bearer-token",
         fname: "Test",
         username: "testuser",
       },
@@ -64,7 +62,7 @@ it("calls logoutAction and signOut on Yes, sign out click", async () => {
   await user.click(signOutButton);
 
   await waitFor(() => {
-    expect(mockLogoutAction).toHaveBeenCalledWith("mock-valid-bearer-token");
+    expect(mockLogoutAction).toHaveBeenCalledWith();
     expect(signOut).toHaveBeenCalledWith({ callbackUrl: "/login" });
   });
 });

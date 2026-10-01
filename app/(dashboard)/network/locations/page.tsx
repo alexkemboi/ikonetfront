@@ -1,5 +1,6 @@
 import { getRegions } from "@/actions/network";
 import { LocationClient } from "./_components/LocationClient";
+import { redirect } from "next/navigation";
 
 export const metadata = {
  title: "Location Management - IBS",
@@ -7,7 +8,9 @@ export const metadata = {
 };
 
 export default async function LocationsPage() {
- const regionsTree = await getRegions(true);
+ const result = await getRegions(true);
+ if (!result.success && result.status === 401) redirect("/signout?reason=session-expired");
+ const regionsTree = result.success ? result.data : [];
 return (
     <div className="min-h-screen p-4 text-foreground sm:p-6 lg:p-8">
       <div className="mx-auto max-w-7xl space-y-6">
@@ -20,6 +23,8 @@ return (
             Manage POPs, exchanges, and physical sites within each region.
           </p>
         </div>
+
+        {!result.success && <p role="alert" className="rounded-md border border-destructive/30 bg-destructive/5 p-4 text-sm">Region data unavailable: {result.message}{result.requestId ? ` · Ref: ${result.requestId}` : ""}</p>}
 
         <LocationClient regionsTree={regionsTree} />
       </div>

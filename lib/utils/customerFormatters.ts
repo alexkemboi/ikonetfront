@@ -1,3 +1,5 @@
+import { daysBetweenDateOnly, formatDateOnly, todayEatIso } from "@/lib/dates";
+
 /**
  * Pure utility functions for formatting and deriving display state
  * from customer data. No side effects, no imports beyond date math.
@@ -10,11 +12,7 @@ type ExpiryStatusVariant = "complete" | "warning" | "danger" | "pending";
  * Negative means the date is in the past.
  */
 function calculateDaysUntilExpiry(expiryDate: string): number {
-  const now = new Date();
-  now.setHours(0, 0, 0, 0);
-  const expiry = new Date(expiryDate);
-  expiry.setHours(0, 0, 0, 0);
-  return Math.round((expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+  return daysBetweenDateOnly(todayEatIso(), expiryDate) ?? 0;
 }
 
 /**
@@ -51,10 +49,5 @@ export function resolveExpiryStatusVariant(
  * Returns "N/A" for null/undefined values.
  */
 export function formatCustomerDate(dateString: string | null | undefined): string {
-  if (!dateString) return "N/A";
-  return new Date(dateString).toLocaleDateString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
+  return formatDateOnly(dateString);
 }

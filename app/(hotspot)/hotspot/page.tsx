@@ -1,7 +1,6 @@
 import Image from "next/image";
-import { getTvPackagesAction } from "@/actions/tv";
 import HotspotShell from "./_components/HotspotShell";
-import { Wifi, Zap, Shield, Clock } from "lucide-react";
+import { Zap, Shield, Clock } from "lucide-react";
 import { getPublicHotspotPackagesAction } from "@/actions/hotspot";
 import { HotspotPackage } from "@/lib/types/hotspot";
 import { normalizeCompanyCode, resolveCompanyFromRouterTag } from "@/lib/brand";
@@ -124,9 +123,8 @@ export default async function HotspotPage({ searchParams }: HotspotPageProps) {
         <div className="flex-1 w-full max-w-2xl">
           <HotspotShell
             packages={packages}
-            tvPackages={tvPackagesResult.packages}
-            tvPackagesError={tvPackagesResult.error}
-            initialTvDevice={{ macAddress: "" }}
+            tvPackages={[]}
+            initialTvDevice={{ macAddress: "", customerPhone: "" }}
             initialCompanyCode={initialCompanyCode}
             clientMac={clientMac}
             redirectClientMac={redirectClientMac}

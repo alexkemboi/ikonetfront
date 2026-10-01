@@ -46,6 +46,8 @@ export interface ApiFetchOptions {
    * `X-Step-Up-Token` so step-up-gated endpoints accept the mutation.
    */
   stepUpToken?: string;
+  /** Additional request headers for endpoint-specific protocol values. */
+  headers?: Record<string, string>;
 }
 
 type FetchNext = {
@@ -82,9 +84,22 @@ export async function apiFetch<T = unknown>(
     timeoutMs = 30_000,
     retries = 0,
     stepUpToken,
+    headers: extraHeaders,
   } = options;
 
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  const requestId = extraHeaders?.["X-Request-Id"] ?? crypto.randomUUID();
+  function requestIdFromBody(value: unknown): string | undefined {
+    if (!value || typeof value !== "object") return undefined;
+    const data = (value as { data?: unknown }).data;
+    if (!data || typeof data !== "object") return undefined;
+    const requestId = (data as { requestId?: unknown }).requestId;
+    return typeof requestId === "string" ? requestId : undefined;
+  }
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    ...extraHeaders,
+    "X-Request-Id": requestId,
+  };
 
   if (stepUpToken) {
     headers["X-Step-Up-Token"] = stepUpToken;
@@ -95,7 +110,7 @@ export async function apiFetch<T = unknown>(
   } else if (authPolicy !== "public") {
     const session = await auth();
     if (authPolicy === "required" && !session?.user?.apiToken) {
-      return envelopeError<T>(401, "Not authenticated. Please sign in again.");
+      return { ...envelopeError<T>(401, "Not authenticated. Please sign in again."), requestId };
     }
     if (session?.user?.apiToken) {
       headers.Authorization = `Bearer ${session.user.apiToken}`;
@@ -115,7 +130,7 @@ export async function apiFetch<T = unknown>(
     headers,
     ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
     ...(cache === "no-store" || revalidate === false ? { cache: "no-store" as const } : {}),
-    ...(Object.keys(next).length > 0 ? { next } : {}),
+    ...(Object.keys(next).length > 0 && cache !== "no-store" && revalidate !== false ? { next } : {}),
   };
 
   const attempts = 1 + retries + (method === "GET" ? 1 : 0);
@@ -133,6 +148,7 @@ export async function apiFetch<T = unknown>(
       if (contentType.includes("application/json")) {
         parsed = await res.json().catch(() => null);
       }
+      const responseRequestId = res.headers.get("X-Request-Id") ?? requestIdFromBody(parsed) ?? requestId;
 
       if (res.ok && parsed) {
         const api = parsed as ApiResponse<T>;
@@ -142,6 +158,7 @@ export async function apiFetch<T = unknown>(
           message: api.message ?? "Request succeeded",
           data: (api.data as T) ?? null,
           timestamp: api.timestamp ?? new Date().toISOString(),
+          requestId: responseRequestId,
         };
       }
 
@@ -151,12 +168,16 @@ export async function apiFetch<T = unknown>(
           status: (api.status as number) ?? res.status,
           success: false,
           message: api.message ?? `Request failed (HTTP ${res.status})`,
-          data: null,
+          data: (api.data as T) ?? null,
           timestamp: api.timestamp ?? new Date().toISOString(),
+          requestId: responseRequestId,
         };
       }
 
-      return envelopeError<T>(res.status, `Request failed (HTTP ${res.status})`);
+      return {
+        ...envelopeError<T>(res.status, `Request failed (HTTP ${res.status})`),
+        requestId: responseRequestId,
+      };
     } catch (e) {
       lastError = e;
       // Abort (timeout) or network error — retry idempotent methods only.
@@ -166,12 +187,15 @@ export async function apiFetch<T = unknown>(
     }
   }
 
-  return envelopeError<T>(
+  return {
+    ...envelopeError<T>(
     500,
     lastError instanceof Error && lastError.name === "AbortError"
       ? "Request timed out. Please try again."
       : "Network error. Please try again."
-  );
+    ),
+    requestId,
+  };
 }
 
 /** Convenience guard for 401 envelopes (drives the signout UI path). */

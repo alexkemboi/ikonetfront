@@ -33,7 +33,7 @@ async function getAuthHeaders(): Promise<HeadersInit> {
 
 function normalizeStatus(status: unknown): VoucherStatus {
   const s = String(status ?? "").toUpperCase();
-  return s === "USED" || s === "EXPIRED" || s === "VOID" ? s : "UNUSED";
+  return s === "USED" || s === "EXPIRED" || s === "VOID" || s === "PENDING" || s === "FAILED" ? s : "UNUSED";
 }
 
 function str(value: unknown): string | undefined {
@@ -60,14 +60,13 @@ function mapRowToVoucher(row: unknown): VoucherItem {
     str(r.packageValidityLabel) ??
     str(r.durationText) ??
     (validityValue && validityType ? `${validityValue} ${validityType}` : "—");
-  const price = Number(r.price ?? pkg.price ?? r.planPrice);
 
   return {
     id: str(r.sessionId) ?? str(r.id) ?? str(r.voucherId) ?? "—",
     code: str(r.code) ?? str(r.voucherCode) ?? "—",
     batchNumber: str(r.voucherBatchId) ?? str(r.batchNumber),
     packageId: str(r.packageId) ?? str(pkg.id),
-    packageName,
+    packageName: str(r.packageName) ?? packageName,
     planSpeed,
     planPrice: str(r.packageCurrencyAmount) ??
       (Number.isFinite(price) && price > 0 ? `Ksh ${price}` : undefined),
@@ -101,6 +100,9 @@ function deriveKpis(vouchers: VoucherItem[]): VoucherKpis {
 export async function getVouchersData(): Promise<{
   kpis: VoucherKpis;
   vouchers: VoucherItem[];
+  page: { totalElements: number; totalPages: number; number: number; size: number };
+  requestId?: string;
+  error?: string;
 }> {
   const session = await auth();
   if (!session?.user?.apiToken) {
@@ -147,6 +149,7 @@ export async function generateVouchers(
   const codeLength = Math.floor(Number(request.codeLength ?? 8));
   const isSale = request.source === "SALE";
 
+  if (!Number.isInteger(quantity) || quantity < 1 || quantity > 500) {
   if (!Number.isInteger(quantity) || quantity < 1 || quantity > 500) {
     return {
       success: false,
@@ -229,6 +232,7 @@ export async function generateVouchers(
     return {
       success: false,
       message: "Failed to reach voucher minting service. Please retry.",
+      requestId,
     };
   }
 }

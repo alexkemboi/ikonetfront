@@ -1,4 +1,5 @@
 import type { LiveSessionKpis } from "@/lib/types/sessions";
+import { formatBytes } from "@/lib/utils/formatBytes";
 
 export function LiveSessionHeaderCards({ kpis }: { kpis: LiveSessionKpis }) {
  const cards = [
@@ -33,22 +34,15 @@ export function LiveSessionHeaderCards({ kpis }: { kpis: LiveSessionKpis }) {
  },
  ];
 
- return (
- <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
- {cards.map(({ label, value, footer, color }) => (
- <div
- key={label}
- className="rounded-2xl border border-border bg-card p-5 shadow-lg"
- >
- <span className="text-[11px] font-sans tabular-nums tracking-wider text-muted-foreground uppercase">
- {label}
- </span>
- <div className={`mt-2 text-3xl font-sans tabular-nums font-bold ${color}`}>
- {typeof value === "number" ? value.toLocaleString() : value}
- </div>
- <p className="mt-2 text-xs text-muted-foreground">{footer}</p>
- </div>
- ))}
- </div>
- );
+  return (
+    <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
+      {cards.map(({ label, value, footer, color }) => (
+        <div key={label} className="rounded-lg border border-border bg-card p-4">
+          <span className="text-[11px] font-sans tabular-nums tracking-wider text-muted-foreground uppercase">{label}</span>
+          <div className={`mt-2 text-2xl font-sans tabular-nums font-semibold ${color}`}>{value}</div>
+          <p className="mt-1 text-xs text-muted-foreground">{footer}</p>
+        </div>
+      ))}
+    </div>
+  );
 }

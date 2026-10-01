@@ -41,7 +41,6 @@ import {
   type CompanySummary,
   type PaymentAccountPayload,
   type CompanyPaymentAccountView,
-  type UpdateCompanyBrandingRequest,
   type MpesaProbeResult,
 } from "@/actions/companies";
 

@@ -45,7 +45,7 @@ const PACKAGE_CATEGORIES = ["Hourly", "Daily", "Weekly", "Monthly", "Custom"];
 // ── Validation ─────────────────────────────────────────────────────────────────
 const validationSchema = Yup.object({
  packageName: Yup.string().required("Package name is required"),
- price: Yup.number().typeError("Price must be a number").min(0.01, "Price must be greater than 0").required("Price is required"),
+ price: Yup.string().matches(/^\d+(\.\d{1,2})?$/, "Enter a valid KES amount with up to two decimal places").required("Price is required"),
  packageCategory: Yup.string().required("Category is required"),
  validityType: Yup.string().required("Validity type is required"),
  validityValue: Yup.number().typeError("Must be a number").min(1, "Must be at least 1").required("Validity value is required"),
@@ -62,7 +62,7 @@ const validationSchema = Yup.object({
 
 const EMPTY_FORM = {
  packageName: "",
- price: "" as unknown as number,
+ price: "",
  packageCategory: "",
  validityType: "",
  validityValue: "" as unknown as number,
@@ -132,7 +132,7 @@ function PackageSheet({
  onSubmit: async (values, { setFieldError }) => {
  const payload: PackagePayload = {
  ...values,
- price: Number(values.price),
+ price: values.price,
  validityValue: Number(values.validityValue),
  speedDownload: Number(values.speedDownload),
  speedUpload: Number(values.speedUpload),
@@ -193,9 +193,8 @@ function PackageSheet({
  <div className="grid grid-cols-2 gap-3">
  <FormField label="Price (KSh)" error={touched.price ? errors.price : undefined} required>
  <Input
- type="number"
- min={0}
- step="0.01"
+ type="text"
+ inputMode="decimal"
  placeholder="0.00"
  {...formik.getFieldProps("price")}
  className={cn(touched.price && errors.price ? "border-destructive" : "")}
@@ -543,7 +542,7 @@ export default function PackagesClient({
  </td>
  <td className="px-4 py-3">
  <p className="font-bold text-primary">
- {pkg.price.toLocaleString("en-KE", { style: "currency", currency: "KES", maximumFractionDigits: 0 })}
+ KES {pkg.price}
  </p>
  </td>
  <td className="px-4 py-3">

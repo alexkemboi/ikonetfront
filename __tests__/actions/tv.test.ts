@@ -1,93 +1,24 @@
-import { describe, it, expect } from "vitest";
-import { server } from "@/mocks/server";
-import { http, HttpResponse } from "msw";
-import { API_PREFIX } from "@/mocks/handlers/auth-guard";
-import { activeTvPackagesFixture, errorEnvelope } from "@/contracts/catalog";
-import { getTvPackagesAction } from "@/actions/tv";
-import { mapToTvPackage } from "@/lib/utils/tvPackages";
-import type { NetPackage } from "@/lib/types/api";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { apiFetch } from "@/lib/apiClient";
+import { getEligibleTvPackagesAction } from "@/actions/tv";
 
-describe("TV packages", () => {
-  it("fetches TV packages with public auth (no Authorization header) and maps them", async () => {
-    let capturedAuth: string | null | undefined = "unset";
-    server.use(
-      http.get(`${API_PREFIX}/hotspot/packages`, ({ request }) => {
-        capturedAuth = request.headers.get("authorization");
-        const url = new URL(request.url);
-        expect(url.searchParams.get("category")).toBe("TV");
-        return HttpResponse.json(activeTvPackagesFixture(), { status: 200 });
-      })
-    );
+vi.mock("@/lib/apiClient", () => ({ apiFetch: vi.fn() }));
+const mockedApiFetch = vi.mocked(apiFetch);
+beforeEach(() => { vi.clearAllMocks(); });
 
-    const result = await getTvPackagesAction();
-    expect(capturedAuth).toBeNull();
-    expect(result.packages).toHaveLength(2);
-
-    const first = result.packages[0];
-    expect(first.packageName).toBe("TV 24H");
-    expect(first.validity).toBe("24 hours");
-    expect(first.maxDevices).toBe(1);
-    expect(first.dataAllowance).toBe("15M/15M");
-
-    const second = result.packages[1];
-    expect(second.validity).toBe("7 days");
-    expect(second.dataAllowance).toBe("Unlimited"); // bandwidthType UNLIMITED
-    expect(second.maxDevices).toBe(2);
+describe("TV eligible package endpoint", () => {
+  it("uses the verification portal token and preserves package price strings", async () => {
+    mockedApiFetch.mockResolvedValueOnce({ status: 200, success: true, message: "OK", timestamp: "2026-09-29T00:00:00Z", data: [{ packageId: 12, name: "TV 30 days", validityLabel: "30 days", speedLabel: null, price: "800.00", currency: "KES", availableForDevice: true, unavailableReason: null, notes: "Unlimited" }] } as never);
+    const result = await getEligibleTvPackagesAction("portal-token", "AA:BB:CC:DD:EE:FF");
+    expect(mockedApiFetch).toHaveBeenCalledWith("/tv/packages/eligible?macAddress=AA%3ABB%3ACC%3ADD%3AEE%3AFF", expect.objectContaining({ auth: "public", headers: { "X-TV-Portal-Token": "portal-token" }, cache: "no-store" }));
+    expect(result.packages[0]?.price).toBe("800.00");
+    expect(result.packages[0]?.availableForDevice).toBe(true);
   });
 
-  it("filters out non-TV packages client-side", async () => {
-    server.use(
-      http.get(`${API_PREFIX}/hotspot/packages`, () =>
-        HttpResponse.json(
-          {
-            status: 200,
-            success: true,
-            message: "ok",
-            data: [
-              { idxno: 1, packageName: "Hotspot 10M", price: 100, packageCategory: "HOTSPOT", activeStatus: true },
-              { idxno: 2, packageName: "TV 24H", price: 150, packageCategory: "TV", validityType: "HOURS", validityValue: 24, activeStatus: true },
-            ],
-          },
-          { status: 200 }
-        )
-      )
-    );
-    const result = await getTvPackagesAction();
-    expect(result.packages).toHaveLength(1);
-    expect(result.packages[0].packageName).toBe("TV 24H");
-  });
-
-  it("returns an empty list on backend failure", async () => {
-    server.use(
-      http.get(`${API_PREFIX}/hotspot/packages`, () =>
-        HttpResponse.json(errorEnvelope(500, "boom"), { status: 500 })
-      )
-    );
-    const result = await getTvPackagesAction();
+  it("returns an explicit package-load error without demo packages", async () => {
+    mockedApiFetch.mockResolvedValueOnce({ status: 503, success: false, message: "DATA_SOURCE_UNAVAILABLE", requestId: "req-tv-packages", data: null } as never);
+    const result = await getEligibleTvPackagesAction("portal-token", "AA:BB:CC:DD:EE:FF");
     expect(result.packages).toEqual([]);
-  });
-});
-
-describe("mapToTvPackage", () => {
-  it("derives validity, dataAllowance and maxDevices from the NetPackage", () => {
-    const net: NetPackage = {
-      idxno: 9,
-      packageName: "TV 7 DAYS",
-      price: 800,
-      packageCategory: "TV",
-      validityType: "DAYS",
-      validityValue: 7,
-      bandwidthType: "SHARED",
-      activeStatus: true,
-      speedDownload: 20,
-      speedUpload: 10,
-      rateLimit: "20M/10M",
-      maxDevices: 2,
-    };
-    const tv = mapToTvPackage(net);
-    expect(tv.validity).toBe("7 days");
-    expect(tv.dataAllowance).toBe("20M/10M");
-    expect(tv.maxDevices).toBe(2);
-    expect(tv.speedDownload).toBe(20);
+    expect(result.error).toBe("DATA_SOURCE_UNAVAILABLE");
   });
 });

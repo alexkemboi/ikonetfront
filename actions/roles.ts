@@ -162,8 +162,6 @@ export async function saveRoleMenusAction(
   const headers = await getAuthHeaders();
   const url = buildApiUrl(`/system-setup/${roleCode}/menus`);
 
-  console.log("Saving role menus:", { roleCode, assignments, url, headers });
-
   try {
     const res = await fetch(url, {
       method: "POST",

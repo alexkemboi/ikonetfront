@@ -14,7 +14,7 @@ export const metadata: Metadata = {
   description: "Prepaid voucher minting and batch distribution",
 };
 
-export default async function VouchersPage() {
+export default async function VouchersPage({ searchParams }: { searchParams: Promise<{ page?: string; batchPage?: string; search?: string; voucherState?: string; source?: string }> }) {
   const pagePerms = await getPermissionForRoute("/finance/vouchers");
   if (!pagePerms.canView) redirect("/dashboard");
 
@@ -33,10 +33,11 @@ export default async function VouchersPage() {
     : [];
   const packageOptions = packages.success && Array.isArray(packages.data)
     ? packages.data
-        .filter((p) => p.activeStatus === true && p.price > 0)
+        .filter((p) => p.activeStatus === true)
         .map((p) => ({
           value: String(p.idxno),
-          label: `${p.packageName} · Ksh ${p.price}`,
+          label: `${p.packageName} · KES ${p.price}`,
+          unitPrice: String(p.price),
         }))
     : [];
 
@@ -46,6 +47,7 @@ export default async function VouchersPage() {
       initialVouchers={data.vouchers}
       batchKpis={batches.kpis}
       batches={batches.batches}
+      batchPage={batches.page}
       packageOptions={packageOptions}
       routerOptions={routerOptions}
     />

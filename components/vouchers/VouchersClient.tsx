@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, RotateCcw } from "lucide-react";
 import { VoucherKpiCards } from "./VoucherKpiCards";
@@ -12,7 +12,7 @@ import { VoucherItem, VoucherKpis } from "@/lib/types/vouchers";
 import type { VoucherBatchItem, VoucherBatchKpis } from "@/lib/types/payments";
 
 interface Props {
-  initialKpis: VoucherKpis;
+  initialKpis: VoucherKpis | null;
   initialVouchers: VoucherItem[];
   batchKpis?: VoucherBatchKpis;
   batches?: VoucherBatchItem[];

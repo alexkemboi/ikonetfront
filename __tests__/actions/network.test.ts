@@ -80,7 +80,10 @@ describe("IP pools", () => {
 
 describe("regions tree (onboarding topology precondition)", () => {
   it("GET /network/regions?tree=true resolves the cascading Region → Location → Station tree", async () => {
-    const regions = await getRegions(true);
+    const result = await getRegions(true);
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    const regions = result.data;
     expect(regions.length).toBeGreaterThan(0);
     const coast = regions.find((r) => r.regionCode === "REG-KE-COAST");
     expect(coast?.name).toBe("Coast Region");
@@ -89,6 +92,26 @@ describe("regions tree (onboarding topology precondition)", () => {
     // fixing the silent Step-3 stall in mock-driven runs.
     expect(coast?.locations?.[0]?.stations?.[0]?.idxno).toBe(1);
     expect(coast?.locations?.[0]?.stations?.[0]?.name).toBe("Mombasa Station 01");
+  });
+
+  it("preserves an expired-token response for the page to sign out instead of returning an empty tree", async () => {
+    server.use(
+      http.get(`${API_PREFIX}/network/regions`, () => HttpResponse.json({
+        status: 401,
+        success: false,
+        message: "TOKEN_INVALID_OR_EXPIRED",
+        data: { requestId: "req-region-expired" },
+        timestamp: "2026-09-29T08:00:00Z",
+      }, { status: 401, headers: { "X-Request-Id": "req-region-expired" } }))
+    );
+
+    const result = await getRegions();
+    expect(result).toEqual({
+      success: false,
+      status: 401,
+      message: "TOKEN_INVALID_OR_EXPIRED",
+      requestId: "req-region-expired",
+    });
   });
 });
 

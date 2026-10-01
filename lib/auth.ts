@@ -4,6 +4,8 @@ import { jwtVerify, decodeJwt } from "jose";
 import { JwtPayload, LoginResponse } from "@/lib/types/auth";
 import { buildApiUrl } from "@/lib/constants";
 import { refreshAccessToken } from "@/actions/auth";
+import { getBackendAccessToken } from "@/lib/authToken";
+import { attachServerOnlyApiToken, sanitizeClientSession } from "@/lib/authSession";
 
 function getJwtSecret(): string {
   const secret = process.env.AUTH_JWT_SECRET;
@@ -69,7 +71,7 @@ export async function getValidAccessToken(currentJwt: string): Promise<string | 
   return promise;
 }
 
-export const { handlers, auth, signIn, signOut } = NextAuth({
+const { handlers, auth: nextAuth, signIn, signOut } = NextAuth({
   trustHost: true,
   secret: process.env.AUTH_SECRET,
   providers: [
@@ -79,7 +81,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         username: { label: "Username", type: "text" },
         password: { label: "Password", type: "password" },
       },
-      async authorize(credentials, _request) {
+      async authorize(credentials) {
         if (!credentials?.username || !credentials?.password) return null;
 
         // Sysadmin direct-login bypass (OTP temporarily disabled).
@@ -179,7 +181,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           middleName: user.middleName,
           otherName: user.otherName,
           phoneNumber: user.phoneNumber,
-          apiToken: user.apiToken,
+          apiToken: user.apiToken ?? "",
           refreshToken: user.refreshToken,
           expiresAt: user.expiresAt,
           regionId: user.regionId,
@@ -220,7 +222,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         middleName: token.middleName as string | undefined,
         otherName: token.otherName as string | undefined,
         phoneNumber: token.phoneNumber as string | undefined,
-        apiToken: token.apiToken as string,
         expiresAt: token.expiresAt as number | undefined,
         regionId: token.regionId as number | undefined,
         stationId: token.stationId as number | undefined,
@@ -228,9 +229,20 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         investorScope: token.investorScope as string | undefined,
         companyScope: token.companyScope as string | undefined,
       };
-      return session;
+      return sanitizeClientSession(session);
     },
   },
   pages: { signIn: "/login", error: "/login" },
   session: { strategy: "jwt" },
 });
+
+export { handlers, signIn, signOut };
+export const authMiddleware = nextAuth;
+
+/** Server-side session access with backend credentials read from the HttpOnly cookie. */
+export async function auth() {
+  const session = await nextAuth();
+  if (!session?.user) return session;
+  const apiToken = await getBackendAccessToken();
+  return apiToken ? attachServerOnlyApiToken(session, apiToken) : session;
+}

@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { AlertCircle, ChevronLeft, ArrowRight } from "lucide-react";
-import { getPackagesAction, type InternetPackage } from "@/actions/packages";
+import { getActiveHotspotPackagesAction, type VoucherPackageOption } from "@/actions/packages";
 import { generateVouchers } from "@/actions/vouchers";
 import {
  Dialog,
@@ -20,6 +20,10 @@ interface Props {
 interface PackageOption {
  value: string;
  label: string;
+ unitPrice: string;
+}
+
+function fmtSpeed(p: VoucherPackageOption): string {
 }
 
 type PaymentChannel = "CASH" | "BANK_TRANSFER";
@@ -32,14 +36,15 @@ function fmtSpeed(p: InternetPackage): string {
  return p.rateLimit || "";
 }
 
-function fmtValidity(p: InternetPackage): string {
+function fmtValidity(p: VoucherPackageOption): string {
  return `${p.validityValue} ${p.validityType}`;
 }
 
-function mapPackages(rows: InternetPackage[]): PackageOption[] {
+function mapPackages(rows: VoucherPackageOption[]): PackageOption[] {
  return rows.map((p) => ({
  value: String(p.idxno),
  label: `${p.packageName} · ${fmtSpeed(p)} · Ksh ${p.price} · ${fmtValidity(p)}`,
+ unitPrice: String(p.price),
  }));
 }
 
@@ -50,6 +55,8 @@ export function GenerateVouchersModal({ isOpen, onClose, routerOptions = [] }: P
  const [packages, setPackages] = useState<PackageOption[]>([]);
  const [packagesError, setPackagesError] = useState(false);
  const [packageId, setPackageId] = useState(0);
+ const [voucherType, setVoucherType] = useState<"DEMO" | "MIGRATION">("DEMO");
+ const [idempotencyKey, setIdempotencyKey] = useState("");
  const [quantity, setQuantity] = useState("");
  const [codeLength, setCodeLength] = useState("6");
  const [prefix, setPrefix] = useState("");
@@ -57,12 +64,14 @@ export function GenerateVouchersModal({ isOpen, onClose, routerOptions = [] }: P
  const [source, setSource] = useState<Source>("SALE");
  const [deviceId, setDeviceId] = useState("");
  const [error, setError] = useState<string | null>(null);
+ const [requestId, setRequestId] = useState<string | null>(null);
+ const [priceOverride, setPriceOverride] = useState<string | null>(null);
  const [isSubmitting, setIsSubmitting] = useState(false);
 
  useEffect(() => {
  if (!isOpen) return;
  let cancelled = false;
- getPackagesAction()
+ getActiveHotspotPackagesAction()
  .then((res) => {
  if (cancelled) return;
  if (!res.success) {
@@ -73,9 +82,10 @@ export function GenerateVouchersModal({ isOpen, onClose, routerOptions = [] }: P
  const active = Array.isArray(res.data)
  ? res.data.filter((p) => p.activeStatus === true)
  : [];
+ setPackages(mapPackages(active));
+ if (active.length === 0) setPackageId(0);
  if (active.length > 0) {
  if (cancelled) return;
- setPackages(mapPackages(active));
  setPackageId((current) =>
  current === 0 || !active.some((p) => p.idxno === current)
  ? active[0].idxno
@@ -94,11 +104,15 @@ export function GenerateVouchersModal({ isOpen, onClose, routerOptions = [] }: P
 
  function selectPackage(id: number) {
  setPackageId(id);
+ setIdempotencyKey("");
+	setPriceOverride(null);
  setError(null);
+	setRequestId(null);
  }
 
  async function handleGenerate() {
  setError(null);
+ setRequestId(null);
  if (!packageId) {
  setError("Select a package first.");
  return;
@@ -118,16 +132,26 @@ export function GenerateVouchersModal({ isOpen, onClose, routerOptions = [] }: P
  return;
  }
  setIsSubmitting(true);
+ const selected = packages.find((option) => Number(option.value) === packageId);
+ if (!selected) {
+ setIsSubmitting(false);
+ setError("The selected package is unavailable. Reload the package list.");
+ return;
+ }
+ const key = idempotencyKey || crypto.randomUUID();
+ setIdempotencyKey(key);
  const res = await generateVouchers({
  source,
  deviceId: deviceId ? Number(deviceId) : undefined,
  packageId,
  quantity: qty,
+ voucherType,
  codeLength: len,
  prefix: prefix.trim(),
  channel: source === "SALE" ? channel : undefined,
  });
  setIsSubmitting(false);
+ setRequestId(res.requestId ?? null);
  if (res.success) {
  setStep(1);
  setQuantity("");
@@ -137,6 +161,10 @@ export function GenerateVouchersModal({ isOpen, onClose, routerOptions = [] }: P
  setDeviceId("");
  setError(null);
  onClose();
+ } else if (res.code === "PACKAGE_CHANGED" && res.serverUnitPrice) {
+	setPriceOverride(res.serverUnitPrice);
+	setIdempotencyKey("");
+	setError(`Package price changed to KES ${res.serverUnitPrice}. Confirm the updated price to continue.`);
  } else {
  setError(res.message);
  }
@@ -211,12 +239,19 @@ export function GenerateVouchersModal({ isOpen, onClose, routerOptions = [] }: P
  <input
  type="number"
  value={quantity}
- onChange={(e) => setQuantity(e.target.value)}
+ onChange={(e) => { setQuantity(e.target.value); setIdempotencyKey(""); }}
  placeholder="e.g. 100"
  min={1}
  max={500}
+ max={500}
  className="mt-1 w-full rounded-lg border border-border bg-muted p-2.5 text-sm text-foreground placeholder-zinc-600 focus:border-amber-500 focus:outline-none"
  />
+ </div>
+ <div>
+ <label className="text-xs font-sans tabular-nums text-muted-foreground">Stock type *</label>
+ <select value={voucherType} onChange={(e) => { setVoucherType(e.target.value as "DEMO" | "MIGRATION"); setIdempotencyKey(""); }} className="mt-1 w-full rounded-lg border border-border bg-muted p-2.5 text-sm text-foreground">
+ <option value="DEMO">Free demo stock</option><option value="MIGRATION">Migration stock</option>
+ </select>
  </div>
  <div className="grid grid-cols-2 gap-3">
  <div>
@@ -226,7 +261,7 @@ export function GenerateVouchersModal({ isOpen, onClose, routerOptions = [] }: P
  <input
  type="number"
  value={codeLength}
- onChange={(e) => setCodeLength(e.target.value)}
+ onChange={(e) => { setCodeLength(e.target.value); setIdempotencyKey(""); }}
  min={4}
  max={12}
  className="mt-1 w-full rounded-lg border border-border bg-muted p-2.5 text-sm text-foreground focus:border-amber-500 focus:outline-none"
@@ -239,7 +274,7 @@ export function GenerateVouchersModal({ isOpen, onClose, routerOptions = [] }: P
  <input
  type="text"
  value={prefix}
- onChange={(e) => setPrefix(e.target.value.toUpperCase())}
+ onChange={(e) => { setPrefix(e.target.value.toUpperCase()); setIdempotencyKey(""); }}
  placeholder="e.g. ADR"
  maxLength={6}
  className="mt-1 w-full rounded-lg border border-border bg-muted p-2.5 text-sm text-foreground placeholder-zinc-600 focus:border-amber-500 focus:outline-none"
@@ -313,7 +348,7 @@ export function GenerateVouchersModal({ isOpen, onClose, routerOptions = [] }: P
  {error && (
  <div className="flex items-center gap-2 rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-400">
  <AlertCircle className="h-4 w-4 shrink-0" />
- <span>{error}</span>
+ <span>{error}{requestId ? ` Ref: ${requestId}` : ""}</span>
  </div>
  )}
 
@@ -337,7 +372,7 @@ export function GenerateVouchersModal({ isOpen, onClose, routerOptions = [] }: P
  >
  {isSubmitting
  ? "Minting..."
- : "Mint Vouchers"}
+ : priceOverride ? `Confirm new price · KES ${priceOverride}` : "Mint Vouchers"}
  </button>
  </>
  ) : (
@@ -352,6 +387,7 @@ export function GenerateVouchersModal({ isOpen, onClose, routerOptions = [] }: P
  setError(null);
  setStep(2);
  }}
+ className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500 px-5 py-2.5 text-xs font-semibold text-black hover:bg-amber-400 disabled:opacity-50"
  className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500 px-5 py-2.5 text-xs font-semibold text-black hover:bg-amber-400 disabled:opacity-50"
  >
  Next: Configure <ArrowRight className="h-3.5 w-3.5" />

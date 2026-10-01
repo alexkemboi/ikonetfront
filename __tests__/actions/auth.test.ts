@@ -17,6 +17,10 @@ import {
   sysAdminLoginAction,
 } from "@/actions/auth";
 
+vi.mock("@/lib/authToken", () => ({
+  getBackendAccessToken: vi.fn().mockResolvedValue("mock-valid-bearer-token"),
+}));
+
 beforeEach(() => {
   vi.clearAllMocks();
 });
@@ -151,6 +155,6 @@ describe("logoutAction", () => {
       })
     );
 
-    await expect(logoutAction("mock-valid-bearer-token")).resolves.toBeUndefined();
+    await expect(logoutAction()).resolves.toBeUndefined();
   });
 });

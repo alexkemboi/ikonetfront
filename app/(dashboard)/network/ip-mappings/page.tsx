@@ -2,7 +2,6 @@ import { getIpMappingsResult } from "@/actions/network";
 import type { IpMappingResponse } from "@/lib/types/api";
 import { getPermissionForRoute } from "@/lib/data/nav";
 import { redirect } from "next/navigation";
-import { Badge } from "@/components/ui/badge";
 import {
   Table,
   TableBody,

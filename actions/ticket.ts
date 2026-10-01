@@ -20,7 +20,7 @@ import { buildApiUrl } from "@/lib/constants"
 async function getAuthHeaders(): Promise<Record<string, string>> {
   const session = await auth()
   if (!session?.user?.apiToken) {
-    console.error("[Ticket Action] Missing apiToken in session!")
+    console.error("[Ticket Action] Authentication token is missing.")
     return {}
   }
   return withCompanyContext({ Authorization: `Bearer ${session.user.apiToken}` })

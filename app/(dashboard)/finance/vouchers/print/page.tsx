@@ -15,9 +15,10 @@ export default async function PrintPage() {
  const pagePerms = await getPermissionForRoute("/finance/vouchers");
  if (!pagePerms.canView) redirect("/dashboard");
 
- const { vouchers } = await getVouchersData();
+ const result = await getVouchersData();
+ const vouchers = result.vouchers;
  const unusedOnly = vouchers.filter(
  (v) => v.status === "UNUSED" && !v.isFallback
  );
- return <VoucherPrintSheet vouchers={unusedOnly} />;
+ return <VoucherPrintSheet vouchers={unusedOnly} error={result.error} requestId={result.requestId} />;
 }

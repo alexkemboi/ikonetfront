@@ -2,6 +2,8 @@ import * as Yup from "yup";
 
 export interface TvDeviceDetails {
   macAddress: string;
+  customerPhone?: string;
+  routerIdentity?: string;
 }
 
 export function normalizeTvMacAddress(value: string): string {
@@ -13,6 +15,8 @@ export function normalizeTvMacAddress(value: string): string {
 }
 
 export const tvDeviceSchema = Yup.object({
+  customerPhone: Yup.string().required("Enter your phone number."),
+  routerIdentity: Yup.string().optional(),
   macAddress: Yup.string()
     .transform((value: string) => normalizeTvMacAddress(value))
     .required("Enter your TV’s MAC address.")

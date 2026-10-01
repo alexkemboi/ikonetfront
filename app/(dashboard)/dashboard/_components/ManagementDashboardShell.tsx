@@ -22,7 +22,6 @@ interface ManagementDashboardShellProps {
  pppoeCustomers: number;
  packages: InternetPackage[];
  expiringCustomers: Customer[];
- revenuePotential: number;
  greeting: string;
 }
 
@@ -32,14 +31,9 @@ export function ManagementDashboardShell({
  pppoeCustomers,
  packages,
  expiringCustomers,
- revenuePotential,
  greeting,
 }: ManagementDashboardShellProps) {
  const activePackages = packages.filter((p) => p.activeStatus);
- const avgPackagePrice =
- activePackages.length > 0
- ? Math.round(activePackages.reduce((sum, p) => sum + p.price, 0) / activePackages.length)
- : 0;
 
  return (
  <div className="space-y-6">
@@ -75,9 +69,9 @@ export function ManagementDashboardShell({
  delay={0.1}
  />
  <MetricCard
- title="Revenue Potential"
- value={revenuePotential}
- subtitle={`Avg package KES ${avgPackagePrice.toLocaleString()}`}
+ title="Active Packages"
+ value={activePackages.length}
+ subtitle="Catalog plans · not collected revenue"
  icon={DollarSign}
  colorScheme="orange"
  delay={0.15}
@@ -186,7 +180,7 @@ export function ManagementDashboardShell({
  </div>
  <div className="shrink-0 ml-2 text-right space-y-1">
  <p className="text-sm font-bold text-success">
- KES {pkg.price.toLocaleString()}
+ KES {pkg.price}
  </p>
  <Badge
  variant={pkg.activeStatus ? "default" : "secondary"}

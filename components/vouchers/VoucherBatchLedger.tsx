@@ -1,10 +1,12 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Loader2, Plus } from "lucide-react";
 import type { VoucherBatchItem, VoucherBatchKpis } from "@/lib/types/payments";
-import { generateVoucherBatch } from "@/actions/payments";
+import { generateVoucherBatch, getVoucherBatchDetails } from "@/actions/payments";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -45,6 +47,9 @@ export function VoucherBatchLedger({ kpis, batches, packageOptions, routerOption
   const [quantity, setQuantity] = useState("");
   const [channel, setChannel] = useState<"CASH" | "BANK_TRANSFER">("CASH");
   const [codePrefix, setCodePrefix] = useState("");
+  const [idempotencyKey, setIdempotencyKey] = useState("");
+  const [confirmDuplicate, setConfirmDuplicate] = useState(false);
+  const [priceOverride, setPriceOverride] = useState<string | null>(null);
 
   const summaryCards = useMemo(
     () => [
@@ -54,6 +59,17 @@ export function VoucherBatchLedger({ kpis, batches, packageOptions, routerOption
     ],
     [kpis]
   );
+
+  async function openBatchDetails(batch: VoucherBatchItem) {
+    setSelectedBatch(batch);
+    setBatchDetails(null);
+    setDetailError("");
+    setDetailLoading(true);
+    const result = await getVoucherBatchDetails(batch.batchId);
+    setDetailLoading(false);
+    if (result.success && result.data) setBatchDetails(result.data);
+    else setDetailError(`${result.message}${result.requestId ? ` · Ref: ${result.requestId}` : ""}`);
+  }
 
   async function handleMint() {
     const pkgId = Number(packageId);
@@ -72,6 +88,11 @@ export function VoucherBatchLedger({ kpis, batches, packageOptions, routerOption
     }
     setSaving(true);
     try {
+      const selected = packageOptions.find((option) => option.value === packageId);
+      if (!selected) { toast.error("Selected package is no longer available."); return; }
+      const key = idempotencyKey || crypto.randomUUID();
+      setIdempotencyKey(key);
+      const expectedUnitPrice = priceOverride ?? selected.unitPrice;
       const res = await generateVoucherBatch({
         packageId: pkgId,
         quantity: qty,
@@ -84,8 +105,19 @@ export function VoucherBatchLedger({ kpis, batches, packageOptions, routerOption
         setMintOpen(false);
         setQuantity("");
         setCodePrefix("");
+        setIdempotencyKey("");
+        setConfirmDuplicate(false);
+        setPriceOverride(null);
       } else {
-        toast.error(res.message);
+        if (res.message === "POSSIBLE_DUPLICATE_BATCH") {
+          setConfirmDuplicate(true);
+          setIdempotencyKey(crypto.randomUUID());
+          toast.error("A matching batch was created in the last minute. Confirm and retry to create another.");
+        } else if (res.code === "PACKAGE_CHANGED" && res.serverUnitPrice) {
+          setPriceOverride(res.serverUnitPrice);
+          setIdempotencyKey("");
+          toast.error(`Package price changed to KES ${res.serverUnitPrice}. Click Mint batch again to confirm.`);
+        } else toast.error(res.message);
       }
     } finally {
       setSaving(false);
@@ -116,6 +148,7 @@ export function VoucherBatchLedger({ kpis, batches, packageOptions, routerOption
         </span>
         <Button
           onClick={() => setMintOpen(true)}
+          disabled={packageOptions.length === 0}
           className="bg-amber-500 text-black hover:bg-amber-400"
           size="sm"
         >
@@ -123,7 +156,7 @@ export function VoucherBatchLedger({ kpis, batches, packageOptions, routerOption
         </Button>
       </div>
 
-      <div className="rounded-2xl border border-border bg-card shadow-xl">
+      <div className="rounded-lg border border-border bg-card">
         {batches.length === 0 ? (
           <div className="p-12 text-center">
             <p className="text-sm text-muted-foreground">
@@ -144,6 +177,7 @@ export function VoucherBatchLedger({ kpis, batches, packageOptions, routerOption
                   <th className="py-3 px-3">STATUS</th>
                   <th className="py-3 px-3">BY</th>
                   <th className="py-3 px-3">CREATED</th>
+                  <th className="py-3 px-3">DETAILS / CODES</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-800/50">
@@ -170,6 +204,12 @@ export function VoucherBatchLedger({ kpis, batches, packageOptions, routerOption
                     <td className="py-3.5 px-3 text-muted-foreground">
                       {b.createdAt ? new Date(b.createdAt).toLocaleDateString() : "—"}
                     </td>
+                    <td className="py-3.5 px-3">
+                      <div className="flex items-center gap-3">
+                        <button type="button" className="text-primary underline" onClick={() => void openBatchDetails(b)}>Details</button>
+                        {b.sessionBatchId ? <Link className="text-primary underline" href={`/api/vouchers/batch-print?voucherBatchId=${encodeURIComponent(b.sessionBatchId)}`} target="_blank" rel="noreferrer">Print codes</Link> : <span className="text-muted-foreground">Codes unavailable</span>}
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -177,6 +217,8 @@ export function VoucherBatchLedger({ kpis, batches, packageOptions, routerOption
           </div>
         )}
       </div>
+
+      <div className="flex items-center justify-between border-t px-3 py-3 text-xs text-muted-foreground"><span>Showing {page.totalElements === 0 ? 0 : page.number * page.size + 1}-{Math.min((page.number + 1) * page.size, page.totalElements)} of {page.totalElements} batches</span><div className="flex items-center gap-2"><button type="button" disabled={page.number <= 0} onClick={() => { const query = new URLSearchParams(window.location.search); query.set("batchPage", String(page.number - 1)); router.push(`/finance/vouchers?${query}`); }} className="rounded border px-2 py-1 disabled:opacity-40">Previous</button><span>{page.number + 1}/{Math.max(1, page.totalPages)}</span><button type="button" disabled={page.number + 1 >= page.totalPages} onClick={() => { const query = new URLSearchParams(window.location.search); query.set("batchPage", String(page.number + 1)); router.push(`/finance/vouchers?${query}`); }} className="rounded border px-2 py-1 disabled:opacity-40">Next</button></div></div>
 
       <Dialog open={mintOpen} onOpenChange={setMintOpen}>
         <DialogContent className="bg-card border-border text-foreground">
@@ -190,7 +232,7 @@ export function VoucherBatchLedger({ kpis, batches, packageOptions, routerOption
           <div className="space-y-3 font-sans tabular-nums text-xs">
             <div className="space-y-1.5">
               <label className="text-muted-foreground">Package</label>
-              <Select value={packageId} onValueChange={setPackageId}>
+              <Select value={packageId} onValueChange={(value) => { setPackageId(value); setIdempotencyKey(""); setPriceOverride(null); }}>
                 <SelectTrigger className="border-border bg-muted text-foreground">
                   <SelectValue placeholder="Select a package" />
                 </SelectTrigger>
@@ -223,7 +265,7 @@ export function VoucherBatchLedger({ kpis, batches, packageOptions, routerOption
               <Input
                 type="number"
                 value={quantity}
-                onChange={(e) => setQuantity(e.target.value)}
+                onChange={(e) => { setQuantity(e.target.value); setIdempotencyKey(""); }}
                 placeholder="e.g. 100"
                 className="border-border bg-muted text-foreground placeholder:text-zinc-600"
               />
@@ -232,7 +274,7 @@ export function VoucherBatchLedger({ kpis, batches, packageOptions, routerOption
               <label className="text-muted-foreground">Channel</label>
               <Select
                 value={channel}
-                onValueChange={(v) => setChannel(v as "CASH" | "BANK_TRANSFER")}
+                onValueChange={(v) => { setChannel(v as "CASH" | "BANK_TRANSFER"); setIdempotencyKey(""); }}
               >
                 <SelectTrigger className="border-border bg-muted text-foreground">
                   <SelectValue placeholder="Channel" />
@@ -247,7 +289,7 @@ export function VoucherBatchLedger({ kpis, batches, packageOptions, routerOption
               <label className="text-muted-foreground">Code prefix (optional)</label>
               <Input
                 value={codePrefix}
-                onChange={(e) => setCodePrefix(e.target.value.toUpperCase())}
+                onChange={(e) => { setCodePrefix(e.target.value.toUpperCase()); setIdempotencyKey(""); }}
                 placeholder="e.g. ADR"
                 className="border-border bg-muted text-foreground placeholder:text-zinc-600"
               />
@@ -264,6 +306,29 @@ export function VoucherBatchLedger({ kpis, batches, packageOptions, routerOption
             >
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Mint batch"}
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={Boolean(selectedBatch)} onOpenChange={(open) => { if (!open) { setSelectedBatch(null); setBatchDetails(null); setDetailError(""); } }}>
+        <DialogContent className="bg-card border-border text-foreground">
+          <DialogHeader>
+            <DialogTitle>Voucher batch details</DialogTitle>
+            <DialogDescription>{(batchDetails ?? selectedBatch)?.batchNumber}</DialogDescription>
+          </DialogHeader>
+          {detailLoading ? <p className="py-4 text-sm text-muted-foreground">Loading batch details…</p> : detailError ? <p role="alert" className="py-4 text-sm text-destructive">{detailError}</p> : (batchDetails ?? selectedBatch) && <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+            <dt className="text-muted-foreground">Batch ID</dt><dd className="break-all font-mono text-xs">{(batchDetails ?? selectedBatch)?.batchId}</dd>
+            <dt className="text-muted-foreground">Session batch ID</dt><dd className="break-all font-mono text-xs">{(batchDetails ?? selectedBatch)?.sessionBatchId ?? "—"}</dd>
+            <dt className="text-muted-foreground">Package</dt><dd>{(batchDetails ?? selectedBatch)?.packageName}</dd>
+            <dt className="text-muted-foreground">Quantity</dt><dd>{(batchDetails ?? selectedBatch)?.quantity}</dd>
+            <dt className="text-muted-foreground">Unit price</dt><dd>KES {(batchDetails ?? selectedBatch)?.unitPrice}</dd>
+            <dt className="text-muted-foreground">Total value</dt><dd>KES {(batchDetails ?? selectedBatch)?.totalValue}</dd>
+            <dt className="text-muted-foreground">Minted / redeemed</dt><dd>{(batchDetails ?? selectedBatch)?.mintedCount} / {(batchDetails ?? selectedBatch)?.redeemedCount}</dd>
+            <dt className="text-muted-foreground">Status</dt><dd>{(batchDetails ?? selectedBatch)?.status}</dd>
+          </dl>}
+          <DialogFooter>
+            {(batchDetails ?? selectedBatch)?.sessionBatchId && <Link className="text-sm text-primary underline" target="_blank" rel="noreferrer" href={`/api/vouchers/batch-print?voucherBatchId=${encodeURIComponent((batchDetails ?? selectedBatch)!.sessionBatchId!)}`}>Print codes</Link>}
+            <Button type="button" variant="outline" onClick={() => setSelectedBatch(null)}>Close</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -107,3 +107,4 @@ describe("getLiveSessionsData (GET /sessions/live)", () => {
     expect(error).toBeTruthy();
   });
 });
+

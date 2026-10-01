@@ -81,7 +81,7 @@ export default async function CustomerIPMappingPage() {
   const mappedPools: IPPool[] = (pools as IpPool[]).map((p) => ({
     poolName: p.poolName,
     subnet: p.subnet,
-    gateway: p.gateway,
+    gateway: p.gateway ?? "",
     totalIps: p.totalIps,
     usedIps: p.usedIps,
     availableIps: p.availableIps,

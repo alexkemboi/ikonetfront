@@ -5,7 +5,6 @@ import { useMemo, useState } from "react";
 import { ArrowUpRight, Settings2, ShieldCheck, TestTube2 } from "lucide-react";
 import { withStepUp } from "@/lib/stepUp";
 import {
-  getSettingsCatalog,
   testGatewayCredentials,
   updateSettingItem,
   type AppSettingValue,

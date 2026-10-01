@@ -1,5 +1,6 @@
 import { getRegions } from "@/actions/network";
 import { RegionClient } from "./_components/RegionClient";
+import { redirect } from "next/navigation";
 
 export const metadata = {
  title: "Region Management - IBS",
@@ -7,7 +8,9 @@ export const metadata = {
 };
 
 export default async function RegionsPage() {
- const initialRegions = await getRegions(false);
+ const result = await getRegions(false);
+ if (!result.success && result.status === 401) redirect("/signout?reason=session-expired");
+ const initialRegions = result.success ? result.data : [];
 
 return (
     <div className="min-h-screen p-4 text-foreground sm:p-6 lg:p-8">
@@ -21,6 +24,8 @@ return (
             Define and manage your high-level geographic ISP operation boundaries.
           </p>
         </div>
+
+        {!result.success && <p role="alert" className="rounded-md border border-destructive/30 bg-destructive/5 p-4 text-sm">Regions unavailable: {result.message}{result.requestId ? ` · Ref: ${result.requestId}` : ""}</p>}
 
         <RegionClient initialRegions={initialRegions} />
       </div>

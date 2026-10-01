@@ -1,54 +1,42 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { server } from "@/mocks/server";
-import { http, HttpResponse } from "msw";
-import { API_PREFIX } from "@/mocks/handlers/auth-guard";
-import { ipMappingsPageFixture } from "@/contracts/catalog";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { getSubscribersData } from "@/actions/subscribers";
+import { apiFetch } from "@/lib/apiClient";
 
-const TOKEN = "mock-valid-bearer-token";
+vi.mock("@/lib/apiClient", () => ({ apiFetch: vi.fn() }));
 
-beforeEach(() => {
-  vi.clearAllMocks();
-});
+const mockedApiFetch = vi.mocked(apiFetch);
+const response = (success: boolean, data: unknown, message = "OK", requestId = "req-sub") => ({ status: success ? 200 : 503, success, data, message, requestId, timestamp: "2026-09-29T07:00:00Z" });
+const hub = {
+  kpis: { allUsersCount: 2, expiringIn7DaysCount: 1, newThisWeekCount: 1, onlinePercentage: 50, onlineCount: 1, atRiskCount: 1, statusCounts: { active: 1, grace: 0, expired: 1, suspended: 0 } },
+  rows: { content: [
+    { id: 1, code: "A2085", fullName: "Grace Wanjiru", phone: "0712345678", email: "grace@example.test", type: "HOTSPOT", planName: "Daily", planSpeed: "10 Mbps", planPrice: "50.00", expiryText: "Expires today", expiryDate: "2026-09-29", isExpiringToday: true, status: "ACTIVE", isOnline: false, lastSeenAt: null, activeSessionId: null, nasName: "RTR-1", deviceType: null, macAddress: null, ipAddress: null },
+    { id: 2, code: "A2", fullName: "Joseph Mwangi", phone: "0712345679", email: null, type: "PPPOE", planName: "Monthly", planSpeed: "20 Mbps", planPrice: "1500.00", expiryText: "Expired", expiryDate: "2026-09-20", isExpiringToday: false, status: "EXPIRED", isOnline: true, lastSeenAt: "2026-09-29T06:59:00Z", activeSessionId: "session-2", nasName: "RTR-2", deviceType: null, macAddress: "AA:BB:CC:DD:EE:FF", ipAddress: "10.0.0.2" },
+  ], totalElements: 2, totalPages: 1, number: 0, size: 25 },
+  query: { page: 0, size: 25, statusFilter: null, search: null, businessDate: "2026-09-29", kpiScope: "KPIS_IGNORE_STATUS_FILTER_AND_PAGINATION" },
+};
 
-describe("getSubscribersData (subscriber hub)", () => {
-  it("derives KPIs from the customers page + ip-mappings Page envelope (no invented BINDING rows)", async () => {
-    server.use(
-      http.get(`${API_PREFIX}/network/ip-mappings`, ({ request }) => {
-        expect(request.headers.get("authorization")).toBe(`Bearer ${TOKEN}`);
-        return HttpResponse.json(ipMappingsPageFixture(), { status: 200 });
-      })
-    );
+beforeEach(() => { vi.clearAllMocks(); });
 
-    const { kpis, subscribers } = await getSubscribersData();
-
-    // Customers page: 2 entries (Grace Wanjiru / Joseph Mwangi). No rows are
-    // invented for every binding — no "BINDING" subtypes leak into the list.
-    expect(subscribers).toHaveLength(2);
-    expect(subscribers.some((s) => s.type === "BINDING")).toBe(false);
-    expect(subscribers.some((s) => s.fullName.toLowerCase().includes("BINDING"))).toBe(false);
-
-    // Only A2085 has a matching ONLINE radacct mapping → onlineCount = 1.
-    expect(kpis.allUsersCount).toBe(2);
-    expect(kpis.onlineCount).toBe(1);
-
-    // Online enrichment: NAS/CKE router name (from IpMappingResponse.routerName)
-    // + MAC/IP from the live mapping.
-    const grace = subscribers.find((s) => s.fullName === "Grace Wanjiru");
-    expect(grace?.status).toBe("ONLINE");
-    expect(grace?.nasName).toBe("RTR-BDK-MSA-A");
-    expect(grace?.macAddress).toBe("32:A2:F1:9C:4D:02");
-    expect(grace?.ipAddress).toBe("172.16.0.11");
-
-    const joseph = subscribers.find((s) => s.fullName === "Joseph Mwangi");
-    expect(joseph?.status).toBe("OFFLINE");
+describe("getSubscribersData", () => {
+  it("keeps account lifecycle, connection state, and money strings distinct", async () => {
+    mockedApiFetch.mockResolvedValueOnce(response(true, hub) as never);
+    const result = await getSubscribersData();
+    expect(mockedApiFetch).toHaveBeenCalledWith("/subscribers/hub?page=0&size=25", expect.objectContaining({ auth: "required" }));
+    expect(result.success).toBe(true);
+    expect(result.kpis?.onlineCount).toBe(1);
+    expect(result.rows?.content[0]?.status).toBe("ACTIVE");
+    expect(result.rows?.content[0]?.isOnline).toBe(false);
+    expect(result.rows?.content[0]?.planPrice).toBe("50.00");
+    expect(result.rows?.content[1]?.status).toBe("EXPIRED");
+    expect(result.rows?.content[1]?.isOnline).toBe(true);
   });
 
-  it("counts remaining expiring/new/at-risk KPIs from the customer page", async () => {
-    const { kpis } = await getSubscribersData();
-    expect(kpis.expiringIn7DaysCount).toBeGreaterThanOrEqual(0);
-    expect(kpis.newThisWeekCount).toBeGreaterThanOrEqual(0);
-    expect(kpis.atRiskCount).toBeGreaterThanOrEqual(0);
-    expect(kpis.onlinePercentage).toBe(50);
+  it("returns unavailable state with request reference on backend failure", async () => {
+    mockedApiFetch.mockResolvedValueOnce(response(false, { requestId: "req-sub-503" }, "DATA_SOURCE_UNAVAILABLE", "req-sub-503") as never);
+    const result = await getSubscribersData();
+    expect(result.success).toBe(false);
+    expect(result.kpis).toBeNull();
+    expect(result.rows).toBeNull();
+    expect(result.requestId).toBe("req-sub-503");
   });
 });

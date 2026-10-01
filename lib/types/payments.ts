@@ -145,10 +145,14 @@ export interface ManualPaymentResponse {
 export interface VoucherBatchItem {
   batchId: string;
   batchNumber: string;
+  sessionBatchId: string | null;
+  companyId: string | null;
+  stationId: string | null;
+  packageId: number;
   packageName: string;
   quantity: number;
-  unitPrice: number;
-  totalValue: number;
+  unitPrice: string;
+  totalValue: string;
   channel: "CASH" | "BANK_TRANSFER";
   status: "ACTIVE" | "EXHAUSTED" | "ARCHIVED";
   codePrefix?: string;
@@ -156,12 +160,15 @@ export interface VoucherBatchItem {
   createdByUsername: string;
   createdAt: string;
   codes?: string[];
+  mintedCount: number;
+  redeemedCount: number;
 }
 
 export interface VoucherBatchKpis {
   activeCount: number;
-  activeValue: number;
-  totalValue: number;
+  activeValue: string;
+  totalValue: string;
+  vouchers?: number;
 }
 
 export interface GenerateVoucherBatchRequest {

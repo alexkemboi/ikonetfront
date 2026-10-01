@@ -1,3 +1,5 @@
+import { daysBetweenDateOnly, todayEatIso } from "@/lib/dates";
+
 export type SubscriberStatusBadge = {
   label: string;
   badgeClass: string;
@@ -19,18 +21,15 @@ export function getEffectiveSubscriberStatus(
     };
   }
 
-  const expiry = new Date(expiryDateStr);
-  if (isNaN(expiry.getTime())) {
+  const daysUntilExpiry = daysBetweenDateOnly(todayEatIso(), expiryDateStr);
+  if (daysUntilExpiry == null) {
     return {
       label: dbStatus || "Active",
       badgeClass: "bg-emerald-500/15 text-emerald-400 border-emerald-500/20",
     };
   }
 
-  const now = Date.now();
-
-  // Expired: past the expiry timestamp regardless of stale DB flags.
-  if (expiry.getTime() < now) {
+  if (daysUntilExpiry < 0) {
     return {
       label: "Expired",
       badgeClass: "bg-rose-500/15 text-rose-400 border-rose-500/20 font-semibold",
@@ -38,8 +37,7 @@ export function getEffectiveSubscriberStatus(
   }
 
   // Expiring within the next 24 hours.
-  const hoursRemaining = (expiry.getTime() - now) / (1000 * 60 * 60);
-  if (hoursRemaining <= 24) {
+  if (daysUntilExpiry === 0) {
     return {
       label: "Expiring Today",
       badgeClass: "bg-amber-500/15 text-amber-400 border-amber-500/20 font-semibold",

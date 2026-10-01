@@ -54,9 +54,9 @@ export default function BuyTab({ packages, companyCode, onCompanyResolved, onBac
         result.sort((a, b) => {
             switch (sortBy) {
                 case "price-asc":
-                    return a.price - b.price;
+                  return compareMoneyStrings(a.price, b.price);
                 case "price-desc":
-                    return b.price - a.price;
+                  return compareMoneyStrings(b.price, a.price);
                 case "data-asc":
                     return (a.speedDownload ?? 0) - (b.speedDownload ?? 0);
                 case "data-desc":

@@ -13,11 +13,18 @@ export const metadata = {
 
 export const dynamic = "force-dynamic";
 
-export default async function EquipmentHubPage() {
+export default async function EquipmentHubPage({ searchParams }: { searchParams: Promise<{ page?: string; status?: string; type?: string; search?: string; dataQuality?: string }> }) {
  const pagePerms = await getPermissionForRoute("/network/equipment");
  if (!pagePerms.canView) redirect("/dashboard");
 
- const { kpis, items } = await getEquipmentData();
+ const params = await searchParams;
+ const page = Math.max(0, Number(params?.page ?? 0) || 0);
+ const status = params?.status as import("@/lib/types/equipment").EquipmentStatus | undefined;
+ const allowedTypes = ["ROUTER", "SWITCH", "CPE_MODEM", "ONU", "ANTENNA", "SMART_TV", "WIFI_AP", "CABLE"];
+ const type = allowedTypes.includes(params?.type ?? "") ? params.type as import("@/lib/types/equipment").EquipmentType : undefined;
+ const allowedQualityFilters = ["VERIFIED", "PLACEHOLDER", "MISSING", "NEEDS_CORRECTION"];
+ const dataQuality = allowedQualityFilters.includes(params?.dataQuality ?? "") ? params.dataQuality : undefined;
+ const result = await getEquipmentData({ page, size: 50, status, type, search: params?.search, dataQuality });
 
  return (
  <div className="min-h-screen p-4 text-foreground sm:p-6 lg:p-8">
@@ -42,10 +49,10 @@ export default async function EquipmentHubPage() {
  </div>
 
  {/* KPI Cards */}
- <EquipmentKpiCards kpis={kpis} />
+ {result.success && result.kpis && result.items ? <EquipmentKpiCards kpis={result.kpis} /> : <div role="alert" className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm">Equipment data unavailable{result.requestId ? ` · Ref: ${result.requestId}` : ""}</div>}
 
  {/* Main Grid */}
- <EquipmentDataTable items={items} />
+ {result.success && result.items && <EquipmentDataTable pageData={result.items} canEdit={pagePerms.canEdit} />}
  </div>
  </div>
  );

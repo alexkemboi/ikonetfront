@@ -8,6 +8,11 @@ interface Props {
  onlinePercentage: number;
  onlineCount: number;
  smsCredits: number | null;
+ smsCreditLow: boolean;
+}
+
+function formatKsh(amount: number): string {
+ return `KES ${new Intl.NumberFormat("en-KE", { maximumFractionDigits: 2 }).format(amount)}`;
 }
 
 export function OverviewKpiCards({
@@ -18,6 +23,7 @@ export function OverviewKpiCards({
  onlinePercentage,
  onlineCount,
  smsCredits,
+ smsCreditLow,
 }: Props) {
  return (
  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -28,16 +34,16 @@ export function OverviewKpiCards({
  </span>
  <div className="mt-2 flex items-baseline gap-2">
  <span className="text-3xl font-sans tabular-nums font-bold text-foreground">
- {(revenueToday / 1000).toFixed(1)}k
+ {formatKsh(revenueToday)}
  </span>
  </div>
  <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
  <span className={revenueChangePercent >= 0 ? "text-emerald-400" : "text-rose-400"}>
- {revenueChangePercent >= 0 ? `+${revenueChangePercent}%` : `${revenueChangePercent}%`} Ksh, since midnight
+ {revenueChangePercent >= 0 ? `+${revenueChangePercent.toLocaleString("en-US", { maximumFractionDigits: 1 })}%` : `${revenueChangePercent.toLocaleString("en-US", { maximumFractionDigits: 1 })}%`} · since midnight
  </span>
  </div>
  <div className="mt-3 rounded-lg bg-muted px-2.5 py-1.5 text-[11px] font-sans tabular-nums text-muted-foreground">
- Mobile money: Ksh {(mobileMoneyToday / 1000).toFixed(1)}k
+ Mobile money: {formatKsh(mobileMoneyToday)}
  </div>
  </div>
 
@@ -85,11 +91,8 @@ export function OverviewKpiCards({
   {smsCredits === null ? "\u2014" : smsCredits}
   </div>
   <p className="mt-2 text-xs font-medium text-muted-foreground">
-  {smsCredits === null ? "Top up to enable reminders" : "Low \u2014 top up soon"}
+    {smsCredits === null ? "Balance unavailable" : smsCredits <= 0 ? "No credits remaining" : smsCreditLow ? "Low balance · top up soon" : "Balance available"}
   </p>
-  <div className="mt-5 h-1 w-full rounded-full bg-rose-500/20">
-  <div className="h-1 w-1/12 rounded-full bg-rose-500" />
-  </div>
   </div>
  </div>
  );

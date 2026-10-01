@@ -128,8 +128,10 @@ export default function ActivateTab({ clientMac, clientIp, routerIdentity }: Act
             <Button
                 onClick={handleSubmit}
                 disabled={validationState !== "valid" || isSubmitting}
+                disabled={validationState !== "valid" || isSubmitting}
                 className="w-full"
             >
+                {isSubmitting ? (
                 {isSubmitting ? (
                     <>
                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />

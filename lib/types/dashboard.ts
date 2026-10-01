@@ -47,7 +47,7 @@ export interface LivePaymentTicker {
 }
 
 export interface DashboardOverviewData {
-  tenantName: string;
+  companyName: string;
   shiftName: string; // e.g. "MORNING SHIFT"
   onlineSubscribersCount: number;
   expiriesDue24hCount: number;
@@ -78,3 +78,35 @@ export interface DashboardOverviewData {
     timeAgo: string;
   }[];
 }
+
+export interface AdminDashboardResponse {
+  dataStatus: "COMPLETE" | "PARTIAL";
+  unavailableMetrics: Array<{ metric: string; reason: string }>;
+  generatedAt: string;
+  companyId: string | null;
+  period: {
+    from: string;
+    to: string;
+    timezone: "Africa/Nairobi";
+    currency: "KES";
+    daily: { from: string; to: string };
+    weekly: { from: string; to: string };
+    monthly: { from: string; to: string };
+  };
+  customers: { total: number; active: number; inactive: number; pppoe: number | null } | null;
+  packages: { total: number; active: number; inactive: number | null } | null;
+  devices: { total: number; online: number; offline: number; healthyRouters: number; degraded: number | null; notProvisioned: number | null } | null;
+  revenue: {
+    daily: string; weekly: string; monthly: string; active: string | null; inactive: string | null;
+    expected: string; collected: string; outstanding: string; failedPayments: number;
+    hotspot: string; pppoe: string; tv: string; suspendedRevenueLoss: string | null; currency: "KES";
+  } | null;
+  alerts: Record<string, number | null> | null;
+  operations: Record<string, number | null> | null;
+  revenueTrend: Array<{ period: string; revenue: string; collected: string }>;
+  subscriberGrowth: Array<{ period: string; subscriberCount: number }>;
+}
+
+export type AdminDashboardLoadResult =
+  | { success: true; data: AdminDashboardResponse; requestId?: string }
+  | { success: false; message: string; requestId?: string };

@@ -1,94 +1,23 @@
-import React from "react";
-import type { AnalyticsKpis } from "@/lib/types/analytics";
+import type { AnalyticsDashboardData } from "@/lib/types/analytics";
 
-interface Props {
- kpis: AnalyticsKpis;
-}
+const cards = [
+  ["REVENUE · 30D", "revenue30d", true],
+  ["PROFIT · 30D", "profit30d", true],
+  ["MARGIN · 30D", "marginPct", false],
+  ["SUBSCRIBERS", "subscriberCount", false],
+  ["ACTIVE SUBSCRIPTIONS", "activeSubscriptionCount", false],
+  ["CHURN · 30D", "churnRate30d", false],
+  ["ARPU · 30D", "arpu30d", true],
+  ["AVG DAYS TO PAY", "avgDaysToPay", false],
+  ["UNCOLLECTED · 30D", "uncollectedInvoices30d", true],
+  ["BAD DEBT · 30D", "badDebtExpense30d", true],
+  ["AVG SESSION · 30D", "avgSessionDurationMinutes30d", false],
+] as const;
 
-export function AnalyticsKpiCards({ kpis }: Props) {
- return (
- <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-4">
- <div className="rounded-2xl border border-border bg-card p-5 shadow-lg">
- <span className="text-[11px] font-sans tabular-nums tracking-wider text-muted-foreground uppercase">
- ACTIVE SUBSCRIBERS
- </span>
- <div className="mt-2 text-3xl font-sans tabular-nums font-bold text-foreground">
- {kpis.activeSubscribersCount}
- </div>
- <p className="mt-1 text-xs text-emerald-400 font-sans tabular-nums">
- +{kpis.newSubscribersCount} new · Monthly
- </p>
- </div>
-
- <div className="rounded-2xl border border-border bg-card p-5 shadow-lg">
- <span className="text-[11px] font-sans tabular-nums tracking-wider text-muted-foreground uppercase">
- REVENUE
- </span>
- <div className="mt-2 text-3xl font-sans tabular-nums font-bold text-foreground">
- Ksh {kpis.revenueAmount.toLocaleString()}
- </div>
- <p className="mt-1 text-xs text-muted-foreground">Monthly</p>
- </div>
-
- <div className="rounded-2xl border border-border bg-card p-5 shadow-lg">
- <span className="text-[11px] font-sans tabular-nums tracking-wider text-muted-foreground uppercase">
- ARPU
- </span>
- <div className="mt-2 text-3xl font-sans tabular-nums font-bold text-foreground">
- Ksh {kpis.arpuAmount.toLocaleString()}
- </div>
- <p className="mt-1 text-xs text-muted-foreground">per active subscriber</p>
- </div>
-
- <div className="rounded-2xl border border-border bg-card p-5 shadow-lg">
- <span className="text-[11px] font-sans tabular-nums tracking-wider text-muted-foreground uppercase">
- SESSIONS
- </span>
- <div className="mt-2 text-3xl font-sans tabular-nums font-bold text-foreground">
- {kpis.sessionsCount.toLocaleString()}
- </div>
- <p className="mt-1 text-xs text-muted-foreground">avg {kpis.avgSessionDuration}</p>
- </div>
-
- <div className="rounded-2xl border border-border bg-card p-5 shadow-lg">
- <span className="text-[11px] font-sans tabular-nums tracking-wider text-muted-foreground uppercase">
- DATA TRANSFERRED
- </span>
- <div className="mt-2 text-3xl font-sans tabular-nums font-bold text-foreground">
- {kpis.dataTransferredTb} TB
- </div>
- <p className="mt-1 text-xs text-muted-foreground">{kpis.dataDownloadTb} TB down</p>
- </div>
-
- <div className="rounded-2xl border border-border bg-card p-5 shadow-lg">
- <span className="text-[11px] font-sans tabular-nums tracking-wider text-muted-foreground uppercase">
- ONLINE NOW
- </span>
- <div className="mt-2 text-3xl font-sans tabular-nums font-bold text-emerald-400">
- {kpis.onlineNowCount}
- </div>
- <p className="mt-1 text-xs text-muted-foreground">open sessions</p>
- </div>
-
- <div className="rounded-2xl border border-border bg-card p-5 shadow-lg">
- <span className="text-[11px] font-sans tabular-nums tracking-wider text-muted-foreground uppercase">
- PAYMENTS
- </span>
- <div className="mt-2 text-3xl font-sans tabular-nums font-bold text-foreground">
- {kpis.paymentsCount.toLocaleString()}
- </div>
- <p className="mt-1 text-xs text-muted-foreground">Monthly</p>
- </div>
-
- <div className="rounded-2xl border border-border bg-card p-5 shadow-lg">
- <span className="text-[11px] font-sans tabular-nums tracking-wider text-muted-foreground uppercase">
- OVERDUE
- </span>
- <div className="mt-2 text-3xl font-sans tabular-nums font-bold text-foreground">
- Ksh {kpis.overdueAmount}
- </div>
- <p className="mt-1 text-xs text-muted-foreground">0 invoices</p>
- </div>
- </div>
- );
+export function AnalyticsKpiCards({ kpis }: { kpis: AnalyticsDashboardData["kpis"] }) {
+  return <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">{cards.map(([label, key, money]) => {
+    const value = kpis[key];
+    const shown = value == null ? "-" : money ? `KES ${value}` : String(value);
+    return <div key={key} className="rounded-lg border border-border bg-card p-4"><p className="text-[11px] uppercase text-muted-foreground">{label}</p><p className="mt-2 break-words text-xl font-semibold tabular-nums">{shown}</p>{value == null && <p className="mt-1 text-xs text-muted-foreground">Not available</p>}</div>;
+  })}</div>;
 }

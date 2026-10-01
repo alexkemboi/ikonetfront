@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Power, Search } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -89,15 +90,30 @@ function StatusBadge({ session }: { session: LiveSessionItem }) {
 }
 
 export function LiveSessionDataTable({
- sessions,
+  sessions,
+  page,
+  totalPages,
+  totalElements,
+  size,
+  refreshIntervalSeconds,
 }: {
  sessions: LiveSessionItem[];
+  page: number;
+  totalPages: number;
+  totalElements: number;
+  size: number;
+  refreshIntervalSeconds: number;
 }) {
  const [items, setItems] = useState<LiveSessionItem[]>(sessions);
  const [tab, setTab] = useState<TabKey>("ALL");
  const [search, setSearch] = useState("");
  const [confirmId, setConfirmId] = useState<string | null>(null);
  const [busyId, setBusyId] = useState<string | null>(null);
+
+    useEffect(() => {
+      const timer = setInterval(() => router.refresh(), refreshIntervalSeconds * 1000);
+      return () => clearInterval(timer);
+    }, [refreshIntervalSeconds, router]);
 
  const counts = useMemo(
  () =>
@@ -149,7 +165,7 @@ export function LiveSessionDataTable({
  }
 
  return (
- <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-lg">
+ <div className="overflow-hidden rounded-lg border border-border bg-card">
  {/* Toolbar */}
  <div className="flex flex-col gap-3 border-b border-border p-4 lg:flex-row lg:items-center lg:justify-between">
  <div className="flex flex-wrap items-center gap-1.5">
@@ -257,7 +273,7 @@ export function LiveSessionDataTable({
  {/* Traffic */}
  <td className="px-4 py-3">
  <p className="whitespace-nowrap font-sans tabular-nums text-sm font-semibold text-amber-400">
- {session.downloadFormatted} · {session.uploadFormatted}
+ {formatBytes(session.downloadBytes)} · {formatBytes(session.uploadBytes)}
  </p>
  <p className="text-[11px] text-muted-foreground">down · up</p>
  </td>

@@ -4,13 +4,14 @@ import { withCompanyContext } from "@/lib/companyContext";
 import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
 import { buildApiUrl } from "@/lib/constants";
+import { apiFetch } from "@/lib/apiClient";
 import type { ApiResponse } from "@/lib/types/auth";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 export type InternetPackage = {
   idxno:           number;
   packageName:     string;
-  price:           number;
+  price:           string;
   packageCategory: string;
   validityType:    string;
   validityValue:   number;
@@ -31,7 +32,7 @@ export type InternetPackage = {
 
 export type PackagePayload = {
   packageName:     string;
-  price:           number;
+  price:           string;
   packageCategory: string;
   validityType:    string;
   validityValue:   number;
@@ -51,6 +52,15 @@ export type PackageUpdatePayload = PackagePayload & {
   approvedBy?: string;
   isApproved?: boolean;
 };
+
+export type VoucherPackageOption = Pick<InternetPackage, "idxno" | "packageName" | "packageCategory" | "validityType" | "validityValue" | "speedDownload" | "speedUpload" | "rateLimit" | "activeStatus" | "price">;
+
+export async function getActiveHotspotPackagesAction() {
+  return apiFetch<VoucherPackageOption[]>("/system/packages/category/HOTSPOT?includeInactive=false", {
+    auth: "required",
+    cache: "no-store",
+  });
+}
 
 // ── Auth headers ──────────────────────────────────────────────────────────────
 async function getAuthHeaders(): Promise<HeadersInit> {

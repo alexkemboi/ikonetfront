@@ -1,295 +1,99 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import {
- ArrowUpDown,
- Filter,
- MoreHorizontal,
- Search,
- Tv,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { Search } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { SubscriberItem } from "@/lib/types/subscribers";
+import type { SubscriberAccountStatus, SubscriberItem, SubscriberKpis, SubscriberRowsPage } from "@/lib/types/subscribers";
 
-const TABS = [
- { key: "ALL", label: "All" },
- { key: "HOTSPOT", label: "Hotspot" },
- { key: "PPPOE", label: "PPPoE" },
- { key: "BINDINGS", label: "Bindings" },
-] as const;
+const FILTERS: Array<{ value: "ALL" | SubscriberAccountStatus; label: string }> = [
+  { value: "ALL", label: "All" },
+  { value: "ACTIVE", label: "Active" },
+  { value: "GRACE", label: "Grace" },
+  { value: "EXPIRED", label: "Expired" },
+  { value: "SUSPENDED", label: "Suspended" },
+];
 
-type TabKey = (typeof TABS)[number]["key"];
-
-function initials(name: string): string {
- const parts = name.trim().split(/\s+/).filter(Boolean);
- if (parts.length === 0) return "?";
- const first = parts[0]?.[0] ?? "?";
- const last = parts.length > 1 ? (parts[parts.length - 1]?.[0] ?? "") : "";
- return `${first}${last}`.toUpperCase();
-}
-
-function planDetail(subscriber: SubscriberItem): string {
- const parts: string[] = [];
- if (subscriber.planSpeed) parts.push(subscriber.planSpeed);
- if (subscriber.planPrice > 0) parts.push(`Ksh ${subscriber.planPrice}`);
- return parts.join(" · ") || "—";
-}
+const accountColors: Record<SubscriberAccountStatus, string> = {
+  ACTIVE: "text-emerald-700 bg-emerald-50",
+  GRACE: "text-amber-800 bg-amber-50",
+  EXPIRED: "text-zinc-700 bg-zinc-100",
+  SUSPENDED: "text-red-700 bg-red-50",
+};
 
 export function SubscriberDataTable({
- subscribers,
+  pageData,
+  kpis,
+  statusFilter,
+  search,
 }: {
- subscribers: SubscriberItem[];
+  pageData: SubscriberRowsPage;
+  kpis: SubscriberKpis;
+  statusFilter: "ALL" | SubscriberAccountStatus;
+  search: string;
 }) {
- const [tab, setTab] = useState<TabKey>("ALL");
- const [search, setSearch] = useState("");
+  const router = useRouter();
+  const [searchInput, setSearchInput] = useState(search);
 
- const counts = useMemo(
- () => ({
- ALL: subscribers.length,
- HOTSPOT: subscribers.filter((s) => s.type === "HOTSPOT").length,
- PPPOE: subscribers.filter((s) => s.type === "PPPOE").length,
- BINDINGS: subscribers.filter((s) => s.type === "BINDING").length,
- }),
- [subscribers]
- );
+  function navigate(next: { page?: number; statusFilter?: string; search?: string }) {
+    const params = new URLSearchParams();
+    const nextFilter = next.statusFilter ?? statusFilter;
+    const nextSearch = next.search ?? search;
+    const nextPage = next.page ?? 0;
+    if (nextPage > 0) params.set("page", String(nextPage));
+    if (nextFilter !== "ALL") params.set("statusFilter", nextFilter);
+    if (nextSearch) params.set("search", nextSearch);
+    router.push(`/customers${params.size ? `?${params.toString()}` : ""}`);
+  }
 
- const filtered = useMemo(() => {
- const query = search.trim().toLowerCase();
- return subscribers.filter((subscriber) => {
- const matchesTab =
- tab === "ALL" ||
- (tab === "BINDINGS"
- ? subscriber.type === "BINDING"
- : subscriber.type === tab);
- if (!matchesTab) return false;
- if (!query) return true;
- return [
- subscriber.fullName,
- subscriber.code,
- subscriber.phone,
- subscriber.macAddress ?? "",
- subscriber.ipAddress ?? "",
- subscriber.planName,
- ].some((field) => field.toLowerCase().includes(query));
- });
- }, [subscribers, tab, search]);
-
- return (
- <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-lg">
- {/* Toolbar */}
- <div className="flex flex-col gap-3 border-b border-border p-4 sm:flex-row sm:items-center sm:justify-between">
- {/* Segmented tabs */}
- <div className="flex flex-wrap items-center gap-1.5">
- {TABS.map(({ key, label }) => {
- const active = tab === key;
- return (
- <button
- key={key}
- type="button"
- onClick={() => setTab(key)}
- className={cn(
- "rounded-lg px-3 py-1.5 text-xs font-medium transition-colors",
- active
- ? "bg-zinc-100 text-zinc-900"
- : "text-muted-foreground hover:text-accent-foreground"
- )}
- >
- {label}
- <span
- className={cn(
- "ml-1.5 font-sans tabular-nums",
- active ? "text-muted-foreground" : "text-muted-foreground"
- )}
- >
- {counts[key]}
- </span>
- </button>
- );
- })}
- </div>
-
- {/* Search + filter */}
- <div className="flex items-center gap-2">
- <div className="relative">
- <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
- <input
- value={search}
- onChange={(e) => setSearch(e.target.value)}
- placeholder="Search name, code, MAC, IP..."
- className="h-8 w-56 rounded-lg border border-border bg-muted pl-8 pr-3 text-xs text-zinc-200 outline-none transition-colors placeholder:text-zinc-600 focus:border-zinc-500"
- />
- </div>
- <Button
- variant="outline"
- size="sm"
- className="h-8 gap-1.5 border-border bg-muted text-muted-foreground hover:text-accent-foreground"
- >
- <Filter className="h-3.5 w-3.5" />
- Filter
- </Button>
- </div>
- </div>
-
- {/* Table */}
- <div className="overflow-x-auto">
- <table className="w-full min-w-[900px] text-left">
- <thead>
- <tr className="border-b border-border">
- <th className="px-4 py-3 text-[11px] font-sans tabular-nums uppercase tracking-wider text-muted-foreground">
- <span className="inline-flex items-center gap-1">
- <ArrowUpDown className="h-3 w-3" />
- Contact
- </span>
- </th>
- <th className="px-4 py-3 text-[11px] font-sans tabular-nums uppercase tracking-wider text-muted-foreground">
- Phone {`&`} Email
- </th>
- <th className="px-4 py-3 text-[11px] font-sans tabular-nums uppercase tracking-wider text-muted-foreground">
- Plan
- </th>
- <th className="px-4 py-3 text-[11px] font-sans tabular-nums uppercase tracking-wider text-muted-foreground">
- Expiry
- </th>
- <th className="px-4 py-3 text-[11px] font-sans tabular-nums uppercase tracking-wider text-muted-foreground">
- Status
- </th>
- <th className="px-4 py-3 text-[11px] font-sans tabular-nums uppercase tracking-wider text-muted-foreground">
- NAS
- </th>
- <th className="w-12 px-4 py-3 text-right text-[11px] font-sans tabular-nums uppercase tracking-wider text-muted-foreground">
- Actions
- </th>
- </tr>
- </thead>
- <tbody>
- {filtered.length === 0 ? (
- <tr>
- <td colSpan={7} className="px-4 py-14 text-center text-sm text-muted-foreground">
- No subscribers match your filters.
- </td>
- </tr>
- ) : (
- filtered.map((subscriber) => (
- <tr
- key={subscriber.id}
- className="border-b border-border transition-colors hover:bg-accent"
- >
- {/* Contact */}
- <td className="px-4 py-3">
- <div className="flex items-center gap-3">
- <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-zinc-700 to-zinc-800 text-[11px] font-bold text-zinc-200">
- {initials(subscriber.fullName)}
- </div>
- <div className="min-w-0">
- <div className="flex flex-wrap items-center gap-2">
- <p className="truncate text-sm font-medium text-foreground">
- {subscriber.fullName}
- </p>
- {subscriber.deviceType === "SMART_TV" && (
- <span className="inline-flex items-center gap-1 rounded-full border border-cyan-500/20 bg-cyan-500/10 px-1.5 py-0.5 text-[10px] font-medium text-cyan-300">
- <Tv className="h-3 w-3" />
- TV
- </span>
- )}
- </div>
- <p className="truncate font-sans tabular-nums text-[11px] text-muted-foreground">
- {subscriber.code}
- {subscriber.macAddress
- ? ` · ${subscriber.macAddress}`
- : ""}
- </p>
- </div>
- </div>
- </td>
-
- {/* Phone & Email */}
- <td className="px-4 py-3">
- <p className="font-sans tabular-nums text-sm text-zinc-200">
- {subscriber.phone}
- </p>
- <p className="max-w-[180px] truncate text-[11px] text-muted-foreground">
- {subscriber.email || "—"}
- </p>
- </td>
-
- {/* Plan */}
- <td className="px-4 py-3">
- <p className="max-w-[160px] truncate text-sm text-zinc-200">
- {subscriber.planName}
- </p>
- <p className="text-[11px] text-muted-foreground">
- {planDetail(subscriber)}
- </p>
- </td>
-
- {/* Expiry */}
- <td className="px-4 py-3">
- <p
- className={cn(
- "text-sm",
- subscriber.isExpiringToday
- ? "font-medium text-amber-400"
- : "text-muted-foreground"
- )}
- >
- {subscriber.expiryText}
- </p>
- </td>
-
- {/* Status */}
- <td className="px-4 py-3">
- <span
- className={cn(
- "inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-medium",
- subscriber.status === "ONLINE"
- ? "bg-emerald-500/10 text-emerald-400"
- : "bg-secondary text-muted-foreground"
- )}
- >
- <span
- className={cn(
- "h-1.5 w-1.5 rounded-full",
- subscriber.status === "ONLINE"
- ? "animate-pulse bg-emerald-400"
- : "bg-zinc-600"
- )}
- />
- {subscriber.status}
- </span>
- </td>
-
- {/* NAS */}
- <td className="px-4 py-3">
- <p className="max-w-[150px] truncate text-sm text-muted-foreground">
- {subscriber.nasName || "—"}
- </p>
- </td>
-
- {/* Actions */}
- <td className="px-4 py-3 text-right">
- <Button
- variant="ghost"
- size="icon-sm"
- className="text-muted-foreground hover:text-accent-foreground"
- aria-label={`Actions for ${subscriber.fullName}`}
- >
- <MoreHorizontal className="h-4 w-4" />
- </Button>
- </td>
- </tr>
- ))
- )}
- </tbody>
- </table>
- </div>
-
- <div className="flex items-center justify-between border-t border-border px-4 py-2.5 text-xs text-muted-foreground">
- <span>
- Showing {filtered.length} of {subscribers.length} subscribers
- </span>
- <span className="font-sans tabular-nums">LIVE DATA</span>
- </div>
- </div>
- );
+  return (
+    <div className="overflow-hidden rounded-lg border border-border bg-card">
+      <div className="flex flex-col gap-3 border-b border-border p-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Filter account status">
+          {FILTERS.map(({ value, label }) => {
+            const count = value === "ALL" ? kpis.allUsersCount : kpis.statusCounts[value.toLowerCase() as keyof typeof kpis.statusCounts];
+            return (
+              <button key={value} type="button" onClick={() => navigate({ statusFilter: value })}
+                className={cn("rounded-md px-3 py-1.5 text-xs font-medium", statusFilter === value ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground")}>
+                {label} <span className="ml-1 tabular-nums">{count}</span>
+              </button>
+            );
+          })}
+        </div>
+        <form className="relative" onSubmit={(event) => { event.preventDefault(); navigate({ search: searchInput.trim() }); }}>
+          <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+          <input value={searchInput} onChange={(event) => setSearchInput(event.target.value)} placeholder="Search name, code, phone..."
+            className="h-9 w-64 rounded-md border border-border bg-background pl-8 pr-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring" />
+        </form>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[1000px] text-left">
+          <thead><tr className="border-b border-border text-[11px] uppercase text-muted-foreground">
+            <th className="px-4 py-3">Subscriber</th><th className="px-4 py-3">Phone &amp; email</th><th className="px-4 py-3">Plan</th>
+            <th className="px-4 py-3">Expiry</th><th className="px-4 py-3">Account</th><th className="px-4 py-3">Connection</th><th className="px-4 py-3">NAS</th>
+          </tr></thead>
+          <tbody>
+            {pageData.content.length === 0 ? <tr><td colSpan={7} className="px-4 py-14 text-center text-sm text-muted-foreground">No subscribers match this query.</td></tr> :
+              pageData.content.map((subscriber: SubscriberItem) => <tr key={subscriber.id} className="border-b border-border hover:bg-muted/40">
+                <td className="px-4 py-3"><p className="text-sm font-medium">{subscriber.fullName}</p><p className="text-xs text-muted-foreground">{subscriber.code}{subscriber.macAddress ? ` · ${subscriber.macAddress}` : ""}</p></td>
+                <td className="px-4 py-3"><p className="text-sm">{subscriber.phone}</p><p className="max-w-[180px] truncate text-xs text-muted-foreground">{subscriber.email || "—"}</p></td>
+                <td className="px-4 py-3"><p className="text-sm">{subscriber.planName}</p><p className="text-xs text-muted-foreground">{[subscriber.planSpeed, subscriber.planPrice == null ? null : `KES ${subscriber.planPrice}`].filter(Boolean).join(" · ") || "—"}</p></td>
+                <td className="px-4 py-3"><span className={subscriber.isExpiringToday ? "font-medium text-amber-700" : "text-muted-foreground"}>{subscriber.expiryText || "—"}</span></td>
+                <td className="px-4 py-3"><span className={cn("rounded-full px-2 py-1 text-xs", accountColors[subscriber.status])}>{subscriber.status}</span></td>
+                <td className="px-4 py-3"><span className={subscriber.isOnline ? "text-emerald-700" : "text-muted-foreground"}>{subscriber.isOnline ? "Online" : "Offline"}</span><p className="text-xs text-muted-foreground">{subscriber.lastSeenAt ? `Last seen ${new Date(subscriber.lastSeenAt).toLocaleString()}` : "Never connected"}</p></td>
+                <td className="px-4 py-3 text-sm text-muted-foreground">{subscriber.nasName || "—"}</td>
+              </tr>)}
+          </tbody>
+        </table>
+      </div>
+      <div className="flex items-center justify-between border-t border-border px-4 py-3 text-xs text-muted-foreground">
+        <span>Showing {pageData.totalElements === 0 ? 0 : pageData.number * pageData.size + 1}-{Math.min((pageData.number + 1) * pageData.size, pageData.totalElements)} of {pageData.totalElements} rows · KPIs cover matching search across all pages</span>
+        <div className="flex items-center gap-2">
+          <button type="button" disabled={pageData.number <= 0} onClick={() => navigate({ page: pageData.number - 1 })} className="rounded border px-2 py-1 disabled:opacity-40">Previous</button>
+          <span>{pageData.number + 1} / {Math.max(1, pageData.totalPages)}</span>
+          <button type="button" disabled={pageData.number + 1 >= pageData.totalPages} onClick={() => navigate({ page: pageData.number + 1 })} className="rounded border px-2 py-1 disabled:opacity-40">Next</button>
+        </div>
+      </div>
+    </div>
+  );
 }

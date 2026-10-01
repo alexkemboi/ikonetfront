@@ -1,65 +1,15 @@
 "use client";
 
-import React from "react";
-import type { PaymentTrendPoint } from "@/lib/types/analytics";
-import { CHART_MAX_VAL } from "@/components/analytics/chart-constants";
+import type { AnalyticsDashboardData } from "@/lib/types/analytics";
 
-interface Props {
- totalAmount: number;
- prevAmount: number;
- deltaPercent: number;
- points: PaymentTrendPoint[];
-}
-
-export function PaymentsTrendChart({
- totalAmount,
- prevAmount,
- deltaPercent,
- points,
-}: Props) {
- return (
- <div className="rounded-2xl border border-border bg-card p-6 shadow-xl">
- <div className="flex flex-wrap items-center justify-between border-b border-border pb-4 gap-4">
- <div>
- <h2 className="text-lg font-normal text-foreground">Payments trend · Monthly</h2>
- <p className="text-xs text-muted-foreground">Current period vs previous</p>
- </div>
-
- <span className="rounded-full bg-amber-500/15 px-2.5 py-0.5 text-xs font-sans tabular-nums font-bold text-amber-400">
- ▲ {deltaPercent}%
- </span>
- </div>
-
- <div className="mt-6 h-48 w-full flex items-end gap-1.5 pt-4">
- {points.map((p) => {
- const barHeightPercent = Math.min(
- 100,
- Math.max(5, (p.currentAmount / CHART_MAX_VAL) * 100)
- );
- return (
- <div key={p.day} className="flex-1 flex flex-col items-center gap-2 group relative">
- <div className="absolute -top-8 hidden rounded bg-secondary px-2 py-1 text-[10px] font-sans tabular-nums text-foreground group-hover:block z-10 whitespace-nowrap">
- Day {p.day}: Ksh {p.currentAmount.toLocaleString()}
- </div>
-
- <div
- className="w-full rounded-t bg-gradient-to-t from-amber-600/50 to-amber-500 transition-all hover:brightness-125"
- style={{ height: `${barHeightPercent}%` }}
- />
- <span className="text-[9px] font-sans tabular-nums text-muted-foreground">{p.day}</span>
- </div>
- );
- })}
- </div>
-
- <div className="mt-4 flex items-center justify-between border-t border-border pt-4 text-xs font-sans tabular-nums text-muted-foreground">
- <div>
- This period: <strong className="text-foreground">Ksh {totalAmount.toLocaleString()}</strong>
- </div>
- <div>
- Prev: <span className="text-muted-foreground">Ksh {prevAmount.toLocaleString()}</span>
- </div>
- </div>
- </div>
- );
+export function PaymentsTrendChart({ trend }: { trend: AnalyticsDashboardData["paymentsTrend"] }) {
+  const max = Math.max(1, ...trend.points.map((point) => Number.parseFloat(point.currentRevenue) || 0));
+  return <section className="rounded-lg border border-border bg-card p-4">
+    <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border pb-3"><div><h2 className="text-sm font-medium">Revenue trend · 30 days</h2><p className="text-xs text-muted-foreground">Current period compared with aligned prior period</p></div><p className="text-xs text-muted-foreground">{trend.deltaPercent == null ? "New" : `${trend.deltaPercent}%`} change</p></div>
+    <div className="mt-4 flex h-44 items-end gap-1 overflow-x-auto">{trend.points.map((point) => {
+      const amount = Number.parseFloat(point.currentRevenue) || 0;
+      return <div key={point.date} className="group relative flex h-full min-w-3 flex-1 flex-col justify-end"><div className="w-full rounded-t bg-emerald-600" style={{ height: `${Math.max(2, amount / max * 100)}%` }} /><div className="absolute bottom-full z-10 mb-1 hidden whitespace-nowrap rounded border bg-background p-2 text-[10px] shadow group-hover:block"><p>{point.date}</p><p>Current: KES {point.currentRevenue}</p><p>Previous ({point.previousDate}): KES {point.previousRevenue}</p><p>{point.paymentCount} payments</p></div></div>;
+    })}</div>
+    <div className="mt-3 flex justify-between border-t border-border pt-3 text-xs"><span>Current: KES {trend.periodTotal}</span><span>Previous: KES {trend.previousPeriodTotal}</span></div>
+  </section>;
 }

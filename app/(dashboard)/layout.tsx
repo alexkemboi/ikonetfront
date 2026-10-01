@@ -5,7 +5,6 @@ import TopBar from "./_components/TopBar";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import {
- apiMenusToNavGroups,
  extractPermissions,
  fetchRoleMenusRaw,
  getStaticNavForRole,

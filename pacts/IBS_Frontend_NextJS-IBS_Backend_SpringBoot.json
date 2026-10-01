@@ -1339,7 +1339,7 @@
               "idxno": 1,
               "packageCategory": "HOTSPOT",
               "packageName": "Home Hotspot 10Mbps",
-              "price": 1500,
+              "price": "1500.00",
               "rateLimit": "10M/5M",
               "speedDownload": 10,
               "speedUpload": 5,
@@ -1533,7 +1533,7 @@
               "maxDevices": 1,
               "packageCategory": "TV",
               "packageName": "TV 24H",
-              "price": 150,
+              "price": "150.00",
               "rateLimit": "15M/15M",
               "speedDownload": 15,
               "speedUpload": 15,
@@ -5508,10 +5508,18 @@
             {
               "availableIps": 205,
               "gateway": "10.50.50.1",
+              "lastProbedAt": "2026-09-29T07:00:00Z",
+              "overCapacity": false,
+              "poolId": 1,
               "poolName": "hs-pool-mombasa",
+              "probeError": 0,
+              "probeStatus": "OK",
+              "rawUsedIps": 49,
               "serviceType": "HOTSPOT",
+              "stale": false,
               "subnet": "10.50.50.0/24",
               "totalIps": 254,
+              "usageSource": "MIKROTIK_DHCP_LEASES",
               "usedIps": 49,
               "utilizationPercentage": 0.07
             }
@@ -5567,6 +5575,30 @@
                 }
               ]
             },
+            "$.data[*].lastProbedAt": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data[*].overCapacity": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data[*].poolId": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
             "$.data[*].poolName": {
               "combine": "AND",
               "matchers": [
@@ -5575,7 +5607,39 @@
                 }
               ]
             },
+            "$.data[*].probeError": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data[*].probeStatus": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data[*].rawUsedIps": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
             "$.data[*].serviceType": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data[*].stale": {
               "combine": "AND",
               "matchers": [
                 {
@@ -5592,6 +5656,14 @@
               ]
             },
             "$.data[*].totalIps": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data[*].usageSource": {
               "combine": "AND",
               "matchers": [
                 {

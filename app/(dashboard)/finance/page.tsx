@@ -200,8 +200,8 @@ export default async function FinancePage({ searchParams }: FinancePageProps) {
                     Accounts ({trialBalance.accounts.length})
                   </p>
                   <div className="max-h-[200px] overflow-y-auto space-y-1">
-                    {trialBalance.accounts.map((acct) => (
-                      <div key={acct.code} className="flex justify-between text-xs py-1">
+                    {trialBalance.accounts.map((acct, index) => (
+                      <div key={`${acct.code}-${acct.name}-${index}`} className="flex justify-between text-xs py-1">
                         <span className="text-muted-foreground truncate">
                           {acct.code} — {acct.name}
                         </span>

@@ -3,6 +3,7 @@
 import { withCompanyContext } from "@/lib/companyContext";
 import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
+import { apiFetch } from "@/lib/apiClient";
 import { BASE_URL, buildApiUrl } from "@/lib/constants";
 import {
   NasRouterItem,
@@ -10,10 +11,7 @@ import {
   ProvisioningScriptResponse,
   RouterServicesConfigRequest,
 } from "@/lib/types/provisioning";
-import { getMikrotikDevices, getMikrotikDeviceStatus } from "@/actions/mikrotik";
-import { getRouterMonitoringLatest, getRouters } from "@/actions/network";
-import type { RouterHealthSnapshot, RouterResponse } from "@/lib/types/network";
-import { isRouterOnline } from "@/lib/utils/router-status";
+import { getMikrotikDeviceStatus } from "@/actions/mikrotik";
 import { getPermissionForRoute } from "@/lib/data/nav";
 
 async function getAuthHeaders(): Promise<HeadersInit> {

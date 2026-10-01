@@ -48,7 +48,7 @@ export default function PackageCard({ pkg, onSelect }: PackageCardProps) {
 				{/* Center: Price */}
 				<div className="text-right shrink-0 flex items-center justify-between sm:justify-end">
 					<span className="text-lg font-bold text-primary">
-						KES {pkg.price.toLocaleString()}
+						 KES {pkg.price}
 					</span>
 				</div>
 

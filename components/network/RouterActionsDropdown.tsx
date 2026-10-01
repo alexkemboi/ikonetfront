@@ -49,8 +49,8 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
 export interface RouterActionsRow {
-  /** network_device.id (string) — used for interfaces + delete + tunnels. */
-  id: string;
+  /** network_device.id — used for interfaces + delete + tunnels. */
+  deviceId?: number;
   /** network_routers.idxno — used for telemetry + remote actions. */
   routerId?: number;
   name: string;
@@ -61,6 +61,14 @@ export interface RouterActionsRow {
   winboxTunnelAddress?: string | null;
   webConsoleUrl?: string | null;
   tunnelExpiresAt?: string | null;
+  links?: {
+    router: string | null;
+    routerAction: string | null;
+    telemetryLatest: string | null;
+    deviceInterfaces: string | null;
+    deviceStatus: string | null;
+    deviceDelete: string | null;
+  };
 }
 
 type Tab = "vitals" | "interfaces" | "sessions";
@@ -213,7 +221,7 @@ export function RouterActionsDropdown({
     }
     setBusyAction(action);
     try {
-      const run = (token?: string) => executeRouterAction(actionRouterId, { action }, token);
+      const run = (token?: string) => executeRouterAction(actionRouterId, { action }, token, router.links?.routerAction);
       // REPROVISION/REBOOT are high-blast-radius — step-up re-authentication.
       const res = action === "REPROVISION" || action === "REBOOT"
         ? await withStepUp(
@@ -277,7 +285,7 @@ export function RouterActionsDropdown({
     setBusyAction("DELETE");
     try {
       const res = await withStepUp(
-        (token) => deleteNetworkDevice(deviceId, token),
+        (token) => deleteNetworkDevice(deviceId, token, router.links?.deviceDelete),
         "Deleting a router is a high-impact operation. Re-authenticate to continue."
       );
       if (res.success) {
@@ -391,6 +399,7 @@ export function RouterActionsDropdown({
       <button
         type="button"
         role="menuitem"
+        disabled={!canReadTelemetry}
         onClick={() => openDrawer("vitals")}
         className="flex items-center w-full px-4 py-2.5 hover:bg-muted hover:text-foreground gap-2.5 transition text-left"
       >
@@ -401,6 +410,7 @@ export function RouterActionsDropdown({
       <button
         type="button"
         role="menuitem"
+        disabled={!router.links?.deviceInterfaces}
         onClick={() => openDrawer("interfaces")}
         className="flex items-center w-full px-4 py-2.5 hover:bg-muted hover:text-foreground gap-2.5 transition text-left"
       >
@@ -411,6 +421,7 @@ export function RouterActionsDropdown({
       <button
         type="button"
         role="menuitem"
+        disabled={!router.links?.router}
         onClick={() => openDrawer("sessions")}
         className="flex items-center w-full px-4 py-2.5 hover:bg-muted hover:text-foreground gap-2.5 transition text-left"
       >
@@ -435,7 +446,7 @@ export function RouterActionsDropdown({
       <button
         type="button"
         role="menuitem"
-        disabled={busyAction === "DIAGNOSE"}
+        disabled={!hasRouterAction || busyAction === "DIAGNOSE"}
         onClick={() => void runAction("DIAGNOSE")}
         className="flex items-center w-full px-4 py-2.5 hover:bg-muted hover:text-foreground gap-2.5 transition text-left disabled:opacity-50"
       >
@@ -446,7 +457,7 @@ export function RouterActionsDropdown({
       <button
         type="button"
         role="menuitem"
-        disabled={busyAction === "SYNC_ROUTER_TIME"}
+        disabled={!hasRouterAction || busyAction === "SYNC_ROUTER_TIME"}
         onClick={() => void runAction("SYNC_ROUTER_TIME")}
         className="flex items-center w-full px-4 py-2.5 hover:bg-muted hover:text-foreground gap-2.5 transition text-left disabled:opacity-50"
       >
@@ -457,7 +468,7 @@ export function RouterActionsDropdown({
       <button
         type="button"
         role="menuitem"
-        disabled={busyAction === "SYNC_HOTSPOT_FILES"}
+        disabled={!hasRouterAction || busyAction === "SYNC_HOTSPOT_FILES"}
         onClick={() => void runAction("SYNC_HOTSPOT_FILES")}
         className="flex items-center w-full px-4 py-2.5 hover:bg-muted hover:text-foreground gap-2.5 transition text-left disabled:opacity-50"
       >
@@ -468,7 +479,7 @@ export function RouterActionsDropdown({
       <button
         type="button"
         role="menuitem"
-        disabled={busyAction === "REPROVISION"}
+        disabled={!hasRouterAction || busyAction === "REPROVISION"}
         onClick={() => void runAction("REPROVISION")}
         className="flex items-center w-full px-4 py-2.5 hover:bg-muted hover:text-foreground gap-2.5 transition text-left disabled:opacity-50"
       >
@@ -482,6 +493,7 @@ export function RouterActionsDropdown({
         <button
           type="button"
           role="menuitem"
+          disabled={!router.links?.deviceDelete}
           onClick={() => void copyHostPort()}
           className="flex items-center w-full px-4 py-2.5 hover:bg-muted hover:text-foreground gap-2.5 transition text-left"
         >
@@ -549,7 +561,7 @@ export function RouterActionsDropdown({
       <button
         type="button"
         role="menuitem"
-        disabled={busyAction === "REFRESH"}
+        disabled={!hasRouterAction || busyAction === "REFRESH"}
         onClick={() => void runAction("REFRESH")}
         className="flex items-center w-full px-4 py-2.5 hover:bg-muted hover:text-foreground gap-2.5 transition text-left disabled:opacity-50"
       >
@@ -560,7 +572,7 @@ export function RouterActionsDropdown({
       <button
         type="button"
         role="menuitem"
-        disabled={busyAction === "REBOOT"}
+        disabled={!hasRouterAction || busyAction === "REBOOT"}
         onClick={handleReboot}
         className="flex items-center w-full px-4 py-2.5 hover:bg-red-950/20 text-red-500 gap-2.5 transition text-left disabled:opacity-50"
       >

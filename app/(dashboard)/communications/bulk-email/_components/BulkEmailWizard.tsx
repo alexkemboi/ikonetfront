@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useFormik } from "formik";
 import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
@@ -44,8 +44,17 @@ import {
   type NotificationChannel,
   type AudienceSource,
 } from "@/lib/validation/bulk-email";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface Props {
+ customers: CampaignRecipient[];
+ systemUsers: CampaignRecipient[];
+ templates: EmailTemplate[];
+ templateNotice?: string;
+ templateRequestId?: string;
+ recipientError?: string;
+ recipientRequestId?: string;
+}
   templates: EmailTemplate[];
   customers: Customer[];
   systemUsers: ApiRoleUser[];
@@ -432,6 +441,10 @@ export default function BulkEmailWizard({ templates, customers, systemUsers }: P
       {/* Step indicator */}
       <StepIndicator current={step} />
 
+ {recipientError && <p role="alert" className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm">Customer recipients unavailable: {recipientError}{recipientRequestId ? ` · Ref: ${recipientRequestId}` : ""}</p>}
+ {templateNotice && step === 2 && <p role="status" className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">Using built-in templates. {templateNotice}{templateRequestId ? ` · Ref: ${templateRequestId}` : ""}</p>}
+ {sendError && <p role="alert" className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm">{sendError}{sendRequestId ? ` · Ref: ${sendRequestId}` : ""}</p>}
+
       {/* Step content */}
       <Card className="border-border shadow-sm">
         <CardContent className="p-8">
@@ -524,7 +537,8 @@ export default function BulkEmailWizard({ templates, customers, systemUsers }: P
                       <SelectValue placeholder="Choose a template" />
                     </SelectTrigger>
                     <SelectContent>
-                      {templates.map((t) => (
+                                      <SelectItem value="blank">Write from scratch</SelectItem>
+ {templates.map((t) => (
                         <SelectItem key={t.id} value={t.id}>
                           {t.name}
                         </SelectItem>
