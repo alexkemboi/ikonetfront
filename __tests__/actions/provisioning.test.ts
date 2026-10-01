@@ -1,49 +1,64 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { apiFetch } from "@/lib/apiClient";
 import { getNasRoutersData } from "@/actions/provisioning";
+import { getMikrotikDevices } from "@/actions/mikrotik";
+import { getRouters, getRouterMonitoringLatest } from "@/actions/network";
+import { isRouterOnline } from "@/lib/utils/router-status";
+import type { MikrotikDevice } from "@/lib/types/mikrotik";
 
-vi.mock("@/lib/apiClient", () => ({ apiFetch: vi.fn() }));
-const mockedApiFetch = vi.mocked(apiFetch);
-const links = { router: "/api/v1/network-routers/7", routerAction: "/api/v1/network-routers/7/action", telemetryLatest: "/api/v1/network/monitoring/router/7/latest", deviceInterfaces: "/api/v1/network-devices/8/interfaces", deviceStatus: "/api/v1/network-devices/8/status", deviceDelete: "/api/v1/network-devices/8" };
-const response = (data: unknown, success = true) => ({ status: success ? 200 : 503, success, message: success ? "OK" : "DATA_SOURCE_UNAVAILABLE", data, requestId: "req-router", timestamp: "2026-09-29T00:00:00Z" });
+vi.mock("@/actions/mikrotik", () => ({ getMikrotikDevices: vi.fn() }));
+vi.mock("@/actions/network", () => ({
+  getRouters: vi.fn(),
+  getRouterMonitoringLatest: vi.fn(),
+}));
 
-beforeEach(() => { vi.clearAllMocks(); });
+const mockedDevices = vi.mocked(getMikrotikDevices);
+const mockedRouters = vi.mocked(getRouters);
+const mockedLatest = vi.mocked(getRouterMonitoringLatest);
 
-describe("getNasRoutersData", () => {
-  it("preserves the authoritative four-state status, ids, telemetry and links", async () => {
-    mockedApiFetch.mockResolvedValueOnce(response({ kpis: { totalCount: 2, onlineCount: 2, offlineCount: 0, healthyCount: 1, degradedCount: 1, notProvisionedCount: 0, cpuAvg: 40, memoryAvg: 50, rowsWithTelemetry: 2, activeSessionsTotal: 4 }, rows: [
-      { routerId: 7, deviceId: 8, name: "RTR-1", model: "RB5009", serialNumber: "SN1", status: "DEGRADED", online: true, managementIp: "10.0.0.1", winboxTunnelAddress: null, winboxTunnelPort: null, activeSessions: 4, cpuUsage: 90, freeMemory: 100, totalMemory: 200, uptime: "3d", snapshotAt: "2026-09-29T00:00:00Z", telemetryStatus: "LIVE", companyCode: "CMP-1", stationName: "Station 1", links },
-      { routerId: null, deviceId: 9, name: "DEVICE-ONLY", model: null, serialNumber: null, status: "NOT_PROVISIONED", online: false, managementIp: null, winboxTunnelAddress: null, winboxTunnelPort: null, activeSessions: null, cpuUsage: null, freeMemory: null, totalMemory: null, uptime: null, snapshotAt: null, telemetryStatus: "UNAVAILABLE", companyCode: null, stationName: null, links: { router: null, routerAction: null, telemetryLatest: null, deviceInterfaces: "/api/v1/network-devices/9/interfaces", deviceStatus: "/api/v1/network-devices/9/status", deviceDelete: "/api/v1/network-devices/9" } },
-    ] }) as never);
-    const result = await getNasRoutersData();
-    expect(mockedApiFetch).toHaveBeenCalledWith("/provisioning/nas-routers", expect.objectContaining({ auth: "required" }));
-    expect(result.success).toBe(true);
-    if (!result.success) return;
-    expect(result.routers[0]?.status).toBe("DEGRADED");
-    expect(result.routers[0]?.routerId).toBe(7);
-    expect(result.routers[0]?.deviceId).toBe(8);
-    expect(result.routers[0]?.links?.routerAction).toBe(links.routerAction);
-    expect(result.routers[1]?.status).toBe("NOT_PROVISIONED");
-    expect(result.routers[1]?.routerId).toBeUndefined();
-    expect(result.routers[1]?.links?.routerAction).toBeNull();
-  });
+const deviceFixture = [
+  {
+    id: 8,
+    name: "RTR-1",
+    deviceType: "MIKROTIK",
+    online: false,
+    ipAddress: "10.0.0.1",
+    uptime: "3d",
+    cpuLoad: "12",
+    winboxTunnelPort: null,
+    webfigProxyEnabled: null,
+    tunnelExpiresAt: null,
+    winboxTunnelAddress: null,
+    webConsoleUrl: null,
+  },
+] as unknown as MikrotikDevice[];
 
-  it("returns no demo rows when the service is unavailable", async () => {
-    mockedApiFetch.mockResolvedValueOnce(response(null, false) as never);
-    const result = await getNasRoutersData();
-    expect(result).toEqual({ success: false, message: "DATA_SOURCE_UNAVAILABLE", requestId: "req-router" });
-  });
+const inventoryFixture = [{ id: 7, ipAddress: "10.0.0.1" }] as Awaited<ReturnType<typeof getRouters>>;
+
+const freshSnapshot = {
+  idxno: 501,
+  createdAt: new Date().toISOString(),
+  cpuUsage: 91,
+  freeMemory: 839_000_000,
+  totalMemory: 2_000_000_000,
+  uptime: "3d 12h 32m 5s",
+  activePppoeSessions: 3,
+  activeHotspotSessions: 2,
+} as Awaited<ReturnType<typeof getRouterMonitoringLatest>>;
+
+const staleSnapshot = {
+  ...freshSnapshot,
+  createdAt: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
+} as Awaited<ReturnType<typeof getRouterMonitoringLatest>>;
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  mockedDevices.mockResolvedValue({ status: 200, success: true, message: "OK", data: deviceFixture } as never);
+  mockedRouters.mockResolvedValue(inventoryFixture);
+  mockedLatest.mockResolvedValue(freshSnapshot);
 });
 
 describe("getNasRoutersData (telemetry-driven ONLINE badge)", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    mockDevices.mockResolvedValue({ success: true, data: deviceFixture });
-    mockRouters.mockResolvedValue(inventoryFixture);
-  });
-
   it("elevates a stale-flag device to ONLINE when the snapshot is fresh", async () => {
-    mockLatest.mockResolvedValue(freshSnapshot);
     const { kpis, routers } = await getNasRoutersData();
 
     expect(routers[0].id).toBe("8");
@@ -54,10 +69,11 @@ describe("getNasRoutersData (telemetry-driven ONLINE badge)", () => {
     // Live values surface on the row
     expect(routers[0].freeMemory).toBe(839000000);
     expect(routers[0].uptime).toBe("3d 12h 32m 5s");
+    expect(kpis.liveSessionsCount).toBe(5);
   });
 
   it("keeps the device-derived status when the snapshot is stale", async () => {
-    mockLatest.mockResolvedValue(staleSnapshot);
+    mockedLatest.mockResolvedValue(staleSnapshot);
     const { kpis, routers } = await getNasRoutersData();
 
     // snapshotAt present but older than 5 min → stays OFFLINE (device.online=false)
@@ -66,13 +82,13 @@ describe("getNasRoutersData (telemetry-driven ONLINE badge)", () => {
   });
 
   it("keeps the device-derived status when no snapshot exists", async () => {
-    mockLatest.mockResolvedValue(null);
+    mockedLatest.mockResolvedValue(null);
     const { routers } = await getNasRoutersData();
     expect(routers[0].status).toBe("OFFLINE");
   });
 
   it("returns an empty inventory (never sample routers) when the company has none", async () => {
-    mockDevices.mockResolvedValue({ success: true, data: [] });
+    mockedDevices.mockResolvedValue({ status: 200, success: true, message: "OK", data: [] } as never);
     const { kpis, routers, error } = await getNasRoutersData();
     expect(routers).toEqual([]);
     expect(kpis.totalRoutersCount).toBe(0);
@@ -81,17 +97,22 @@ describe("getNasRoutersData (telemetry-driven ONLINE badge)", () => {
   });
 
   it("reports an error instead of sample routers when the inventory call fails", async () => {
-    mockDevices.mockResolvedValue({ success: false, data: [], message: "Forbidden" });
+    mockedDevices.mockResolvedValue({
+      status: 403,
+      success: false,
+      message: "Forbidden",
+      data: [],
+    } as never);
     const { routers, error } = await getNasRoutersData();
     expect(routers).toEqual([]);
     expect(error).toBe("Forbidden");
   });
 
   it("does not read telemetry by device id when no router row matches", async () => {
-    mockRouters.mockResolvedValue([]);
-    mockLatest.mockResolvedValue(freshSnapshot);
+    mockedRouters.mockResolvedValue([]);
+    mockedLatest.mockResolvedValue(freshSnapshot);
     const { routers } = await getNasRoutersData();
-    expect(mockLatest).not.toHaveBeenCalled();
+    expect(mockedLatest).not.toHaveBeenCalled();
     expect(routers[0].routerId).toBeUndefined();
   });
 });

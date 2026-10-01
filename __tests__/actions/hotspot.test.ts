@@ -24,7 +24,7 @@ describe("public hotspot APIs", () => {
   it("activates a voucher using the router-provided device context", async () => {
     mockedApiFetch.mockResolvedValueOnce({ status: 200, success: true, message: "Activated", data: { voucherCode: "ABCD1234", packageName: "Hotspot 1h" }, timestamp: "2026-09-29T00:00:00Z" } as never);
     const result = await activateVoucherAction({ voucherCode: "abcd1234", macAddress: "AA:BB:CC:DD:EE:FF", clientIp: "10.0.0.2", routerIdentity: "RTR-1" });
-    expect(mockedApiFetch).toHaveBeenCalledWith("/hotspot/activate", expect.objectContaining({ auth: "public", method: "POST", body: expect.objectContaining({ voucherCode: "ABCD1234", macAddress: "AA:BB:CC:DD:EE:FF" }) }));
+    expect(mockedApiFetch).toHaveBeenCalledWith("/hotspot/vouchers/activate", expect.objectContaining({ auth: "public", method: "POST", body: expect.objectContaining({ voucherCode: "ABCD1234", macAddress: "AA:BB:CC:DD:EE:FF" }) }));
     expect(result.success).toBe(true);
   });
 
@@ -38,21 +38,13 @@ describe("public hotspot APIs", () => {
 
 describe("voucher activation (POST /hotspot/vouchers/activate)", () => {
   it("posts the device context without auth and returns the activated session", async () => {
-    let seenAuth: string | null = "unset";
-    let seenBody: Record<string, unknown> | null = null;
-    server.use(
-      http.post(`${API_PREFIX}/hotspot/vouchers/activate`, async ({ request }) => {
-        seenAuth = request.headers.get("authorization");
-        seenBody = (await request.json()) as Record<string, unknown>;
-        return HttpResponse.json({
-          status: 200,
-          success: true,
-          message: "Voucher activated successfully",
-          data: { sessionId: 9, sessionStatus: "ACTIVE", voucherCode: "KES7HQ2M", macAddress: "78:F2:38:8C:D1:BC" },
-          timestamp: new Date().toISOString(),
-        });
-      })
-    );
+    mockedApiFetch.mockResolvedValueOnce({
+      status: 200,
+      success: true,
+      message: "Voucher activated successfully",
+      data: { sessionId: 9, sessionStatus: "ACTIVE", voucherCode: "KES7HQ2M", macAddress: "78:F2:38:8C:D1:BC" },
+      timestamp: new Date().toISOString(),
+    } as never);
 
     const result = await activateVoucherAction({
       voucherCode: " kes7hq2m ",
@@ -61,8 +53,11 @@ describe("voucher activation (POST /hotspot/vouchers/activate)", () => {
       routerIdentity: "ADRINOLD-WESTLANDS",
     });
 
-    expect(seenAuth).toBeNull();
-    expect(seenBody).toEqual({
+    const [path, init] = mockedApiFetch.mock.calls[0];
+    expect(path).toBe("/hotspot/vouchers/activate");
+    expect(init?.auth).toBe("public");
+    expect(init?.method).toBe("POST");
+    expect(init?.body).toEqual({
       voucherCode: "KES7HQ2M",
       macAddress: "78:F2:38:8C:D1:BC",
       clientIp: "10.5.50.20",
@@ -73,14 +68,13 @@ describe("voucher activation (POST /hotspot/vouchers/activate)", () => {
   });
 
   it("surfaces the backend refusal message", async () => {
-    server.use(
-      http.post(`${API_PREFIX}/hotspot/vouchers/activate`, () =>
-        HttpResponse.json(
-          { status: 409, success: false, message: "This voucher is already bound to another device.", data: null, timestamp: new Date().toISOString() },
-          { status: 409 }
-        )
-      )
-    );
+    mockedApiFetch.mockResolvedValueOnce({
+      status: 409,
+      success: false,
+      message: "This voucher is already bound to another device.",
+      data: null,
+      timestamp: new Date().toISOString(),
+    } as never);
 
     const result = await activateVoucherAction({ voucherCode: "KES7HQ2M", macAddress: "AA:BB:CC:DD:EE:FF" });
 

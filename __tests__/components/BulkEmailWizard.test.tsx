@@ -8,11 +8,11 @@ import type { CampaignRecipient, EmailTemplate } from "@/app/(dashboard)/communi
 vi.mock("@/actions/communications", () => ({ sendBulkEmailAction: vi.fn() }));
 
 const customers: CampaignRecipient[] = [
-  { id: 14, name: "Dan Komen", email: "dan@example.test", recipientType: "CUSTOMER", selectable: true },
-  { id: 15, name: "No Email", email: null, recipientType: "CUSTOMER", selectable: false },
+  { id: 14, name: "Dan Komen", email: "dan@example.test", phoneNumber: "254700000014", recipientType: "CUSTOMER", selectable: true },
+  { id: 15, name: "No Email", email: null, phoneNumber: null, recipientType: "CUSTOMER", selectable: false },
 ];
 const systemUsers: CampaignRecipient[] = [
-  { id: 22, name: "Support User", email: "support@example.test", recipientType: "SYSTEM_USER", selectable: true },
+  { id: 22, name: "Support User", email: "support@example.test", phoneNumber: "254700000022", recipientType: "SYSTEM_USER", selectable: true },
 ];
 const templates: EmailTemplate[] = [
   { id: "renewal-reminder", name: "Renewal Reminder", subject: "Renew soon", body: "Hi {{customer_name}}" },

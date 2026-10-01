@@ -12,6 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Gitignored tooling dirs (agent worktrees, plans) that still contain
+    // full copies of the app. Matches vitest.config.ts.
+    ".kilo/**",
   ]),
 ]);
 

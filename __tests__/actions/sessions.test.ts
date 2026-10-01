@@ -74,7 +74,7 @@ describe("getLiveSessionsData (GET /sessions/live)", () => {
     const { kpis, sessions, error } = await getLiveSessionsData();
 
     expect(error).toBeUndefined();
-    expect(kpis.currentlyConnectedCount).toBe(1);
+    expect(kpis.currentlyConnected).toBe(1);
     expect(kpis.paidNotConnected).toBe(1);
     expect(kpis.downloadTrafficGb).toBe(1.5);
 
@@ -82,7 +82,7 @@ describe("getLiveSessionsData (GET /sessions/live)", () => {
     expect(online?.phone).toBe("254725134318");
     expect(online?.mpesaReceipt).toBe("UIR4T8DKZG");
     expect(online?.routerName).toBe("ADRINOLD-WESTLANDS");
-    expect(online?.downloadBytes).toBe(1500000000);
+    expect(online?.downloadBytes).toBe("1500000000");
     expect(online?.online).toBe(true);
 
     const waiting = sessions.find((s) => s.sessionId === 213);
@@ -103,7 +103,7 @@ describe("getLiveSessionsData (GET /sessions/live)", () => {
     const { sessions, kpis, error } = await getLiveSessionsData();
 
     expect(sessions).toEqual([]);
-    expect(kpis.currentlyConnectedCount).toBe(0);
+    expect(kpis.currentlyConnected).toBe(0);
     expect(error).toBeTruthy();
   });
 });

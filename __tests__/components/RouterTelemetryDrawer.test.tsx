@@ -144,7 +144,8 @@ describe("RouterTelemetryDrawer", () => {
 
     render(<RouterTelemetryDrawer router={router} defaultTab="sessions" onClose={() => {}} />);
 
-    await waitFor(() => expect(mockSessions).toHaveBeenCalledWith(7));
+    // Sessions key on network_routers.idxno, which is 1 for the shared fixture.
+    await waitFor(() => expect(mockSessions).toHaveBeenCalledWith(1));
     const customer = await screen.findByRole("link", { name: "Jane Doe" });
     expect(customer).toHaveAttribute("href", "/customers/42");
     expect(screen.getByText(/jdoe-ppp · 10\.20\.0\.15/)).toBeInTheDocument();

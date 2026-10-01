@@ -416,8 +416,9 @@ describe("getVoucherBatches — envelope contract", () => {
     );
     const { kpis, batches } = await getVoucherBatches();
     expect(batches).toEqual([]);
-    expect(kpis.activeCount).toBe(0);
-    expect(kpis.totalValue).toBe(0);
+    // The summary endpoint is stubbed only with `content`, so KPIs are unknown
+    // here — the action must report null rather than invent zeroes.
+    expect(kpis).toBeNull();
   });
 });
 

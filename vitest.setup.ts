@@ -4,6 +4,20 @@ import { server } from "./mocks/server";
 
 process.env.BASE_API_URL = "http://localhost:8381/api/v1/";
 
+// jsdom implements neither of these, and Radix primitives (Select, Popover,
+// Checkbox) observe element size on mount.
+if (!globalThis.ResizeObserver) {
+  globalThis.ResizeObserver = class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  } as unknown as typeof ResizeObserver;
+}
+
+if (!Element.prototype.scrollIntoView) {
+  Element.prototype.scrollIntoView = () => {};
+}
+
 vi.mock("@/lib/auth", () => ({
   auth: vi.fn().mockResolvedValue({
     user: {
