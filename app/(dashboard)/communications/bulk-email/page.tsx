@@ -13,11 +13,13 @@ export type EmailTemplate = {
 };
 
 export type CampaignRecipient = {
- id: number;
- name: string;
- email: string | null;
- recipientType: "CUSTOMER" | "SYSTEM_USER";
- selectable: boolean;
+  id: number;
+  name: string;
+  email: string | null;
+  /** Carried from the customer/staff record so the SMS channel stays usable. */
+  phoneNumber: string | null;
+  recipientType: "CUSTOMER" | "SYSTEM_USER";
+  selectable: boolean;
 };
 
 const BUILT_IN_TEMPLATES: EmailTemplate[] = [
@@ -37,6 +39,7 @@ export default async function BulkEmailPage() {
       id: customer.userIdxno,
       name: customer.fullName || customer.username,
       email: customer.email?.trim() || null,
+      phoneNumber: customer.phoneNumber?.trim() || null,
       recipientType: "CUSTOMER",
       selectable: Boolean(customer.email?.trim()),
     }))
@@ -45,6 +48,7 @@ export default async function BulkEmailPage() {
     id: user.idxno,
     name: user.fullName || user.username,
     email: user.email?.trim() || null,
+    phoneNumber: user.phoneNumber?.trim() || null,
     recipientType: "SYSTEM_USER",
     selectable: Boolean(user.email?.trim()),
   }));

@@ -1,11 +1,11 @@
-import React from "react";
 import Link from "next/link";
-import { Plus, ExternalLink } from "lucide-react";
+import { Plus, ExternalLink, Search } from "lucide-react";
 import { getNasRoutersData } from "@/actions/provisioning";
 import { getPermissionForRoute } from "@/lib/data/nav";
 import { redirect } from "next/navigation";
-import { NasRoutersTable } from "@/components/network/NasRoutersTable";
 import RowHighlightWatcher from "@/components/network/RowHighlightWatcher";
+import { RouterTunnelCell } from "@/components/network/RouterTunnelCell";
+import { RouterActionsDropdown } from "@/components/network/RouterActionsDropdown";
 
 export const metadata = {
  title: "NAS & Routers — IBS",
@@ -17,10 +17,10 @@ export default async function NasRoutersPage() {
  const pagePerms = await getPermissionForRoute("/network/routers");
  if (!pagePerms.canView) redirect("/dashboard");
 
- const result = await getNasRoutersData();
- if (!result.success) {
-  return <div className="min-h-screen p-4 sm:p-6 lg:p-8"><div role="alert" className="mx-auto max-w-7xl rounded-lg border border-destructive/30 bg-destructive/5 p-5 text-sm"><h1 className="font-medium">Router data unavailable</h1><p className="mt-1 text-muted-foreground">{result.message}{result.requestId ? ` · Ref: ${result.requestId}` : ""}</p></div></div>;
- }
+const result = await getNasRoutersData();
+  if (result.error) {
+   return <div className="min-h-screen p-4 sm:p-6 lg:p-8"><div role="alert" className="mx-auto max-w-7xl rounded-lg border border-destructive/30 bg-destructive/5 p-5 text-sm"><h1 className="font-medium">Router data unavailable</h1><p className="mt-1 text-muted-foreground">{result.error}</p></div></div>;
+  }
  const { kpis, routers } = result;
 
  return (
@@ -202,6 +202,7 @@ export default async function NasRoutersPage() {
   <td className="py-4 px-6 text-right">
   <RouterActionsDropdown
   router={{
+  id: r.id,
   deviceId: r.deviceId,
   routerId: r.routerId,
   name: r.name,

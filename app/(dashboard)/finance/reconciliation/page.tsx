@@ -3,7 +3,6 @@ import { redirect } from "next/navigation";
 
 import { auth } from "@/lib/auth";
 import { getDarajaReconciliation, getReconciliationDay } from "@/actions/payments";
-import { getPermissionForRoute } from "@/lib/data/nav";
 import { todayEatIso } from "@/lib/dates";
 import { normalizeRole, ROLE_NAME } from "@/lib/types/roles";
 import { canAccessReconciliation } from "@/lib/utils/reconciliationAccess";

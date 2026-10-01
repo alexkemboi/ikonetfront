@@ -8,50 +8,46 @@ export const dynamic = "force-dynamic";
 
 export const metadata = { title: "Live Sessions — IBS" };
 
-export default async function LiveSessionsPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
- const pagePerms = await getPermissionForRoute("/network/live-sessions");
- if (!pagePerms.canView) redirect("/dashboard");
+/** Client-side poll cadence for the live session table. */
+const REFRESH_INTERVAL_SECONDS = 30;
 
- const params = await searchParams;
- const page = Math.max(0, Number(params.page ?? 0) || 0);
- const result = await getLiveSessionsData(page, 50);
- if (!result.success && result.status === 401) redirect("/signout?reason=session-expired");
+export default async function LiveSessionsPage() {
+  const pagePerms = await getPermissionForRoute("/network/live-sessions");
+  if (!pagePerms.canView) redirect("/dashboard");
 
- return (
- <div className="min-h-screen p-4 text-foreground sm:p-6 lg:p-8">
- <div className="mx-auto max-w-7xl space-y-6">
- {/* Header */}
- <div>
- <p className="text-[11px] font-sans tabular-nums uppercase tracking-widest text-muted-foreground">
- Network — Live Sessions
- </p>
- <h1 className="mt-1 text-3xl font-normal tracking-normal text-foreground">
- Currently online.
- </h1>
-				<p className="mt-1 text-sm text-muted-foreground">
- {result.success ? `${result.kpis?.currentlyConnected ?? 0} active sessions · refreshes every ${result.refreshIntervalSeconds}s` : "Live session data is unavailable."}
- </p>
- </div>
+  const result = await getLiveSessionsData();
 
- {result.success && result.kpis && result.sessions ? (
-	 <>
-		 <LiveSessionHeaderCards kpis={result.kpis} />
-		 <LiveSessionDataTable
-			 sessions={result.sessions.content}
-			 page={result.sessions.number}
-			 totalPages={result.sessions.totalPages}
-			 totalElements={result.sessions.totalElements}
-			 size={result.sessions.size}
-			 refreshIntervalSeconds={result.refreshIntervalSeconds}
-		 />
-	 </>
- ) : (
-	 <div role="alert" className="rounded-lg border border-destructive/30 bg-destructive/5 p-5 text-sm">
-		 <p className="font-medium">Live sessions are unavailable. The displayed count is not zero.</p>
-		 <p className="mt-1 text-muted-foreground">{result.message ?? "LIVE_SESSIONS_UNAVAILABLE"}{result.requestId ? ` · Ref: ${result.requestId}` : ""}</p>
-	 </div>
- )}
- </div>
- </div>
- );
+  return (
+  <div className="min-h-screen p-4 text-foreground sm:p-6 lg:p-8">
+  <div className="mx-auto max-w-7xl space-y-6">
+  {/* Header */}
+  <div>
+  <p className="text-[11px] font-sans tabular-nums uppercase tracking-widest text-muted-foreground">
+  Network — Live Sessions
+  </p>
+  <h1 className="mt-1 text-3xl font-normal tracking-normal text-foreground">
+  Currently online.
+  </h1>
+ 				<p className="mt-1 text-sm text-muted-foreground">
+  {result.error ? "Live session data is unavailable." : `${result.kpis.currentlyConnected} active sessions · refreshes every ${REFRESH_INTERVAL_SECONDS}s`}
+  </p>
+  </div>
+
+  {result.error ? (
+ 	 <div role="alert" className="rounded-lg border border-destructive/30 bg-destructive/5 p-5 text-sm">
+ 		 <p className="font-medium">Live sessions are unavailable. The displayed count is not zero.</p>
+ 		 <p className="mt-1 text-muted-foreground">{result.error}</p>
+ 	 </div>
+  ) : (
+ 	 <>
+ 		 <LiveSessionHeaderCards kpis={result.kpis} />
+ 		 <LiveSessionDataTable
+ 			 sessions={result.sessions}
+ 			 refreshIntervalSeconds={REFRESH_INTERVAL_SECONDS}
+ 		 />
+ 	 </>
+  )}
+  </div>
+  </div>
+  );
 }

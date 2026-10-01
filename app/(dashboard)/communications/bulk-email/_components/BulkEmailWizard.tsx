@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useFormik } from "formik";
 import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
@@ -33,10 +33,8 @@ import {
   Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { EmailTemplate } from "@/actions/communications";
 import { sendBulkEmailAction } from "@/actions/communications";
-import type { Customer } from "@/lib/types/customer";
-import type { ApiRoleUser } from "@/lib/types/roles";
+import type { CampaignRecipient, EmailTemplate } from "../page";
 import {
   bulkEmailSchema,
   BULK_EMAIL_INITIAL_VALUES,
@@ -44,7 +42,6 @@ import {
   type NotificationChannel,
   type AudienceSource,
 } from "@/lib/validation/bulk-email";
-import { Checkbox } from "@/components/ui/checkbox";
 
 interface Props {
  customers: CampaignRecipient[];
@@ -55,24 +52,23 @@ interface Props {
  recipientError?: string;
  recipientRequestId?: string;
 }
-  templates: EmailTemplate[];
-  customers: Customer[];
-  systemUsers: ApiRoleUser[];
-}
 
 type Recipient = {
   id: string;
   name: string;
   email: string;
   phone: string;
+  recipientType: "CUSTOMER" | "SYSTEM_USER";
 };
 
-function customerToRecipient(c: Customer): Recipient {
-  return { id: String(c.userIdxno), name: c.fullName || c.username, email: c.email, phone: c.phoneNumber };
-}
-
-function userToRecipient(u: ApiRoleUser): Recipient {
-  return { id: String(u.idxno), name: u.fullName || u.username, email: u.email, phone: u.phoneNumber };
+function campaignToRecipient(c: CampaignRecipient): Recipient {
+  return {
+    id: String(c.id),
+    name: c.name,
+    email: c.email ?? "",
+    phone: c.phoneNumber ?? "",
+    recipientType: c.recipientType,
+  };
 }
 
 function hasContactForChannel(recipient: Recipient, channel: NotificationChannel): boolean {
@@ -305,19 +301,49 @@ function SmsPreview({ body, recipientCount, audienceLabel }: { body: string; rec
   );
 }
 
-export default function BulkEmailWizard({ templates, customers, systemUsers }: Props) {
+export default function BulkEmailWizard({
+  templates,
+  customers,
+  systemUsers,
+  templateNotice,
+  templateRequestId,
+  recipientError,
+  recipientRequestId,
+}: Props) {
   const [step, setStep] = useState(1);
   const [sent, setSent] = useState(false);
   const [search, setSearch] = useState("");
+  const [sendError, setSendError] = useState<string | null>(null);
+  const [sendRequestId, setSendRequestId] = useState<string | null>(null);
+
+  // Declared before useFormik so onSubmit can resolve the selected ids to the
+  // backend payload shape ({ recipientType, recipientId: number }).
+  const customerRecipients = customers.map(campaignToRecipient);
+  const userRecipients = systemUsers.map(campaignToRecipient);
 
   const formik = useFormik<BulkEmailValues>({
     initialValues: BULK_EMAIL_INITIAL_VALUES,
     validationSchema: bulkEmailSchema,
     onSubmit: async (values, helpers) => {
-      const result = await sendBulkEmailAction(values);
+      const recipients = [...customerRecipients, ...userRecipients]
+        .filter((r) => values.recipientIds.includes(r.id))
+        .map((r) => ({ recipientType: r.recipientType, recipientId: Number(r.id) }))
+        .filter((r) => Number.isFinite(r.recipientId));
+
+      setSendError(null);
+      setSendRequestId(null);
+
+      const result = await sendBulkEmailAction({
+        recipients,
+        templateId: values.templateId,
+        subject: values.subject,
+        body: values.body,
+      });
       if (result.success) {
         setSent(true);
       } else {
+        setSendError(result.message);
+        setSendRequestId(result.requestId ?? null);
         toast.error("Failed to send campaign", { description: result.message });
       }
       helpers.setSubmitting(false);
@@ -326,10 +352,12 @@ export default function BulkEmailWizard({ templates, customers, systemUsers }: P
 
   const { values, errors, touched } = formik;
 
-  const customerRecipients = customers.map(customerToRecipient);
-  const userRecipients = systemUsers.map(userToRecipient);
+  // `source` only filters which list is shown; a campaign may target customers
+  // AND system users at once, so selections are tracked across both pools and
+  // the send payload resolves ids against the union.
+  const allRecipients = [...customerRecipients, ...userRecipients];
   const sourceRecipients = values.source === "customers" ? customerRecipients : userRecipients;
-  const selectedRecipients = sourceRecipients.filter((r) => values.recipientIds.includes(r.id));
+  const selectedRecipients = allRecipients.filter((r) => values.recipientIds.includes(r.id));
   const audienceLabel = values.source === "customers" ? "Customers" : "System Users";
 
   const visibleRecipients = sourceRecipients.filter(
@@ -366,8 +394,8 @@ export default function BulkEmailWizard({ templates, customers, systemUsers }: P
   }
 
   function handleSourceChange(source: AudienceSource) {
+    // Switching the list must not drop recipients already picked from the other.
     formik.setFieldValue("source", source);
-    formik.setFieldValue("recipientIds", []);
     setSearch("");
   }
 

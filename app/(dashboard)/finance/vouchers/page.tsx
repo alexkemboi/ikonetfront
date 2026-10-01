@@ -5,6 +5,7 @@ import { getVoucherBatches } from "@/actions/payments";
 import { getPackagesAction } from "@/actions/packages";
 import { getMikrotikDevices } from "@/actions/mikrotik";
 import { getPermissionForRoute } from "@/lib/data/nav";
+import type { VoucherStatus } from "@/lib/types/vouchers";
 import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
@@ -14,12 +15,43 @@ export const metadata: Metadata = {
   description: "Prepaid voucher minting and batch distribution",
 };
 
-export default async function VouchersPage({ searchParams }: { searchParams: Promise<{ page?: string; batchPage?: string; search?: string; voucherState?: string; source?: string }> }) {
+const VOUCHER_STATES: Array<"ALL" | VoucherStatus> = ["ALL", "UNUSED", "USED", "EXPIRED", "VOID", "PENDING", "FAILED"];
+const SOURCES = ["ALL", "MINTED", "PURCHASED"] as const;
+
+export default async function VouchersPage({
+  searchParams,
+}: {
+  searchParams: Promise<{
+    page?: string;
+    batchPage?: string;
+    search?: string;
+    voucherState?: string;
+    source?: string;
+  }>;
+}) {
   const pagePerms = await getPermissionForRoute("/finance/vouchers");
   if (!pagePerms.canView) redirect("/dashboard");
 
-  const data = await getVouchersData();
-  const batches = await getVoucherBatches();
+  const params = await searchParams;
+  const page = Math.max(0, Number(params.page ?? 0) || 0);
+  const batchPage = Math.max(0, Number(params.batchPage ?? 0) || 0);
+  const voucherState = (VOUCHER_STATES.includes(params.voucherState as "ALL" | VoucherStatus)
+    ? params.voucherState
+    : "ALL") as "ALL" | VoucherStatus;
+  const source = (SOURCES.includes(params.source as (typeof SOURCES)[number]) ? params.source : "ALL") as
+    | "ALL"
+    | "MINTED"
+    | "PURCHASED";
+
+  // Row filters go to the list endpoint only; statistics stays unfiltered by state.
+  const data = await getVouchersData({
+    page,
+    size: 50,
+    search: params.search,
+    voucherState: voucherState === "ALL" ? undefined : voucherState,
+    source: source === "ALL" ? undefined : source,
+  });
+  const batches = await getVoucherBatches(batchPage);
   const packages = await getPackagesAction();
   const devices = await getMikrotikDevices();
   // Vouchers are minted per router and are redeemable only on it.
@@ -45,11 +77,16 @@ export default async function VouchersPage({ searchParams }: { searchParams: Pro
     <VouchersClient
       initialKpis={data.kpis}
       initialVouchers={data.vouchers}
-      batchKpis={batches.kpis}
+      kpiError={data.error}
+      batchKpis={batches.kpis ?? undefined}
       batches={batches.batches}
       batchPage={batches.page}
       packageOptions={packageOptions}
       routerOptions={routerOptions}
+      voucherPage={data.page}
+      voucherState={voucherState}
+      search={params.search ?? ""}
+      source={source}
     />
   );
 }
