@@ -1,4 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
+import { redirect } from "next/navigation";
 
 const mockEmptyResponse = () => ({
   data: {
@@ -95,5 +96,28 @@ describe("getDashboardOverview", () => {
       expect(result.data.renewalsDue).toEqual([]);
       expect(result.data.heatmap.cells.length).toBe(0);
     }
+  });
+
+  it("redirects to /signout?reason=session-expired on a 401 instead of surfacing the raw backend message", async () => {
+    vi.resetModules();
+    vi.doMock("@/lib/auth", () => ({
+      auth: vi.fn().mockResolvedValue({ user: { apiToken: "expired-token" } }),
+    }));
+
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 401,
+      headers: { get: (name: string) => name === "content-type" ? "application/json" : null },
+      json: vi.fn().mockResolvedValue({
+        status: 401,
+        success: false,
+        message: "TOKEN_INVALID_OR_EXPIRED",
+        data: null,
+      }),
+    }) as unknown as typeof fetch;
+
+    const { getDashboardOverview } = await import("@/actions/dashboard");
+    await getDashboardOverview();
+    expect(vi.mocked(redirect)).toHaveBeenCalledWith("/signout?reason=session-expired");
   });
 });
