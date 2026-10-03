@@ -19,6 +19,7 @@ import { getPublicBranding } from "@/actions/branding";
 import { TenantTheme } from "@/components/tenant/TenantTheme";
 import StepUpProvider from "@/providers/StepUpProvider";
 import OmniSearchModal from "@/components/chrome/OmniSearchModal";
+import { SessionHeartbeat } from "@/providers/MonitoringHeartbeat";
 
 /**
  * Dashboard shell — server component.
@@ -70,8 +71,9 @@ export default async function DashboardLayout({ children }: { children: ReactNod
  : null;
 
 return (
-  <PermissionsProvider permissions={permissionMap}>
-  <StepUpProvider>
+<PermissionsProvider permissions={permissionMap}>
+<SessionHeartbeat />
+<StepUpProvider>
   <TenantTheme branding={tenantBranding}>
   <div className="flex h-screen overflow-hidden bg-background">
   <Sidebar
