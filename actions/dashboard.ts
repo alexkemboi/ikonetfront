@@ -1,6 +1,7 @@
 "use server";
 
-import { apiFetch } from "@/lib/apiClient";
+import { redirect } from "next/navigation";
+import { apiFetch, isUnauthorized } from "@/lib/apiClient";
 import type {
   AdminDashboardLoadResult,
   AdminDashboardResponse,
@@ -12,6 +13,10 @@ export async function getAdminDashboardData(): Promise<AdminDashboardLoadResult>
     auth: "required",
     cache: "no-store",
   });
+  // Defense in depth: a 401 mid-render means the session token is dead and the
+  // navigation-time signout (F1) has not fired. Never surface the raw backend
+  // auth message — route through /signout so the loop-free auto-signout runs.
+  if (isUnauthorized(res)) redirect("/signout?reason=session-expired");
   if (!res.success || !res.data) {
     return { success: false, message: res.message, requestId: res.requestId };
   }
@@ -30,6 +35,7 @@ export async function getDashboardOverview(): Promise<DashboardOverviewLoadResul
       cache: "no-store",
     }
   );
+  if (isUnauthorized(res)) redirect("/signout?reason=session-expired");
   if (!res.success || !res.data) {
     return { success: false, message: res.message, requestId: res.requestId };
   }

@@ -10,6 +10,7 @@ import { RouterTrafficCard } from "@/components/dashboard/RouterTrafficCard";
 import { WhatsNextActionQueue } from "@/components/dashboard/WhatsNextActionQueue";
 import { TodayActivityFeed } from "@/components/dashboard/TodayActivityFeed";
 import { NetworkPulseHeatmap } from "@/components/dashboard/NetworkPulseHeatmap";
+import { LiveDataRefresh } from "@/providers/MonitoringHeartbeat";
 
 export const dynamic = "force-dynamic";
 
@@ -32,8 +33,9 @@ export default async function OverviewDashboardPage() {
  }
  const overview = data.data;
 
- return (
+  return (
  <div className="min-h-screen p-4 text-foreground sm:p-6 lg:p-8">
+ <LiveDataRefresh />
  <div className="mx-auto max-w-7xl space-y-6">
  {/* 1. Shift Greeting & Header Context */}
  <ShiftGreetingBanner

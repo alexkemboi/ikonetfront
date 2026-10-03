@@ -1,4 +1,6 @@
 import NextAuth from "next-auth";
+import type { Session, User } from "next-auth";
+import type { JWT } from "next-auth/jwt";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { jwtVerify, decodeJwt } from "jose";
 import { JwtPayload, LoginResponse } from "@/lib/types/auth";
@@ -70,6 +72,92 @@ export async function getValidAccessToken(currentJwt: string): Promise<string | 
   refreshLocks.set(currentJwt, promise);
   return promise;
 }
+
+/**
+ * Proactive refresh window. The backend refuses to refresh an already-expired
+ * token, so this is the only chance to rotate it. Kept well below the access
+ * JWT TTL (8h) so several heartbeats can retry before expiry.
+ */
+const REFRESH_THRESHOLD_MS = 30 * 60_000;
+
+export const authCallbacks = {
+  async jwt({ token, user }: { token: JWT; user?: User }) {
+    if (user) {
+      return {
+        ...token,
+        userId: user.userId,
+        username: user.username,
+        email: user.email,
+        role: user.role,
+        fname: user.fname,
+        middleName: user.middleName,
+        otherName: user.otherName,
+        phoneNumber: user.phoneNumber,
+        apiToken: user.apiToken ?? "",
+        refreshToken: user.refreshToken,
+        expiresAt: user.expiresAt,
+        regionId: user.regionId,
+        stationId: user.stationId,
+        locationId: user.locationId,
+        investorScope: user.investorScope,
+        companyScope: user.companyScope,
+      };
+    }
+
+    // Prefer the stored expiry; fall back to decoding the real `exp` claim when
+    // it is missing/non-numeric (e.g. sessions seeded before the field existed).
+    const expiresAt =
+      typeof token.expiresAt === "number" && token.expiresAt > 0
+        ? token.expiresAt
+        : tokenExpiryMs(String(token.apiToken)) ?? 0;
+
+    if (token.apiToken && expiresAt > 0 && Date.now() >= expiresAt - REFRESH_THRESHOLD_MS) {
+      const newToken = await getValidAccessToken(String(token.apiToken));
+      if (newToken) {
+        return {
+          ...token,
+          apiToken: newToken,
+          expiresAt: tokenExpiryMs(newToken) ?? Date.now() + 2 * 60 * 60 * 1000,
+          error: undefined,
+        };
+      }
+      // Keep a still-valid token alive without surfacing an error: a transient
+      // refresh failure must not log out an active NOC session. The next
+      // heartbeat retries; only an actually-expired token forces a re-login.
+      if (Date.now() < expiresAt) {
+        return token;
+      }
+      // Existing middleware/SessionGuard path handles the signout flow.
+      return { ...token, error: "RefreshAccessTokenError" };
+    }
+
+    return token;
+  },
+  async session({ session, token }: { session: Session; token: JWT }) {
+    session.user = {
+      ...session.user,
+      id: token.sub || "",
+      userId: token.userId as string | undefined,
+      username: token.username as string,
+      email: token.email as string,
+      role: token.role as string,
+      fname: token.fname as string,
+      middleName: token.middleName as string | undefined,
+      otherName: token.otherName as string | undefined,
+      phoneNumber: token.phoneNumber as string | undefined,
+      expiresAt: token.expiresAt as number | undefined,
+      regionId: token.regionId as number | undefined,
+      stationId: token.stationId as number | undefined,
+      locationId: token.locationId as number | undefined,
+      investorScope: token.investorScope as string | undefined,
+      companyScope: token.companyScope as string | undefined,
+    };
+    // Propagate the refresh failure so proxy.ts, SessionGuard and app/page.tsx
+    // can act on it (they already check `session.error`).
+    session.error = token.error;
+    return sanitizeClientSession(session);
+  },
+};
 
 const { handlers, auth: nextAuth, signIn, signOut } = NextAuth({
   trustHost: true,
@@ -168,70 +256,7 @@ const { handlers, auth: nextAuth, signIn, signOut } = NextAuth({
       },
     }),
   ],
-  callbacks: {
-    async jwt({ token, user }) {
-      if (user) {
-        return {
-          ...token,
-          userId: user.userId,
-          username: user.username,
-          email: user.email,
-          role: user.role,
-          fname: user.fname,
-          middleName: user.middleName,
-          otherName: user.otherName,
-          phoneNumber: user.phoneNumber,
-          apiToken: user.apiToken ?? "",
-          refreshToken: user.refreshToken,
-          expiresAt: user.expiresAt,
-          regionId: user.regionId,
-          stationId: user.stationId,
-          locationId: user.locationId,
-          investorScope: user.investorScope,
-          companyScope: user.companyScope,
-        };
-      }
-
-      // Refresh the backend access JWT when it is within 15 minutes of expiring.
-      const expiresAt = typeof token.expiresAt === "number" ? token.expiresAt : 0;
-      if (token.apiToken && expiresAt > 0 && Date.now() >= expiresAt - 15 * 60_000) {
-        const newToken = await getValidAccessToken(String(token.apiToken));
-        if (newToken) {
-          return {
-            ...token,
-            apiToken: newToken,
-            expiresAt: tokenExpiryMs(newToken) ?? Date.now() + 2 * 60 * 60 * 1000,
-            error: undefined,
-          };
-        }
-        // Existing middleware/SessionGuard path handles the signout flow.
-        return { ...token, error: "RefreshAccessTokenError" };
-      }
-
-      return token;
-    },
-    async session({ session, token }) {
-      session.user = {
-        ...session.user,
-        id: token.sub || "",
-        userId: token.userId as string | undefined,
-        username: token.username as string,
-        email: token.email as string,
-        role: token.role as string,
-        fname: token.fname as string,
-        middleName: token.middleName as string | undefined,
-        otherName: token.otherName as string | undefined,
-        phoneNumber: token.phoneNumber as string | undefined,
-        expiresAt: token.expiresAt as number | undefined,
-        regionId: token.regionId as number | undefined,
-        stationId: token.stationId as number | undefined,
-        locationId: token.locationId as number | undefined,
-        investorScope: token.investorScope as string | undefined,
-        companyScope: token.companyScope as string | undefined,
-      };
-      return sanitizeClientSession(session);
-    },
-  },
+  callbacks: authCallbacks,
   pages: { signIn: "/login", error: "/login" },
   session: { strategy: "jwt" },
 });
