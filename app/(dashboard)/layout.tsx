@@ -5,15 +5,13 @@ import TopBar from "./_components/TopBar";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import {
+ apiMenusToNavGroups,
  extractPermissions,
  fetchRoleMenusRaw,
- getStaticNavForRole,
- staticNavToPermissions,
 } from "@/lib/data/nav";
 import type { NavGroup } from "@/lib/nav";
 import { PermissionsProvider } from "@/providers/PermissionsProvider";
 import type { PermissionMap } from "@/lib/types/roles";
-import { normalizeRole } from "@/lib/types/roles";
 import { resolveCompanyContextCode } from "@/lib/companyContext";
 import { getPublicBranding } from "@/actions/branding";
 import { TenantTheme } from "@/components/tenant/TenantTheme";
@@ -24,9 +22,10 @@ import { SessionHeartbeat } from "@/providers/MonitoringHeartbeat";
 /**
  * Dashboard shell — server component.
  *
- * Nav is driven by API menus when available, falling back to the static
- * per-role config (config/nav-*.ts) when the API returns no menus — e.g.
- * before the roles/menu permissions have been seeded in the database.
+ * Nav is driven exclusively by the API menu tree (fail closed). When the API
+ * returns nothing — unseeded catalog, unknown role, or a transient failure —
+ * the sidebar renders empty and permissions are empty rather than falling back
+ * to a static, all-true nav.
  */
 export default async function DashboardLayout({ children }: { children: ReactNode }) {
  const session = await auth();
@@ -35,9 +34,8 @@ export default async function DashboardLayout({ children }: { children: ReactNod
  redirect("/login");
  }
 
- const rawRole = session?.user?.role ?? "";
- const role = normalizeRole(rawRole);
- const apiToken = session?.user?.apiToken ?? "";
+  const rawRole = session?.user?.role ?? "";
+  const apiToken = session?.user?.apiToken ?? "";
 
  const sidebarUser = session?.user
  ? {
@@ -50,16 +48,13 @@ export default async function DashboardLayout({ children }: { children: ReactNod
  }
  : undefined;
 
- // Try server-driven menus first. If the API returns nothing (typical when
- // the roles/menu tables are unseeded), fall back to the static per-role
- // nav config so the sidebar still has items.
- const rawMenus = await fetchRoleMenusRaw(role, apiToken);
+  // API-driven menus only. Empty (unknown role / unseeded / fetch error) ⇒ empty
+  // nav and empty permissions — fail closed, never the static all-true fallback.
+  const rawMenus = await fetchRoleMenusRaw(rawRole, apiToken);
 
- const navGroups: NavGroup[] =  getStaticNavForRole(role)// rawMenus.length > 0 ? apiMenusToNavGroups(rawMenus) : getStaticNavForRole(role);
+  const navGroups: NavGroup[] = rawMenus.length > 0 ? apiMenusToNavGroups(rawMenus) : [];
 
- const permissionMap: PermissionMap = rawMenus.length > 0
- ? extractPermissions(rawMenus)
- : staticNavToPermissions(navGroups);
+  const permissionMap: PermissionMap = rawMenus.length > 0 ? extractPermissions(rawMenus) : {};
 
  // Track 2 — tenant theming: resolve the brand for the requesting subdomain
  // (custom domain / company-context cookie wins on the dashboard shell).
