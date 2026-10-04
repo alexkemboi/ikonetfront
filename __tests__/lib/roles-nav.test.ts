@@ -18,6 +18,8 @@ import {
   getPermissionForRoute,
   getCurrentUserPermissions,
   getStaticNavForRole,
+  getNavLayoutForRole,
+  filterNavByPermissions,
 } from "@/lib/data/nav";
 import { resolveDashboardPathForRole } from "@/lib/utils/dashboardRouting";
 import { auth } from "@/lib/auth";
@@ -317,5 +319,43 @@ describe("fail-closed runtime getters", () => {
     // /customers is in the static staff nav, but the static fallback is gone.
     const perms = await getPermissionForRoute("/customers");
     expect(perms.canView).toBe(false);
+  });
+});
+
+describe("sidebar = static layout filtered by API permissions", () => {
+  const view = { canView: true, canCreate: false, canEdit: false, canDelete: false };
+  const hidden = { canView: false, canCreate: false, canEdit: false, canDelete: false };
+
+  it("staff roles share the admin layout; investor/customer keep theirs; unknown gets none", () => {
+    expect(getNavLayoutForRole("SYSADMIN")).toBe(getNavLayoutForRole("03"));
+    expect(getNavLayoutForRole("02")).toBe(getNavLayoutForRole("01"));
+    expect(getNavLayoutForRole("04")).toBe(getStaticNavForRole("04"));
+    expect(getNavLayoutForRole("05")).toBe(getStaticNavForRole("05"));
+    expect(getNavLayoutForRole("WHATEVER")).toEqual([]);
+  });
+
+  it("an empty permission map renders an empty sidebar (fail closed)", () => {
+    expect(filterNavByPermissions(getNavLayoutForRole("01"), {})).toEqual([]);
+  });
+
+  it("keeps the static groups, labels and order for the routes the role may view", () => {
+    const nav = filterNavByPermissions(getNavLayoutForRole("03"), {
+      "/finance/expenses": view,
+      "/finance/statements": view,
+      "/network/regions": view,
+      "/system/users": hidden,
+    });
+    expect(nav.map((g) => g.label)).toEqual(["Network", "Finance"]);
+    expect(nav[1].items.map((i) => i.label)).toEqual(["Expenses", "Statements"]);
+    expect(nav[1].items[0].canCreate).toBe(false);
+  });
+
+  it("a parent stays for a viewable child and loses the children the role cannot view", () => {
+    const nav = filterNavByPermissions(getNavLayoutForRole("01"), {
+      "/finance/billing/payments": view,
+      "/finance/billing/invoices": hidden,
+    });
+    const billing = nav.flatMap((g) => g.items).find((i) => i.href === "/finance/billing");
+    expect(billing?.children?.map((c) => c.label)).toEqual(["Payments"]);
   });
 });

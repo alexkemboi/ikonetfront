@@ -151,6 +151,59 @@ export function getStaticNavForRole(role: string): NavGroup[] {
 }
 
 /**
+ * The sidebar layout (groups, labels, order, icons) for a role.
+ *
+ * Layout lives in the static config; WHO sees each entry is decided by the
+ * API permission map (see {@link filterNavByPermissions}). Staff roles share
+ * one master layout (the admin one, a superset) so a permission granted in the
+ * catalog shows up without a per-role layout edit. Investor and customer keep
+ * their own portal layouts. Unknown role ⇒ no layout (fail closed).
+ */
+export function getNavLayoutForRole(role: string): NavGroup[] {
+  switch (normalizeRole(role)) {
+    case ROLE_NAME.ADMIN:
+    case ROLE_NAME.MANAGEMENT:
+    case ROLE_NAME.STAFF:      return adminNavGroups;
+    case ROLE_NAME.INVESTOR:   return investorNavGroups;
+    case ROLE_NAME.CUSTOMER:   return customerNavGroups;
+    default:                   return [];
+  }
+}
+
+/**
+ * Keep only the layout entries the permission map lets the caller view, and
+ * stamp each kept entry with its real flags.
+ *
+ * Fail closed: a route absent from the map is hidden. A parent stays when its
+ * own route is viewable or at least one child is; empty groups are dropped.
+ */
+export function filterNavByPermissions(
+  groups: NavGroup[],
+  permissions: PermissionMap
+): NavGroup[] {
+  const flagsFor = (href: string) => permissions[normalizeMenuRoute(href)];
+
+  const result: NavGroup[] = [];
+  for (const group of groups) {
+    const items: NavItem[] = [];
+    for (const item of group.items) {
+      const own = flagsFor(item.href);
+      const children = (item.children ?? [])
+        .filter((child) => flagsFor(child.href)?.canView)
+        .map((child) => ({ ...child, ...flagsFor(child.href) }));
+      if (!own?.canView && children.length === 0) continue;
+      items.push({
+        ...item,
+        ...(own ?? {}),
+        children: children.length ? children : undefined,
+      });
+    }
+    if (items.length) result.push({ ...group, items });
+  }
+  return result;
+}
+
+/**
  * Convert API menu items → MenuNode[] for the Roles page permission tree.
  *
  * Uses `route` as the node `id` (unique, stable key for permission tracking).
