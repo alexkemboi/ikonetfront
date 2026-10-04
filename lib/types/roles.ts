@@ -42,9 +42,14 @@ export const ROLE_NAME = {
   STAFF:      "STAFF",
   INVESTOR:   "INVESTOR",
   CUSTOMER:   "CUSTOMER",
+  /** Fail-closed sentinel for an unrecognized role — never mapped to a working code. */
+  UNKNOWN:    "UNKNOWN",
 } as const;
 
 export type RoleName = (typeof ROLE_NAME)[keyof typeof ROLE_NAME];
+
+/** Every role except {@link ROLE_NAME.UNKNOWN} maps to a backend role code. */
+export type KnownRoleName = Exclude<RoleName, typeof ROLE_NAME.UNKNOWN>;
 
 /**
  * Canonical role codes used in backend URL paths and DB lookups
@@ -52,25 +57,25 @@ export type RoleName = (typeof ROLE_NAME)[keyof typeof ROLE_NAME];
  * Keep these in sync with the codes expected by the Spring Boot
  * SystemSetupController.
  */
-export const ROLE_CODE = {
+export const ROLE_CODE: Record<KnownRoleName, string> = {
   [ROLE_NAME.ADMIN]:      "01",
   [ROLE_NAME.MANAGEMENT]: "02",
   [ROLE_NAME.STAFF]:      "03",
   [ROLE_NAME.INVESTOR]:   "04",
   [ROLE_NAME.CUSTOMER]:   "05",
-} as const;
+};
 
-export type RoleCode = (typeof ROLE_CODE)[RoleName];
+export type RoleCode = (typeof ROLE_CODE)[KnownRoleName];
 
 /**
  * Normalize a role value (numeric code, name, or legacy value) to a canonical
  * ROLE_NAME. Handles:
  *   - Numeric codes: "01" → ADMIN, "02" → MANAGEMENT, "03" → STAFF, "04" → INVESTOR, "05" → CUSTOMER
  *   - Names/authorities: "ADMIN", "ROLE_ADMIN", "SYSADMIN", etc.
- *   - Falsy/unknown → STAFF (safe default)
+ *   - Falsy/unknown → UNKNOWN (fail closed; callers must handle it explicitly)
  */
 export function normalizeRole(role?: string | null): RoleName {
-  if (!role) return ROLE_NAME.STAFF;
+  if (!role) return ROLE_NAME.UNKNOWN;
 
   const upper = role.toUpperCase().trim();
 
@@ -94,7 +99,7 @@ export function normalizeRole(role?: string | null): RoleName {
   if (upper === ROLE_NAME.INVESTOR || upper === "ROLE_INVESTOR") return ROLE_NAME.INVESTOR;
   if (upper === ROLE_NAME.CUSTOMER || upper === "ROLE_CUSTOMER") return ROLE_NAME.CUSTOMER;
 
-  return ROLE_NAME.STAFF;
+  return ROLE_NAME.UNKNOWN;
 }
 
 /**
@@ -102,12 +107,14 @@ export function normalizeRole(role?: string | null): RoleName {
  * to the corresponding backend role code. Used when constructing
  * API URLs that include the role code in the path.
  *
- * Falls back to the STAFF code for unknown values so the UI degrades
- * to the lowest-privilege menu rather than failing entirely.
+ * Returns an empty string for unknown roles: a caller must not build a URL
+ * from an unrecognized role. (The menus URL no longer uses this — it sends the
+ * raw session role and lets the backend resolve it.)
  */
 export function roleNameToCode(name: string | null | undefined): string {
   const normalized = normalizeRole(name);
-  return ROLE_CODE[normalized] ?? ROLE_CODE.STAFF;
+  if (normalized === ROLE_NAME.UNKNOWN) return "";
+  return ROLE_CODE[normalized];
 }
 
 export function getLandingRouteForRole(role?: string | null): string {
@@ -122,8 +129,10 @@ export function getLandingRouteForRole(role?: string | null): string {
       return "/finance/investor";
     case ROLE_NAME.CUSTOMER:
       return "/portal/pppoe";
+    case ROLE_NAME.UNKNOWN:
     default:
-      return "/customers";
+      // Unguarded target: never redirect an unknown role to a guarded landing.
+      return "/no-access";
   }
 }
 

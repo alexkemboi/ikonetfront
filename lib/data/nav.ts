@@ -9,7 +9,7 @@
  */
 
 import type { ApiMenuItem, PermissionFlags, PermissionMap } from "@/lib/types/roles";
-import { ROLE_NAME, roleNameToCode, normalizeRole } from "@/lib/types/roles";
+import { ROLE_NAME, normalizeRole } from "@/lib/types/roles";
 import type { NavGroup, NavItem, MenuNode } from "@/lib/nav";
 import { auth } from "@/lib/auth";
 import { buildApiUrl } from "@/lib/constants";
@@ -58,33 +58,30 @@ export function normalizeMenuRoute(route: string): string {
  * Fetch the menu/permission tree for a given role.
  * Returns the raw `ApiMenuItem[]` so callers can shape it as needed.
  *
- * Accepts either a role name (e.g. "ADMIN") or a code (e.g. "01").
- * The backend URL requires the code, so the value is normalized via
- * `roleNameToCode` before being placed in the path.
+ * Sends the **raw session role** (e.g. "03", "FINANCE_MANAGER", "ROLE_03");
+ * the backend resolves codes/aliases. Never derives the URL from a normalized
+ * name, so an unknown role cannot silently fall back to another role's menus.
  *
- * @param role  - role name (preferred) or code — from session.user.role
+ * @param role  - raw session role from session.user.role
  * @param apiToken  - Bearer token from session.user.apiToken
  */
 export async function fetchRoleMenusRaw(
   role: string,
   apiToken: string
 ): Promise<ApiMenuItem[]> {
-  if (!role || !apiToken) return [];
-
-  // If the caller already passed a code, keep it; otherwise convert name → code.
-  const looksLikeCode = /^\d{1,3}$/.test(role);
-  const roleCode = looksLikeCode ? role : roleNameToCode(role);
+  const roleLabel = role?.trim() ?? "";
+  if (!roleLabel || !apiToken) return [];
 
   try {
     const res = await fetch(
-      buildApiUrl(`/system-setup/${roleCode}/menus`),
+      buildApiUrl(`/system-setup/${encodeURIComponent(roleLabel)}/menus`),
       {
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${apiToken}`,
         },
         // Cache with a tag so revalidateTag(NAV_MENUS_TAG) invalidates this data
-        next: { tags: [NAV_MENUS_TAG, `${NAV_MENUS_TAG}-${roleCode}`] },
+        next: { tags: [NAV_MENUS_TAG, `${NAV_MENUS_TAG}-${roleLabel}`] },
       }
     );
 
@@ -100,16 +97,17 @@ export async function fetchRoleMenusRaw(
 /**
  * Convert API menu items → NavGroup[] for the Sidebar.
  *
- * All menus are shown in a single unlabelled group, sorted by sortOrder.
- * The Sidebar's ICON_MAP maps the Material icon names to Lucide components.
+ * Fail closed: only items the catalog marks `canView` are rendered, and
+ * non-viewable children are pruned. All menus are shown in a single unlabelled
+ * group, sorted by sortOrder. The Sidebar's ICON_MAP maps the Material icon
+ * names to Lucide components.
  */
 export function apiMenusToNavGroups(menus: ApiMenuItem[]): NavGroup[] {
   if (!menus.length) return [];
 
-  const items: NavItem[] = menus
-    .slice()
-    .sort((a, b) => a.sortOrder - b.sortOrder)
-    .map((menu) => ({
+  const toNavItem = (menu: ApiMenuItem): NavItem => {
+    const children = (menu.children ?? []).filter((child) => child.canView);
+    return {
       href:      normalizeMenuRoute(menu.route),
       label:     menu.label,
       icon:      menu.icon,
@@ -117,23 +115,22 @@ export function apiMenusToNavGroups(menus: ApiMenuItem[]): NavGroup[] {
       canEdit:   menu.canEdit,
       canDelete: menu.canDelete,
       canCreate: menu.canCreate,
-      children:  menu.children?.length
-        ? menu.children
+      children:  children.length
+        ? children
             .slice()
             .sort((a, b) => a.sortOrder - b.sortOrder)
-            .map((child) => ({
-              href:      normalizeMenuRoute(child.route),
-              label:     child.label,
-              icon:      child.icon,
-              canView:   child.canView,
-              canEdit:   child.canEdit,
-              canDelete: child.canDelete,
-              canCreate: child.canCreate,
-            }))
+            .map(toNavItem)
         : undefined,
-    }));
+    };
+  };
 
-  return [{ items }];
+  const items: NavItem[] = menus
+    .filter((menu) => menu.canView)
+    .slice()
+    .sort((a, b) => a.sortOrder - b.sortOrder)
+    .map(toNavItem);
+
+  return items.length ? [{ items }] : [];
 }
 
 /**
@@ -243,9 +240,8 @@ export function staticNavToPermissions(groups: NavGroup[]): PermissionMap {
 /**
  * Fetch the current logged-in user's permissions as a PermissionMap.
  *
- * Call this in any server component/page that needs to guard UI actions.
- * Falls back to static nav permissions when the API returns no menus —
- * matching the layout's own fallback so pages aren't needlessly blocked.
+ * Fail closed: unknown role, missing token, an empty menu list, or a fetch
+ * error all yield an empty map (no static-nav fallback, never all-true).
  *
  * Usage in a server page:
  *   const permissions = await getCurrentUserPermissions();
@@ -255,20 +251,15 @@ export async function getCurrentUserPermissions(): Promise<PermissionMap> {
   const session = await auth();
   if (!session?.user?.role || !session?.user?.apiToken) return {};
   const menus = await fetchRoleMenusRaw(session.user.role, session.user.apiToken);
-  if (menus.length > 0) return extractPermissions(menus);
-  // Fallback: derive permissions from static nav config
-  return staticNavToPermissions(getStaticNavForRole(session.user.role));
+  return menus.length > 0 ? extractPermissions(menus) : {};
 }
 
 /**
  * Resolve a single route's permission flags for the current user.
  *
- * Unlike `getCurrentUserPermissions`, a route that is missing from the
- * API-driven menu (e.g. a brand-new frontend route the backend menu tree
- * doesn't know yet) falls back to the static nav config instead of being
- * treated as fully denied. This keeps new pages reachable during a
- * frontend-only deploy until the backend menu tree is seeded in tandem;
- * once the backend serves the route with explicit flags, those win.
+ * Fail closed: a route absent from the API-driven menu is denied
+ * (`NO_PERMISSIONS`). There is no per-route static-nav fallback, so a stale
+ * alias or an unseeded route cannot grant access.
  */
 export async function getPermissionForRoute(
   route: string
@@ -277,9 +268,6 @@ export async function getPermissionForRoute(
   const session = await auth();
   if (!session?.user?.role || !session?.user?.apiToken) return NO_PERMISSIONS;
   const menus = await fetchRoleMenusRaw(session.user.role, session.user.apiToken);
-  if (menus.length > 0) {
-    const map = extractPermissions(menus);
-    return map[normalizedRoute] ?? staticNavToPermissions(getStaticNavForRole(session.user.role))[normalizedRoute] ?? NO_PERMISSIONS;
-  }
-  return staticNavToPermissions(getStaticNavForRole(session.user.role))[normalizedRoute] ?? NO_PERMISSIONS;
+  const map = extractPermissions(menus);
+  return map[normalizedRoute] ?? NO_PERMISSIONS;
 }

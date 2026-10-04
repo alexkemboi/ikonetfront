@@ -7,7 +7,7 @@ import {
  Check, Pencil, UserPlus, X, Save, RotateCcw,
  MoreHorizontal, Loader2,
 } from "lucide-react";
-import { addRoleAction, saveRoleMenusAction, renameRoleAction, assignUserToRoleAction, removeUserFromRoleAction } from "@/actions/roles";
+import { addRoleAction, saveRoleMenusAction } from "@/actions/roles";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -302,13 +302,11 @@ function AssignUserSheet({
  open,
  onClose,
  roleName,
- roleCode,
  availableUsers,
 }: {
  open: boolean;
  onClose: () => void;
  roleName: string;
- roleCode: string;
  availableUsers: ApiRoleUser[];
 }) {
  const [query, setQuery] = useState("");
@@ -369,16 +367,8 @@ function AssignUserSheet({
  <p className="text-sm font-medium text-foreground truncate">{u.fullName}</p>
  <p className="text-xs text-muted-foreground truncate">{u.email}</p>
  </div>
- <Button size="sm" variant="outline" className="shrink-0 h-7"
- onClick={async () => {
- const result = await assignUserToRoleAction(roleCode, u.idxno.toString());
- if (result.success) {
- toast.success("User assigned to role");
- onClose();
- } else {
- toast.error(result.message || "Failed to assign user");
- }
- }}
+ <Button size="sm" variant="outline" className="shrink-0 h-7" disabled
+ title="Assigning users to a role is not available yet."
  >
  Assign
  </Button>
@@ -396,12 +386,10 @@ function AssignUserSheet({
 function UsersTab({
  users,
  roleName,
- roleId,
  allSystemUsers,
 }: {
  users: RoleUser[];
  roleName: string;
- roleId: string;
  allSystemUsers: ApiRoleUser[];
 }) {
  const [assignOpen, setAssignOpen] = useState(false);
@@ -468,15 +456,9 @@ function UsersTab({
  <button
  type="button"
  aria-label={`Remove ${user.name}`}
- className="w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-danger hover:bg-danger/10 transition-colors"
- onClick={async () => {
- const result = await removeUserFromRoleAction(roleId, user.id);
- if (result.success) {
- toast.success("User removed from role");
- } else {
- toast.error(result.message || "Failed to remove user");
- }
- }}
+ disabled
+ title="Removing users from a role is not available yet."
+ className="w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground/40 cursor-not-allowed"
  >
  <X className="w-3.5 h-3.5" />
  </button>
@@ -488,7 +470,6 @@ function UsersTab({
  open={assignOpen}
  onClose={() => setAssignOpen(false)}
  roleName={roleName}
- roleCode={roleId}
  availableUsers={availableUsers}
  />
  </>
@@ -707,7 +688,11 @@ export default function RolesClient({
  const [editName, setEditName] = useState("");
  const editInputRef = useRef<HTMLInputElement>(null);
 
- const filteredRoles = roles.filter(
+ const visibleRoles = canMutate
+ ? roles
+ : roles.filter((r) => r.id !== "SYSADMIN" && r.id !== "01");
+
+ const filteredRoles = visibleRoles.filter(
  (r) =>
  !searchQuery ||
  r.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -723,21 +708,12 @@ function handleStartEdit(role: Role) {
   setTimeout(() => editInputRef.current?.focus(), 50);
 }
 
-function handleSaveEdit(roleId: string) {
+function handleSaveEdit() {
   if (!canMutate) return;
-  const result = renameRoleAction(roleId, editName, selectedRole?.description ?? "");
- result.then((res) => {
- if (res.success) {
- toast.success("Role renamed successfully");
- dispatch(stopEditingRole());
- } else {
- toast.error(res.message || "Failed to rename role");
- }
- }).catch(() => {
- toast.error("Failed to rename role");
- dispatch(stopEditingRole());
- });
- }
+  // The backend rename endpoint is unmapped until RB-4; never issue the request.
+  toast.error("Renaming roles is not available yet.");
+  dispatch(stopEditingRole());
+  }
 
  return (
  <>
@@ -808,14 +784,14 @@ function handleSaveEdit(roleId: string) {
  value={editName}
  onChange={(e) => setEditName(e.target.value)}
  onKeyDown={(e) => {
- if (e.key === "Enter") handleSaveEdit(selectedRole.id);
+  if (e.key === "Enter") handleSaveEdit();
  if (e.key === "Escape") dispatch(stopEditingRole());
  }}
  className="text-lg font-bold bg-transparent border-b-2 border-primary outline-none text-foreground w-48"
  />
  <button
  type="button"
- onClick={()=>handleSaveEdit(selectedRole.id)}
+  onClick={()=>handleSaveEdit()}
  className="text-success hover:text-success/80 transition-colors"
  >
  <Check className="w-4 h-4" />
@@ -900,7 +876,6 @@ function handleSaveEdit(roleId: string) {
  <UsersTab
  users={selectedRole.users}
  roleName={selectedRole.name}
- roleId={selectedRole.id}
  allSystemUsers={allSystemUsers}
  />
  </TabsContent>

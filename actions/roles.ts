@@ -186,74 +186,55 @@ export async function saveRoleMenusAction(
   }
 }
 
+/**
+ * Hard-disabled until RB-4. The `/system-setup/update-role/{roleCode}` and
+ * `/system-setup/{roleCode}/users` endpoints are unmapped in the backend, so
+ * these actions must never issue a request. Kept as explicit no-ops so callers
+ * fail closed rather than silently hitting a 404.
+ */
 export async function renameRoleAction(
   roleCode: string,
   name: string,
   description: string
 ): Promise<ApiResponse<ApiRole>> {
-  try {
-    const res = await fetch(
-      buildApiUrl(`/system-setup/update-role/${roleCode}`),
-      {
-        method: "PUT",
-        headers: await getAuthHeaders(),
-        body: JSON.stringify({ roleCode, name, description }),
-        cache: "no-store",
-      }
-    );
-    const data: ApiResponse<ApiRole> = await res.json();
-    if (data.success) {
-      revalidatePath("/system/access");
-    }
-    return data;
-  } catch {
-    return { status: 500, success: false, message: "Failed to rename role", data: null as unknown as ApiRole, timestamp: "" };
-  }
+  void roleCode;
+  void name;
+  void description;
+  return {
+    status: 410,
+    success: false,
+    message: "Renaming roles is not available yet.",
+    data: null as unknown as ApiRole,
+    timestamp: new Date().toISOString(),
+  };
 }
 
 export async function assignUserToRoleAction(
   roleCode: string,
   userId: string
 ): Promise<ApiResponse<null>> {
-  try {
-    const res = await fetch(
-      buildApiUrl(`/system-setup/${roleCode}/users`),
-      {
-        method: "POST",
-        headers: await getAuthHeaders(),
-        body: JSON.stringify({ userId }),
-        cache: "no-store",
-      }
-    );
-    const data: ApiResponse<null> = await res.json();
-    if (data.success) {
-      revalidatePath("/system/access");
-    }
-    return data;
-  } catch {
-    return { status: 500, success: false, message: "Failed to assign user", data: null, timestamp: "" };
-  }
+  void roleCode;
+  void userId;
+  return {
+    status: 410,
+    success: false,
+    message: "Assigning users to a role is not available yet.",
+    data: null,
+    timestamp: new Date().toISOString(),
+  };
 }
 
 export async function removeUserFromRoleAction(
   roleCode: string,
   userId: string
 ): Promise<ApiResponse<null>> {
-  try {
-    const res = await fetch(
-      buildApiUrl(`/system-setup/${roleCode}/users/${userId}`),
-      {
-        method: "DELETE",
-        headers: await getAuthHeaders(),
-        cache: "no-store",
-      }
-    );
-    const data: ApiResponse<null> = await res.json();
-    if (data.success) {
-      revalidatePath("/system/access");
-    }
-    return data;
-  } catch {
-    return { status: 500, success: false, message: "Failed to remove user", data: null, timestamp: "" };
-  }
+  void roleCode;
+  void userId;
+  return {
+    status: 410,
+    success: false,
+    message: "Removing users from a role is not available yet.",
+    data: null,
+    timestamp: new Date().toISOString(),
+  };
 }

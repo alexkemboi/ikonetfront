@@ -6,6 +6,41 @@ import {
   logoutFixture,
   accountTypeFixture,
 } from "@/contracts/catalog";
+import { adminNavGroups } from "@/config/nav-admin";
+import type { ApiMenuItem } from "@/lib/types/roles";
+
+/**
+ * Permissive role-menu fixture for tests that exercise unrelated actions but
+ * now depend on the API-driven permission map (the static fallback is gone).
+ * Fail-closed tests override this with `server.use(... data: [])`.
+ */
+function permissiveMenuTree(): ApiMenuItem[] {
+  return adminNavGroups.flatMap((group, gi) =>
+    group.items.map((item, i) => ({
+      idxno: gi * 1000 + i + 1,
+      label: item.label,
+      route: item.href,
+      icon: item.icon,
+      sortOrder: (gi * 100 + i + 1) * 10,
+      canView: true,
+      canCreate: true,
+      canEdit: true,
+      canDelete: true,
+      children: (item.children ?? []).map((child, j) => ({
+        idxno: gi * 1000 + 500 + i * 10 + j,
+        label: child.label,
+        route: child.href,
+        icon: child.icon,
+        sortOrder: (j + 1) * 10,
+        canView: true,
+        canCreate: true,
+        canEdit: true,
+        canDelete: true,
+        children: [],
+      })),
+    }))
+  );
+}
 
 export const authHandlers = [
   // Public: no Authorization expected.
@@ -50,11 +85,12 @@ export const authHandlers = [
     )
   ),
 
-  // Role menu tree — returns empty so permission helpers fall back to static
-  // nav config in tests (matches the "backend returns no menus" path).
+  // Role menu tree — now the single source of nav/permissions, so unrelated
+  // action tests get a permissive tree (fail-closed tests override with
+  // `server.use` returning `data: []`).
   http.get(`${API_PREFIX}/system-setup/:roleCode/menus`, () =>
     HttpResponse.json(
-      { status: 200, success: true, message: "OK", data: [] },
+      { status: 200, success: true, message: "OK", data: permissiveMenuTree() },
       { status: 200 }
     )
   ),
