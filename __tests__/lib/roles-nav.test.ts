@@ -16,6 +16,7 @@ import {
   apiMenusToMenuTree,
   apiMenusToNavGroups,
   getPermissionForRoute,
+  getCurrentUserPermissions,
   getStaticNavForRole,
 } from "@/lib/data/nav";
 import { resolveDashboardPathForRole } from "@/lib/utils/dashboardRouting";
@@ -72,17 +73,17 @@ describe("role normalization (lib/types/roles.ts)", () => {
     expect(normalizeRole("SYSADMIN")).toBe(ROLE_NAME.ADMIN);
   });
 
-  it("defaults falsy/unknown roles to STAFF (safe lowest privilege)", () => {
-    expect(normalizeRole(undefined)).toBe(ROLE_NAME.STAFF);
-    expect(normalizeRole("")).toBe(ROLE_NAME.STAFF);
-    expect(normalizeRole("SCI-FI_ROLE")).toBe(ROLE_NAME.STAFF);
+  it("returns UNKNOWN for falsy/unknown roles (fail closed, no STAFF default)", () => {
+    expect(normalizeRole(undefined)).toBe(ROLE_NAME.UNKNOWN);
+    expect(normalizeRole("")).toBe(ROLE_NAME.UNKNOWN);
+    expect(normalizeRole("SCI-FI_ROLE")).toBe(ROLE_NAME.UNKNOWN);
   });
 
-  it("roleNameToCode round-trips investor and customer", () => {
+  it("roleNameToCode round-trips known roles and returns empty for unknown", () => {
     expect(roleNameToCode(ROLE_NAME.INVESTOR)).toBe("04");
     expect(roleNameToCode(ROLE_NAME.CUSTOMER)).toBe("05");
     expect(roleNameToCode("ROLE_INVESTOR")).toBe(ROLE_CODE.INVESTOR);
-    expect(roleNameToCode("unsupported")).toBe(ROLE_CODE.STAFF);
+    expect(roleNameToCode("unsupported")).toBe("");
   });
 });
 
@@ -106,7 +107,13 @@ describe("landing route dispatch", () => {
     expect(resolveDashboardPathForRole("04")).toBe("/finance/investor");
     expect(resolveDashboardPathForRole("ROLE_INVESTOR")).toBe("/finance/investor");
     expect(resolveDashboardPathForRole("02")).toBe("/analytics");
-    expect(resolveDashboardPathForRole(null)).toBe("/customers");
+    expect(resolveDashboardPathForRole(null)).toBe("/no-access");
+  });
+
+  it("unknown/falsy roles dispatch to the unguarded no-access route (no redirect loop)", () => {
+    expect(getLandingRouteForRole("SCI-FI_ROLE")).toBe("/no-access");
+    expect(getLandingRouteForRole(null)).toBe("/no-access");
+    expect(getLandingRouteForRole(undefined)).toBe("/no-access");
   });
 });
 
@@ -187,6 +194,26 @@ describe("permission map + menu tree normalization", () => {
     expect(flat.find((i) => i.label === "Subs")?.children?.[0].href).toBe("/customers/all");
   });
 
+  it("apiMenusToNavGroups prunes canView=false items and children", () => {
+    const groups = apiMenusToNavGroups([
+      menuItem({ idxno: 1, label: "Hidden", route: "/hidden", canView: false }),
+      menuItem({
+        idxno: 2,
+        label: "Visible",
+        route: "/visible",
+        canView: true,
+        children: [
+          menuItem({ idxno: 3, label: "HiddenChild", route: "/hidden-child", canView: false }),
+          menuItem({ idxno: 4, label: "VisibleChild", route: "/visible-child", canView: true }),
+        ],
+      }),
+    ]);
+
+    const flat = groups.flatMap((g) => g.items);
+    expect(flat.map((i) => i.label)).toEqual(["Visible"]);
+    expect(flat[0].children?.map((c) => c.label)).toEqual(["VisibleChild"]);
+  });
+
   it("getStaticNavForRole returns investor nav for 04/ROLE_INVESTOR", () => {
     const groups = getStaticNavForRole("04");
     expect(groups.flatMap((g) => g.items).map((i) => i.href)).toContain("/finance/investor");
@@ -260,5 +287,35 @@ describe("getPermissionForRoute alias tolerance", () => {
     expect(perms.canCreate).toBe(false);
     expect(perms.canEdit).toBe(false);
     expect(perms.canDelete).toBe(false);
+  });
+});
+
+describe("fail-closed runtime getters", () => {
+  it("getCurrentUserPermissions returns {} (not static all-true) when the API is empty", async () => {
+    server.use(
+      http.get(`${API_PREFIX}/system-setup/:roleCode/menus`, () =>
+        HttpResponse.json(
+          { status: 200, success: true, message: "OK", data: [], timestamp: "2026-09-03T00:00:00.000Z" },
+          { status: 200 }
+        )
+      )
+    );
+
+    await expect(getCurrentUserPermissions()).resolves.toEqual({});
+  });
+
+  it("getPermissionForRoute denies a known route when the API is empty (no static fallback)", async () => {
+    server.use(
+      http.get(`${API_PREFIX}/system-setup/:roleCode/menus`, () =>
+        HttpResponse.json(
+          { status: 200, success: true, message: "OK", data: [], timestamp: "2026-09-03T00:00:00.000Z" },
+          { status: 200 }
+        )
+      )
+    );
+
+    // /customers is in the static staff nav, but the static fallback is gone.
+    const perms = await getPermissionForRoute("/customers");
+    expect(perms.canView).toBe(false);
   });
 });
