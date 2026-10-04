@@ -25,7 +25,10 @@ export interface RouterAttributionItem {
 
 /** `InvestorRevenueSummaryResponse` — bare object, no envelope. */
 export interface InvestorRevenueSummary {
-  investorId: string;
+  /** Present only for an investor-scoped read; null for company/platform scope. */
+  investorId: string | null;
+  /** Effective company scope; null for a platform-wide read. */
+  companyId: string | null;
   periodYearMonth: string;
   totalGrossRevenue: number;
   hotspotGrossRevenue: number;
@@ -113,6 +116,12 @@ export interface InvestorMoneyFlowData {
   snapshotsMessage: string;
   agreements: InvestorAgreement[];
   agreementsMessage: string;
+  /**
+   * True only for SYSADMIN: `/agreements` and `/billing-snapshots` are
+   * platform-admin-only (RB-5 / D-35), so a Network Partner (role 04) must not
+   * fetch or render those sections.
+   */
+  billingDetailsVisible: boolean;
   /** True when every endpoint returned a usable payload. */
   allAvailable: boolean;
   /** True when any endpoint responded; used with the individual messages otherwise. */

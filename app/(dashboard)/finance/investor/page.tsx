@@ -3,7 +3,6 @@ import type { Metadata } from "next";
 
 import { auth } from "@/lib/auth";
 import { getInvestorMoneyFlowData } from "@/actions/investor";
-import { getPermissionForRoute } from "@/lib/data/nav";
 import { normalizeRole, ROLE_NAME } from "@/lib/types/roles";
 import type { RouterAttributionItem } from "@/lib/types/investor";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -28,19 +27,14 @@ export default async function InvestorPortalPage() {
   const session = await auth();
   const role = normalizeRole(session?.user?.role);
 
-  // Strict access guard (plan § Investor Portal):
-  //  - investor       → allowed
-  //  - admin/SYSADMIN → allowed (support/audit per plan assumption)
-  //  - management     → allowed ONLY if backend permissions explicitly include /finance/investor
-  //  - staff          → /customers
-  //  - customer       → /portal/pppoe
-  if (role === ROLE_NAME.STAFF) redirect("/customers");
+  // RB-5.1 access guard:
+  //  - investor (04)     → allowed (own routers)
+  //  - company roles      → allowed (own company revenue); billing detail stays SYSADMIN-only
+  //                         (SYSADMIN or 01 → ADMIN; 02 → MANAGEMENT; 03 → STAFF)
+  //  - customer (05)      → /portal/pppoe
+  //  - unknown            → /no-access (fail closed)
   if (role === ROLE_NAME.CUSTOMER) redirect("/portal/pppoe");
-  if (role === ROLE_NAME.MANAGEMENT) {
-    const investorPerm = await getPermissionForRoute("/finance/investor");
-    if (!investorPerm.canView) redirect("/analytics");
-  }
-  if (role !== ROLE_NAME.INVESTOR && role !== ROLE_NAME.ADMIN) redirect("/customers");
+  if (role === ROLE_NAME.UNKNOWN) redirect("/no-access");
 
   const data = await getInvestorMoneyFlowData();
   const revenue = data.revenue;
@@ -49,7 +43,10 @@ export default async function InvestorPortalPage() {
   const kpis = revenue
     ? [
         { label: "Total Gross Revenue", value: formatKES(revenue.totalGrossRevenue) },
-        { label: "Net Investor Payout", value: formatKES(revenue.netInvestorPayout) },
+        {
+          label: revenue.investorId === null ? "Total Investor Payout Due" : "Net Investor Payout",
+          value: formatKES(revenue.netInvestorPayout),
+        },
         { label: "Maintenance Due", value: formatKES(revenue.totalMaintenanceDue) },
         { label: "Active PPPoE Subscribers", value: String(revenue.activePppoeSubscribers ?? 0) },
         { label: "Hotspot Gross", value: formatKES(revenue.hotspotGrossRevenue) },
@@ -128,6 +125,7 @@ export default async function InvestorPortalPage() {
           </Card>
         )}
 
+        {data.billingDetailsVisible && (
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           <Card>
             <CardHeader>
@@ -215,6 +213,7 @@ export default async function InvestorPortalPage() {
             </CardContent>
           </Card>
         </div>
+        )}
       </div>
     </div>
   );
