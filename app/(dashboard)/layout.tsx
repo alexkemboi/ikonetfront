@@ -5,9 +5,10 @@ import TopBar from "./_components/TopBar";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import {
- apiMenusToNavGroups,
  extractPermissions,
  fetchRoleMenusRaw,
+ filterNavByPermissions,
+ getNavLayoutForRole,
 } from "@/lib/data/nav";
 import type { NavGroup } from "@/lib/nav";
 import { PermissionsProvider } from "@/providers/PermissionsProvider";
@@ -22,10 +23,11 @@ import { SessionHeartbeat } from "@/providers/MonitoringHeartbeat";
 /**
  * Dashboard shell — server component.
  *
- * Nav is driven exclusively by the API menu tree (fail closed). When the API
- * returns nothing — unseeded catalog, unknown role, or a transient failure —
- * the sidebar renders empty and permissions are empty rather than falling back
- * to a static, all-true nav.
+ * Layout (groups, labels, order) comes from the static nav config; visibility
+ * comes from the API menu permissions (fail closed). When the API returns
+ * nothing — unseeded catalog, unknown role, or a transient failure — the
+ * permission map is empty, so the sidebar renders empty rather than falling
+ * back to a static, all-true nav.
  */
 export default async function DashboardLayout({ children }: { children: ReactNode }) {
  const session = await auth();
@@ -48,13 +50,15 @@ export default async function DashboardLayout({ children }: { children: ReactNod
  }
  : undefined;
 
-  // API-driven menus only. Empty (unknown role / unseeded / fetch error) ⇒ empty
-  // nav and empty permissions — fail closed, never the static all-true fallback.
+  // Permissions are API-driven only. Empty (unknown role / unseeded / fetch error)
+  // ⇒ empty permissions ⇒ empty nav — fail closed.
   const rawMenus = await fetchRoleMenusRaw(rawRole, apiToken);
 
-  const navGroups: NavGroup[] = rawMenus.length > 0 ? apiMenusToNavGroups(rawMenus) : [];
-
   const permissionMap: PermissionMap = rawMenus.length > 0 ? extractPermissions(rawMenus) : {};
+
+  // The static config decides where an entry sits; the permission map decides
+  // whether this role sees it.
+  const navGroups: NavGroup[] = filterNavByPermissions(getNavLayoutForRole(rawRole), permissionMap);
 
  // Track 2 — tenant theming: resolve the brand for the requesting subdomain
  // (custom domain / company-context cookie wins on the dashboard shell).
