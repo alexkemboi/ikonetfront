@@ -54,6 +54,17 @@ function defaultPeriod(): string {
   return `${year}-${String(month).padStart(2, "0")}`;
 }
 
+/**
+ * RB-5 / D-35: only SYSADMIN may read `/agreements` and `/billing-snapshots`
+ * (the backend enforces `@PreAuthorize("hasRole('SYSADMIN')")`). A Network Partner
+ * (role 04) must not call them at all, so the money-flow page degrades cleanly
+ * instead of rendering two 403 sections.
+ */
+function isSysadminRole(rawRole?: string | null): boolean {
+  if (!rawRole) return false;
+  return /SYSADMIN|ROLE_SYSADMIN|SUPER_ADMIN|ROLE_SUPER_ADMIN/i.test(rawRole.trim());
+}
+
 async function getRevenueSummary(
   period: string,
   headers: Record<string, string>
@@ -134,13 +145,22 @@ export async function getInvestorMoneyFlowData(
     ? input.period
     : defaultPeriod();
   const headers = await getAuthHeaders();
+  const session = await auth();
+  const billingDetailsVisible = isSysadminRole(session?.user?.role);
 
-  const [{ revenue, message: revenueMessage }, { snapshots, message: snapshotsMessage }, { agreements, message: agreementsMessage }] =
-    await Promise.all([
-      getRevenueSummary(period, headers),
-      getBillingSnapshots(headers),
-      getAgreements(headers),
-    ]);
+  const [revenueResult, snapshotsResult, agreementsResult] = await Promise.all([
+    getRevenueSummary(period, headers),
+    billingDetailsVisible
+      ? getBillingSnapshots(headers)
+      : Promise.resolve({ snapshots: [] as InvestorBillingSnapshot[], message: "" }),
+    billingDetailsVisible
+      ? getAgreements(headers)
+      : Promise.resolve({ agreements: [] as InvestorAgreement[], message: "" }),
+  ]);
+
+  const { revenue, message: revenueMessage } = revenueResult;
+  const { snapshots, message: snapshotsMessage } = snapshotsResult;
+  const { agreements, message: agreementsMessage } = agreementsResult;
 
   const anyAvailable = revenue !== null || snapshots.length > 0 || agreements.length > 0;
 
@@ -152,7 +172,10 @@ export async function getInvestorMoneyFlowData(
     snapshotsMessage,
     agreements,
     agreementsMessage,
-    allAvailable: revenue !== null && snapshots.length > 0 && agreements.length > 0,
+    billingDetailsVisible,
+    allAvailable: billingDetailsVisible
+      ? revenue !== null && snapshots.length > 0 && agreements.length > 0
+      : revenue !== null,
     anyAvailable,
   };
 }
