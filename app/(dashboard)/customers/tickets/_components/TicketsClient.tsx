@@ -1,5 +1,6 @@
 "use client"
 
+import { useCompanyScope } from "@/providers/CompanyScopeProvider";
 import { useMemo, useState } from "react"
 import { Headphones, Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -35,6 +36,7 @@ const TABS: { value: TicketStatus | "ALL"; label: string }[] = [
 export function TicketsClient({ initialTickets, staffList }: TicketsClientProps) {
  const dispatch = useAppDispatch()
  const perms = usePermissions("/customers/tickets")
+ const { requireCompany } = useCompanyScope();
  const selectedTicketId = useAppSelector((s) => s.ticket.selectedTicketId)
  const createSheetOpen = useAppSelector((s) => s.ticket.createSheetOpen)
 
@@ -88,7 +90,7 @@ export function TicketsClient({ initialTickets, staffList }: TicketsClientProps)
  </div>
  </div>
  {perms.canCreate && (
- <Button size="sm" onClick={() => dispatch(openCreateSheet())}>
+ <Button size="sm" onClick={() => requireCompany(() => dispatch(openCreateSheet()))}>
  <Plus className="mr-1.5 h-4 w-4" />
  Create Ticket
  </Button>

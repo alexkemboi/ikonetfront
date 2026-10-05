@@ -1,6 +1,7 @@
+import { getPermissionForRoute } from "@/lib/data/nav";
 import { getRouterHistory } from "@/actions/network";
 import { RouterLiveMonitor } from "./_components/RouterLiveMonitor";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 
 interface MonitoringPageProps {
  params: Promise<{ id: string }>;
@@ -12,6 +13,9 @@ export const metadata = {
 };
 
 export default async function RouterMonitoringPage({ params }: MonitoringPageProps) {
+  const pagePerms = await getPermissionForRoute("/network/routers");
+  if (!pagePerms.canView) redirect("/dashboard");
+
  const routerId = Number((await params).id);
  if (isNaN(routerId)) {
  notFound();

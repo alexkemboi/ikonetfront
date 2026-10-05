@@ -122,7 +122,7 @@ const breadcrumbs = useBreadcrumb();
 	</Button>
 
 	{/* Tenant context switcher (SYSADMIN only) */}
-	{user && <CompanyContextSwitcher rawRole={user.role} companyScope={user.companyScope} />}
+	{user && <CompanyContextSwitcher companyScope={user.companyScope} />}
 
 	{/* Notifications */}
  <div className="relative">

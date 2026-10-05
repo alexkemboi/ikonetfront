@@ -1,5 +1,6 @@
 "use client";
 
+import { useCompanyScope } from "@/providers/CompanyScopeProvider";
 import { useState, useMemo } from "react";
 import { useFormik } from "formik";
 import * as Yup from "yup";
@@ -366,6 +367,7 @@ export default function PackagesClient({
  const [deletingId, setDeletingId] = useState<number | null>(null);
  const [togglingId, setTogglingId] = useState<number | null>(null);
  const perms = usePermissions("/system/packages");
+ const { requireCompany } = useCompanyScope();
 
  // Derive unique categories from data + fixed set
  const categories = useMemo(() => {
@@ -458,7 +460,7 @@ export default function PackagesClient({
  </p>
  </div>
  {perms.canCreate && (
- <Button onClick={openAdd} className="gap-2 shrink-0">
+ <Button onClick={() => requireCompany(openAdd)} className="gap-2 shrink-0">
  <Plus className="w-4 h-4" /> Add Package
  </Button>
  )}
@@ -502,7 +504,7 @@ export default function PackagesClient({
  </p>
  </div>
  {activeCategory === "All" && perms.canCreate && (
- <Button onClick={openAdd} variant="outline" className="gap-2">
+ <Button onClick={() => requireCompany(openAdd)} variant="outline" className="gap-2">
  <Plus className="w-4 h-4" /> Create Package
  </Button>
  )}

@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 
 import { auth } from "@/lib/auth";
 import { getInvestorMoneyFlowData } from "@/actions/investor";
+import { getPermissionForRoute } from "@/lib/data/nav";
 import { normalizeRole, ROLE_NAME } from "@/lib/types/roles";
 import type { RouterAttributionItem } from "@/lib/types/investor";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -35,6 +36,12 @@ export default async function InvestorPortalPage() {
   //  - unknown            → /no-access (fail closed)
   if (role === ROLE_NAME.CUSTOMER) redirect("/portal/pppoe");
   if (role === ROLE_NAME.UNKNOWN) redirect("/no-access");
+  const pagePerms = await getPermissionForRoute("/finance/investor");
+  if (!pagePerms.canView) redirect("/no-access");
+
+  // An investor's own login is revenue monitoring of their routers only
+  // (blueprint D-35): no payout, maintenance-charge or payable figure.
+  const revenueOnly = role === ROLE_NAME.INVESTOR;
 
   const data = await getInvestorMoneyFlowData();
   const revenue = data.revenue;
@@ -43,15 +50,19 @@ export default async function InvestorPortalPage() {
   const kpis = revenue
     ? [
         { label: "Total Gross Revenue", value: formatKES(revenue.totalGrossRevenue) },
-        {
-          label: revenue.investorId === null ? "Total Investor Payout Due" : "Net Investor Payout",
-          value: formatKES(revenue.netInvestorPayout),
-        },
-        { label: "Maintenance Due", value: formatKES(revenue.totalMaintenanceDue) },
-        { label: "Active PPPoE Subscribers", value: String(revenue.activePppoeSubscribers ?? 0) },
         { label: "Hotspot Gross", value: formatKES(revenue.hotspotGrossRevenue) },
-        { label: "Hotspot Maint. Fee", value: formatKES(revenue.hotspotMaintenanceFee) },
-        { label: "PPPoE Maint. Fee", value: formatKES(revenue.pppoeMaintenanceFee) },
+        { label: "Active PPPoE Subscribers", value: String(revenue.activePppoeSubscribers ?? 0) },
+        ...(revenueOnly
+          ? []
+          : [
+              {
+                label: revenue.investorId === null ? "Total Investor Payout Due" : "Net Investor Payout",
+                value: formatKES(revenue.netInvestorPayout),
+              },
+              { label: "Maintenance Due", value: formatKES(revenue.totalMaintenanceDue) },
+              { label: "Hotspot Maint. Fee", value: formatKES(revenue.hotspotMaintenanceFee) },
+              { label: "PPPoE Maint. Fee", value: formatKES(revenue.pppoeMaintenanceFee) },
+            ]),
       ]
     : [];
 
@@ -66,7 +77,7 @@ export default async function InvestorPortalPage() {
             Money flow.
           </h1>
           <p className="mt-1 text-xs text-muted-foreground">
-            Period {data.period} · Revenue, maintenance &amp; router attribution · Read-only
+            Period {data.period} · {revenueOnly ? "Revenue through your routers" : "Revenue, maintenance & router attribution"} · Read-only
           </p>
         </div>
 

@@ -1,3 +1,5 @@
+import { getPermissionForRoute } from "@/lib/data/nav";
+import { redirect } from "next/navigation";
 import BulkEmailWizard from "./_components/BulkEmailWizard";
 import { getEmailTemplates } from "@/actions/communications";
 import { getCustomers } from "@/actions/customer";
@@ -28,6 +30,9 @@ const BUILT_IN_TEMPLATES: EmailTemplate[] = [
 ];
 
 export default async function BulkEmailPage() {
+  const pagePerms = await getPermissionForRoute("/communications/bulk-email");
+  if (!pagePerms.canView) redirect("/dashboard");
+
  const [templatesResult, customersResult, systemUsers] = await Promise.all([
    getEmailTemplates(),
   getCustomers(0, 200),

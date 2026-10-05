@@ -2,6 +2,7 @@
 
 import { withCompanyContext } from "@/lib/companyContext";
 import { auth } from "@/lib/auth";
+import { apiFetch } from "@/lib/apiClient";
 import { buildApiUrl } from "@/lib/constants";
 import type { ApiResponse } from "@/lib/types/auth";
 
@@ -44,4 +45,15 @@ export async function getAuditLogsAction(): Promise<ApiResponse<AuditLog[]>> {
       data:    [],
     };
   }
+}
+
+/**
+ * Platform audit log (SYSADMIN only): company switches and other events that
+ * belong to no company. Company events stay in {@link getAuditLogsAction}.
+ */
+export async function getPlatformAuditLogsAction() {
+  return apiFetch<AuditLog[]>("/systemsetup/audit-logs/platform", {
+    auth: "required",
+    cache: "no-store",
+  });
 }

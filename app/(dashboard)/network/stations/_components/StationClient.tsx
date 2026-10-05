@@ -1,5 +1,6 @@
 "use client";
 
+import { useCompanyScope } from "@/providers/CompanyScopeProvider";
 import { useState } from "react";
 import { RegionResponse, StationResponse } from "@/lib/types/network";
 import { deleteStation } from "@/actions/network";
@@ -31,6 +32,7 @@ export function StationClient({ regionsTree }: StationClientProps) {
  const [stations, setStations] = useState<StationResponse[]>(getFlatStations(regionsTree));
  const [isDialogOpen, setIsOpen] = useState(false);
  const perms = usePermissions("/network/stations");
+ const { requireCompany } = useCompanyScope();
 
  const handleDelete = async (id: number, locationIdxno: number) => {
  if (!confirm("Are you sure you want to delete this Station (POP)?")) return;
@@ -111,7 +113,7 @@ export function StationClient({ regionsTree }: StationClientProps) {
  <div className="space-y-4">
  <div className="flex justify-end">
  {perms.canCreate && (
- <Dialog open={isDialogOpen} onOpenChange={setIsOpen}>
+ <Dialog open={isDialogOpen} onOpenChange={(open) => (open ? requireCompany(() => setIsOpen(true)) : setIsOpen(false))}>
 <DialogTrigger asChild>
           <Button className="inline-flex items-center gap-2 rounded-xl bg-amber-500 px-5 py-2.5 text-black hover:bg-amber-400 transition shadow-lg shadow-amber-500/20">
             <Plus className="h-4 w-4" /> Onboard Station

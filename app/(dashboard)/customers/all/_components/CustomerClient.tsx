@@ -1,5 +1,6 @@
 "use client";
 
+import { useCompanyScope } from "@/providers/CompanyScopeProvider";
 import { useState, useCallback, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Plus } from "lucide-react";
@@ -33,6 +34,7 @@ export function CustomerClient({
  const dispatch = useAppDispatch();
  const router = useRouter();
  const perms = usePermissions("/customers");
+ const { requireCompany } = useCompanyScope();
 
  const [page, setPage] = useState(0);
  const [pageSize, setPageSize] = useState(10);
@@ -142,7 +144,7 @@ const columns = useMemo(
     </div>
     {perms.canCreate && (
       <Button
-        onClick={() => router.push("/customers/new")}
+        onClick={() => requireCompany(() => router.push("/customers/new"))}
         className="inline-flex items-center gap-2 rounded-xl bg-amber-500 px-5 py-2.5 text-black hover:bg-amber-400 transition shadow-lg shadow-amber-500/20 shrink-0"
       >
         <Plus className="h-4 w-4" /> Add Customer

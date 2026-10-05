@@ -1,7 +1,13 @@
+import { getPermissionForRoute } from "@/lib/data/nav";
+import { redirect } from "next/navigation";
 import React from "react";
 import { AddEquipmentForm } from "@/components/equipment/AddEquipmentForm";
+import { CompanyRequired } from "@/components/tenant/CompanyRequired";
 
-export default function NewEquipmentPage() {
+export default async function NewEquipmentPage() {
+  const pagePerms = await getPermissionForRoute("/network/equipment");
+  if (!pagePerms.canCreate) redirect("/dashboard");
+
  return (
  <div className="min-h-screen p-4 text-foreground sm:p-6 lg:p-8">
  <div className="mx-auto max-w-3xl space-y-6">
@@ -15,7 +21,9 @@ export default function NewEquipmentPage() {
  </p>
  </div>
 
+ <CompanyRequired>
  <AddEquipmentForm />
+ </CompanyRequired>
  </div>
  </div>
  );
