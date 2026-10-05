@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useCompanyScope } from "@/providers/CompanyScopeProvider";
 import { useRouter } from "next/navigation";
 import { Plus, RotateCcw } from "lucide-react";
 import { VoucherKpiCards } from "./VoucherKpiCards";
@@ -49,6 +50,7 @@ export function VouchersClient({
 }: Props) {
   const router = useRouter();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const { requireCompany } = useCompanyScope();
   const [isCompensateOpen, setIsCompensateOpen] = useState(false);
 
   return (
@@ -74,7 +76,7 @@ export function VouchersClient({
   <RotateCcw className="h-4 w-4" /> Compensate Payment
   </button>
   <button
-  onClick={() => setIsModalOpen(true)}
+  onClick={() => requireCompany(() => setIsModalOpen(true))}
   className="inline-flex items-center gap-2 rounded-lg bg-amber-500 px-5 py-2.5 text-xs font-semibold text-black hover:bg-amber-400"
   >
   <Plus className="h-4 w-4" /> Generate Vouchers
