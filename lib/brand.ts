@@ -1,54 +1,23 @@
 /**
- * Customer-facing brand resolution for the multi-company captive portal.
+ * Customer-facing wording for the multi-company captive portal.
  *
  * Raw company keys (CMP-BSM-001, COMPANY-001, ...) must never reach a
- * subscriber. All brand strings here are clean, human-readable names.
+ * subscriber: the page shows the company name the backend returns.
  */
-
-export type CompanyCode =
-  | "CMP-BSM-001"
-  | "CMP-BDK-001"
-  | "CMP-ADR-001";
-
-const COMPANY_CODES: Record<CompanyCode, string> = {
-  "CMP-BSM-001": "Beesmart High-Speed Wi-Fi",
-  "CMP-BDK-001": "Bedak Networks",
-  "CMP-ADR-001": "Adrinold Broadband",
-};
-
-/** Normalize any canonical spelling of a company to its CMP-* code, or null. */
-export function normalizeCompanyCode(company?: string | null): CompanyCode | null {
-  if (!company) return null;
-  const normalized = company.trim().toUpperCase();
-  if (normalized.includes("BSM") || normalized.includes("BEESMART")) return "CMP-BSM-001";
-  if (normalized.includes("ADR") || normalized.includes("ADRINOLD")) return "CMP-ADR-001";
-  if (normalized.includes("BDK") || normalized.includes("BEDAK")) return "CMP-BDK-001";
-  return null;
-}
-
-/** Clean customer-facing brand name for a company code (neutral fallback). */
-export function getCustomerFacingBrand(companyCode?: string | null): string {
-  const code = normalizeCompanyCode(companyCode);
-  return code ? COMPANY_CODES[code] : "Ikonex Wi-Fi";
-}
 
 /**
- * Resolve the canonical company code from a router asset tag
- * ("RTR-BSM-A", "RTR-ADR-UKD-A", "RTR-BDK-MSA-A", ...).
+ * Shown only when the backend cannot say which company's hotspot this is. Company names
+ * are never listed here: they come from the backend (`getHotspotPortalContextAction`),
+ * so a newly onboarded company needs no frontend change.
  */
-export function resolveCompanyFromRouterTag(tag?: string | null): CompanyCode | null {
-  if (!tag) return null;
-  const match = /^RTR-(BSM|BDK|ADR)(?:-[A-Z0-9]+)?-[A-Z]$/i.exec(tag.trim());
-  if (!match) return null;
-  switch (match[1].toUpperCase()) {
-    case "BSM":
-      return "CMP-BSM-001";
-    case "ADR":
-      return "CMP-ADR-001";
-    case "BDK":
-    default:
-      return "CMP-BDK-001";
-  }
+export const DEFAULT_PORTAL_BRAND = "Wi-Fi Hotspot";
+
+const COMPANY_CODE = /^CMP-[A-Z0-9]+-[0-9]{3,}$/;
+
+/** A well-formed company code from the redirect query, upper-cased; null for anything else. */
+export function normalizeCompanyCode(company?: string | null): string | null {
+  const code = company?.trim().toUpperCase() ?? "";
+  return COMPANY_CODE.test(code) ? code : null;
 }
 
 /**
