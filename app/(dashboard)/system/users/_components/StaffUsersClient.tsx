@@ -34,13 +34,17 @@ const schema = Yup.object({
  fname: Yup.string().required("First name is required"),
  middleName: Yup.string().default(""),
  otherName: Yup.string().default(""),
- username: Yup.string().min(3, "Minimum 3 characters").required("Username is required"),
+ username: Yup.string()
+ .min(3, "Minimum 3 characters")
+ .max(50, "Maximum 50 characters")
+ .matches(/^[A-Za-z0-9._@-]+$/, "Letters, numbers and . _ @ - only")
+ .required("Username is required"),
  email: Yup.string().email("Enter a valid email").required("Email is required"),
  phoneNumber: Yup.string()
  .matches(/^(07|01)\d{8}$/, "Enter a valid Kenyan number (07xxxxxxxx)")
  .required("Phone number is required"),
  role: Yup.string().required("Role is required"),
- password: Yup.string().min(8, "Minimum 8 characters").required("Password is required"),
+ password: Yup.string().min(12, "Minimum 12 characters").required("Password is required"),
  confirmPassword: Yup.string()
  .oneOf([Yup.ref("password")], "Passwords do not match")
  .required("Confirm your password"),
