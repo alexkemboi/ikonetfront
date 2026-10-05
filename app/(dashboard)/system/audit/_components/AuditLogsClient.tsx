@@ -17,9 +17,12 @@ interface Props {
  methods: string[];
  /** Unique module names present in the data — derived server-side */
  modules: string[];
+ title?: string;
+ /** Which log this is (company events or platform events). */
+ subtitle?: string;
 }
 
-export default function AuditLogsClient({ logs, methods, modules }: Props) {
+export default function AuditLogsClient({ logs, methods, modules, title = "Audit Logs", subtitle }: Props) {
  const [method, setMethod] = useState("ALL");
  const [module, setModule] = useState("ALL");
 
@@ -92,9 +95,10 @@ export default function AuditLogsClient({ logs, methods, modules }: Props) {
  <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
  <Activity className="w-4.5 h-4.5 text-primary" />
  </div>
- <h1 className="text-2xl font-normal tracking-normal text-foreground">Audit Logs</h1>
+ <h1 className="text-2xl font-normal tracking-normal text-foreground">{title}</h1>
  </div>
  <p className="text-sm text-muted-foreground mt-1 ml-0.5">
+ {subtitle && <>{subtitle} &middot; </>}
  {logs.length.toLocaleString()} total events
  {filtered.length !== logs.length && (
  <> &middot; <span className="text-foreground font-medium">{filtered.length.toLocaleString()} shown</span></>

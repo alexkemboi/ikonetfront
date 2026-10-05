@@ -1,8 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
-import { useDispatch } from "react-redux";
+import { useState } from "react";
 import { Building2, Check, ChevronsUpDown, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,74 +11,27 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { readContextCookie, writeContextCookie } from "@/lib/companyContextClient";
-import { listCompanies, type CompanySummary } from "@/actions/companies";
-import { initCompanyContext, setCompanyContext, setContextSwitching } from "@/store/slices/companyContextSlice";
-import type { AppDispatch } from "@/store";
-
-function isSysadminRole(rawRole?: string | null): boolean {
-  if (!rawRole) return false;
-  return /SYSADMIN|ROLE_SYSADMIN|SUPER_ADMIN|ROLE_SUPER_ADMIN/i.test(rawRole.trim());
-}
+import { useCompanyScope } from "@/providers/CompanyScopeProvider";
 
 export default function CompanyContextSwitcher({
-  rawRole,
   companyScope,
 }: {
-  rawRole?: string | null;
   companyScope?: string | null;
 }) {
-  const router = useRouter();
-  const dispatch = useDispatch<AppDispatch>();
-  const isSysadmin = isSysadminRole(rawRole);
-  const [companies, setCompanies] = useState<CompanySummary[]>([]);
-  const [selected, setSelected] = useState<string | null>(() =>
-    readContextCookie() ?? companyScope ?? null
-  );
+  // Selection, option list and stale-selection reset live in CompanyScopeProvider.
+  const {
+    isPlatformAdmin: isSysadmin,
+    companyCode: selected,
+    companies,
+    switching: isPending,
+    selectCompany,
+  } = useCompanyScope();
   const [open, setOpen] = useState(false);
-  const [isPending, startTransition] = useTransition();
 
-  useEffect(() => {
-    dispatch(initCompanyContext());
-
-    if (!isSysadmin) {
-      writeContextCookie(null);
-      return undefined;
-    }
-
-    let mounted = true;
-    listCompanies()
-      .then((rows) => {
-        if (mounted) setCompanies(rows);
-      })
-      .catch(() => {
-        /* action already falls back to the static companies */
-      });
-    return () => {
-      mounted = false;
-    };
-  }, [isSysadmin, dispatch]);
-
-  const onSelect = useCallback(
-    (code: string | null) => {
-      // "ALL" is the union view; store it as null so the checkmark and label agree.
-      setSelected(code && code.toUpperCase() !== "ALL" ? code : null);
-      setOpen(false);
-      // Persist + notify Redux + rerun the server components so every scoped
-      // read (dashboard/GL/payments/expenses/live sessions) recomputes.
-      writeContextCookie(code);
-      dispatch(setCompanyContext(code));
-      dispatch(setContextSwitching(true));
-      startTransition(() => {
-        try {
-          router.refresh();
-        } finally {
-          dispatch(setContextSwitching(false));
-        }
-      });
-    },
-    [dispatch, router]
-  );
+  const onSelect = (code: string | null) => {
+    setOpen(false);
+    selectCompany(code);
+  };
 
   // Roles 01–05 can never switch — show a read-only label with their JWT scope.
   if (!isSysadmin) {

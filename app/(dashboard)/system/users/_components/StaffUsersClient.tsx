@@ -1,5 +1,6 @@
 "use client";
 
+import { useCompanyScope } from "@/providers/CompanyScopeProvider";
 import { useState } from "react";
 import { useFormik } from "formik";
 import * as Yup from "yup";
@@ -302,6 +303,7 @@ interface StaffUsersClientProps {
 export default function StaffUsersClient({ users, roles }: StaffUsersClientProps) {
   const [sheetOpen, setSheetOpen] = useState(false);
   const perms = usePermissions("/system/users");
+  const { requireCompany } = useCompanyScope();
   const editUser = useAppSelector((state) => state.system.editUserSheetOpen);
   const dispatch = useAppDispatch();
   const columns = useStaffUserColumns();
@@ -327,7 +329,7 @@ export default function StaffUsersClient({ users, roles }: StaffUsersClientProps
  </p>
  </div>
  {perms.canCreate && (
- <Button onClick={() => setSheetOpen(true)} className="gap-2 shrink-0">
+ <Button onClick={() => requireCompany(() => setSheetOpen(true))} className="gap-2 shrink-0">
  <UserPlus className="w-4 h-4" />
  Add User
  </Button>

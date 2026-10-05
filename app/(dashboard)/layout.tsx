@@ -19,6 +19,10 @@ import { TenantTheme } from "@/components/tenant/TenantTheme";
 import StepUpProvider from "@/providers/StepUpProvider";
 import OmniSearchModal from "@/components/chrome/OmniSearchModal";
 import { SessionHeartbeat } from "@/providers/MonitoringHeartbeat";
+import { CompanyScopeProvider } from "@/providers/CompanyScopeProvider";
+import { CompanyScopeBanner } from "@/components/tenant/CompanyRequired";
+import { listCompanies } from "@/actions/companies";
+import { isPlatformAdminRole } from "@/lib/types/roles";
 
 /**
  * Dashboard shell — server component.
@@ -65,12 +69,19 @@ export default async function DashboardLayout({ children }: { children: ReactNod
  const headerStore = await headers();
  const siteHost = headerStore.get("host") ?? undefined;
  const contextCompany = await resolveCompanyContextCode();
+
+ // Tenancy F1 — only SYSADMIN carries a company selection; everyone else is
+ // fixed to the company in their token.
+ const isPlatformAdmin = isPlatformAdminRole(rawRole);
+ const companies = isPlatformAdmin ? await listCompanies() : [];
+ const scopedCompany = isPlatformAdmin ? contextCompany : (session.user.companyScope ?? null);
  const tenantBranding = siteHost
  ? await getPublicBranding({ host: siteHost, company: contextCompany ?? undefined })
  : null;
 
 return (
 <PermissionsProvider permissions={permissionMap}>
+<CompanyScopeProvider isPlatformAdmin={isPlatformAdmin} companyCode={scopedCompany} companies={companies}>
 <SessionHeartbeat />
 <StepUpProvider>
   <TenantTheme branding={tenantBranding}>
@@ -100,6 +111,7 @@ return (
    brandName="Beesmart"
    sidebarUser={sidebarUser}
    />
+<CompanyScopeBanner />
 <main className="flex-1 overflow-y-auto py-4 pb-16">
   {children}
   </main>
@@ -108,6 +120,7 @@ return (
   </TenantTheme>
   <OmniSearchModal />
   </StepUpProvider>
+  </CompanyScopeProvider>
   </PermissionsProvider>
   );
  }

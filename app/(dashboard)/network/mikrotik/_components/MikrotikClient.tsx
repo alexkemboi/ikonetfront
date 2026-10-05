@@ -1,6 +1,7 @@
 
 "use client";
 
+import { useCompanyScope } from "@/providers/CompanyScopeProvider";
 import React, { useState } from "react";
 import { ColumnDef } from "@tanstack/react-table";
 import {
@@ -79,6 +80,7 @@ export function MikrotikClient({ initialDevices }: MikrotikClientProps) {
  const [devices, setDevices] = useState<MikrotikDevice[]>(initialDevices);
  const [isAddDeviceDialogOpen, setIsAddDeviceDialogOpen] = useState(false);
  const perms = usePermissions("/network/mikrotik");
+ const { requireCompany } = useCompanyScope();
  const [loadingStatus, setLoadingStatus] = useState<Record<number, boolean>>(
  {}
  );
@@ -284,7 +286,7 @@ export function MikrotikClient({ initialDevices }: MikrotikClientProps) {
  <CardTitle className="text-2xl font-bold">MikroTik Devices</CardTitle>
  <Dialog
  open={isAddDeviceDialogOpen}
- onOpenChange={setIsAddDeviceDialogOpen}
+ onOpenChange={(open) => (open ? requireCompany(() => setIsAddDeviceDialogOpen(true)) : setIsAddDeviceDialogOpen(false))}
  >
  {perms.canCreate && (
  <DialogTrigger asChild>

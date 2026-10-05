@@ -1,5 +1,6 @@
 "use client";
 
+import { useCompanyScope } from "@/providers/CompanyScopeProvider";
 import { useState, useMemo } from "react";
 import { useFormik } from "formik";
 import * as Yup from "yup";
@@ -538,6 +539,7 @@ export default function CustomerIPMappingView({ mappings, pools, customers, pack
  const [statusFilter, setStatusFilter] = useState("all");
  const [sheetOpen, setSheetOpen] = useState(false);
  const perms = usePermissions("/network/ip-mapping");
+ const { requireCompany } = useCompanyScope();
 
   const routers = useMemo(
     () => Array.from(new Set(mappings.map((m) => m.stationName))),
@@ -594,7 +596,7 @@ export default function CustomerIPMappingView({ mappings, pools, customers, pack
         <Button
           size="sm"
           className="gap-1.5 rounded-xl bg-amber-500 text-black hover:bg-amber-400 transition shadow-lg shadow-amber-500/20"
-          onClick={() => setSheetOpen(true)}
+          onClick={() => requireCompany(() => setSheetOpen(true))}
         >
           <Plus className="w-4 h-4" />
           Map IP

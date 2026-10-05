@@ -1,3 +1,5 @@
+import { getPermissionForRoute } from "@/lib/data/nav";
+import { redirect } from "next/navigation";
 import React from "react";
 import type { Metadata } from "next";
 import { getInvoicesLedgerData } from "@/actions/payments";
@@ -10,6 +12,9 @@ export const metadata: Metadata = {
 };
 
 export default async function InvoicesLedgerPage() {
+  const pagePerms = await getPermissionForRoute("/finance/billing/invoices");
+  if (!pagePerms.canView) redirect("/dashboard");
+
  const { kpis, invoices } = await getInvoicesLedgerData();
 
  return (

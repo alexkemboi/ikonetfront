@@ -1,3 +1,5 @@
+import { getPermissionForRoute } from "@/lib/data/nav";
+import { redirect } from "next/navigation";
 import React from "react";
 import type { Metadata } from "next";
 import { getNetworkAnalyticsData } from "@/actions/analytics";
@@ -17,6 +19,9 @@ export const metadata: Metadata = {
 };
 
 export default async function AnalyticsDashboardPage() {
+  const pagePerms = await getPermissionForRoute("/analytics");
+  if (!pagePerms.canView) redirect("/dashboard");
+
  const result = await getNetworkAnalyticsData();
 
  if (!result.success) {
