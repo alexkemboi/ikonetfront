@@ -46,6 +46,7 @@ import { cn } from "@/lib/utils";
 import { DataTable } from "@/components/ui/data-table";
 import { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
+import { useCompanyScope } from "@/providers/CompanyScopeProvider";
 import {
  getExpenses,
  getExpenseSummary,
@@ -108,6 +109,7 @@ export default function ExpenseTable({
  const [category, setCategory] = useState<string>("");
  const [page, setPage] = useState(0);
  const [dialogOpen, setDialogOpen] = useState(false);
+ const { requireCompany } = useCompanyScope();
 
  // Create expense form state
  const [formAmount, setFormAmount] = useState("");
@@ -271,7 +273,7 @@ export default function ExpenseTable({
  <p className="text-sm text-muted-foreground">Track and manage operational expenses</p>
  </div>
  <div className="flex items-center gap-2">
- <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+ <Dialog open={dialogOpen} onOpenChange={(open) => (open ? requireCompany(() => setDialogOpen(true)) : setDialogOpen(false))}>
  <DialogTrigger asChild>
  <Button size="sm" className="h-8 gap-1">
  <Plus className="w-3.5 h-3.5" /> Add Expense
