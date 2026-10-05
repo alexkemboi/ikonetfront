@@ -3,14 +3,15 @@
 import { apiFetch } from "@/lib/apiClient";
 import type { TvPackage, TvPackageOptionResponse, TvPackagesResult, TvPortalSession } from "@/lib/types/tv";
 import { tvDeviceSchema, type TvDeviceDetails } from "@/lib/validation/tv-device";
+import { withPortalRouter, type PortalRouter } from "@/lib/hotspot/portalRouter";
 
-export async function prepareTvDeviceAction(values: TvDeviceDetails): Promise<
+export async function prepareTvDeviceAction(values: TvDeviceDetails, portalRouter?: PortalRouter | null): Promise<
   | { success: true; device: TvDeviceDetails; portal: TvPortalSession; recommendedPackages: TvPackage[]; warnings: string[] }
   | { success: false; error: string }
 > {
   try {
     const device = await tvDeviceSchema.validate(values, { stripUnknown: true });
-    const verification = await apiFetch<TvDeviceVerification>("/tv/devices/verify", {
+    const verification = await apiFetch<TvDeviceVerification>(withPortalRouter("/tv/devices/verify", portalRouter), {
       method: "POST",
       body: { customerPhone: device.customerPhone, macAddress: device.macAddress, routerIdentity: values.routerIdentity },
       auth: "public",
@@ -82,7 +83,7 @@ export async function getEligibleTvPackagesAction(portalToken: string, macAddres
   return { packages: result.data.map(mapEligiblePackage) };
 }
 
-export async function initiateTvPaymentAction(values: import("@/lib/validation/tv-payment").TvPaymentRequest) {
+export async function initiateTvPaymentAction(values: import("@/lib/validation/tv-payment").TvPaymentRequest, portalRouter?: PortalRouter | null) {
   const { tvPaymentSchema } = await import("@/lib/validation/tv-payment");
   try {
     await tvPaymentSchema.validate(values, { stripUnknown: true });
@@ -91,7 +92,7 @@ export async function initiateTvPaymentAction(values: import("@/lib/validation/t
   }
   const idempotencyKey = values.idempotencyKey ?? crypto.randomUUID();
   if (!values.portalToken) return { success: false as const, message: "The TV setup session expired. Verify the device again.", transactionReference: null };
-  const result = await apiFetch<TvPaymentInitiateResponse>("/tv/payments/initiate", {
+  const result = await apiFetch<TvPaymentInitiateResponse>(withPortalRouter("/tv/payments/initiate", portalRouter), {
     method: "POST",
     body: {
       phone: values.phone,
