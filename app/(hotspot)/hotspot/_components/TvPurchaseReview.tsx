@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import type { TvPackage, TvPortalSession } from "@/lib/types/tv";
 import { mpesaPhoneSchema, normalizeMpesaPhone } from "@/lib/validation/tv-payment";
 import { getTvPaymentStatusAction, initiateTvPaymentAction, prepareTvDeviceAction } from "@/actions/tv";
+import { getPortalRouter } from "@/lib/hotspot/portalRouter";
 
 type Status = {
   state: "PENDING" | "SETTLED" | "FAILED" | "TIMED_OUT";
@@ -56,7 +57,7 @@ export default function TvPurchaseReview({ portal, onPortalRefreshed, customerPh
       }
       let result = await getTvPaymentStatusAction(transactionReference, portal.portalToken);
       if (!result.success && result.message === "TV_PORTAL_TOKEN_EXPIRED") {
-        const refreshed = await prepareTvDeviceAction({ customerPhone: portal.normalizedPhone, macAddress: portal.normalizedMac, routerIdentity: portal.routerIdentity ?? undefined });
+        const refreshed = await prepareTvDeviceAction({ customerPhone: portal.normalizedPhone, macAddress: portal.normalizedMac, routerIdentity: portal.routerIdentity ?? undefined }, getPortalRouter());
         if (refreshed.success) {
           onPortalRefreshed(refreshed.portal);
           result = await getTvPaymentStatusAction(transactionReference, refreshed.portal.portalToken);
@@ -93,10 +94,10 @@ export default function TvPurchaseReview({ portal, onPortalRefreshed, customerPh
         submittedAmount: serverAmount ?? pkg.price,
         idempotencyKey: key,
         portalToken,
-      });
+      }, getPortalRouter());
       let result = await request(portal.portalToken);
       if (!result.success && result.code === "TV_PORTAL_TOKEN_EXPIRED") {
-        const refreshed = await prepareTvDeviceAction({ customerPhone: portal.normalizedPhone || customerPhone, macAddress: portal.normalizedMac || macAddress, routerIdentity: portal.routerIdentity ?? undefined });
+        const refreshed = await prepareTvDeviceAction({ customerPhone: portal.normalizedPhone || customerPhone, macAddress: portal.normalizedMac || macAddress, routerIdentity: portal.routerIdentity ?? undefined }, getPortalRouter());
         if (refreshed.success) {
           onPortalRefreshed(refreshed.portal);
           result = await request(refreshed.portal.portalToken);

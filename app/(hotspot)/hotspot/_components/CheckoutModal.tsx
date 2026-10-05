@@ -5,7 +5,8 @@ import { CheckCircle2, Loader2, RefreshCw, X } from "lucide-react";
 import { toast } from "sonner";
 import { getPublicVoucherStatus, initiatePublicHotspotPayment, PENDING_HOTSPOT_PURCHASE_KEY } from "@/lib/hotspotPublicClient";
 import type { HotspotPackage, HotspotVoucherStatusResponse, PendingHotspotPurchase } from "@/lib/types/hotspot";
-import { getCustomerFacingBrand, sanitizeErrorMessage } from "@/lib/brand";
+import { sanitizeErrorMessage } from "@/lib/brand";
+import { useHotspotBrand } from "@/lib/hotspot/brand-context";
 
 const POLL_INTERVAL_MS = 5_000;
 const POLL_LIMIT_MS = 120_000;
@@ -43,7 +44,7 @@ export default function CheckoutModal({ package: pkg, pendingPurchase: initialPe
   const [notice, setNotice] = useState<string | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const pollingRef = useRef(false);
-  const brand = getCustomerFacingBrand(companyCode);
+  const brand = useHotspotBrand();
   const macAddress = clientMac?.trim() ?? "";
   const requestClientMac = redirectClientMac?.trim() || macAddress;
   const hasUsableMac = MAC_ADDRESS.test(macAddress);
