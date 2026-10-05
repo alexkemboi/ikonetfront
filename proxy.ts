@@ -1,10 +1,23 @@
 import { NextResponse } from "next/server";
 import { authMiddleware } from "./lib/auth";
+import { normalizeRole, ROLE_NAME } from "./lib/types/roles";
 
 const publicRoutes = ["/hotspot"];
 const apiAuthPrefix = "/api/auth";
 const authRoutes = ["/login", "/forgot-password", "/reset-password", "/signout"];
 const DEFAULT_LOGIN_REDIRECT = "/dashboard";
+const INVESTOR_HOME = "/finance/investor";
+
+/** Investors (network partners) work only inside the investor portal (tenancy F4). */
+function investorMayOpen(pathname: string): boolean {
+    return (
+        pathname === INVESTOR_HOME ||
+        pathname.startsWith(`${INVESTOR_HOME}/`) ||
+        pathname === "/dashboard" ||
+        pathname === "/no-access" ||
+        pathname.startsWith("/api/")
+    );
+}
 
 // Assign the auth-wrapped function to a variable named `proxy`
 export const proxy = authMiddleware((req) => {
@@ -39,6 +52,10 @@ export const proxy = authMiddleware((req) => {
         const response = NextResponse.redirect(loginUrl);
         response.cookies.delete("next-auth.session-token");
         return response;
+    }
+
+    if (normalizeRole(req.auth?.user?.role) === ROLE_NAME.INVESTOR && !investorMayOpen(nextUrl.pathname)) {
+        return NextResponse.redirect(new URL(INVESTOR_HOME, req.url));
     }
 
     return NextResponse.next();
