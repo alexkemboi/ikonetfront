@@ -1,10 +1,12 @@
 import { getRolesAction } from "@/actions/roles";
-import { getSystemUsers } from "@/actions/system";
+import { getSystemUsersPage } from "@/actions/system";
 import { Suspense } from "react";
 import StaffUsersClient from "./_components/StaffUsersClient";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getCurrentUserPermissions, NO_PERMISSIONS } from "@/lib/data/nav";
 import { redirect } from "next/navigation";
+import { auth } from "@/lib/auth";
+import { isPlatformAdminRole, normalizeRole, ROLE_NAME } from "@/lib/types/roles";
 
 export const metadata = { title: "User Administration — Beesmart Billing" };
 
@@ -13,14 +15,29 @@ async function StaffUsersPage() {
  const pagePerms = permissions["/system/users"] ?? NO_PERMISSIONS;
  if (!pagePerms.canView) redirect("/dashboard");
 
- const [users, rolesRes] = await Promise.all([
- getSystemUsers(),
+ const [usersRes, rolesRes, session] = await Promise.all([
+ getSystemUsersPage({ page: 0, size: 20 }),
  getRolesAction(),
+ auth(),
  ]);
 
  const roles = rolesRes?.data ?? [];
+ if (!usersRes.success || !usersRes.data) {
+   return (
+     <div className="p-8 text-sm text-destructive">
+       Failed to load system users: {usersRes.message}
+     </div>
+   );
+ }
 
- return <StaffUsersClient users={users} roles={roles} />;
+ return (
+   <StaffUsersClient
+     initialPage={usersRes.data}
+     roles={roles}
+     isPlatformAdmin={isPlatformAdminRole(session?.user?.role)}
+     canManageUsers={normalizeRole(session?.user?.role) === ROLE_NAME.ADMIN}
+   />
+ );
 }
 
 export default function Page() {

@@ -28,6 +28,15 @@ function normalizeUserRecord(raw: unknown): ApiRoleUser {
     email: String(r.email ?? ""),
     phoneNumber: String(r.phoneNumber ?? r.phone_number ?? ""),
     canLogin: Boolean(r.canLogin ?? r.can_login ?? true),
+    companyId: typeof (r.companyId ?? r.company_id) === "string"
+      ? String(r.companyId ?? r.company_id)
+      : null,
+    stationId: typeof (r.stationId ?? r.station_id) === "string"
+      ? String(r.stationId ?? r.station_id)
+      : null,
+    investorId: typeof (r.investorId ?? r.investor_id) === "string"
+      ? String(r.investorId ?? r.investor_id)
+      : null,
   };
 }
 
@@ -48,18 +57,43 @@ export type UserData = {
   password:    string;
   role:        string;
   fname:       string;
-  middleName:  string;
-  otherName:   string;
-  email:       string;
-  phoneNumber: string;
+  middleName?: string;
+  otherName?:  string;
+  email?:      string;
+  phoneNumber?: string;
+  companyId:   string;
 };
+
+export type SystemUserUpdate = Partial<
+  Pick<ApiRoleUser, "username" | "fname" | "middleName" | "otherName" | "email" | "phoneNumber" | "companyId" | "stationId" | "isactive" | "canLogin">
+>;
+
+export type SystemUsersPage = {
+  content: ApiRoleUser[];
+  totalElements: number;
+  totalPages: number;
+  number: number;
+  size: number;
+};
+
+export type SystemUsersQuery = {
+  q?: string;
+  role?: string;
+  active?: boolean;
+  page?: number;
+  size?: number;
+};
+
+function normalizeApiResponse<T>(res: ApiResponse<unknown>, data: T | null): ApiResponse<T | null> {
+  return { ...res, data };
+}
 
 /** The single canonical staff user API (`SystemUsersCrudController`). */
 const SYSTEM_USERS_URL = buildUnversionedApiUrl("/system-users");
 
 export async function addSystemUser(
   userData: UserData
-): Promise<ApiResponse<ApiRoleUser>> {
+): Promise<ApiResponse<ApiRoleUser | null>> {
   // One POST, one read of the body. The company comes from the caller's own
   // company, or from the company a SYSADMIN has selected in the dashboard.
   const res = await apiFetch<unknown>(SYSTEM_USERS_URL, {
@@ -74,11 +108,123 @@ export async function addSystemUser(
   });
 
   if (!res.success) {
-    return { ...res, data: null as unknown as ApiRoleUser };
+    return normalizeApiResponse(res, null);
   }
 
   revalidatePath("/system/users");
   return { ...res, data: normalizeUserRecord(res.data ?? userData) };
+}
+
+export async function updateSystemUser(
+  id: number,
+  changes: SystemUserUpdate
+): Promise<ApiResponse<ApiRoleUser | null>> {
+  const res = await apiFetch<unknown>(`${SYSTEM_USERS_URL}/${id}`, {
+    method: "PUT",
+    body: changes,
+    auth: "required",
+    cache: "no-store",
+  });
+  if (!res.success) return normalizeApiResponse(res, null);
+  revalidatePath("/system/users");
+  return { ...res, data: normalizeUserRecord(res.data) };
+}
+
+export async function updateSystemUserRole(
+  id: number,
+  role: string
+): Promise<ApiResponse<ApiRoleUser | null>> {
+  const res = await apiFetch<unknown>(`${SYSTEM_USERS_URL}/${id}/role`, {
+    method: "PUT",
+    body: { role },
+    auth: "required",
+    cache: "no-store",
+  });
+  if (!res.success) return normalizeApiResponse(res, null);
+  revalidatePath("/system/users");
+  return { ...res, data: normalizeUserRecord(res.data) };
+}
+
+export async function linkSystemUserInvestor(
+  id: number,
+  investorId: string
+): Promise<ApiResponse<ApiRoleUser | null>> {
+  const res = await apiFetch<unknown>(`${SYSTEM_USERS_URL}/${id}/investor`, {
+    method: "PUT",
+    body: { investorId },
+    auth: "required",
+    cache: "no-store",
+  });
+  if (!res.success) return normalizeApiResponse(res, null);
+  revalidatePath("/system/users");
+  return { ...res, data: normalizeUserRecord(res.data) };
+}
+
+export async function deleteSystemUser(id: number): Promise<ApiResponse<null>> {
+  const res = await apiFetch<null>(`${SYSTEM_USERS_URL}/${id}`, {
+    method: "DELETE",
+    auth: "required",
+    cache: "no-store",
+  });
+  if (res.success) revalidatePath("/system/users");
+  return res;
+}
+
+export async function getSystemUsersPage(
+  query: SystemUsersQuery = {}
+): Promise<ApiResponse<SystemUsersPage | null>> {
+  const page = Math.max(0, query.page ?? 0);
+  const size = Math.min(100, Math.max(1, query.size ?? 20));
+  const params = new URLSearchParams({ page: String(page), size: String(size) });
+  if (query.q?.trim()) params.set("q", query.q.trim());
+  if (query.role) params.set("role", query.role);
+  if (typeof query.active === "boolean") params.set("active", String(query.active));
+
+  const res = await apiFetch<unknown>(`${SYSTEM_USERS_URL}?${params.toString()}`, {
+    auth: "required",
+    cache: "no-store",
+  });
+  if (!res.success) {
+    return normalizeApiResponse(res, null);
+  }
+  const raw = (res.data ?? {}) as Record<string, unknown>;
+  const pageData = (raw.data && typeof raw.data === "object" ? raw.data : raw) as Record<string, unknown>;
+  const collection = pageData.content ?? pageData.items ?? pageData.users;
+  const totalElements = Number(pageData.totalElements);
+  const totalPages = Number(pageData.totalPages);
+  const currentPage = Number(pageData.number ?? page);
+  const currentSize = Number(pageData.size ?? size);
+  if (
+    !Array.isArray(collection) ||
+    !Number.isInteger(totalElements) ||
+    totalElements < 0 ||
+    !Number.isInteger(totalPages) ||
+    totalPages < 0 ||
+    !Number.isInteger(currentPage) ||
+    currentPage < 0 ||
+    !Number.isInteger(currentSize) ||
+    currentSize < 1
+  ) {
+    return {
+      status: 502,
+      success: false,
+      message: "System users returned an invalid paginated response.",
+      data: null,
+      timestamp: new Date().toISOString(),
+      requestId: res.requestId,
+    };
+  }
+  const content = collection.map(normalizeUserRecord);
+  return {
+    ...res,
+    data: {
+      content,
+      totalElements,
+      totalPages,
+      number: currentPage,
+      size: currentSize,
+    },
+  };
 }
 
 /** Staff users the caller may see (own company; SYSADMIN: selected company or all). */

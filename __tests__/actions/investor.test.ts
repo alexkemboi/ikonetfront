@@ -82,4 +82,38 @@ describe("getInvestorMoneyFlowData (RB-5 / D-35)", () => {
     expect(data.agreements).toHaveLength(1);
     expect(data.allAvailable).toBe(true);
   });
+
+  it("sends company and investor filters only for SYSADMIN revenue reads", async () => {
+    authMock.mockResolvedValue({ user: { role: "SYSADMIN", apiToken: "token" } });
+    const fetchMock = fetch as unknown as ReturnType<typeof vi.fn>;
+    fetchMock.mockResolvedValue(jsonResponse(revenueBody));
+
+    await getInvestorMoneyFlowData({
+      period: "2026-09",
+      companyId: "CMP-BST-001",
+      investorId: "investor-uuid",
+    });
+
+    const revenueUrl = String(fetchMock.mock.calls[0][0]);
+    expect(revenueUrl).toContain("period=2026-09");
+    expect(revenueUrl).toContain("companyId=CMP-BST-001");
+    expect(revenueUrl).toContain("investorId=investor-uuid");
+  });
+
+  it("does not allow company or investor query filters to widen a company user's scope", async () => {
+    authMock.mockResolvedValue({ user: { role: "01", apiToken: "token" } });
+    const fetchMock = fetch as unknown as ReturnType<typeof vi.fn>;
+    fetchMock.mockResolvedValue(jsonResponse(revenueBody));
+
+    await getInvestorMoneyFlowData({
+      period: "2026-09",
+      companyId: "other-company",
+      investorId: "other-investor",
+    });
+
+    const revenueUrl = String(fetchMock.mock.calls[0][0]);
+    expect(revenueUrl).toContain("period=2026-09");
+    expect(revenueUrl).not.toContain("companyId=");
+    expect(revenueUrl).not.toContain("investorId=");
+  });
 });

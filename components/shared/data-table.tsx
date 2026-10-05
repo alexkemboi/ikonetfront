@@ -39,7 +39,10 @@ interface DataTableProps<TData, TValue> {
  pageCount?: number
  pageIndex?: number
  pageSize?: number
+ totalRows?: number
  onPaginationChange?: (pageIndex: number, pageSize: number) => void
+ searchValue?: string
+ onSearchChange?: (value: string) => void
  loading?: boolean
 }
 
@@ -52,7 +55,10 @@ export function DataTable<TData, TValue>({
  pageCount: externalPageCount,
  pageIndex: externalPageIndex,
  pageSize: externalPageSize,
+ totalRows,
  onPaginationChange,
+ searchValue,
+ onSearchChange,
  loading,
 }: DataTableProps<TData, TValue>) {
  const [sorting, setSorting] = useState<SortingState>([])
@@ -70,10 +76,15 @@ export function DataTable<TData, TValue>({
  onSortingChange: setSorting,
  onColumnFiltersChange: setColumnFilters,
  onColumnVisibilityChange: setColumnVisibility,
- onGlobalFilterChange: setGlobalFilter,
+ onGlobalFilterChange: (updater) => {
+ const next = typeof updater === "function" ? updater(searchValue ?? globalFilter) : updater
+ if (onSearchChange) onSearchChange(next)
+ else setGlobalFilter(next)
+ },
  manualPagination,
+ manualFiltering: Boolean(manualPagination),
  pageCount: manualPagination ? externalPageCount : undefined,
- state: { sorting, columnFilters, columnVisibility, globalFilter, ...(manualPagination ? { pagination: { pageIndex: externalPageIndex ?? 0, pageSize: externalPageSize ?? 10 } } : {}) },
+ state: { sorting, columnFilters, columnVisibility, globalFilter: searchValue ?? globalFilter, ...(manualPagination ? { pagination: { pageIndex: externalPageIndex ?? 0, pageSize: externalPageSize ?? 10 } } : {}) },
  ...(manualPagination && onPaginationChange ? {
  onPaginationChange: (updater) => {
  const current = { pageIndex: externalPageIndex ?? 0, pageSize: externalPageSize ?? 10 };
@@ -83,7 +94,9 @@ export function DataTable<TData, TValue>({
  } : {}),
  })
 
- const rowCount = table.getFilteredRowModel().rows.length
+ const rowCount = manualPagination
+   ? totalRows ?? data.length
+   : table.getFilteredRowModel().rows.length
 
  return (
  <div className="flex flex-col gap-0 rounded-xl border border-border bg-card shadow-sm overflow-hidden relative">
@@ -93,8 +106,8 @@ export function DataTable<TData, TValue>({
  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
  <Input
  placeholder={searchPlaceholder}
- value={globalFilter}
- onChange={(e) => setGlobalFilter(e.target.value)}
+ value={searchValue ?? globalFilter}
+ onChange={(e) => (onSearchChange ?? setGlobalFilter)(e.target.value)}
  className="pl-8 h-8 text-sm bg-background"
  />
  </div>

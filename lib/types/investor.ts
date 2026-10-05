@@ -105,6 +105,9 @@ export interface InvestorRouterListItem {
 export interface InvestorPeriodInput {
   /** `YYYY-MM`; defaults to the current calendar month. */
   period?: string;
+  /** Optional SYSADMIN-only scope filters. */
+  companyId?: string;
+  investorId?: string;
 }
 
 /** Aggregated, availability-flagged result returned to the investor page. */

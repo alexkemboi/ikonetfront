@@ -4,6 +4,7 @@ import { http, HttpResponse } from "msw";
 import { API_PREFIX } from "@/mocks/handlers/auth-guard";
 import {
   normalizeRole,
+  isPlatformAdminRole,
   getLandingRouteForRole,
   roleNameToCode,
   ROLE_NAME,
@@ -58,6 +59,14 @@ beforeEach(() => {
 });
 
 describe("role normalization (lib/types/roles.ts)", () => {
+  it("treats only SYSADMIN authorities as platform-wide administrators", () => {
+    expect(isPlatformAdminRole("SYSADMIN")).toBe(true);
+    expect(isPlatformAdminRole("ROLE_SYSADMIN")).toBe(true);
+    expect(isPlatformAdminRole("ADMIN")).toBe(false);
+    expect(isPlatformAdminRole("01")).toBe(false);
+    expect(isPlatformAdminRole("SUPER_ADMIN")).toBe(false);
+  });
+
   it("maps numeric codes 01→05 to canonical names", () => {
     expect(normalizeRole("01")).toBe(ROLE_NAME.ADMIN);
     expect(normalizeRole("02")).toBe(ROLE_NAME.MANAGEMENT);

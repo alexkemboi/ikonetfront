@@ -18,6 +18,7 @@
 import { withCompanyContext } from "@/lib/companyContext";
 import { auth } from "@/lib/auth";
 import { buildApiUrl } from "@/lib/constants";
+import { isPlatformAdminRole } from "@/lib/types/roles";
 import type {
   InvestorAgreement,
   InvestorBillingSnapshot,
@@ -61,16 +62,18 @@ function defaultPeriod(): string {
  * instead of rendering two 403 sections.
  */
 function isSysadminRole(rawRole?: string | null): boolean {
-  if (!rawRole) return false;
-  return /SYSADMIN|ROLE_SYSADMIN|SUPER_ADMIN|ROLE_SUPER_ADMIN/i.test(rawRole.trim());
+  return isPlatformAdminRole(rawRole);
 }
 
 async function getRevenueSummary(
   period: string,
-  headers: Record<string, string>
+  headers: Record<string, string>,
+  filters: { companyId?: string; investorId?: string } = {}
 ): Promise<{ revenue: InvestorRevenueSummary | null; message: string }> {
   try {
     const qs = new URLSearchParams({ period });
+    if (filters.companyId) qs.set("companyId", filters.companyId);
+    if (filters.investorId) qs.set("investorId", filters.investorId);
     const res = await fetch(buildApiUrl(`/investor/revenue?${qs.toString()}`), {
       headers,
       cache: "no-store",
@@ -139,7 +142,7 @@ async function getAgreements(
  * explicit message, never a fabricated figure.
  */
 export async function getInvestorMoneyFlowData(
-  input: { period?: string } = {}
+  input: { period?: string; companyId?: string; investorId?: string } = {}
 ): Promise<InvestorMoneyFlowData> {
   const period = input.period && /^\d{4}-(0[1-9]|1[0-2])$/.test(input.period)
     ? input.period
@@ -147,9 +150,15 @@ export async function getInvestorMoneyFlowData(
   const headers = await getAuthHeaders();
   const session = await auth();
   const billingDetailsVisible = isSysadminRole(session?.user?.role);
+  const scopeFilters = billingDetailsVisible
+    ? {
+        companyId: input.companyId?.trim() || undefined,
+        investorId: input.investorId?.trim() || undefined,
+      }
+    : {};
 
   const [revenueResult, snapshotsResult, agreementsResult] = await Promise.all([
-    getRevenueSummary(period, headers),
+    getRevenueSummary(period, headers, scopeFilters),
     billingDetailsVisible
       ? getBillingSnapshots(headers)
       : Promise.resolve({ snapshots: [] as InvestorBillingSnapshot[], message: "" }),
