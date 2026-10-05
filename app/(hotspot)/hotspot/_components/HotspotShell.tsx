@@ -1,13 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Wifi, Phone, Tv } from "lucide-react";
 import HotspotFlow from "./HotspotFlow";
 import TvDeviceSetup from "./TvDeviceSetup";
 import type { TvPackage } from "@/lib/types/tv";
 import type { TvDeviceDetails } from "@/lib/validation/tv-device";
 import { HotspotPackage } from "@/lib/types/hotspot";
-import { getCustomerFacingBrand } from "@/lib/brand";
+import { DEFAULT_PORTAL_BRAND } from "@/lib/brand";
+import { getHotspotPortalContextAction, type HotspotPortalContext } from "@/actions/hotspot";
+import { HotspotBrandProvider } from "@/lib/hotspot/brand-context";
+import { setPortalRouter, type PortalRouter } from "@/lib/hotspot/portalRouter";
 
 interface HotspotShellProps {
   packages: HotspotPackage[];
@@ -20,29 +23,46 @@ interface HotspotShellProps {
   clientIp?: string;
   /** RouterOS $(identity) of the serving router (redirect `identity`/`router`). */
   routerIdentity?: string;
+  /** Signed router id from the router's login page (`rid`/`sig`). */
+  portalRouter?: PortalRouter | null;
+  /** Company of the serving router, resolved by the backend on the server render. */
+  portalContext?: HotspotPortalContext | null;
 }
 
 /**
  * Client shell that owns the customer-facing brand state.
  *
- * The brand is resolved from the router's walled-garden redirect query params
- * on first paint (server-rendered). When mobile Captive Network Assistant
- * handshakes drop those params, the payment initiate response carries
- * `companyId`, which re-hydrates the brand here — updating the header/footer,
- * not just the checkout modal.
+ * The company is resolved by the backend from the router's signed id on first
+ * paint (server-rendered). When mobile Captive Network Assistant handshakes drop
+ * the redirect params, the payment initiate response carries `companyId`; the
+ * company's name is then fetched for it — updating the header/footer, not just
+ * the checkout modal.
  */
-export default function HotspotShell({ packages, initialCompanyCode, clientMac, redirectClientMac, clientIp, routerIdentity, initialTvDevice, tvPackages, tvPackagesError }: HotspotShellProps) {
+export default function HotspotShell({ packages, initialCompanyCode, clientMac, redirectClientMac, clientIp, routerIdentity, portalRouter, portalContext, initialTvDevice, tvPackages, tvPackagesError }: HotspotShellProps) {
   const [companyCode, setCompanyCode] = useState<string | null>(
-    initialCompanyCode ?? null
+    portalContext?.companyCode ?? initialCompanyCode ?? null
   );
+  const [context, setContext] = useState<HotspotPortalContext | null>(portalContext ?? null);
   const [service, setService] = useState<"hotspot" | "tv">("hotspot");
-  const brand = getCustomerFacingBrand(companyCode);
+  const brand = context?.companyName ?? DEFAULT_PORTAL_BRAND;
+
+  // Every call the customer triggers from this page carries the router it was served by.
+  useEffect(() => {
+    setPortalRouter(portalRouter ?? null);
+  }, [portalRouter]);
 
   const handleCompanyResolved = (code?: string | null) => {
-    if (code && code !== companyCode) setCompanyCode(code);
+    if (!code || code === companyCode) return;
+    setCompanyCode(code);
+    if (context?.companyCode !== code) {
+      void getHotspotPortalContextAction({ portalRouter, company: code }).then((resolved) => {
+        if (resolved) setContext(resolved);
+      });
+    }
   };
 
   return (
+    <HotspotBrandProvider value={brand}>
     <div className="w-full">
       {/* Mobile Header */}
       <div className="lg:hidden mb-6">
@@ -104,11 +124,12 @@ export default function HotspotShell({ packages, initialCompanyCode, clientMac, 
           </p>
           <p className="flex items-center gap-2 mx-auto">
             <Phone className="w-4 h-4 text-foreground" />
-            <span>Support: <span className="font-medium text-foreground">0706 354 194</span></span>
+            <span>Support: <span className="font-medium text-foreground">{context?.supportPhone ?? "contact your provider"}</span></span>
           </p>
           <p>© 2026 {brand}. All rights reserved.</p>
         </div>
       </div>
     </div>
+    </HotspotBrandProvider>
   );
 }

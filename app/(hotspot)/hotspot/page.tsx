@@ -1,25 +1,55 @@
 import Image from "next/image";
 import HotspotShell from "./_components/HotspotShell";
 import { Zap, Shield, Clock } from "lucide-react";
-import { getPublicHotspotPackagesAction } from "@/actions/hotspot";
+import { cache } from "react";
+import type { Metadata } from "next";
+import { getHotspotPortalContextAction, getPublicHotspotPackagesAction } from "@/actions/hotspot";
 import { HotspotPackage } from "@/lib/types/hotspot";
-import { normalizeCompanyCode, resolveCompanyFromRouterTag } from "@/lib/brand";
+import { DEFAULT_PORTAL_BRAND, normalizeCompanyCode } from "@/lib/brand";
+import { parsePortalRouter } from "@/lib/hotspot/portalRouter";
 
-export const metadata = {
-  title: "Connect to Wi-Fi — Ikonex Hotspot",
-  description: "Buy and activate hotspot packages with instant access",
-};
 export const dynamic = "force-dynamic"; // Ensure the page is always rendered on the server
 
+type HotspotSearchParams = { rid?: string; sig?: string; company?: string; router?: string; mac?: string; clientMac?: string; ip?: string; identity?: string };
+
 interface HotspotPageProps {
-  searchParams: Promise<{ company?: string; router?: string; mac?: string; clientMac?: string; ip?: string; identity?: string }>;
+  searchParams: Promise<HotspotSearchParams>;
+}
+
+/**
+ * Who is serving this customer? The router's login page sends its signed id (`rid`/`sig`);
+ * the backend answers with the owning company. Routers that still run an older login page
+ * are resolved from their RouterOS identity, the client IP or the `company` parameter.
+ * One lookup per request, shared by the page title and the page body.
+ */
+const resolvePortal = cache(async (rid?: string, sig?: string, identity?: string, ip?: string, company?: string) => {
+  const portalRouter = parsePortalRouter(rid, sig);
+  const portalContext = await getHotspotPortalContextAction({
+    portalRouter,
+    routerIdentity: identity || undefined,
+    clientIp: ip || undefined,
+    company: normalizeCompanyCode(company) ?? undefined,
+  });
+  return { portalRouter, portalContext };
+});
+
+function portalOf(params: HotspotSearchParams) {
+  return resolvePortal(params?.rid, params?.sig, params?.identity?.trim() || params?.router?.trim(), params?.ip?.trim(), params?.company);
+}
+
+export async function generateMetadata({ searchParams }: HotspotPageProps): Promise<Metadata> {
+  const { portalContext } = await portalOf(await searchParams);
+  return {
+    title: `Connect to Wi-Fi — ${portalContext?.companyName ?? DEFAULT_PORTAL_BRAND}`,
+    description: "Buy and activate hotspot packages with instant access",
+  };
 }
 
 export default async function HotspotPage({ searchParams }: HotspotPageProps) {
   const params = await searchParams;
-  const initialCompanyCode =
-    normalizeCompanyCode(params?.company) ??
-    resolveCompanyFromRouterTag(params?.router);
+  const { portalRouter, portalContext } = await portalOf(params);
+  const brand = portalContext?.companyName ?? DEFAULT_PORTAL_BRAND;
+  const initialCompanyCode = portalContext?.companyCode ?? normalizeCompanyCode(params?.company);
 
   // The MikroTik redirect carries the client device's real identity from
   // `$(mac)` / `$(ip)`. Without it, the backend defaults to 00:00:00:00:00:00 +
@@ -34,7 +64,12 @@ export default async function HotspotPage({ searchParams }: HotspotPageProps) {
 
   // TV packages are per-device (the backend checks the MAC against the portal
   // session), so they are fetched client-side by TvDeviceSetup, not here.
-  const packagesResponse = await getPublicHotspotPackagesAction();
+  const packagesResponse = await getPublicHotspotPackagesAction({
+    portalRouter,
+    routerIdentity: routerIdentity || undefined,
+    clientIp: clientIp || undefined,
+    companyId: initialCompanyCode ?? undefined,
+  });
   const packages: HotspotPackage[] = packagesResponse.success
     ? packagesResponse.data || []
     : [];
@@ -66,8 +101,9 @@ export default async function HotspotPage({ searchParams }: HotspotPageProps) {
               "
             >
               <Image
-                src="/logo.png"
-                alt="Beesmart Bedak ISP"
+                src={portalContext?.logoUrl || "/logo.png"}
+                alt={brand}
+                unoptimized={Boolean(portalContext?.logoUrl)}
                 width={160}
                 height={160}
                 priority
@@ -112,7 +148,7 @@ export default async function HotspotPage({ searchParams }: HotspotPageProps) {
 
         {/* Footer */}
         <div className="relative z-10 text-sm text-primary-foreground/60">
-          <p>© 2026 BEESMARTBEDAK. All rights reserved.</p>
+          <p>© {new Date().getFullYear()} {brand}. All rights reserved.</p>
         </div>
       </div>
 
@@ -129,6 +165,8 @@ export default async function HotspotPage({ searchParams }: HotspotPageProps) {
             redirectClientMac={redirectClientMac}
             clientIp={clientIp}
             routerIdentity={routerIdentity}
+            portalRouter={portalRouter}
+            portalContext={portalContext}
           />
         </div>
       </div>

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { CheckCircle2, XCircle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { activateVoucherAction } from "@/actions/hotspot";
+import { getPortalRouter } from "@/lib/hotspot/portalRouter";
 import { sanitizeErrorMessage } from "@/lib/brand";
 
 type ValidationState = "idle" | "validating" | "valid" | "invalid" | "activated";
@@ -58,7 +59,7 @@ export default function ActivateTab({ clientMac, clientIp, routerIdentity }: Act
         setMessage("Activating your voucher…");
 
         try {
-            const result = await activateVoucherAction({ voucherCode: voucher, macAddress: clientMac, clientIp, routerIdentity });
+            const result = await activateVoucherAction({ voucherCode: voucher, macAddress: clientMac, clientIp, routerIdentity, portalRouter: getPortalRouter() });
             if (!result.success || !result.data) {
                 setValidationState("invalid");
                 setMessage(sanitizeErrorMessage(result.message || "Failed to activate voucher. Please try again."));

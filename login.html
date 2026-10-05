@@ -1,11 +1,18 @@
 <!DOCTYPE html>
+<!--
+  REFERENCE COPY of the hotspot login page template. The live page is rendered per router by
+  ibs-api (src/main/resources/hotspot/branding/router-login.html): download it from the router's
+  page in the dashboard, or let the router fetch it (maintenance action "Sync hotspot files").
+  ${companyName}, ${portalUrl}, ${rid}, ${sig} are filled in by ibs-api; $(mac), $(ip),
+  $(identity) ... by RouterOS. Never upload this unrendered file to a router.
+-->
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sign in to IKONEX SYSTEMS</title>
+    <title>Sign in to ${companyName} Wi-Fi</title>
     <!-- Fallback Meta Refresh -->
-    <meta http-equiv="refresh" content="2; url=https://beesmartbedak.com/hotspot?mac=$(mac)&ip=$(ip)&link-login=$(link-login-only)&link-orig=$(link-orig)&error=$(error)">
+    <meta http-equiv="refresh" content="2; url=${portalUrl}?rid=${rid}&sig=${sig}&mac=$(mac)&ip=$(ip)&identity=$(identity)&link-login=$(link-login-only)&link-orig=$(link-orig)&error=$(error)">
     <style>
         * {
             box-sizing: border-box;
@@ -151,13 +158,18 @@
     </style>
     <script>
         function executeRedirect() {
-            var targetUrl = "https://beesmartbedak.com/hotspot" +
-                "?mac=" + encodeURIComponent("$(mac)") +
+            // rid + sig identify this router to the platform; they are issued per router
+            // and must not be edited. $(...) values are filled in by RouterOS.
+            var targetUrl = "${portalUrl}" +
+                "?rid=${rid}" +
+                "&sig=${sig}" +
+                "&mac=" + encodeURIComponent("$(mac)") +
                 "&ip=" + encodeURIComponent("$(ip)") +
+                "&identity=" + encodeURIComponent("$(identity)") +
                 "&link-login=" + encodeURIComponent("$(link-login-only)") +
                 "&link-orig=" + encodeURIComponent("$(link-orig)") +
                 "&error=" + encodeURIComponent("$(error)");
-            
+
             // Set href for manual fallback button
             var btn = document.getElementById("manual-btn");
             if (btn) btn.href = targetUrl;
@@ -166,17 +178,6 @@
             setTimeout(function() {
                 window.location.replace(targetUrl);
             }, 300);
-        }
-    </script>
-    <!-- Inside MikroTik login.html redirect script -->
-    <script type="text/javascript">
-        function doRedirect() {
-            var redirectUrl = "https://beesmartbedak.com/hotspot" +
-                "?mac=" + encodeURIComponent("$(mac)") +
-                "&ip=" + encodeURIComponent("$(ip)") +
-                "&company=CMP-ADR-001" +     // Add company parameter here
-                "&router=" + encodeURIComponent("$(identity)");
-            window.location.replace(redirectUrl);
         }
     </script>
 </head>
@@ -190,8 +191,8 @@
             </svg>
         </div>
 
-        <h1>Almost there</h1>
-        <p class="subtitle">Connecting you to the portal to choose an internet or TV package...</p>
+        <h1>${companyName}</h1>
+        <p class="subtitle">Connecting you to ${companyName} to choose an internet or TV package...</p>
 
         <div class="progress-bar">
             <div class="progress-fill"></div>

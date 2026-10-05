@@ -12,6 +12,7 @@ import type {
 } from '@/lib/types/hotspot';
 import type { ApiResponse } from '@/lib/types/api';
 import { apiFetch } from '@/lib/apiClient';
+import { withPortalRouter, type PortalRouter } from '@/lib/hotspot/portalRouter';
 
 /**
  * Public hotspot portal actions.
@@ -28,15 +29,50 @@ import { apiFetch } from '@/lib/apiClient';
  * endpoint per plan decision D2.
  */
 
-export async function getPublicHotspotPackagesAction(scope: { routerIdentity?: string; clientIp?: string; companyId?: string } = {}): Promise<HotspotPackagesResponse> {
+/** Brand of the company whose router served the customer (`GET /hotspot/branding/portal-context`). */
+export interface HotspotPortalContext {
+  companyCode: string;
+  companyName: string;
+  logoUrl?: string | null;
+  primaryColor?: string | null;
+  secondaryColor?: string | null;
+  supportPhone?: string | null;
+  supportEmail?: string | null;
+  routerVerified: boolean;
+}
+
+/**
+ * Which company's hotspot is this? Resolved by the backend from the signed router id;
+ * `routerIdentity` / `clientIp` / `company` only help routers that do not have their signed
+ * login page yet. Null when no company can be resolved: the page then shows a neutral name.
+ */
+export async function getHotspotPortalContextAction(scope: {
+  portalRouter?: PortalRouter | null;
+  routerIdentity?: string;
+  clientIp?: string;
+  company?: string;
+} = {}): Promise<HotspotPortalContext | null> {
+  const query = new URLSearchParams();
+  if (scope.routerIdentity) query.set("routerIdentity", scope.routerIdentity);
+  if (scope.clientIp) query.set("clientIp", scope.clientIp);
+  if (scope.company) query.set("company", scope.company);
+  const path = query.size > 0 ? `/hotspot/branding/portal-context?${query.toString()}` : "/hotspot/branding/portal-context";
+  const res = await apiFetch<HotspotPortalContext>(withPortalRouter(path, scope.portalRouter), {
+    auth: 'public',
+    cache: 'no-store',
+  });
+  return res.success && res.data?.companyName ? res.data : null;
+}
+
+export async function getPublicHotspotPackagesAction(scope: { routerIdentity?: string; clientIp?: string; companyId?: string; portalRouter?: PortalRouter | null } = {}): Promise<HotspotPackagesResponse> {
   const query = new URLSearchParams({ serviceType: "HOTSPOT" });
   if (scope.routerIdentity) query.set("routerIdentity", scope.routerIdentity);
   if (scope.clientIp) query.set("clientIp", scope.clientIp);
   if (scope.companyId) query.set("companyId", scope.companyId);
-  const res = await apiFetch<HotspotPackage[]>(`/hotspot/packages?${query.toString()}`, {
+  // A signed router scopes the list to one company: never share that response between routers.
+  const res = await apiFetch<HotspotPackage[]>(withPortalRouter(`/hotspot/packages?${query.toString()}`, scope.portalRouter), {
     auth: 'public',
-    tags: ['hotspot-packages'],
-    revalidate: 60,
+    ...(scope.portalRouter ? { cache: 'no-store' as const } : { tags: ['hotspot-packages'], revalidate: 60 }),
   });
   return { ...res, data: res.data ?? [] };
 }
@@ -45,9 +81,10 @@ export async function getPublicHotspotPackagesAction(scope: { routerIdentity?: s
 export const getHotspotPackages = getPublicHotspotPackagesAction;
 
 export async function initiateHotspotPayment(
-  requestBody: InitiatePaymentRequest
+  requestBody: InitiatePaymentRequest,
+  portalRouter?: PortalRouter | null
 ): Promise<InitiatePaymentResponse> {
-  const res = await apiFetch<HotspotSessionResponse>('/hotspot/initiate', {
+  const res = await apiFetch<HotspotSessionResponse>(withPortalRouter('/hotspot/initiate', portalRouter), {
     method: 'POST',
     body: requestBody,
     auth: 'public',
@@ -76,12 +113,13 @@ export interface ActivateVoucherRequest {
   macAddress?: string;
   clientIp?: string;
   routerIdentity?: string;
+  portalRouter?: PortalRouter | null;
 }
 
 export async function activateVoucherAction(
   request: ActivateVoucherRequest
 ): Promise<ApiResponse<HotspotSessionResponse | null>> {
-  const res = await apiFetch<HotspotSessionResponse>('/hotspot/vouchers/activate', {
+  const res = await apiFetch<HotspotSessionResponse>(withPortalRouter('/hotspot/vouchers/activate', request.portalRouter), {
     method: 'POST',
     body: {
       voucherCode: request.voucherCode.trim().toUpperCase(),
@@ -96,10 +134,11 @@ export async function activateVoucherAction(
 
 export async function checkActiveSession(
   macAddress: string,
-  ipAddress: string
+  ipAddress: string,
+  portalRouter?: PortalRouter | null
 ): Promise<ReconnectResponse> {
   // Contract: `POST /api/v1/hotspot/reconnect` body `HotspotConnectRequest { macAddress, clientIp }`.
-  const res = await apiFetch<ReconnectResponseData>('/hotspot/reconnect', {
+  const res = await apiFetch<ReconnectResponseData>(withPortalRouter('/hotspot/reconnect', portalRouter), {
     method: 'POST',
     body: { macAddress, clientIp: ipAddress },
     auth: 'public',

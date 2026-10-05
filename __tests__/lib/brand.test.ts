@@ -1,58 +1,21 @@
 import { describe, expect, it } from "vitest";
-import {
-  getCustomerFacingBrand,
-  normalizeCompanyCode,
-  resolveCompanyFromRouterTag,
-  sanitizeErrorMessage,
-} from "@/lib/brand";
-
-describe("getCustomerFacingBrand", () => {
-  it("maps each company code to a clean customer-facing brand", () => {
-    expect(getCustomerFacingBrand("CMP-BSM-001")).toBe("Beesmart High-Speed Wi-Fi");
-    expect(getCustomerFacingBrand("CMP-BDK-001")).toBe("Bedak Networks");
-    expect(getCustomerFacingBrand("CMP-ADR-001")).toBe("Adrinold Broadband");
-  });
-
-  it("accepts canonical spellings (BSM, BEESMART, BDK, ADRINOLD)", () => {
-    expect(getCustomerFacingBrand("BSM")).toBe("Beesmart High-Speed Wi-Fi");
-    expect(getCustomerFacingBrand("BEESMART")).toBe("Beesmart High-Speed Wi-Fi");
-    expect(getCustomerFacingBrand("BEDAK")).toBe("Bedak Networks");
-    expect(getCustomerFacingBrand("ADRINOLD")).toBe("Adrinold Broadband");
-  });
-
-  it("falls back to a neutral brand for unknown or missing codes", () => {
-    expect(getCustomerFacingBrand()).toBe("Ikonex Wi-Fi");
-    expect(getCustomerFacingBrand("COMPANY-001")).toBe("Ikonex Wi-Fi");
-    expect(getCustomerFacingBrand("")).toBe("Ikonex Wi-Fi");
-  });
-});
+import { DEFAULT_PORTAL_BRAND, normalizeCompanyCode, sanitizeErrorMessage } from "@/lib/brand";
 
 describe("normalizeCompanyCode", () => {
-  it("returns the canonical CMP-* code for any spelling", () => {
+  it("accepts any well-formed company code, including companies added later", () => {
     expect(normalizeCompanyCode("cmp-bsm-001")).toBe("CMP-BSM-001");
-    expect(normalizeCompanyCode("Beesmart")).toBe("CMP-BSM-001");
-    expect(normalizeCompanyCode("adrinold")).toBe("CMP-ADR-001");
-    expect(normalizeCompanyCode("bedak")).toBe("CMP-BDK-001");
+    expect(normalizeCompanyCode(" CMP-0004-001 ")).toBe("CMP-0004-001");
+    expect(normalizeCompanyCode("CMP-NEW-001")).toBe("CMP-NEW-001");
   });
 
-  it("returns null for unknown input", () => {
+  it("returns null for names, legacy aliases and missing input", () => {
+    expect(normalizeCompanyCode("Beesmart")).toBeNull();
     expect(normalizeCompanyCode("COMPANY-001")).toBeNull();
     expect(normalizeCompanyCode(null)).toBeNull();
   });
-});
 
-describe("resolveCompanyFromRouterTag", () => {
-  it("parses the company head from letter-suffix asset tags", () => {
-    expect(resolveCompanyFromRouterTag("RTR-BSM-A")).toBe("CMP-BSM-001");
-    expect(resolveCompanyFromRouterTag("RTR-BSM-B")).toBe("CMP-BSM-001");
-    expect(resolveCompanyFromRouterTag("RTR-ADR-UKD-A")).toBe("CMP-ADR-001");
-    expect(resolveCompanyFromRouterTag("RTR-BDK-MSA-A")).toBe("CMP-BDK-001");
-    expect(resolveCompanyFromRouterTag("RTR-BDK-LIK-A")).toBe("CMP-BDK-001");
-  });
-
-  it("returns null for non-asset-tag strings", () => {
-    expect(resolveCompanyFromRouterTag("edge-router-1")).toBeNull();
-    expect(resolveCompanyFromRouterTag(null)).toBeNull();
+  it("has a neutral default brand that names no company", () => {
+    expect(DEFAULT_PORTAL_BRAND).toBe("Wi-Fi Hotspot");
   });
 });
 

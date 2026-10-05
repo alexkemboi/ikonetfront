@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { prepareTvDeviceAction } from "@/actions/tv";
+import { getPortalRouter } from "@/lib/hotspot/portalRouter";
 import { normalizeTvMacAddress, tvDeviceSchema, type TvDeviceDetails } from "@/lib/validation/tv-device";
 
 import TvPurchaseReview from "./TvPurchaseReview";
@@ -43,7 +44,7 @@ export default function TvDeviceSetup({ brand, initialDevice, packages: initialP
     onSubmit: async (values) => {
       setError("");
       try {
-        const result = await prepareTvDeviceAction({ ...values, routerIdentity });
+        const result = await prepareTvDeviceAction({ ...values, routerIdentity }, getPortalRouter());
         if (!result.success) { setError(result.error); return; }
         setDevice(result.device);
         setPortal(result.portal);

@@ -4,6 +4,8 @@ import type {
   InitiatePaymentResponse,
 } from "@/lib/types/hotspot";
 
+import { getPortalRouter, withPortalRouter } from "@/lib/hotspot/portalRouter";
+
 const API_PATH = "/api/v1";
 
 export const PENDING_HOTSPOT_PURCHASE_KEY = "hotspot.pendingPurchase";
@@ -36,7 +38,8 @@ async function publicJson<T>(path: string, init?: RequestInit): Promise<T> {
 export function initiatePublicHotspotPayment(
   request: InitiatePaymentRequest
 ): Promise<InitiatePaymentResponse> {
-  return publicJson<InitiatePaymentResponse>("/hotspot/initiate", {
+  // the signed router id of the page the customer arrived on decides the company
+  return publicJson<InitiatePaymentResponse>(withPortalRouter("/hotspot/initiate", getPortalRouter()), {
     method: "POST",
     body: JSON.stringify(request),
   });
