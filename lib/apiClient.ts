@@ -171,6 +171,7 @@ export async function apiFetch<T = unknown>(
           data: (api.data as T) ?? null,
           timestamp: api.timestamp ?? new Date().toISOString(),
           requestId: responseRequestId,
+          ...(typeof api.code === "string" ? { code: api.code } : {}),
         };
       }
 

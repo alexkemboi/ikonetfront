@@ -8,6 +8,9 @@
 
 export const COMPANY_CONTEXT_COOKIE = "ibs_company_context";
 
+/** Error code of the backend's 400 for a selected company that does not exist. */
+export const UNKNOWN_COMPANY_CONTEXT = "UNKNOWN_COMPANY_CONTEXT";
+
 const COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 7;
 
 /** Read the current context cookie (null when unset or "ALL"/union). */
