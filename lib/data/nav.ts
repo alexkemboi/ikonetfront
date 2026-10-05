@@ -18,41 +18,11 @@ import { managementNavGroups } from "@/config/nav-management";
 import { staffNavGroups }      from "@/config/nav-staff";
 import { customerNavGroups }   from "@/config/nav-customer";
 import { investorNavGroups }   from "@/config/nav-investor";
-import { NO_PERMISSIONS } from "@/lib/data/nav-constants";
+import { NO_PERMISSIONS, normalizeMenuRoute } from "@/lib/data/nav-constants";
 
-export { NO_PERMISSIONS } from "@/lib/data/nav-constants";
+export { NO_PERMISSIONS, normalizeMenuRoute } from "@/lib/data/nav-constants";
 
 export const NAV_MENUS_TAG = "nav-menus";
-
-export function normalizeMenuRoute(route: string): string {
-  const clean = route?.trim();
-  if (!clean) return "/dashboard/overview";
-
-  const routeMap: Record<string, string> = {
-    "/finance/packages": "/system/packages",
-    "/packages": "/system/packages",
-    "/system/internet-packages": "/system/packages",
-    "/dashboard/admin": "/dashboard/overview",
-    "/dashboard/management": "/analytics",
-    "/dashboard/staff": "/customers",
-    "/dashboard/customer": "/portal/pppoe",
-    "/customers/active": "/customers/all",
-    "/customers/directory": "/customers/all",
-    "/customers/ip-bindings": "/customers/bindings",
-    "/network/ip-mapping": "/customers/bindings",
-    "/customers/pppoe": "/portal/pppoe",
-    "/network/microtick": "/network/mikrotik",
-    "/network-routers": "/network/routers",
-    "/routers": "/network/routers",
-    "/finance/coa": "/finance/ledger",
-    "/finance/chart-of-accounts": "/finance/ledger",
-    "/finance/payments": "/finance/billing/payments",
-    "/finance/invoices": "/finance/billing/invoices",
-    "/investor/dashboard": "/finance/investor",
-  };
-
-  return routeMap[clean] ?? clean;
-}
 
 /**
  * Fetch the menu/permission tree for a given role.
