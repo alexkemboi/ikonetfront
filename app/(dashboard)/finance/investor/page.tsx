@@ -39,30 +39,24 @@ export default async function InvestorPortalPage() {
   const pagePerms = await getPermissionForRoute("/finance/investor");
   if (!pagePerms.canView) redirect("/no-access");
 
-  // An investor's own login is revenue monitoring of their routers only
-  // (blueprint D-35): no payout, maintenance-charge or payable figure.
-  const revenueOnly = role === ROLE_NAME.INVESTOR;
-
   const data = await getInvestorMoneyFlowData();
   const revenue = data.revenue;
   const routerRows: RouterAttributionItem[] = revenue?.routerBreakdown ?? [];
 
+  // Owner decision 2026-10-05 (choice 7): an investor sees payout and maintenance
+  // figures on their own login, alongside revenue and router attribution.
   const kpis = revenue
     ? [
         { label: "Total Gross Revenue", value: formatKES(revenue.totalGrossRevenue) },
-        { label: "Hotspot Gross", value: formatKES(revenue.hotspotGrossRevenue) },
+        {
+          label: revenue.investorId === null ? "Total Investor Payout Due" : "Net Investor Payout",
+          value: formatKES(revenue.netInvestorPayout),
+        },
+        { label: "Maintenance Due", value: formatKES(revenue.totalMaintenanceDue) },
         { label: "Active PPPoE Subscribers", value: String(revenue.activePppoeSubscribers ?? 0) },
-        ...(revenueOnly
-          ? []
-          : [
-              {
-                label: revenue.investorId === null ? "Total Investor Payout Due" : "Net Investor Payout",
-                value: formatKES(revenue.netInvestorPayout),
-              },
-              { label: "Maintenance Due", value: formatKES(revenue.totalMaintenanceDue) },
-              { label: "Hotspot Maint. Fee", value: formatKES(revenue.hotspotMaintenanceFee) },
-              { label: "PPPoE Maint. Fee", value: formatKES(revenue.pppoeMaintenanceFee) },
-            ]),
+        { label: "Hotspot Gross", value: formatKES(revenue.hotspotGrossRevenue) },
+        { label: "Hotspot Maint. Fee", value: formatKES(revenue.hotspotMaintenanceFee) },
+        { label: "PPPoE Maint. Fee", value: formatKES(revenue.pppoeMaintenanceFee) },
       ]
     : [];
 
@@ -77,7 +71,7 @@ export default async function InvestorPortalPage() {
             Money flow.
           </h1>
           <p className="mt-1 text-xs text-muted-foreground">
-            Period {data.period} · {revenueOnly ? "Revenue through your routers" : "Revenue, maintenance & router attribution"} · Read-only
+            Period {data.period} · Revenue, maintenance &amp; router attribution · Read-only
           </p>
         </div>
 
