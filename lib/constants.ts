@@ -26,6 +26,15 @@ export function buildApiUrl(path: string): string {
   return cleanPath ? `${base}/${cleanPath}` : base;
 }
 
+/**
+ * URL of a backend route that lives outside the versioned prefix
+ * (e.g. the canonical staff API `/api/system-users`).
+ */
+export function buildUnversionedApiUrl(path: string): string {
+  const root = BASE_URL.replace(/\/+$/, "").replace(new RegExp(`/${API_VERSION}$`), "");
+  return `${root}/${path.replace(/^\/+/, "")}`;
+}
+
 /** Resolve a backend-provided link without duplicating an existing /api/v1 prefix. */
 export function resolveApiLink(link: string): string {
   if (/^https?:\/\//i.test(link)) return link;
