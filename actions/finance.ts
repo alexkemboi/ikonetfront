@@ -136,12 +136,39 @@ export async function getTrialBalance(): Promise<TrialBalanceResponse | null> {
       cache: "no-store",
     });
     if (!res.ok) return null;
-    const raw = unwrapData<TrialBalanceResponse>(await res.json());
+    const raw = unwrapData<unknown>(await res.json());
     if (typeof raw !== "object" || raw === null) return null;
-    if (typeof raw.delta !== "number" || typeof raw.isBalanced !== "boolean") return null;
-    if (typeof raw.debits !== "number" || typeof raw.credits !== "number") return null;
-    if (!Array.isArray(raw.accounts)) return null;
-    return raw;
+    const trialBalance = raw as Record<string, unknown>;
+    if (!isFiniteNumber(trialBalance.delta) || typeof trialBalance.isBalanced !== "boolean") return null;
+    if (!isFiniteNumber(trialBalance.debits) || !isFiniteNumber(trialBalance.credits)) return null;
+    if (!Array.isArray(trialBalance.accounts)) return null;
+
+    const accounts: TrialBalanceResponse["accounts"] = [];
+    for (const value of trialBalance.accounts) {
+      if (typeof value !== "object" || value === null) return null;
+      const account = value as Record<string, unknown>;
+      const code = typeof account.code === "string" ? account.code : account.accountCode;
+      if (typeof code !== "string" || !isFiniteNumber(account.balance)) return null;
+      const name =
+        typeof account.name === "string"
+          ? account.name
+          : typeof account.accountName === "string"
+            ? account.accountName
+            : undefined;
+      const type = ["ASSET", "LIABILITY", "EQUITY", "INCOME", "EXPENSE"].includes(
+        String(account.type)
+      )
+        ? (account.type as ChartOfAccountNode["type"])
+        : undefined;
+      accounts.push({ code, name, type, balance: account.balance });
+    }
+    return {
+      delta: trialBalance.delta,
+      isBalanced: trialBalance.isBalanced,
+      debits: trialBalance.debits,
+      credits: trialBalance.credits,
+      accounts,
+    };
   } catch (error) {
     console.error("[Finance] getTrialBalance error:", error);
     return null;
@@ -218,17 +245,21 @@ function normalizeProfitLossReport(
 
   const match = (codes: string[], needles: string[]): number => {
     const byCode = revenue.find((line) => codes.includes(line.accountCode));
-    if (byCode) return byCode.amount;
+    if (byCode) return Math.abs(byCode.amount);
     const byName = revenue.find((line) =>
       needles.some((n) => (line.accountName ?? "").toLowerCase().includes(n))
     );
-    return byName?.amount ?? 0;
+    return Math.abs(byName?.amount ?? 0);
   };
 
+  // The ledger stores credit-normal income as negative balances. The report
+  // contract fixtures use positive totals, so invert net income only when the
+  // report's revenue total signals signed-ledger convention.
+  const signedLedgerConvention = report.totalRevenue < 0;
   return {
-    totalRevenue: report.totalRevenue,
-    totalExpenses: report.totalExpenses,
-    netProfit: report.netIncome,
+    totalRevenue: Math.abs(report.totalRevenue),
+    totalExpenses: Math.abs(report.totalExpenses),
+    netProfit: signedLedgerConvention ? -report.netIncome : report.netIncome,
     pppoeRevenue: match(["4100"], ["pppoe"]),
     hotspotRevenue: match(["4200"], ["hotspot"]),
     startDate: report.startDate ?? from,
@@ -236,14 +267,21 @@ function normalizeProfitLossReport(
   };
 }
 
-/** Pick the M-Pesa clearing account (1110) balance; zero when unavailable. */
+/** Pick the M-Pesa clearing account balance; a valid response without it means zero. */
 function unwrapClearingBalance(json: unknown): number | null {
-  const list = unwrapData<AccountBalanceProjection[]>(json);
+  const list = unwrapData<unknown>(json);
   if (!Array.isArray(list)) return null;
-  const account = list.find(
-    (b) => b.accountCode === "1110" || b.accountCode === "M_PESA_RECEIVABLE"
-  );
-  return account && isFiniteNumber(account.balance) ? account.balance : null;
+  for (const value of list) {
+    if (typeof value !== "object" || value === null) return null;
+    const account = value as Partial<AccountBalanceProjection>;
+    if (typeof account.accountCode !== "string" || !isFiniteNumber(account.balance)) {
+      return null;
+    }
+    if (account.accountCode === "1110" || account.accountCode === "M_PESA_RECEIVABLE") {
+      return account.balance;
+    }
+  }
+  return 0;
 }
 
 /**
@@ -340,7 +378,13 @@ export async function getLiveExecutiveDashboardData(
 
     let recentTransactions: AccountPosting[] = [];
     let transactionsAvailable = false;
-    if (txSettled.status === "fulfilled" && txSettled.value.ok) {
+    let transactionsError = "Recent transactions are unavailable.";
+    if (txSettled.status === "rejected") {
+      console.error("[Finance] Recent transactions request failed:", txSettled.reason);
+      transactionsError = "Recent transactions request failed before a response was received.";
+    } else if (!txSettled.value.ok) {
+      transactionsError = `Recent transactions request failed (HTTP ${txSettled.value.status}).`;
+    } else {
       try {
         const json = await txSettled.value.json();
         const postings = unwrapPostings(json);
@@ -359,19 +403,26 @@ export async function getLiveExecutiveDashboardData(
         if (Array.isArray(entries) && entries.every((entry) => {
           if (!entry || typeof entry !== "object") return false;
           const posting = entry as Partial<AccountPosting>;
-          return Number.isFinite(posting.id) &&
+          const hasValidId =
+            (typeof posting.id === "string" && posting.id.trim().length > 0) ||
+            isFiniteNumber(posting.id);
+          return hasValidId &&
             typeof posting.accountCode === "string" &&
             isFiniteNumber(posting.amount) &&
             typeof posting.occurredAt === "string";
         })) {
           recentTransactions = postings;
           transactionsAvailable = true;
+        } else {
+          transactionsError =
+            "Recent transactions response did not match the expected posting fields (id, accountCode, amount, occurredAt).";
         }
       } catch (error) {
         console.error("[Finance] Invalid transactions response body:", error);
+        transactionsError = "Recent transactions response body could not be parsed.";
       }
     }
-    if (!transactionsAvailable) errors.push("Recent transactions are unavailable or did not match the expected API response.");
+    if (!transactionsAvailable) errors.push(transactionsError);
 
     let clearingBalance: number | null = null;
     if (balanceSettled.status === "fulfilled" && balanceSettled.value.ok) {

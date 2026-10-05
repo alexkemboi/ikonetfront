@@ -50,6 +50,29 @@ describe("CoA raw payload path (CoaController returns no envelope)", () => {
     expect(Array.isArray(tb?.accounts)).toBe(true);
   });
 
+  it("normalizes trial-balance accountCode entries without names", async () => {
+    server.use(
+      http.get(`${API_PREFIX}/finance/coa/trial-balance`, () =>
+        HttpResponse.json({
+          delta: 0,
+          isBalanced: true,
+          debits: 1278,
+          credits: -1278,
+          accounts: [
+            { postingCount: 24, accountCode: "1110", balance: 24 },
+            { postingCount: 1, accountCode: "1130", balance: 40 },
+          ],
+        })
+      )
+    );
+
+    const tb = await getTrialBalance();
+    expect(tb?.accounts).toEqual([
+      { code: "1110", name: undefined, type: undefined, balance: 24 },
+      { code: "1130", name: undefined, type: undefined, balance: 40 },
+    ]);
+  });
+
   it("getLedgerPostings wraps the raw array into a SpringPage", async () => {
     const page = await getLedgerPostings({ page: 0, size: 20 });
     expect(page.content).toHaveLength(2);

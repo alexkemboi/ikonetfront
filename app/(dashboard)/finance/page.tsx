@@ -14,7 +14,12 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { getLiveExecutiveDashboardData, getTrialBalance } from "@/actions/finance";
+import {
+  getChartOfAccountsTree,
+  getLiveExecutiveDashboardData,
+  getTrialBalance,
+} from "@/actions/finance";
+import type { ChartOfAccountNode, ChartOfAccountsTree } from "@/lib/types/finance";
 import { getPermissionForRoute } from "@/lib/data/nav";
 import type { AccountPosting } from "@/lib/types/finance";
 import { cn } from "@/lib/utils";
@@ -34,6 +39,25 @@ interface FinancePageProps {
 
 function formatKes(n: number): string {
   return `KES ${n.toLocaleString()}`;
+}
+
+function findAccountName(
+  tree: ChartOfAccountsTree,
+  code: string
+): string | undefined {
+  const findInNodes = (nodes: ChartOfAccountNode[]): string | undefined => {
+    for (const node of nodes) {
+      if (node.code === code) return node.name;
+      const childName = findInNodes(node.children ?? []);
+      if (childName) return childName;
+    }
+    return undefined;
+  };
+  for (const nodes of Object.values(tree)) {
+    const name = findInNodes(nodes);
+    if (name) return name;
+  }
+  return undefined;
 }
 
 function StatCard({
@@ -81,9 +105,10 @@ export default async function FinancePage({ searchParams }: FinancePageProps) {
   if (!pagePerms.canView) redirect("/dashboard");
 
   const { from, to } = await searchParams;
-  const [dashboard, trialBalance] = await Promise.all([
+  const [dashboard, trialBalance, chartOfAccounts] = await Promise.all([
     getLiveExecutiveDashboardData(from, to),
     getTrialBalance(),
+    getChartOfAccountsTree(),
   ]);
 
   const { pnl, recentTransactions, clearingBalance } = dashboard;
@@ -223,9 +248,9 @@ export default async function FinancePage({ searchParams }: FinancePageProps) {
                   </p>
                   <div className="max-h-[200px] overflow-y-auto space-y-1">
                     {trialBalance.accounts.map((acct, index) => (
-                      <div key={`${acct.code}-${acct.name}-${index}`} className="flex justify-between text-xs py-1">
+                      <div key={`${acct.code}-${index}`} className="flex justify-between text-xs py-1">
                         <span className="text-muted-foreground truncate">
-                          {acct.code} — {acct.name}
+                          {acct.code} — {acct.name ?? findAccountName(chartOfAccounts, acct.code) ?? `Account ${acct.code}`}
                         </span>
                         <span className="font-medium tabular-nums">{formatKes(acct.balance)}</span>
                       </div>
