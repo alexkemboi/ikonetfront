@@ -103,6 +103,15 @@ export function normalizeRole(role?: string | null): RoleName {
 }
 
 /**
+ * True for the platform role (SYSADMIN): the only role that works across
+ * companies and may switch the company context.
+ */
+export function isPlatformAdminRole(role?: string | null): boolean {
+  if (!role) return false;
+  return /SYSADMIN|ROLE_SYSADMIN|SUPER_ADMIN|ROLE_SUPER_ADMIN/i.test(role.trim());
+}
+
+/**
  * Convert a role name (as it appears in the JWT / session.user.role)
  * to the corresponding backend role code. Used when constructing
  * API URLs that include the role code in the path.

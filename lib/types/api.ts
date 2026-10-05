@@ -11,6 +11,8 @@ export interface ApiResponse<T = unknown> {
   data: T | null;
   timestamp?: string;
   requestId?: string;
+  /** Machine-readable error code, when the backend sends one (e.g. `UNKNOWN_COMPANY_CONTEXT`). */
+  code?: string;
 }
 
 export interface Sort {
