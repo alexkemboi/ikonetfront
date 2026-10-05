@@ -88,6 +88,13 @@ export default async function FinancePage({ searchParams }: FinancePageProps) {
 
   const { pnl, recentTransactions, clearingBalance } = dashboard;
   const positive = pnl.netProfit >= 0;
+  const formatDateRange = () => {
+    if (!dashboard.pnlAvailable) return "Unavailable";
+    const start = new Date(pnl.startDate);
+    const end = new Date(pnl.endDate);
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return "Selected period";
+    return `${start.toLocaleDateString()} - ${end.toLocaleDateString()}`;
+  };
 
   return (
     <div className="space-y-6 p-8 pt-6">
@@ -105,40 +112,55 @@ export default async function FinancePage({ searchParams }: FinancePageProps) {
         <FinanceToolbar from={from} to={to} />
       </div>
 
+      {dashboard.errors.length > 0 && (
+        <div
+          role="status"
+          className="rounded-lg border border-warning/40 bg-warning/10 px-4 py-3 text-sm text-foreground"
+        >
+          <p className="font-medium">Some dashboard data could not be verified.</p>
+          <ul className="mt-1 list-inside list-disc text-muted-foreground">
+            {dashboard.errors.map((error) => <li key={error}>{error}</li>)}
+          </ul>
+          <p className="mt-2 text-xs text-muted-foreground">
+            Unavailable sections are shown as unavailable rather than as zero-valued financial data.
+          </p>
+        </div>
+      )}
+
       {/* KPI cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         <StatCard
           title="Total Revenue"
-          value={formatKes(pnl.totalRevenue)}
-          subtitle={`${new Date(pnl.startDate).toLocaleDateString()} - ${new Date(pnl.endDate).toLocaleDateString()}`}
+          value={dashboard.pnlAvailable ? formatKes(pnl.totalRevenue) : "Unavailable"}
+          subtitle={formatDateRange()}
           icon={DollarSign}
           color="bg-primary"
         />
         <StatCard
           title="Total Expenses"
-          value={formatKes(pnl.totalExpenses)}
-          subtitle="All categories"
+          value={dashboard.pnlAvailable ? formatKes(pnl.totalExpenses) : "Unavailable"}
+          subtitle={dashboard.pnlAvailable ? "All categories" : "Profit & loss report unavailable"}
           icon={Wallet}
           color="bg-destructive"
         />
         <StatCard
           title="Net Profit"
-          value={formatKes(pnl.netProfit)}
-          subtitle={positive ? "Profitable" : "Loss"}
-          icon={positive ? TrendingUp : TrendingDown}
-          color={positive ? "bg-success" : "bg-destructive"}
+          value={dashboard.pnlAvailable ? formatKes(pnl.netProfit) : "Unavailable"}
+          subtitle={dashboard.pnlAvailable ? positive ? "Profitable" : "Loss" : "Profit & loss report unavailable"}
+          icon={dashboard.pnlAvailable ? positive ? TrendingUp : TrendingDown : TrendingDown}
+          color={dashboard.pnlAvailable ? positive ? "bg-success" : "bg-destructive" : "bg-muted"}
         />
         <StatCard
           title="PPPoE Revenue"
-          value={formatKes(pnl.pppoeRevenue ?? 0)}
-          subtitle="Monthly subscriptions"
+          value={dashboard.pnlAvailable ? formatKes(pnl.pppoeRevenue ?? 0) : "Unavailable"}
+          subtitle={dashboard.pnlAvailable ? "Monthly subscriptions" : "Profit & loss report unavailable"}
           icon={Wifi}
           color="bg-success"
         />
         <StatCard
           title="Hotspot Revenue"
-          value={formatKes(pnl.hotspotRevenue ?? 0)}
-          subtitle="Pay-as-you-go sessions"
+          value={dashboard.pnlAvailable ? formatKes(pnl.hotspotRevenue ?? 0) : "Unavailable"}
+          subtitle={dashboard.pnlAvailable ? "Pay-as-you-go sessions" : "Profit & loss report unavailable"}
           icon={Zap}
           color="bg-warning"
         />
@@ -228,7 +250,7 @@ export default async function FinancePage({ searchParams }: FinancePageProps) {
                   Clearing Balance
                 </p>
                 <p className="text-3xl font-bold text-foreground mt-1 tabular-nums">
-                  {formatKes(clearingBalance)}
+                  {dashboard.clearingBalanceAvailable ? formatKes(clearingBalance) : "Unavailable"}
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
                   Account 1110 — mobile money awaiting reconciliation to bank
@@ -261,8 +283,7 @@ export default async function FinancePage({ searchParams }: FinancePageProps) {
         <CardHeader className="pb-3">
           <CardTitle className="text-base">Recent Transactions</CardTitle>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Latest 10 ledger postings · {new Date(pnl.startDate).toLocaleDateString()} -{" "}
-            {new Date(pnl.endDate).toLocaleDateString()}
+            Latest 10 ledger postings, independent of the P&amp;L date filter
           </p>
         </CardHeader>
         <CardContent className="p-0">
@@ -291,7 +312,7 @@ export default async function FinancePage({ searchParams }: FinancePageProps) {
                 </tr>
               </thead>
               <tbody>
-                {recentTransactions.length > 0 ? (
+                {dashboard.transactionsAvailable && recentTransactions.length > 0 ? (
                   recentTransactions.map((p: AccountPosting) => (
                     <tr
                       key={p.id}
@@ -328,7 +349,9 @@ export default async function FinancePage({ searchParams }: FinancePageProps) {
                       colSpan={6}
                       className="px-5 py-12 text-center text-sm text-muted-foreground"
                     >
-                      No transactions recorded in this period.
+                      {dashboard.transactionsAvailable
+                        ? "No recent transactions were returned."
+                        : "Recent transactions are unavailable."}
                     </td>
                   </tr>
                 )}

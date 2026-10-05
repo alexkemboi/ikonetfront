@@ -153,8 +153,10 @@ describe("getLiveExecutiveDashboardData — clearing balance", () => {
   });
 
   it("returns 0 when no clearing account exists", async () => {
-    const { clearingBalance } = await getLiveExecutiveDashboardData();
+    const { clearingBalance, clearingBalanceAvailable, errors } = await getLiveExecutiveDashboardData();
     expect(clearingBalance).toBe(0);
+    expect(clearingBalanceAvailable).toBe(false);
+    expect(errors).toContain("M-Pesa clearing balance is unavailable or the account was not returned.");
   });
 });
 
@@ -214,5 +216,36 @@ describe("getLiveExecutiveDashboardData — zero-safe", () => {
     });
     expect(data.recentTransactions).toEqual([]);
     expect(data.clearingBalance).toBe(0);
+    expect(data.pnlAvailable).toBe(false);
+    expect(data.transactionsAvailable).toBe(false);
+    expect(data.clearingBalanceAvailable).toBe(false);
+  });
+
+  it("rejects reversed date ranges before making API calls", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch");
+    const result = await getLiveExecutiveDashboardData("2026-08-31", "2026-08-01");
+
+    expect(result.pnlAvailable).toBe(false);
+    expect(result.errors).toContain("The start date must be on or before the end date.");
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it("does not treat malformed financial totals as a valid report", async () => {
+    server.use(
+      http.get(`${API_PREFIX}/finance/reports/profit-loss`, () =>
+        HttpResponse.json({
+          revenue: [],
+          expenses: [],
+          totalRevenue: "1000",
+          totalExpenses: 0,
+          netIncome: 1000,
+        })
+      )
+    );
+
+    const result = await getLiveExecutiveDashboardData();
+    expect(result.pnlAvailable).toBe(false);
+    expect(result.pnl.totalRevenue).toBe(0);
+    expect(result.errors[0]).toContain("Profit and loss data is unavailable");
   });
 });
