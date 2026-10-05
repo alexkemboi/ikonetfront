@@ -18,6 +18,8 @@ export type PaymentAccountPayload = {
   tillNumber?: string;
   clientKey?: string;
   clientSecret?: string;
+  /** M-Pesa online (STK push) passkey. Required for PAYBILL and TILL. */
+  passkey?: string;
   isDefault: boolean;
 };
 
