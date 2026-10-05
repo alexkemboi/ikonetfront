@@ -2,6 +2,7 @@
 
 import { createContext, useContext, type ReactNode } from "react";
 import type { PermissionFlags, PermissionMap } from "@/lib/types/roles";
+import { normalizeMenuRoute } from "@/lib/data/nav-constants";
 
 // All-false default — safe fallback when a route is not in the map
 const NO_PERMS: PermissionFlags = {
@@ -36,5 +37,6 @@ export function PermissionsProvider({
  */
 export function usePermissions(route: string): PermissionFlags {
   const map = useContext(PermissionsContext);
-  return map[route] ?? NO_PERMS;
+  // The map is keyed by normalized routes (legacy aliases resolve to one key).
+  return map[route] ?? map[normalizeMenuRoute(route)] ?? NO_PERMS;
 }
