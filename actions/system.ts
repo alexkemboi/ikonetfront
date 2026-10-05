@@ -1,22 +1,10 @@
 "use server";
 
-import { withCompanyContext } from "@/lib/companyContext";
-import { auth } from "@/lib/auth";
-import { buildApiUrl } from "@/lib/constants";
+import { apiFetch } from "@/lib/apiClient";
+import { buildUnversionedApiUrl } from "@/lib/constants";
 import { revalidatePath } from "next/cache";
 import type { ApiRoleUser } from "@/lib/types/roles";
 import type { ApiResponse } from "@/lib/types/auth";
-
-async function getAuthHeaders(): Promise<HeadersInit> {
-  const session = await auth();
-  const headers: HeadersInit = { "Content-Type": "application/json" };
-  if (session?.user?.apiToken) {
-    (headers as Record<string, string>)["Authorization"] =
-      `Bearer ${session.user.apiToken}`;
-  }
-  // Forward the SYSADMIN-selected company so the backend scopes the call.
-  return withCompanyContext(headers as Record<string, string>);
-}
 
 function normalizeUserRecord(raw: unknown): ApiRoleUser {
   const r = (raw ?? {}) as Record<string, unknown>;
@@ -46,6 +34,8 @@ function normalizeUserRecord(raw: unknown): ApiRoleUser {
 function extractUsersPayload(payload: unknown): unknown[] {
   if (Array.isArray(payload)) return payload;
   const obj = payload as Record<string, unknown> | null;
+  // Paged envelope: { data: { content: [...] } }
+  if (obj?.data && !Array.isArray(obj.data)) return extractUsersPayload(obj.data);
   if (obj?.data && Array.isArray(obj.data)) return obj.data;
   if (obj?.items && Array.isArray(obj.items)) return obj.items;
   if (obj?.users && Array.isArray(obj.users)) return obj.users;
@@ -64,129 +54,52 @@ export type UserData = {
   phoneNumber: string;
 };
 
+/** The single canonical staff user API (`SystemUsersCrudController`). */
+const SYSTEM_USERS_URL = buildUnversionedApiUrl("/system-users");
+
 export async function addSystemUser(
   userData: UserData
 ): Promise<ApiResponse<ApiRoleUser>> {
-  const payload = {
-    ...userData,
-    roleCode: userData.role,
-    role: userData.role,
-  };
+  // One POST, one read of the body. The company comes from the caller's own
+  // company, or from the company a SYSADMIN has selected in the dashboard.
+  const res = await apiFetch<unknown>(SYSTEM_USERS_URL, {
+    method: "POST",
+    body: {
+      ...userData,
+      middleName: userData.middleName || undefined,
+      otherName: userData.otherName || undefined,
+    },
+    auth: "required",
+    cache: "no-store",
+  });
 
-  const candidateUrls = [
-    "/system-setup/user/register",
-    "/system-setup/register-user",
-    "/system/users/register",
-    "/system/users/staff",
-  ];
-
-  let lastError: unknown = null;
-
-  for (const url of candidateUrls) {
-    try {
-      const response = await fetch(buildApiUrl(url), {
-        method: "POST",
-        headers: await getAuthHeaders(),
-        body: JSON.stringify(payload),
-        cache: "no-store",
-      });
-      console.log(await response.json(), url)
-
-      const text = await response.text();
-      const result = text ? JSON.parse(text) : null;
-
-      if (response.ok) {
-        if (result?.success === false) {
-          const errorMessage = result?.message || "User creation failed";
-          return {
-            status: response.status,
-            success: false,
-            message: errorMessage,
-            data: null as unknown as ApiRoleUser,
-            timestamp: new Date().toISOString(),
-          };
-        }
-
-        if (result?.success || result?.data || result?.message) {
-          revalidatePath("/system/users");
-          return {
-            status: response.status,
-            success: true,
-            message: result?.message || "User created successfully",
-            data: normalizeUserRecord(result?.data ?? payload),
-            timestamp: new Date().toISOString(),
-          };
-        }
-      }
-
-      lastError = new Error(result?.message || `Request failed with status ${response.status}`);
-    } catch (error) {
-      lastError = error;
-    }
+  if (!res.success) {
+    return { ...res, data: null as unknown as ApiRoleUser };
   }
 
-  return {
-    status: 500,
-    success: false,
-    message: lastError instanceof Error ? lastError.message : "Unexpected error while creating system user",
-    data: null as unknown as ApiRoleUser,
-    timestamp: new Date().toISOString(),
-  };
+  revalidatePath("/system/users");
+  return { ...res, data: normalizeUserRecord(res.data ?? userData) };
 }
 
+/** Staff users the caller may see (own company; SYSADMIN: selected company or all). */
 export async function getSystemUsers(): Promise<ApiRoleUser[]> {
-  const candidateUrls = [
-    "/system/users/staff",
-    "/system/users",
-    "/system-setup/03/users",
-    "/system-setup/all-users",
-  ];
-
-  const headers = await getAuthHeaders();
-  const hasToken = Boolean((headers as Record<string, string>).Authorization);
-  const roleCode = candidateUrls
-    .map((url) => url.match(/system-setup\/([^/]+)\/users/)?.[1])
-    .find(Boolean) ?? null;
-  let lastStatus: number | undefined;
-  let lastRequestId: string | undefined;
-
-  for (const url of candidateUrls) {
-    try {
-      const fullUrl = buildApiUrl(url);
-      const requestId = crypto.randomUUID();
-      lastRequestId = requestId;
-      const response = await fetch(fullUrl, {
-        headers: { ...(headers as Record<string, string>), "X-Request-Id": requestId },
-        cache: "no-store",
+  const users: ApiRoleUser[] = [];
+  // The API pages at 100 per request at most.
+  for (let page = 0; page < 50; page += 1) {
+    const res = await apiFetch<{ content?: unknown[]; totalPages?: number }>(
+      `${SYSTEM_USERS_URL}?page=${page}&size=100`,
+      { auth: "required", cache: "no-store" }
+    );
+    if (!res.success) {
+      console.error("[System Users] Failed to load users.", {
+        status: res.status,
+        message: res.message,
+        requestId: res.requestId,
       });
-      lastStatus = response.status;
-      lastRequestId = response.headers.get("X-Request-Id") ?? requestId;
-
-      if (!response.ok) {
-        continue;
-      }
-
-      const text = await response.text();
-      const result = text ? JSON.parse(text) : null;
-      const users = extractUsersPayload(result);
-
-      if (Array.isArray(users)) {
-        return users.map(normalizeUserRecord);
-      }
-
-      if (result?.success === false) {
-        continue;
-      }
-    } catch {
-      lastStatus = undefined;
+      break;
     }
+    users.push(...extractUsersPayload(res.data).map(normalizeUserRecord));
+    if (page + 1 >= (res.data?.totalPages ?? 1)) break;
   }
-
-  console.error("[System Users] Failed to load users.", {
-    hasToken,
-    roleCode,
-    status: lastStatus,
-    requestId: lastRequestId,
-  });
-  return [];
+  return users;
 }
