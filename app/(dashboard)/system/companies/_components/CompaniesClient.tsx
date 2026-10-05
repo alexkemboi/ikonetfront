@@ -86,6 +86,7 @@ export default function CompaniesClient({ companies, canMutate }: Props) {
   const [tillNumber, setTillNumber] = useState("");
   const [clientKey, setClientKey] = useState("");
   const [clientSecret, setClientSecret] = useState("");
+  const [passkey, setPasskey] = useState("");
   const [isDefault, setIsDefault] = useState(false);
 
   const [branding, setBranding] = useState<BrandingForm>(EMPTY_BRANDING);
@@ -106,6 +107,7 @@ export default function CompaniesClient({ companies, canMutate }: Props) {
     setTillNumber("");
     setClientKey("");
     setClientSecret("");
+    setPasskey("");
     setIsDefault(false);
   }
 
@@ -145,12 +147,17 @@ export default function CompaniesClient({ companies, canMutate }: Props) {
       toast.error("Till number is required for TILL accounts.");
       return;
     }
+    if (accountType !== "BANK" && (!clientKey.trim() || !clientSecret.trim() || !passkey.trim())) {
+      toast.error("Consumer key, consumer secret and passkey are all required to collect payments.");
+      return;
+    }
     const payload: PaymentAccountPayload = {
       accountType,
       shortCode: shortCode.trim(),
       tillNumber: accountType === "TILL" ? tillNumber.trim() : undefined,
       clientKey: clientKey.trim() || undefined,
       clientSecret: clientSecret.trim() || undefined,
+      passkey: passkey.trim() || undefined,
       isDefault,
     };
     startTransition(async () => {
@@ -403,6 +410,11 @@ export default function CompaniesClient({ companies, canMutate }: Props) {
                 <Label htmlFor="pa-secret">Consumer secret</Label>
                 <Input id="pa-secret" type="password" placeholder="••••••••" value={clientSecret} onChange={(e) => setClientSecret(e.target.value)} />
               </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="pa-passkey">Passkey (M-Pesa online)</Label>
+              <Input id="pa-passkey" type="password" placeholder="••••••••" value={passkey} onChange={(e) => setPasskey(e.target.value)} />
+              <p className="text-xs text-muted-foreground">Issued by Safaricom with the consumer key and secret. Without it customers cannot be prompted to pay.</p>
             </div>
             <div className="flex items-center gap-2">
               <Checkbox id="pa-default" checked={isDefault} onCheckedChange={(checked) => setIsDefault(checked === true)} />
