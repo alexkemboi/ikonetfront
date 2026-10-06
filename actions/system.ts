@@ -138,7 +138,8 @@ export async function updateSystemUserRole(
 ): Promise<ApiResponse<ApiRoleUser | null>> {
   const res = await apiFetch<unknown>(`${SYSTEM_USERS_URL}/${id}/role`, {
     method: "PUT",
-    body: { role },
+    // the backend field is `roleCode` (AssignRoleRequest); `role` was refused as "Validation failed"
+    body: { roleCode: role },
     auth: "required",
     cache: "no-store",
   });

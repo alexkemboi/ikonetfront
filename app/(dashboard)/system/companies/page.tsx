@@ -1,6 +1,6 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import { listCompanies } from "@/actions/companies";
+import { getPaymentReadiness, listCompanies } from "@/actions/companies";
 import CompaniesClient from "./_components/CompaniesClient";
 
 export const metadata = { title: "Companies — Beesmart" };
@@ -11,8 +11,8 @@ export default async function CompaniesPage() {
   const isOperator = /^(SYSADMIN|ROLE_SYSADMIN|SUPER_ADMIN|ADMIN|ROLE_ADMIN|01|02|03)$/i.test(rawRole.trim());
   if (!isOperator) redirect("/dashboard");
 
-  const companies = await listCompanies();
+  const [companies, readiness] = await Promise.all([listCompanies(), getPaymentReadiness()]);
   const canMutate = /SYSADMIN|ROLE_SYSADMIN|SUPER_ADMIN/i.test(rawRole);
 
-  return <CompaniesClient companies={companies} canMutate={canMutate} />;
+  return <CompaniesClient companies={companies} readiness={readiness} canMutate={canMutate} />;
 }
