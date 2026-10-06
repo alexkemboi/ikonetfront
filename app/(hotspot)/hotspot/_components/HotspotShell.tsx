@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Wifi, Phone, Tv } from "lucide-react";
+import { Wifi, Tv } from "lucide-react";
 import HotspotFlow from "./HotspotFlow";
+import HotspotHelpline from "./HotspotHelpline";
 import TvDeviceSetup from "./TvDeviceSetup";
 import type { TvPackage } from "@/lib/types/tv";
 import type { TvDeviceDetails } from "@/lib/validation/tv-device";
@@ -122,10 +123,7 @@ export default function HotspotShell({ packages, initialCompanyCode, clientMac, 
           <p>
             Powered by <span className="font-medium text-foreground">{brand}</span>
           </p>
-          <p className="flex items-center gap-2 mx-auto">
-            <Phone className="w-4 h-4 text-foreground" />
-            <span>Support: <span className="font-medium text-foreground">{context?.supportPhone ?? "contact your provider"}</span></span>
-          </p>
+          <HotspotHelpline />
           <p>© 2026 {brand}. All rights reserved.</p>
         </div>
       </div>

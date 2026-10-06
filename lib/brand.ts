@@ -44,3 +44,14 @@ export function sanitizeErrorMessage(errorMsg: string): string {
   }
   return errorMsg;
 }
+
+/**
+ * Helpline shown on the hotspot purchase page for every company: the Beesmart
+ * office line, which handles hotspot support for the platform.
+ */
+export const PORTAL_HELPLINE = {
+  label: "Beesmart Office",
+  display: "0706 354 194",
+  tel: "+254706354194",
+  hours: "09:00 – 18:00",
+} as const;
