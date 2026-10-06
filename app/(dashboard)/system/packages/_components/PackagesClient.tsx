@@ -26,6 +26,7 @@ import {
  updatePackageAction,
  deletePackageAction,
  deactivatePackageAction,
+ approvePackageAction,
 } from "@/actions/packages";
 
 // ── Category config ────────────────────────────────────────────────────────────
@@ -411,6 +412,18 @@ export default function PackagesClient({
  }
  }
 
+ async function handleApprove(pkg: InternetPackage) {
+ setTogglingId(pkg.idxno);
+ const result = await approvePackageAction(pkg.idxno);
+ setTogglingId(null);
+ if (result.success && result.data) {
+ setPackages((prev) => prev.map((p) => p.idxno === pkg.idxno ? result.data as InternetPackage : p));
+ toast.success("Package approved", { description: `${pkg.packageName} is now offered to customers.` });
+ } else {
+ toast.error(result.message ?? "Failed to approve package");
+ }
+ }
+
  async function handleToggleActive(pkg: InternetPackage) {
  setTogglingId(pkg.idxno);
  let result;
@@ -582,6 +595,17 @@ export default function PackagesClient({
  <div className="flex items-center justify-center gap-2">
  {perms.canEdit && (
  <>
+ {/* A pending package is not offered to customers until someone approves it. */}
+ {!pkg.isApproved && (
+ <button
+ onClick={() => handleApprove(pkg)}
+ disabled={togglingId === pkg.idxno || deletingId === pkg.idxno}
+ className="inline-flex items-center gap-1 rounded-md border border-success/30 bg-success/5 px-2 py-1 text-xs font-medium text-success hover:bg-success/10 transition-colors disabled:opacity-50"
+ title="Approve this package so customers can buy it"
+ >
+ <ShieldCheck className="w-3.5 h-3.5" /> Approve
+ </button>
+ )}
  <button
  onClick={() => handleToggleActive(pkg)}
  disabled={togglingId === pkg.idxno || deletingId === pkg.idxno}

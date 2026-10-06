@@ -148,6 +148,31 @@ export async function deletePackageAction(
   }
 }
 
+// ── APPROVE package ───────────────────────────────────────────────────────────
+/**
+ * Approve a package. A new package is always created unapproved ("Pending"),
+ * and customers and the hotspot portal are only offered approved packages.
+ * The approver is the signed-in user, never a value from the browser.
+ */
+export async function approvePackageAction(
+  id: number
+): Promise<ApiResponse<InternetPackage>> {
+  try {
+    const session = await auth();
+    const res = await fetch(`${BASE()}/${id}`, {
+      method:  "PATCH",
+      headers: await getAuthHeaders(),
+      body:    JSON.stringify({ isApproved: true, approvedBy: session?.user?.username ?? session?.user?.name }),
+      cache:   "no-store",
+    });
+    const data: ApiResponse<InternetPackage> = await res.json();
+    if (data.success) REVALIDATE();
+    return data;
+  } catch {
+    return { status: 500, success: false, message: "Network error. Please try again.", data: {} as InternetPackage, timestamp: "" };
+  }
+}
+
 // ── DEACTIVATE package ────────────────────────────────────────────────────────
 export async function deactivatePackageAction(
   id: number
