@@ -1,7 +1,8 @@
 "use client";
 
 import { useCompanyScope } from "@/providers/CompanyScopeProvider";
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { useFormik } from "formik";
 import * as Yup from "yup";
 import { toast } from "sonner";
@@ -10,7 +11,6 @@ import { Button } from "@/components/ui/button";
 import { usePermissions } from "@/providers/PermissionsProvider";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import {
  Sheet,
@@ -21,30 +21,45 @@ import {
 } from "@/components/ui/sheet";
 import { DataTable } from "@/components/shared/data-table";
 import { useStaffUserColumns } from "./columns";
-import { addSystemUser, type UserData } from "@/actions/system";
+import {
+ addSystemUser,
+ deleteSystemUser,
+ getSystemUsersPage,
+ type SystemUsersPage,
+ type UserData,
+} from "@/actions/system";
 import type { ApiRole, ApiRoleUser } from "@/lib/types/roles";
 import { cn } from "@/lib/utils";
 import { EditUserSheet } from "./editusersheet";
-import { useAppDispatch, useAppSelector } from "@/store/hooks";
-import { setEditUserSheetOpen } from "@/store/slices/systemslice";
+
+import {
+ AlertDialog,
+ AlertDialogAction,
+ AlertDialogCancel,
+ AlertDialogContent,
+ AlertDialogDescription,
+ AlertDialogFooter,
+ AlertDialogHeader,
+ AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 // ── Validation ─────────────────────────────────────────────────────────────────
 
 const schema = Yup.object({
- fname: Yup.string().required("First name is required"),
- middleName: Yup.string().default(""),
- otherName: Yup.string().default(""),
+ fname: Yup.string().max(50).required("First name is required"),
+ middleName: Yup.string().max(50).default(""),
+ otherName: Yup.string().max(50).default(""),
  username: Yup.string()
  .min(3, "Minimum 3 characters")
  .max(50, "Maximum 50 characters")
  .matches(/^[A-Za-z0-9._@-]+$/, "Letters, numbers and . _ @ - only")
  .required("Username is required"),
- email: Yup.string().email("Enter a valid email").required("Email is required"),
+ email: Yup.string().max(100).email("Enter a valid email").optional(),
  phoneNumber: Yup.string()
- .matches(/^(07|01)\d{8}$/, "Enter a valid Kenyan number (07xxxxxxxx)")
- .required("Phone number is required"),
+ .matches(/^\+?[0-9]{7,15}$/, "Use an optional + followed by 7–15 digits")
+ .optional(),
  role: Yup.string().required("Role is required"),
- password: Yup.string().min(12, "Minimum 12 characters").required("Password is required"),
+ password: Yup.string().min(12, "Minimum 12 characters").max(128, "Maximum 128 characters").required("Password is required"),
  confirmPassword: Yup.string()
  .oneOf([Yup.ref("password")], "Passwords do not match")
  .required("Confirm your password"),
@@ -81,28 +96,38 @@ function Field({
 function CreateUserSheet({
  open,
  onClose,
+ onCreated,
  roles,
+ companyId,
 }: {
  open: boolean;
  onClose: () => void;
+ onCreated: () => void;
  roles: ApiRole[];
+ companyId: string | null;
 }) {
  const [showPassword, setShowPassword] = useState(false);
  const [showConfirm, setShowConfirm] = useState(false);
+ const router = useRouter();
 
  const formik = useFormik<FormValues>({
  initialValues: EMPTY,
  validationSchema: schema,
- onSubmit: async (values, { resetForm }) => {
+ onSubmit: async (values, { resetForm, setFieldError }) => {
+ if (!companyId) {
+ toast.error("Choose a company before creating a user.");
+ return;
+ }
  const payload: UserData = {
  fname: values.fname,
  middleName: values.middleName ?? "",
  otherName: values.otherName ?? "",
  username: values.username,
- email: values.email,
- phoneNumber: values.phoneNumber,
+ email: values.email || undefined,
+ phoneNumber: values.phoneNumber || undefined,
  role: values.role,
  password: values.password,
+ companyId,
  };
 
  const result = await addSystemUser(payload);
@@ -113,7 +138,16 @@ function CreateUserSheet({
  });
  resetForm();
  onClose();
+ onCreated();
+ router.refresh();
  } else {
+ const fieldByCode: Record<string, keyof FormValues> = {
+   USERNAME_ALREADY_EXISTS: "username",
+   EMAIL_ALREADY_EXISTS: "email",
+   PHONE_ALREADY_EXISTS: "phoneNumber",
+ };
+ const field = result.code ? fieldByCode[result.code] : undefined;
+ if (field) setFieldError(field, result.message);
  toast.error("Failed to create user", {
  description: result.message ?? "Something went wrong.",
  });
@@ -182,11 +216,11 @@ function CreateUserSheet({
  />
  </Field>
 
- <Field label="Phone Number" error={touched.phoneNumber ? errors.phoneNumber : undefined} required>
+ <Field label="Phone Number" error={touched.phoneNumber ? errors.phoneNumber : undefined}>
  <Input
  type="tel"
  inputMode="numeric"
- placeholder="07XX XXX XXX"
+ placeholder="+254712345678"
  {...formik.getFieldProps("phoneNumber")}
  className={cn(touched.phoneNumber && errors.phoneNumber && "border-destructive")}
  />
@@ -216,7 +250,7 @@ function CreateUserSheet({
  )}
  >
  <option value="">Select a role…</option>
- {roles.map((r) => (
+ {roles.filter((r) => !["05", "CUSTOMER"].includes(r.roleCode.toUpperCase())).map((r) => (
  <option key={r.roleCode} value={r.roleCode}>
  {r.name}
  </option>
@@ -233,7 +267,7 @@ function CreateUserSheet({
  <div className="relative">
  <Input
  type={showPassword ? "text" : "password"}
- placeholder="Min. 8 characters"
+ placeholder="Min. 12 characters"
  autoComplete="new-password"
  {...formik.getFieldProps("password")}
  className={cn("pr-10", touched.password && errors.password && "border-destructive")}
@@ -300,24 +334,74 @@ function SectionDivider({ label }: { label: string }) {
 // ── Main client ────────────────────────────────────────────────────────────────
 
 interface StaffUsersClientProps {
- users: ApiRoleUser[];
+  initialPage: SystemUsersPage;
  roles: ApiRole[];
+  isPlatformAdmin: boolean;
+  canManageUsers: boolean;
 }
 
-export default function StaffUsersClient({ users, roles }: StaffUsersClientProps) {
+export default function StaffUsersClient({ initialPage, roles, isPlatformAdmin, canManageUsers }: StaffUsersClientProps) {
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<ApiRoleUser | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<ApiRoleUser | null>(null);
+  const [page, setPage] = useState(initialPage);
+  const [pageIndex, setPageIndex] = useState(initialPage.number);
+  const [pageSize, setPageSize] = useState(initialPage.size || 20);
+  const [search, setSearch] = useState("");
+  const [roleFilter, setRoleFilter] = useState("");
+  const [activeFilter, setActiveFilter] = useState("");
+  const [isPending, startTransition] = useTransition();
+  const requestSequence = useRef(0);
   const perms = usePermissions("/system/users");
-  const { requireCompany } = useCompanyScope();
-  const editUser = useAppSelector((state) => state.system.editUserSheetOpen);
-  const dispatch = useAppDispatch();
-  const columns = useStaffUserColumns();
+  const { requireCompany, companyCode } = useCompanyScope();
+  const router = useRouter();
+  const reloadPage = useCallback(() => {
+    const requestId = ++requestSequence.current;
+    startTransition(async () => {
+    const response = await getSystemUsersPage({
+      page: pageIndex,
+      size: pageSize,
+      q: search,
+      role: roleFilter || undefined,
+      active: activeFilter === "" ? undefined : activeFilter === "true",
+    });
+    if (requestId !== requestSequence.current) return;
+    if (!response.success || !response.data) {
+      toast.error("Could not refresh system users", { description: response.message });
+      return;
+    }
+    setPage(response.data);
+    });
+  }, [pageIndex, pageSize, search, roleFilter, activeFilter]);
 
- 
+  useEffect(() => {
+    const timer = setTimeout(reloadPage, 250);
+    return () => clearTimeout(timer);
+  }, [reloadPage]);
 
- const activeCount = users.filter((u) => u.isactive).length;
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    const result = await deleteSystemUser(deleteTarget.idxno);
+    if (!result.success) {
+      toast.error("Failed to delete user", { description: result.message });
+      return;
+    }
+    toast.success("User deleted");
+    setDeleteTarget(null);
+    if (page.content.length === 1 && pageIndex > 0) setPageIndex((current) => current - 1);
+    else reloadPage();
+    router.refresh();
+  };
 
- return (
- <div className="space-y-6 p-8 pt-6">
+  const columns = useStaffUserColumns({
+    canEdit: canManageUsers && perms.canEdit,
+    canDelete: canManageUsers && perms.canDelete,
+    onEdit: setSelectedUser,
+    onDelete: setDeleteTarget,
+  });
+
+  return (
+  <div className="space-y-6 p-8 pt-6">
  {/* Page header */}
  <div className="flex items-start justify-between gap-4">
  <div>
@@ -328,11 +412,10 @@ export default function StaffUsersClient({ users, roles }: StaffUsersClientProps
  <h1 className="text-2xl font-normal tracking-normal">System Users</h1>
  </div>
  <p className="text-sm text-muted-foreground mt-1">
- {users.length} {users.length === 1 ? "user" : "users"} &middot;{" "}
- <span className="text-success font-medium">{activeCount} active</span>
+ {page.totalElements} {page.totalElements === 1 ? "user" : "users"} in this scope
  </p>
  </div>
- {perms.canCreate && (
+ {perms.canCreate && canManageUsers && (
  <Button onClick={() => requireCompany(() => setSheetOpen(true))} className="gap-2 shrink-0">
  <UserPlus className="w-4 h-4" />
  Add User
@@ -340,50 +423,86 @@ export default function StaffUsersClient({ users, roles }: StaffUsersClientProps
  )}
  </div>
 
- {/* Role summary pills */}
- {roles.length > 0 && (
- <div className="flex items-center gap-2 flex-wrap">
- {roles.map((role) => {
- const count = users.filter((u) => u.role === role.roleCode).length;
- return (
- <div
- key={role.roleCode}
- className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-border bg-card text-xs"
- >
- <span className="font-medium text-foreground">{role.name}</span>
- <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4">{count}</Badge>
- </div>
- );
- })}
- </div>
- )}
-
  <Separator />
 
-      {/* Table */}
-      <DataTable
-        columns={columns}
-        data={users}
-        searchPlaceholder="Search by name, email, username…"
-        toolbar={
-          <span className="text-xs text-muted-foreground hidden sm:inline">
-            {users.length} {users.length === 1 ? "user" : "users"}
-          </span>
-        }
-      />
+ <DataTable
+   columns={columns}
+   data={page.content}
+   searchPlaceholder="Search by username, name, email, or phone…"
+   searchValue={search}
+   onSearchChange={(value) => { setSearch(value); setPageIndex(0); }}
+   manualPagination
+   pageCount={Math.max(1, page.totalPages)}
+   pageIndex={pageIndex}
+   pageSize={pageSize}
+   totalRows={page.totalElements}
+   onPaginationChange={(nextPage, nextSize) => {
+     if (nextSize !== pageSize) setPageSize(nextSize);
+     setPageIndex(nextPage);
+   }}
+   loading={isPending}
+   toolbar={
+     <div className="flex items-center gap-2">
+       <select
+         aria-label="Filter by role"
+         value={roleFilter}
+         onChange={(event) => { setRoleFilter(event.target.value); setPageIndex(0); }}
+         className="h-8 rounded-md border border-input bg-background px-2 text-xs"
+       >
+         <option value="">All roles</option>
+         {roles.filter((role) => !["05", "CUSTOMER"].includes(role.roleCode.toUpperCase())).map((role) => (
+           <option key={role.roleCode} value={role.roleCode}>{role.name}</option>
+         ))}
+       </select>
+       <select
+         aria-label="Filter by active status"
+         value={activeFilter}
+         onChange={(event) => { setActiveFilter(event.target.value); setPageIndex(0); }}
+         className="h-8 rounded-md border border-input bg-background px-2 text-xs"
+       >
+         <option value="">All statuses</option>
+         <option value="true">Active</option>
+         <option value="false">Inactive</option>
+       </select>
+     </div>
+   }
+ />
 
  {/* Sheet */}
  <CreateUserSheet
  open={sheetOpen}
  onClose={() => setSheetOpen(false)}
+ onCreated={reloadPage}
  roles={roles}
+ companyId={companyCode}
  />
 
  <EditUserSheet
- open={editUser}
- onClose={() => dispatch(setEditUserSheetOpen(false))}
+ key={selectedUser?.idxno ?? "none"}
+ open={Boolean(selectedUser)}
+ user={selectedUser}
+ onClose={() => setSelectedUser(null)}
+ onLinked={reloadPage}
+ canLinkInvestor={isPlatformAdmin}
  roles={roles}
  />
+
+ <AlertDialog open={Boolean(deleteTarget)} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+   <AlertDialogContent>
+     <AlertDialogHeader>
+       <AlertDialogTitle>Delete system user?</AlertDialogTitle>
+       <AlertDialogDescription>
+         {deleteTarget?.fullName || deleteTarget?.username} will be deactivated and removed from normal user lists. Related records will remain.
+       </AlertDialogDescription>
+     </AlertDialogHeader>
+     <AlertDialogFooter>
+       <AlertDialogCancel>Cancel</AlertDialogCancel>
+       <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+         Delete user
+       </AlertDialogAction>
+     </AlertDialogFooter>
+   </AlertDialogContent>
+ </AlertDialog>
  </div>
  );
 }

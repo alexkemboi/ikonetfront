@@ -8,11 +8,18 @@ import { cn } from "@/lib/utils";
 import { CheckCircle2, MoreHorizontal, XCircle } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { useAppDispatch } from "@/store/hooks";
-import { setEditUserSheetOpen } from "@/store/slices/systemslice";
 
-export function useStaffUserColumns(): ColumnDef<ApiRoleUser>[] {
-  const dispatch = useAppDispatch();
+export function useStaffUserColumns({
+  canEdit,
+  canDelete,
+  onEdit,
+  onDelete,
+}: {
+  canEdit: boolean;
+  canDelete: boolean;
+  onEdit: (user: ApiRoleUser) => void;
+  onDelete: (user: ApiRoleUser) => void;
+}): ColumnDef<ApiRoleUser>[] {
   return [
   {
     accessorKey: "fullName",
@@ -134,7 +141,8 @@ export function useStaffUserColumns(): ColumnDef<ApiRoleUser>[] {
 
   {
     id: "actions",
-cell: () => {
+cell: ({ row }) => {
+ const user = row.original;
 
  return (
  <DropdownMenu>
@@ -146,12 +154,8 @@ cell: () => {
  </DropdownMenuTrigger>
  <DropdownMenuContent align="end">
  <DropdownMenuLabel>Actions</DropdownMenuLabel>
- <DropdownMenuItem
- // onClick={() => navigator.clipboard.writeText(payment.id)}
- onClick={() => dispatch(setEditUserSheetOpen(true))}
- >
- Edit user
- </DropdownMenuItem>
+ {canEdit && <DropdownMenuItem onClick={() => onEdit(user)}>Edit user</DropdownMenuItem>}
+ {canDelete && <DropdownMenuItem className="text-destructive" onClick={() => onDelete(user)}>Delete user</DropdownMenuItem>}
  
  </DropdownMenuContent>
  </DropdownMenu>

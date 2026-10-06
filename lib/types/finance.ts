@@ -27,22 +27,22 @@ export interface TrialBalanceResponse {
   credits: number;
   accounts: Array<{
     code: string;
-    name: string;
-    type: CoaType;
+    name?: string;
+    type?: CoaType;
     balance: number;
   }>;
 }
 
 export interface AccountPosting {
-  id: number;
+  id: number | string;
   accountCode: string;
   sourceType: string;
-  sourceId?: number;
+  sourceId?: number | string;
   amount: number;
   currency: string;
   occurredAt: string;
   memo?: string;
-  companyId?: number;
+  companyId?: number | string;
   regionId?: number;
   locationId?: number;
   stationId?: number;

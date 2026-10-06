@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState, useSyncExternalStore } from "react";
+import { useMemo, useState, useSyncExternalStore } from "react";
 import { Search, SortAsc, Filter } from "lucide-react";
 import { HotspotPackage } from "@/lib/types/hotspot";
 import PackageCard from "./PackageCard";

@@ -108,7 +108,7 @@ export function normalizeRole(role?: string | null): RoleName {
  */
 export function isPlatformAdminRole(role?: string | null): boolean {
   if (!role) return false;
-  return /SYSADMIN|ROLE_SYSADMIN|SUPER_ADMIN|ROLE_SUPER_ADMIN/i.test(role.trim());
+  return /^(?:ROLE_)?SYSADMIN$/i.test(role.trim());
 }
 
 /**
@@ -170,6 +170,9 @@ export type ApiRoleUser = {
   email: string;
   phoneNumber: string;
   canLogin: boolean;
+  companyId?: string | null;
+  stationId?: string | null;
+  investorId?: string | null;
 };
 
 /** Raw role shape returned by the API */

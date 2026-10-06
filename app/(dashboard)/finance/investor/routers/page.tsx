@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { getInvestorRouters } from "@/actions/investor";
 import { getPermissionForRoute } from "@/lib/data/nav";
-import { normalizeRole, ROLE_NAME } from "@/lib/types/roles";
+import { isPlatformAdminRole, normalizeRole, ROLE_NAME } from "@/lib/types/roles";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
@@ -22,15 +22,12 @@ export default async function InvestorRoutersPage() {
   const session = await auth();
   const role = normalizeRole(session?.user?.role);
 
-  // Investor 04 and Admin 01 allowed. Management only if backend grants the
-  // route explicitly; staff/customer are redirected to their landings.
-  if (role === ROLE_NAME.STAFF) redirect("/customers");
   if (role === ROLE_NAME.CUSTOMER) redirect("/portal/pppoe");
-  if (role === ROLE_NAME.MANAGEMENT) {
-    const routerPerm = await getPermissionForRoute("/finance/investor/routers");
-    if (!routerPerm.canView) redirect("/analytics");
+  if (role !== ROLE_NAME.INVESTOR && !isPlatformAdminRole(session?.user?.role)) {
+    redirect("/no-access");
   }
-  if (role !== ROLE_NAME.INVESTOR && role !== ROLE_NAME.ADMIN) redirect("/customers");
+  const routerPerm = await getPermissionForRoute("/finance/investor/routers");
+  if (!routerPerm.canView) redirect("/no-access");
 
   const { routers, message } = await getInvestorRouters();
 

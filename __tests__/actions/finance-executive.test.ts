@@ -84,6 +84,32 @@ describe("getLiveExecutiveDashboardData — profit & loss", () => {
     expect(pnl.hotspotRevenue).toBe(2500);
   });
 
+  it("presents signed credit-normal revenue as positive income", async () => {
+    server.use(
+      http.get(`${API_PREFIX}/finance/reports/profit-loss`, () =>
+        HttpResponse.json({
+          revenue: [
+            { accountCode: "4100", accountName: "PPPoE Revenue", amount: -7 },
+            { accountCode: "4200", accountName: "Hotspot Revenue", amount: -3 },
+          ],
+          expenses: [{ accountCode: "5100", accountName: "Operating Expenses", amount: 2 }],
+          totalRevenue: -10,
+          totalExpenses: 2,
+          netIncome: -8,
+        })
+      )
+    );
+
+    const { pnl } = await getLiveExecutiveDashboardData();
+    expect(pnl).toMatchObject({
+      totalRevenue: 10,
+      totalExpenses: 2,
+      netProfit: 8,
+      pppoeRevenue: 7,
+      hotspotRevenue: 3,
+    });
+  });
+
   it("never hard-fails on missing revenue lines", async () => {
     server.use(
       http.get(`${API_PREFIX}/finance/reports/profit-loss`, () =>
@@ -124,6 +150,65 @@ describe("getLiveExecutiveDashboardData — recent transactions", () => {
     expect(recentTransactions).toHaveLength(1);
     expect(recentTransactions[0].accountCode).toBe("1110");
   });
+
+  it("accepts UUID posting IDs from the live transactions endpoint", async () => {
+    server.use(
+      http.get(`${API_PREFIX}/finance/transactions`, () =>
+        HttpResponse.json({
+          success: true,
+          data: {
+            content: [
+              {
+                id: "7bf85e9b-f794-4780-a33e-6880be1f48eb",
+                accountCode: "1110",
+                sourceType: "MPESA_HOTSPOT",
+                sourceId: "86afcebb-6c22-4176-9e6a-063f47b7c959",
+                amount: 10,
+                currency: "KES",
+                occurredAt: "2026-10-01T04:52:28.978376",
+                companyId: "CMP-ADR-001",
+                createdAt: "2026-10-01T04:52:28.981436",
+              },
+            ],
+          },
+        })
+      )
+    );
+
+    const result = await getLiveExecutiveDashboardData();
+    expect(result.transactionsAvailable).toBe(true);
+    expect(result.recentTransactions[0]).toMatchObject({
+      id: "7bf85e9b-f794-4780-a33e-6880be1f48eb",
+      sourceId: "86afcebb-6c22-4176-9e6a-063f47b7c959",
+      accountCode: "1110",
+    });
+  });
+
+  it("reports the HTTP status when the transactions endpoint fails", async () => {
+    server.use(
+      http.get(`${API_PREFIX}/finance/transactions`, () =>
+        HttpResponse.json({ message: "Server error" }, { status: 503 })
+      )
+    );
+
+    const result = await getLiveExecutiveDashboardData();
+    expect(result.transactionsAvailable).toBe(false);
+    expect(result.errors).toContain("Recent transactions request failed (HTTP 503).");
+  });
+
+  it("identifies a successful response with incompatible posting fields", async () => {
+    server.use(
+      http.get(`${API_PREFIX}/finance/transactions`, () =>
+        HttpResponse.json({ data: { content: [{ accountCode: "1110", balance: 24 }] } })
+      )
+    );
+
+    const result = await getLiveExecutiveDashboardData();
+    expect(result.transactionsAvailable).toBe(false);
+    expect(result.errors).toContain(
+      "Recent transactions response did not match the expected posting fields (id, accountCode, amount, occurredAt)."
+    );
+  });
 });
 
 describe("getLiveExecutiveDashboardData — clearing balance", () => {
@@ -152,9 +237,57 @@ describe("getLiveExecutiveDashboardData — clearing balance", () => {
     expect(clearingBalance).toBe(1500);
   });
 
-  it("returns 0 when no clearing account exists", async () => {
-    const { clearingBalance } = await getLiveExecutiveDashboardData();
+  it("treats a valid balance response without a clearing-account posting as zero", async () => {
+    server.use(
+      http.get(`${API_PREFIX}/finance/coa/balance`, () =>
+        HttpResponse.json([
+          { accountCode: "1000", accountName: "Cash & Bank", balance: 400000, postingCount: 5 },
+        ])
+      )
+    );
+
+    const { clearingBalance, clearingBalanceAvailable, errors } = await getLiveExecutiveDashboardData();
     expect(clearingBalance).toBe(0);
+    expect(clearingBalanceAvailable).toBe(true);
+    expect(errors).not.toContain("M-Pesa clearing balance is unavailable or the account was not returned.");
+  });
+
+  it("treats a valid empty balance response as zero", async () => {
+    server.use(
+      http.get(`${API_PREFIX}/finance/coa/balance`, () => HttpResponse.json([]))
+    );
+
+    const { clearingBalance, clearingBalanceAvailable, errors } = await getLiveExecutiveDashboardData();
+    expect(clearingBalance).toBe(0);
+    expect(clearingBalanceAvailable).toBe(true);
+    expect(errors).toEqual([]);
+  });
+
+  it("shows valid zeroes and no warning when the company has no activity", async () => {
+    server.use(
+      http.get(`${API_PREFIX}/finance/reports/profit-loss`, () =>
+        HttpResponse.json(EMPTY_REPORT)
+      ),
+      http.get(`${API_PREFIX}/finance/transactions`, () =>
+        HttpResponse.json({ success: true, data: { content: [] } })
+      ),
+      http.get(`${API_PREFIX}/finance/coa/balance`, () => HttpResponse.json([]))
+    );
+
+    const result = await getLiveExecutiveDashboardData();
+    expect(result.pnlAvailable).toBe(true);
+    expect(result.transactionsAvailable).toBe(true);
+    expect(result.clearingBalanceAvailable).toBe(true);
+    expect(result.pnl).toMatchObject({
+      totalRevenue: 0,
+      totalExpenses: 0,
+      netProfit: 0,
+      pppoeRevenue: 0,
+      hotspotRevenue: 0,
+    });
+    expect(result.recentTransactions).toEqual([]);
+    expect(result.clearingBalance).toBe(0);
+    expect(result.errors).toEqual([]);
   });
 });
 
@@ -214,5 +347,36 @@ describe("getLiveExecutiveDashboardData — zero-safe", () => {
     });
     expect(data.recentTransactions).toEqual([]);
     expect(data.clearingBalance).toBe(0);
+    expect(data.pnlAvailable).toBe(false);
+    expect(data.transactionsAvailable).toBe(false);
+    expect(data.clearingBalanceAvailable).toBe(false);
+  });
+
+  it("rejects reversed date ranges before making API calls", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch");
+    const result = await getLiveExecutiveDashboardData("2026-08-31", "2026-08-01");
+
+    expect(result.pnlAvailable).toBe(false);
+    expect(result.errors).toContain("The start date must be on or before the end date.");
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it("does not treat malformed financial totals as a valid report", async () => {
+    server.use(
+      http.get(`${API_PREFIX}/finance/reports/profit-loss`, () =>
+        HttpResponse.json({
+          revenue: [],
+          expenses: [],
+          totalRevenue: "1000",
+          totalExpenses: 0,
+          netIncome: 1000,
+        })
+      )
+    );
+
+    const result = await getLiveExecutiveDashboardData();
+    expect(result.pnlAvailable).toBe(false);
+    expect(result.pnl.totalRevenue).toBe(0);
+    expect(result.errors[0]).toContain("Profit and loss data is unavailable");
   });
 });

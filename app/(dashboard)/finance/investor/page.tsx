@@ -4,10 +4,13 @@ import type { Metadata } from "next";
 import { auth } from "@/lib/auth";
 import { getInvestorMoneyFlowData } from "@/actions/investor";
 import { getPermissionForRoute } from "@/lib/data/nav";
-import { normalizeRole, ROLE_NAME } from "@/lib/types/roles";
+import { isPlatformAdminRole, normalizeRole, ROLE_NAME } from "@/lib/types/roles";
 import type { RouterAttributionItem } from "@/lib/types/investor";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 export const dynamic = "force-dynamic";
 
@@ -24,9 +27,18 @@ const formatKES = (value: number): string =>
 const formatDate = (value: string | null): string =>
   value ? new Date(value).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) : "—";
 
-export default async function InvestorPortalPage() {
+export default async function InvestorPortalPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ period?: string; companyId?: string; investorId?: string }>;
+}) {
   const session = await auth();
   const role = normalizeRole(session?.user?.role);
+  const platformAdmin = isPlatformAdminRole(session?.user?.role);
+  const params = await searchParams;
+  const period = params.period && /^\d{4}-(0[1-9]|1[0-2])$/.test(params.period)
+    ? params.period
+    : undefined;
 
   // RB-5.1 access guard:
   //  - investor (04)     → allowed (own routers)
@@ -39,7 +51,11 @@ export default async function InvestorPortalPage() {
   const pagePerms = await getPermissionForRoute("/finance/investor");
   if (!pagePerms.canView) redirect("/no-access");
 
-  const data = await getInvestorMoneyFlowData();
+  const data = await getInvestorMoneyFlowData({
+    period,
+    companyId: platformAdmin ? params.companyId : undefined,
+    investorId: platformAdmin ? params.investorId : undefined,
+  });
   const revenue = data.revenue;
   const routerRows: RouterAttributionItem[] = revenue?.routerBreakdown ?? [];
 
@@ -74,6 +90,43 @@ export default async function InvestorPortalPage() {
             Period {data.period} · Revenue, maintenance &amp; router attribution · Read-only
           </p>
         </div>
+
+        <form method="get" className="flex flex-wrap items-end gap-3 rounded-lg border border-border bg-card p-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="investor-period">Period</Label>
+            <Input id="investor-period" name="period" type="month" defaultValue={data.period} className="w-44" />
+          </div>
+          {platformAdmin && (
+            <>
+              <div className="space-y-1.5">
+                <Label htmlFor="investor-company-id">Company ID (optional)</Label>
+                <Input
+                  id="investor-company-id"
+                  name="companyId"
+                  defaultValue={params.companyId ?? ""}
+                  placeholder="Company code"
+                  className="w-48"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="investor-party-id">Investor ID (optional)</Label>
+                <Input
+                  id="investor-party-id"
+                  name="investorId"
+                  defaultValue={params.investorId ?? ""}
+                  placeholder="Investor UUID"
+                  className="w-56"
+                />
+              </div>
+            </>
+          )}
+          <Button type="submit" variant="outline">Apply filters</Button>
+          {platformAdmin && (
+            <p className="w-full text-xs text-muted-foreground">
+              Company and investor filters apply to the revenue summary; billing snapshots and agreements follow their backend list scope.
+            </p>
+          )}
+        </form>
 
         {!data.anyAvailable && (
           <div className="rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground">

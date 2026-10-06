@@ -3,7 +3,7 @@
 import { updateTag } from "next/cache";
 import { auth } from "@/lib/auth";
 import { BASE_URL, buildApiUrl } from "@/lib/constants";
-import { timeoutSignal, unwrapPostings } from "@/lib/finance/ledger";
+import { unwrapPostings } from "@/lib/finance/ledger";
 import { withCompanyContext } from "@/lib/companyContext";
 import type { ApiResponse } from "@/lib/types/auth";
 import type {
@@ -136,12 +136,39 @@ export async function getTrialBalance(): Promise<TrialBalanceResponse | null> {
       cache: "no-store",
     });
     if (!res.ok) return null;
-    const raw = unwrapData<TrialBalanceResponse>(await res.json());
+    const raw = unwrapData<unknown>(await res.json());
     if (typeof raw !== "object" || raw === null) return null;
-    if (typeof raw.delta !== "number" || typeof raw.isBalanced !== "boolean") return null;
-    if (typeof raw.debits !== "number" || typeof raw.credits !== "number") return null;
-    if (!Array.isArray(raw.accounts)) return null;
-    return raw;
+    const trialBalance = raw as Record<string, unknown>;
+    if (!isFiniteNumber(trialBalance.delta) || typeof trialBalance.isBalanced !== "boolean") return null;
+    if (!isFiniteNumber(trialBalance.debits) || !isFiniteNumber(trialBalance.credits)) return null;
+    if (!Array.isArray(trialBalance.accounts)) return null;
+
+    const accounts: TrialBalanceResponse["accounts"] = [];
+    for (const value of trialBalance.accounts) {
+      if (typeof value !== "object" || value === null) return null;
+      const account = value as Record<string, unknown>;
+      const code = typeof account.code === "string" ? account.code : account.accountCode;
+      if (typeof code !== "string" || !isFiniteNumber(account.balance)) return null;
+      const name =
+        typeof account.name === "string"
+          ? account.name
+          : typeof account.accountName === "string"
+            ? account.accountName
+            : undefined;
+      const type = ["ASSET", "LIABILITY", "EQUITY", "INCOME", "EXPENSE"].includes(
+        String(account.type)
+      )
+        ? (account.type as ChartOfAccountNode["type"])
+        : undefined;
+      accounts.push({ code, name, type, balance: account.balance });
+    }
+    return {
+      delta: trialBalance.delta,
+      isBalanced: trialBalance.isBalanced,
+      debits: trialBalance.debits,
+      credits: trialBalance.credits,
+      accounts,
+    };
   } catch (error) {
     console.error("[Finance] getTrialBalance error:", error);
     return null;
@@ -175,6 +202,22 @@ function zeroSafePnl(from: string, to: string): ProfitAndLossSummary {
   return { ...ZERO_PNL, startDate: from, endDate: to };
 }
 
+function isFiniteNumber(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value);
+}
+
+function isValidDateValue(value: string): boolean {
+  const datePart = value.slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(datePart)) return false;
+  const date = new Date(`${datePart}T00:00:00Z`);
+  if (Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== datePart) return false;
+  return value.length === 10 || /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2})?$/.test(value);
+}
+
+function toFinanceDateTime(value: string, endOfDay: boolean): string {
+  return value.length === 10 ? `${value}T${endOfDay ? "23:59:59" : "00:00:00"}` : value;
+}
+
 /**
  * Map the backend `ProfitLossReport` into the dashboard's `ProfitAndLossSummary`.
  * Revenue lines are matched by account code (4100 = PPPoE, 4200 = Hotspot per the
@@ -184,24 +227,39 @@ function normalizeProfitLossReport(
   json: unknown,
   from: string,
   to: string
-): ProfitAndLossSummary {
+): ProfitAndLossSummary | null {
   const report = unwrapData<ProfitLossReport>(json);
-  if (typeof report !== "object" || report === null) return zeroSafePnl(from, to);
-  const revenue = Array.isArray(report.revenue) ? report.revenue : [];
+  if (
+    typeof report !== "object" ||
+    report === null ||
+    !isFiniteNumber(report.totalRevenue) ||
+    !isFiniteNumber(report.totalExpenses) ||
+    !isFiniteNumber(report.netIncome) ||
+    !Array.isArray(report.revenue)
+  ) return null;
+  const revenue = report.revenue.filter(
+    (line) =>
+      typeof line?.accountCode === "string" &&
+      isFiniteNumber(line.amount)
+  );
 
   const match = (codes: string[], needles: string[]): number => {
     const byCode = revenue.find((line) => codes.includes(line.accountCode));
-    if (byCode) return byCode.amount;
+    if (byCode) return Math.abs(byCode.amount);
     const byName = revenue.find((line) =>
       needles.some((n) => (line.accountName ?? "").toLowerCase().includes(n))
     );
-    return byName?.amount ?? 0;
+    return Math.abs(byName?.amount ?? 0);
   };
 
+  // The ledger stores credit-normal income as negative balances. The report
+  // contract fixtures use positive totals, so invert net income only when the
+  // report's revenue total signals signed-ledger convention.
+  const signedLedgerConvention = report.totalRevenue < 0;
   return {
-    totalRevenue: report.totalRevenue ?? 0,
-    totalExpenses: report.totalExpenses ?? 0,
-    netProfit: report.netIncome ?? 0,
+    totalRevenue: Math.abs(report.totalRevenue),
+    totalExpenses: Math.abs(report.totalExpenses),
+    netProfit: signedLedgerConvention ? -report.netIncome : report.netIncome,
     pppoeRevenue: match(["4100"], ["pppoe"]),
     hotspotRevenue: match(["4200"], ["hotspot"]),
     startDate: report.startDate ?? from,
@@ -209,15 +267,21 @@ function normalizeProfitLossReport(
   };
 }
 
-/** Pick the M-Pesa clearing account (1110) balance; zero when unavailable. */
-function unwrapClearingBalance(json: unknown): number {
-  const list = unwrapData<AccountBalanceProjection[]>(json);
-  if (!Array.isArray(list)) return 0;
-  return (
-    list.find(
-      (b) => b.accountCode === "1110" || b.accountCode === "M_PESA_RECEIVABLE"
-    )?.balance ?? 0
-  );
+/** Pick the M-Pesa clearing account balance; a valid response without it means zero. */
+function unwrapClearingBalance(json: unknown): number | null {
+  const list = unwrapData<unknown>(json);
+  if (!Array.isArray(list)) return null;
+  for (const value of list) {
+    if (typeof value !== "object" || value === null) return null;
+    const account = value as Partial<AccountBalanceProjection>;
+    if (typeof account.accountCode !== "string" || !isFiniteNumber(account.balance)) {
+      return null;
+    }
+    if (account.accountCode === "1110" || account.accountCode === "M_PESA_RECEIVABLE") {
+      return account.balance;
+    }
+  }
+  return 0;
 }
 
 /**
@@ -236,51 +300,160 @@ export async function getLiveExecutiveDashboardData(
   pnl: ProfitAndLossSummary;
   recentTransactions: AccountPosting[];
   clearingBalance: number;
+  pnlAvailable: boolean;
+  transactionsAvailable: boolean;
+  clearingBalanceAvailable: boolean;
+  errors: string[];
 }> {
   const session = await auth();
   const token = session?.user?.apiToken;
 
   if (!token) {
-    return { pnl: zeroSafePnl("", ""), recentTransactions: [], clearingBalance: 0 };
+    return {
+      pnl: zeroSafePnl("", ""),
+      recentTransactions: [],
+      clearingBalance: 0,
+      pnlAvailable: false,
+      transactionsAvailable: false,
+      clearingBalanceAvailable: false,
+      errors: ["Your session is missing an API token. Sign in again to load financial data."],
+    };
   }
 
   try {
-    const toDateTime = (d?: string, endOfDay = false) =>
-      !d ? undefined : d.includes("T") ? d : `${d}T${endOfDay ? "23:59:59" : "00:00:00"}`;
-
     const window = currentMonthWindow();
-    const startDate = toDateTime(from || window.from, false) as string;
-    const endDate = toDateTime(to || window.to, true) as string;
+    const rawStart = from || window.from;
+    const rawEnd = to || window.to;
+    if (!isValidDateValue(rawStart) || !isValidDateValue(rawEnd)) {
+      return {
+        pnl: zeroSafePnl("", ""),
+        recentTransactions: [],
+        clearingBalance: 0,
+        pnlAvailable: false,
+        transactionsAvailable: false,
+        clearingBalanceAvailable: false,
+        errors: ["Enter valid dates using YYYY-MM-DD, with an optional time."],
+      };
+    }
+    if (Date.parse(rawStart) > Date.parse(rawEnd)) {
+      return {
+        pnl: zeroSafePnl("", ""),
+        recentTransactions: [],
+        clearingBalance: 0,
+        pnlAvailable: false,
+        transactionsAvailable: false,
+        clearingBalanceAvailable: false,
+        errors: ["The start date must be on or before the end date."],
+      };
+    }
+    const startDate = toFinanceDateTime(rawStart, false);
+    const endDate = toFinanceDateTime(rawEnd, true);
 
     const qs = new URLSearchParams({ startDate, endDate }).toString();
     const headers = await getAuthHeaders(companyScope);
-    const signal = timeoutSignal();
-
-    const [pnlRes, txRes, balanceRes] = await Promise.all([
+    const responses = await Promise.allSettled([
       fetch(buildApiUrl(`/finance/reports/profit-loss?${qs}`), {
         headers,
         cache: "no-store",
-        signal,
       }),
       fetch(
         buildApiUrl("/finance/transactions?page=0&size=10&sort=occurredAt,desc"),
-        { headers, cache: "no-store", signal }
+        { headers, cache: "no-store" }
       ),
-      fetch(buildApiUrl("/finance/coa/balance"), { headers, cache: "no-store", signal }),
+      fetch(buildApiUrl("/finance/coa/balance"), { headers, cache: "no-store" }),
     ]);
 
+    const errors: string[] = [];
+    const [pnlSettled, txSettled, balanceSettled] = responses;
+
+    let pnl: ProfitAndLossSummary | null = null;
+    if (pnlSettled.status === "fulfilled" && pnlSettled.value.ok) {
+      try {
+        pnl = normalizeProfitLossReport(await pnlSettled.value.json(), startDate, endDate);
+      } catch (error) {
+        console.error("[Finance] Invalid P&L response body:", error);
+      }
+    }
+    if (!pnl) errors.push("Profit and loss data is unavailable or did not match the expected API response.");
+
+    let recentTransactions: AccountPosting[] = [];
+    let transactionsAvailable = false;
+    let transactionsError = "Recent transactions are unavailable.";
+    if (txSettled.status === "rejected") {
+      console.error("[Finance] Recent transactions request failed:", txSettled.reason);
+      transactionsError = "Recent transactions request failed before a response was received.";
+    } else if (!txSettled.value.ok) {
+      transactionsError = `Recent transactions request failed (HTTP ${txSettled.value.status}).`;
+    } else {
+      try {
+        const json = await txSettled.value.json();
+        const postings = unwrapPostings(json);
+        const rawContent =
+          Array.isArray(json) ? json :
+          typeof json === "object" && json !== null && "data" in json
+            ? (json as { data?: { content?: unknown[] } | unknown[] }).data
+            : undefined;
+        const entries = Array.isArray(rawContent)
+          ? rawContent
+          : typeof rawContent === "object" && rawContent !== null && "content" in rawContent
+            ? rawContent.content
+            : typeof json === "object" && json !== null && "content" in json
+              ? (json as { content?: unknown[] }).content
+              : undefined;
+        if (Array.isArray(entries) && entries.every((entry) => {
+          if (!entry || typeof entry !== "object") return false;
+          const posting = entry as Partial<AccountPosting>;
+          const hasValidId =
+            (typeof posting.id === "string" && posting.id.trim().length > 0) ||
+            isFiniteNumber(posting.id);
+          return hasValidId &&
+            typeof posting.accountCode === "string" &&
+            isFiniteNumber(posting.amount) &&
+            typeof posting.occurredAt === "string";
+        })) {
+          recentTransactions = postings;
+          transactionsAvailable = true;
+        } else {
+          transactionsError =
+            "Recent transactions response did not match the expected posting fields (id, accountCode, amount, occurredAt).";
+        }
+      } catch (error) {
+        console.error("[Finance] Invalid transactions response body:", error);
+        transactionsError = "Recent transactions response body could not be parsed.";
+      }
+    }
+    if (!transactionsAvailable) errors.push(transactionsError);
+
+    let clearingBalance: number | null = null;
+    if (balanceSettled.status === "fulfilled" && balanceSettled.value.ok) {
+      try {
+        clearingBalance = unwrapClearingBalance(await balanceSettled.value.json());
+      } catch (error) {
+        console.error("[Finance] Invalid account balance response body:", error);
+      }
+    }
+    if (clearingBalance === null) errors.push("M-Pesa clearing balance is unavailable or the account was not returned.");
+
     return {
-      pnl: pnlRes.ok
-        ? normalizeProfitLossReport(await pnlRes.json(), startDate, endDate)
-        : zeroSafePnl(startDate, endDate),
-      recentTransactions: txRes.ok ? unwrapPostings(await txRes.json()) : [],
-      clearingBalance: balanceRes.ok
-        ? unwrapClearingBalance(await balanceRes.json())
-        : 0,
+      pnl: pnl ?? zeroSafePnl(startDate, endDate),
+      recentTransactions,
+      clearingBalance: clearingBalance ?? 0,
+      pnlAvailable: pnl !== null,
+      transactionsAvailable,
+      clearingBalanceAvailable: clearingBalance !== null,
+      errors,
     };
   } catch (error) {
     console.error("[Finance] getLiveExecutiveDashboardData error:", error);
-    return { pnl: zeroSafePnl("", ""), recentTransactions: [], clearingBalance: 0 };
+    return {
+      pnl: zeroSafePnl("", ""),
+      recentTransactions: [],
+      clearingBalance: 0,
+      pnlAvailable: false,
+      transactionsAvailable: false,
+      clearingBalanceAvailable: false,
+      errors: ["Financial dashboard data could not be loaded. Please retry."],
+    };
   }
 }
 

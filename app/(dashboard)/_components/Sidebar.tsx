@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
  LayoutDashboard, Receipt, Users, Network, Headphones,
  BarChart3, Settings, Shield, UserCog, Server, ChevronRight,
- LogOut, Home, FileText, CreditCard, PieChart, Wifi,
+ LogOut, Home, FileText, CreditCard, PieChart, Wifi, X,
  // Material icon aliases (API returns Material Design icon names)
  ShieldCheck, BadgeCheck, User, BarChart, Users2,
  CheckCircle2, Package, Bell, MessageSquare, Mail,
@@ -362,6 +362,7 @@ export type SidebarProps = {
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
   isMobile?: boolean;
+  onCloseMobile?: () => void;
 };
 
 // ── Sidebar inner content (shared between desktop aside + mobile Sheet) ──
@@ -372,6 +373,7 @@ export function SidebarInner({
   isCollapsed = false,
   onToggleCollapse,
   isMobile = false,
+  onCloseMobile,
 }: SidebarProps) {
   const router = useRouter();
 
@@ -399,7 +401,16 @@ export function SidebarInner({
             </div>
           ) : null}
 
-          {!isMobile && onToggleCollapse && (
+          {isMobile ? (
+            <button
+              type="button"
+              onClick={onCloseMobile}
+              className="rounded-lg p-2 text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+              aria-label="Close navigation"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          ) : onToggleCollapse && (
             <button
               type="button"
               onClick={onToggleCollapse}
