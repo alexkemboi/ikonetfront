@@ -32,22 +32,31 @@ describe("getInvestorMoneyFlowData (RB-5 / D-35)", () => {
     vi.clearAllMocks();
   });
 
-  it("role 04 reads only revenue and never calls snapshots/agreements", async () => {
+  // Owner decision 2026-10-06 (supersedes D-35 for the investor's own login): an
+  // investor reads their own agreements and month-end statements; the backend
+  // pins role 04 to its own investor scope on both endpoints.
+  it("role 04 reads its own revenue, statements and agreements, with no scope filters", async () => {
     authMock.mockResolvedValue({ user: { role: "04", apiToken: "token" } });
     const fetchMock = fetch as unknown as ReturnType<typeof vi.fn>;
-    fetchMock.mockResolvedValue(jsonResponse(revenueBody));
+    fetchMock.mockImplementation((url: string) => {
+      const target = String(url);
+      if (target.includes("/investor/revenue")) return Promise.resolve(jsonResponse(revenueBody));
+      if (target.includes("/investor/billing-snapshots")) return Promise.resolve(jsonResponse([{ id: "s1" }]));
+      if (target.includes("/investor/agreements")) return Promise.resolve(jsonResponse([{ id: "a1" }]));
+      return Promise.resolve(jsonResponse(null));
+    });
 
-    const data = await getInvestorMoneyFlowData();
+    const data = await getInvestorMoneyFlowData({ companyId: "CMP-X", investorId: "someone-else" });
 
-    expect(data.billingDetailsVisible).toBe(false);
-    expect(data.snapshots).toEqual([]);
-    expect(data.agreements).toEqual([]);
-    expect(data.allAvailable).toBe(true);
+    expect(data.billingDetailsVisible).toBe(true);
+    expect(data.snapshots).toHaveLength(1);
+    expect(data.agreements).toHaveLength(1);
 
     const urls = fetchMock.mock.calls.map((call) => String(call[0]));
-    expect(urls.some((u) => u.includes("/investor/revenue"))).toBe(true);
-    expect(urls.some((u) => u.includes("/investor/billing-snapshots"))).toBe(false);
-    expect(urls.some((u) => u.includes("/investor/agreements"))).toBe(false);
+    expect(urls.some((u) => u.includes("/investor/billing-snapshots"))).toBe(true);
+    expect(urls.some((u) => u.includes("/investor/agreements"))).toBe(true);
+    // an investor can never ask for another investor's or company's figures
+    expect(urls.some((u) => u.includes("someone-else") || u.includes("CMP-X"))).toBe(false);
   });
 
   it("company role (01) reads revenue only, hides billing detail", async () => {

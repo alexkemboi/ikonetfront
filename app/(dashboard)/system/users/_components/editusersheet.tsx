@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { InvestorPicker } from "./InvestorPicker";
+import type { InvestorOption } from "@/lib/types/investor";
 import {
   Sheet,
   SheetContent,
@@ -51,6 +53,7 @@ export function EditUserSheet({
   user,
   roles,
   canLinkInvestor,
+  investors,
   onLinked,
 }: {
   open: boolean;
@@ -58,6 +61,8 @@ export function EditUserSheet({
   user: ApiRoleUser | null;
   roles: ApiRole[];
   canLinkInvestor: boolean;
+  /** Active investors of the register, offered when linking a Network Partner account. */
+  investors: InvestorOption[];
   onLinked: () => void;
 }) {
   const [investorId, setInvestorId] = useState("");
@@ -199,13 +204,8 @@ export function EditUserSheet({
               </div>
               {canLinkInvestor && user.role === "04" && (
                 <div className="space-y-2 rounded-md border p-3">
-                  <Label htmlFor="investor-id">Investor ID</Label>
-                  <Input
-                    id="investor-id"
-                    value={investorId}
-                    onChange={(event) => setInvestorId(event.target.value)}
-                    placeholder="Investor UUID"
-                  />
+                  <Label>Investor</Label>
+                  <InvestorPicker value={investorId} onChange={setInvestorId} options={investors} />
                   <p className="text-xs text-muted-foreground">
                     Linking updates investor scope on the next sign-in.
                   </p>

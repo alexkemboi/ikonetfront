@@ -11,14 +11,15 @@ export const INVESTOR_ID_PATTERN =
 const OTHER = "__other__";
 
 function optionLabel(option: InvestorOption): string {
-  const what = option.agreements.length > 0 ? option.agreements.join(", ") : "Router owner, no agreement";
-  return `${what} · used by ${option.usernames.join(", ")}`;
+  const agreements = option.agreements.length > 0 ? ` · ${option.agreements.join(", ")}` : "";
+  const used = option.usernames.length > 0 ? ` · used by ${option.usernames.join(", ")}` : "";
+  return `${option.legalName} (${option.code})${agreements}${used}`;
 }
 
 /**
- * Chooses the investor party behind a Network Partner account. Known parties
- * are offered by name; any other is entered by its id, because the backend has
- * no endpoint that lists investor parties.
+ * Chooses the investor behind a Network Partner account from the investor
+ * register (Finance > Investors). Entering an id by hand stays possible, but the
+ * backend only accepts an investor that is in the register.
  */
 export function InvestorPicker({
   value,
@@ -71,8 +72,8 @@ export function InvestorPicker({
         />
       )}
       <p className="text-xs text-muted-foreground">
-        The investor must already have an agreement or a router assigned. The ID is the investor
-        id on that agreement or router.
+        Investors are registered under Finance &gt; Investors. Register the investor there first if
+        it is not in this list.
       </p>
     </div>
   );

@@ -120,9 +120,9 @@ export interface InvestorMoneyFlowData {
   agreements: InvestorAgreement[];
   agreementsMessage: string;
   /**
-   * True only for SYSADMIN: `/agreements` and `/billing-snapshots` are
-   * platform-admin-only (RB-5 / D-35), so a Network Partner (role 04) must not
-   * fetch or render those sections.
+   * True for SYSADMIN and for a Network Partner (role 04): an investor reads
+   * their own agreements and month-end statements (owner decision 2026-10-06).
+   * Company staff see the revenue summary only.
    */
   billingDetailsVisible: boolean;
   /** True when every endpoint returned a usable payload. */
@@ -142,11 +142,114 @@ export function investorSectionError<T>(message: string): ApiResponse<T> {
   };
 }
 
-/** An investor party offered when creating or linking a Network Partner account. */
+/** An investor from the register, offered when creating or linking a Network Partner account. */
 export interface InvestorOption {
   investorId: string;
-  /** "Name (code)" of the party's agreements; empty when it only owns routers. */
+  /** Register code, e.g. INV-000001. */
+  code: string;
+  legalName: string;
+  /** Names of the investor's active agreements. */
   agreements: string[];
-  /** Accounts already linked to this party. */
+  /** Accounts already linked to this investor. */
   usernames: string[];
+}
+
+// ── Investor set-up (register, agreements, router ownership) ────────────────
+
+export type RuleServiceType = "HOTSPOT" | "PPPOE";
+export type RuleBasis = "PERCENTAGE_OF_GROSS" | "FIXED_PER_ACTIVE_SUBSCRIBER" | "FIXED_MONTHLY";
+
+export interface InvestorCompanyLink {
+  companyCode: string;
+  companyName: string;
+  status: string;
+  since: string | null;
+}
+
+export interface InvestorRule {
+  id?: string;
+  serviceType: RuleServiceType;
+  calculationBasis: RuleBasis;
+  rateValue: number;
+  currency?: string;
+}
+
+export interface InvestorAgreementDetail {
+  id: string;
+  agreementCode: string;
+  companyCode: string;
+  companyName: string | null;
+  investorId: string;
+  name: string;
+  effectiveStartDate: string;
+  effectiveEndDate: string | null;
+  status: "ACTIVE" | "TERMINATED";
+  rules: InvestorRule[];
+}
+
+export interface RouterAssignment {
+  id: string;
+  routerId: number;
+  routerName: string | null;
+  stationName: string | null;
+  companyCode: string;
+  companyName: string;
+  investorId: string;
+  investorCode: string;
+  investorName: string;
+  agreementId: string;
+  agreementCode: string;
+  startDate: string;
+  endDate: string | null;
+  notes: string | null;
+}
+
+export interface InvestorAccount {
+  userId: number;
+  username: string;
+  fullName: string | null;
+  active: boolean;
+}
+
+export interface InvestorSummary {
+  id: string;
+  code: string;
+  legalName: string;
+  contactName: string | null;
+  phone: string | null;
+  email: string | null;
+  status: "ACTIVE" | "RETIRED";
+  companies: InvestorCompanyLink[];
+  agreementCount: number;
+  routerCount: number;
+  accountCount: number;
+}
+
+export interface InvestorDetail extends Omit<InvestorSummary, "agreementCount" | "routerCount" | "accountCount"> {
+  notes: string | null;
+  agreements: InvestorAgreementDetail[];
+  routers: RouterAssignment[];
+  accounts: InvestorAccount[];
+}
+
+export interface InvestorInput {
+  legalName: string;
+  contactName?: string;
+  phone?: string;
+  email?: string;
+  notes?: string;
+  status?: "ACTIVE" | "RETIRED";
+}
+
+export interface AgreementInput {
+  name: string;
+  effectiveStartDate: string;
+  effectiveEndDate?: string;
+  rules: InvestorRule[];
+}
+
+export interface BillingRunResult {
+  period: string;
+  agreements: number;
+  statementsCreated: number;
 }
