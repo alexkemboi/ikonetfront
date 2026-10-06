@@ -18,7 +18,7 @@
 import { withCompanyContext } from "@/lib/companyContext";
 import { auth } from "@/lib/auth";
 import { buildApiUrl } from "@/lib/constants";
-import { getSystemUsers } from "@/actions/system";
+import { apiFetch } from "@/lib/apiClient";
 import { isInvestorRole, isPlatformAdminRole } from "@/lib/types/roles";
 import type {
   InvestorAgreement,
@@ -153,8 +153,9 @@ export async function getInvestorMoneyFlowData(
     : defaultPeriod();
   const headers = await getAuthHeaders();
   const session = await auth();
-  const billingDetailsVisible = isSysadminRole(session?.user?.role);
-  const scopeFilters = billingDetailsVisible
+  const billingDetailsVisible =
+    isSysadminRole(session?.user?.role) || isInvestorRole(session?.user?.role);
+  const scopeFilters = isSysadminRole(session?.user?.role)
     ? {
         companyId: input.companyId?.trim() || undefined,
         investorId: input.investorId?.trim() || undefined,
@@ -222,33 +223,12 @@ export async function getInvestorRouters(): Promise<{
 }
 
 /**
- * Investor parties a SYSADMIN can pick when creating or linking a Network
- * Partner account.
- *
- * The backend has no "list investors" endpoint: a party exists only as the
- * `investorId` on agreements and router ownership. So the list is the parties
- * already linked to an account, labelled with their agreements. A party with no
- * account yet has to be entered by id.
+ * Investors a SYSADMIN can pick when creating or linking a Network Partner
+ * account: the active investors of the register (`GET /investors/parties`).
  */
 export async function getInvestorOptions(): Promise<InvestorOption[]> {
   const session = await auth();
   if (!isSysadminRole(session?.user?.role)) return [];
-
-  const linked = new Map<string, string[]>();
-  for (const user of await getSystemUsers()) {
-    if (!isInvestorRole(user.role) || !user.investorId) continue;
-    linked.set(user.investorId, [...(linked.get(user.investorId) ?? []), user.username]);
-  }
-
-  const headers = await getAuthHeaders();
-  return Promise.all(
-    Array.from(linked, async ([investorId, usernames]) => {
-      const { agreements } = await getAgreements(headers, investorId);
-      return {
-        investorId,
-        agreements: agreements.map((a) => `${a.name} (${a.agreementCode})`),
-        usernames,
-      };
-    })
-  );
+  const res = await apiFetch<InvestorOption[]>("/investors/parties", { auth: "required", cache: "no-store" });
+  return res.success && Array.isArray(res.data) ? res.data : [];
 }

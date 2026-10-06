@@ -531,6 +531,7 @@ export default function StaffUsersClient({ initialPage, roles, isPlatformAdmin, 
  onClose={() => setSelectedUser(null)}
  onLinked={reloadPage}
  canLinkInvestor={isPlatformAdmin}
+ investors={investors}
  roles={roles}
  />
 
