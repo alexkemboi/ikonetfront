@@ -230,6 +230,20 @@ const { handlers, auth: nextAuth, signIn, signOut } = NextAuth({
           const rawRole = loginRes.data.role || decoded?.role;
           if (!rawRole) return null;
 
+          // The sign-in page names an organisation; an account that belongs to a
+          // different company is refused exactly like a wrong password. Accounts
+          // with no company (an investor in several companies) are not tied to one.
+          const organisation = (credentials as Record<string, unknown>).organisation;
+          const accountCompany = decoded?.companyScope ?? decoded?.companyId;
+          if (
+            typeof organisation === "string" && organisation.trim() !== "" &&
+            typeof accountCompany === "string" && accountCompany.trim() !== "" &&
+            organisation.trim().toUpperCase() !== accountCompany.trim().toUpperCase()
+          ) {
+            console.warn("[Auth] Sign-in refused: account does not belong to the organisation entered.");
+            return null;
+          }
+
           return {
             id: decoded?.userId || decoded?.sub || loginRes.data.username,
             userId: decoded?.userId,

@@ -10,8 +10,7 @@ interface Props {
 const STEPS = [
  { step: 1, label: "Identity" },
  { step: 2, label: "Provision" },
- { step: 3, label: "Services" },
- { step: 4, label: "Done" },
+ { step: 3, label: "Done" },
 ];
 
 export function ProvisioningStepper({ currentStep }: Props) {

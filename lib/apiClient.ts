@@ -106,14 +106,6 @@ export async function apiFetch<T = unknown>(
     const requestId = (data as { requestId?: unknown }).requestId;
     return typeof requestId === "string" ? requestId : undefined;
   }
-  function errorCodeFromBody(value: unknown): string | undefined {
-    if (!value || typeof value !== "object") return undefined;
-    const envelope = value as { code?: unknown; data?: unknown };
-    if (typeof envelope.code === "string") return envelope.code;
-    if (!envelope.data || typeof envelope.data !== "object") return undefined;
-    const code = (envelope.data as { code?: unknown }).code;
-    return typeof code === "string" ? code : undefined;
-  }
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     ...extraHeaders,
@@ -194,7 +186,6 @@ export async function apiFetch<T = unknown>(
 
       if (parsed && typeof parsed === "object") {
         const api = parsed as ApiResponse<T>;
-        const errorCode = errorCodeFromBody(parsed);
         return {
           status: (api.status as number) ?? res.status,
           success: false,

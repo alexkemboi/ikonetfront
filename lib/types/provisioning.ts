@@ -56,18 +56,61 @@ export interface NasRouterKpis {
   rowsWithTelemetry?: number;
 }
 
-export interface ProvisioningScriptResponse {
-  routerId: string;
+/** What the operator supplies in step 1 of the ZTP wizard. */
+export interface ZtpBootstrapInput {
   identity: string;
-  token: string;
-  fetchCommand: string;
-  deviceModeRequired: boolean;
+  acknowledgeDestructiveReset: boolean;
+  hotspotEnabled: boolean;
+  pppoeEnabled: boolean;
 }
 
-export interface RouterServicesConfigRequest {
-  routerId: string;
-  enableHotspot: boolean;
-  enablePppoe: boolean;
-  hotspotInterface?: string;
-  pppoeInterface?: string;
+/** `data` of POST /provision/bootstrap-tokens (BootstrapTokenResponse). */
+export interface BootstrapTokenResponse {
+  /** network_device.id — NOT network_routers.idxno. */
+  routerId?: number | null;
+  /** network_routers.idxno. */
+  routerIdxno?: number | null;
+  identity?: string | null;
+  allocatedVpnIp?: string | null;
+  fetchCommand?: string | null;
+  /** Zoneless — backend business time (Africa/Nairobi). */
+  expiresAt?: string | null;
+  status?: string | null;
+}
+
+export type ZtpSessionStatus = "PENDING" | "DELIVERED" | "COMPLETED" | "EXPIRED" | "REVOKED" | "NONE";
+
+/** `data` of GET /provision/devices/{deviceId}/status (ProvisioningStatusResponse). */
+export interface ProvisioningStatusResponse {
+  routerId?: number | null;
+  routerIdxno?: number | null;
+  identity?: string | null;
+  vpnIp?: string | null;
+  status?: ZtpSessionStatus | null;
+  expiresAt?: string | null;
+  deliveredAt?: string | null;
+  online?: boolean;
+  apiAuthenticated?: boolean;
+}
+
+export interface ProvisioningScriptResponse {
+  /** network_device.id as a string — the id /provision/devices/{id}/status expects. */
+  deviceId: string;
+  /** network_routers.idxno — the id the monitoring/action endpoints expect. */
+  routerIdxno: number | null;
+  identity: string;
+  fetchCommand: string;
+  allocatedVpnIp: string | null;
+  /** ISO instant with an explicit offset. */
+  expiresAt: string | null;
+}
+
+export type ZtpScriptResult =
+  | { success: true; data: ProvisioningScriptResponse }
+  | { success: false; message: string };
+
+/** What the Step 2 poller needs; `status` is null when the poll itself failed. */
+export interface ZtpProvisioningStatus {
+  status: ZtpSessionStatus | null;
+  online: boolean;
 }

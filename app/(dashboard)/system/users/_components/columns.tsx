@@ -1,7 +1,7 @@
 "use client";
 
 import { ColumnDef } from "@tanstack/react-table";
-import { ApiRoleUser } from "@/lib/types/roles";
+import { ApiRoleUser, isInvestorRole } from "@/lib/types/roles";
 import { DataTableColumnHeader } from "@/components/shared/column-header";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -73,10 +73,19 @@ export function useStaffUserColumns({
  ),
  cell: ({ row }) => {
  const role: string = row.getValue("roleName");
+ // A Network Partner with no investor record sees no routers and no revenue.
+ const unlinked = isInvestorRole(row.original.role) && !row.original.investorId;
  return (
+ <div className="flex flex-wrap items-center gap-1.5">
  <Badge variant="outline" className="text-[11px] font-medium capitalize bg-primary/5 text-primary border-primary/20">
  {role}
  </Badge>
+ {unlinked && (
+ <Badge variant="outline" className="text-[11px] bg-warning/10 text-warning border-warning/30">
+ No investor linked
+ </Badge>
+ )}
+ </div>
  );
  },
  },

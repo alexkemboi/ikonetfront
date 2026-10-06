@@ -1,26 +1,33 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ProvisioningStepper } from "@/components/provisioning/ProvisioningStepper";
 import { Step1Identity } from "@/components/provisioning/Step1Identity";
 import { Step2Script } from "@/components/provisioning/Step2Script";
-import { Step3Services } from "@/components/provisioning/Step3Services";
-import { Step4Done } from "@/components/provisioning/Step4Done";
+import { Step3Done } from "@/components/provisioning/Step3Done";
 import { generateZtpScript } from "@/actions/provisioning";
-import { ProvisioningScriptResponse } from "@/lib/types/provisioning";
+import type { ProvisioningScriptResponse, ZtpBootstrapInput } from "@/lib/types/provisioning";
 
 export default function RouterSetupWizardPage() {
  const router = useRouter();
  const [step, setStep] = useState(1);
- const [identity, setIdentity] = useState("");
  const [scriptData, setScriptData] = useState<ProvisioningScriptResponse | null>(null);
 
- async function handleIdentitySubmit(inputIdentity: string) {
- setIdentity(inputIdentity);
- const data = await generateZtpScript(inputIdentity);
- setScriptData(data);
+ async function handleIdentitySubmit(input: ZtpBootstrapInput): Promise<string | null> {
+ const result = await generateZtpScript(input);
+ if (!result.success) return result.message;
+ setScriptData(result.data);
  setStep(2);
+ return null;
+ }
+
+ // Stable identity: Step2Script restarts its poll loop whenever this changes.
+ const handleConnected = useCallback(() => setStep(3), []);
+
+ function handleRestart() {
+ setScriptData(null);
+ setStep(1);
  }
 
  return (
@@ -32,7 +39,7 @@ export default function RouterSetupWizardPage() {
  </span>
  <h1 className="text-3xl font-sans font-normal text-foreground">Link a MikroTik.</h1>
  <p className="mt-1 text-xs text-muted-foreground">
- Register the router, paste the provisioning script on RouterOS, then choose PPPoE or Hotspot services.
+ Register the router, paste the provisioning script on RouterOS, and wait for it to check in.
  </p>
  </div>
 
@@ -52,18 +59,12 @@ export default function RouterSetupWizardPage() {
  {step === 2 && scriptData && (
  <Step2Script
  scriptData={scriptData}
- onConnected={() => setStep(3)}
+ onConnected={handleConnected}
+ onRestart={handleRestart}
  />
  )}
 
- {step === 3 && scriptData && (
- <Step3Services
- routerId={scriptData.routerId}
- onComplete={() => setStep(4)}
- />
- )}
-
- {step === 4 && <Step4Done identity={identity} />}
+ {step === 3 && scriptData && <Step3Done identity={scriptData.identity} routerIdxno={scriptData.routerIdxno} />}
  </div>
  </div>
  );

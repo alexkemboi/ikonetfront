@@ -1,5 +1,6 @@
 import { getRolesAction } from "@/actions/roles";
 import { getSystemUsersPage } from "@/actions/system";
+import { getInvestorOptions } from "@/actions/investor";
 import { Suspense } from "react";
 import StaffUsersClient from "./_components/StaffUsersClient";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -15,10 +16,11 @@ async function StaffUsersPage() {
  const pagePerms = permissions["/system/users"] ?? NO_PERMISSIONS;
  if (!pagePerms.canView) redirect("/dashboard");
 
- const [usersRes, rolesRes, session] = await Promise.all([
+ const [usersRes, rolesRes, session, investors] = await Promise.all([
  getSystemUsersPage({ page: 0, size: 20 }),
  getRolesAction(),
  auth(),
+ getInvestorOptions(),
  ]);
 
  const roles = rolesRes?.data ?? [];
@@ -36,6 +38,7 @@ async function StaffUsersPage() {
      roles={roles}
      isPlatformAdmin={isPlatformAdminRole(session?.user?.role)}
      canManageUsers={normalizeRole(session?.user?.role) === ROLE_NAME.ADMIN}
+     investors={investors}
    />
  );
 }

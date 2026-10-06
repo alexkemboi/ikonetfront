@@ -21,6 +21,8 @@ import {
 } from "@/components/ui/sheet";
 import { DataTable } from "@/components/shared/data-table";
 import { useStaffUserColumns } from "./columns";
+import { INVESTOR_ID_PATTERN, InvestorPicker } from "./InvestorPicker";
+import type { InvestorOption } from "@/lib/types/investor";
 import {
  addSystemUser,
  deleteSystemUser,
@@ -28,7 +30,7 @@ import {
  type SystemUsersPage,
  type UserData,
 } from "@/actions/system";
-import type { ApiRole, ApiRoleUser } from "@/lib/types/roles";
+import { isInvestorRole, isPlatformAdminRole, type ApiRole, type ApiRoleUser } from "@/lib/types/roles";
 import { cn } from "@/lib/utils";
 import { EditUserSheet } from "./editusersheet";
 
@@ -59,6 +61,16 @@ const schema = Yup.object({
  .matches(/^\+?[0-9]{7,15}$/, "Use an optional + followed by 7–15 digits")
  .optional(),
  role: Yup.string().required("Role is required"),
+ // The backend requires an investor party for a Network Partner and refuses one for any other role.
+ investorId: Yup.string()
+ .default("")
+ .when("role", {
+ is: (role: string) => isInvestorRole(role),
+ then: (field) =>
+ field
+ .matches(INVESTOR_ID_PATTERN, "Enter a valid investor ID")
+ .required("Choose the investor this account belongs to"),
+ }),
  password: Yup.string().min(12, "Minimum 12 characters").max(128, "Maximum 128 characters").required("Password is required"),
  confirmPassword: Yup.string()
  .oneOf([Yup.ref("password")], "Passwords do not match")
@@ -70,7 +82,7 @@ type FormValues = Yup.InferType<typeof schema>;
 const EMPTY: FormValues = {
  fname: "", middleName: "", otherName: "",
  username: "", email: "", phoneNumber: "",
- role: "", password: "", confirmPassword: "",
+ role: "", investorId: "", password: "", confirmPassword: "",
 };
 
 // ── Field helper ───────────────────────────────────────────────────────────────
@@ -99,13 +111,25 @@ function CreateUserSheet({
  onCreated,
  roles,
  companyId,
+ investors,
+ isPlatformAdmin,
 }: {
  open: boolean;
  onClose: () => void;
  onCreated: () => void;
  roles: ApiRole[];
  companyId: string | null;
+ investors: InvestorOption[];
+ isPlatformAdmin: boolean;
 }) {
+ // Offer only roles the backend lets this caller assign: SYSADMIN and customer
+ // accounts have their own flows, and only a SYSADMIN creates a Network Partner.
+ const assignableRoles = roles.filter(
+ (r) =>
+ !["05", "CUSTOMER"].includes(r.roleCode.toUpperCase()) &&
+ !isPlatformAdminRole(r.roleCode) &&
+ (isPlatformAdmin || !isInvestorRole(r.roleCode))
+ );
  const [showPassword, setShowPassword] = useState(false);
  const [showConfirm, setShowConfirm] = useState(false);
  const router = useRouter();
@@ -128,6 +152,7 @@ function CreateUserSheet({
  role: values.role,
  password: values.password,
  companyId,
+ ...(isInvestorRole(values.role) ? { investorId: values.investorId } : {}),
  };
 
  const result = await addSystemUser(payload);
@@ -250,13 +275,31 @@ function CreateUserSheet({
  )}
  >
  <option value="">Select a role…</option>
- {roles.filter((r) => !["05", "CUSTOMER"].includes(r.roleCode.toUpperCase())).map((r) => (
+ {assignableRoles.map((r) => (
  <option key={r.roleCode} value={r.roleCode}>
  {r.name}
  </option>
  ))}
  </select>
  </Field>
+
+ {isInvestorRole(formik.values.role) && (
+ <Field
+ label="Investor record"
+ error={touched.investorId ? errors.investorId : undefined}
+ required
+ >
+ <InvestorPicker
+ value={formik.values.investorId}
+ onChange={(id) => {
+ formik.setFieldValue("investorId", id);
+ formik.setFieldTouched("investorId", true, false);
+ }}
+ options={investors}
+ invalid={Boolean(touched.investorId && errors.investorId)}
+ />
+ </Field>
+ )}
  </div>
 
  {/* ── Password ── */}
@@ -338,9 +381,11 @@ interface StaffUsersClientProps {
  roles: ApiRole[];
   isPlatformAdmin: boolean;
   canManageUsers: boolean;
+  /** Investor parties a SYSADMIN can link a Network Partner to (empty for other roles). */
+  investors: InvestorOption[];
 }
 
-export default function StaffUsersClient({ initialPage, roles, isPlatformAdmin, canManageUsers }: StaffUsersClientProps) {
+export default function StaffUsersClient({ initialPage, roles, isPlatformAdmin, canManageUsers, investors }: StaffUsersClientProps) {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<ApiRoleUser | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<ApiRoleUser | null>(null);
@@ -475,6 +520,8 @@ export default function StaffUsersClient({ initialPage, roles, isPlatformAdmin, 
  onCreated={reloadPage}
  roles={roles}
  companyId={companyCode}
+ investors={investors}
+ isPlatformAdmin={isPlatformAdmin}
  />
 
  <EditUserSheet

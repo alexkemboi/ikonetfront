@@ -18,11 +18,13 @@
 import { withCompanyContext } from "@/lib/companyContext";
 import { auth } from "@/lib/auth";
 import { buildApiUrl } from "@/lib/constants";
-import { isPlatformAdminRole } from "@/lib/types/roles";
+import { getSystemUsers } from "@/actions/system";
+import { isInvestorRole, isPlatformAdminRole } from "@/lib/types/roles";
 import type {
   InvestorAgreement,
   InvestorBillingSnapshot,
   InvestorMoneyFlowData,
+  InvestorOption,
   InvestorRevenueSummary,
   InvestorRouterListItem,
 } from "@/lib/types/investor";
@@ -115,10 +117,12 @@ async function getBillingSnapshots(
 }
 
 async function getAgreements(
-  headers: Record<string, string>
+  headers: Record<string, string>,
+  investorId?: string
 ): Promise<{ agreements: InvestorAgreement[]; message: string }> {
   try {
-    const res = await fetch(buildApiUrl("/investor/agreements"), {
+    const qs = investorId ? `?${new URLSearchParams({ investorId }).toString()}` : "";
+    const res = await fetch(buildApiUrl(`/investor/agreements${qs}`), {
       headers,
       cache: "no-store",
     });
@@ -215,4 +219,36 @@ export async function getInvestorRouters(): Promise<{
     console.error("[Investor] getInvestorRouters error:", error);
     return { routers: [], message: "Failed to reach the investor routers endpoint." };
   }
+}
+
+/**
+ * Investor parties a SYSADMIN can pick when creating or linking a Network
+ * Partner account.
+ *
+ * The backend has no "list investors" endpoint: a party exists only as the
+ * `investorId` on agreements and router ownership. So the list is the parties
+ * already linked to an account, labelled with their agreements. A party with no
+ * account yet has to be entered by id.
+ */
+export async function getInvestorOptions(): Promise<InvestorOption[]> {
+  const session = await auth();
+  if (!isSysadminRole(session?.user?.role)) return [];
+
+  const linked = new Map<string, string[]>();
+  for (const user of await getSystemUsers()) {
+    if (!isInvestorRole(user.role) || !user.investorId) continue;
+    linked.set(user.investorId, [...(linked.get(user.investorId) ?? []), user.username]);
+  }
+
+  const headers = await getAuthHeaders();
+  return Promise.all(
+    Array.from(linked, async ([investorId, usernames]) => {
+      const { agreements } = await getAgreements(headers, investorId);
+      return {
+        investorId,
+        agreements: agreements.map((a) => `${a.name} (${a.agreementCode})`),
+        usernames,
+      };
+    })
+  );
 }
