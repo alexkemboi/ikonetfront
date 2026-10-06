@@ -1,11 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { generateZtpScript, getZtpProvisioningStatus } from "@/actions/provisioning";
+import { generateZtpScript, getZtpProvisioningStatus, getZtpStations } from "@/actions/provisioning";
+import { getRegions } from "@/actions/network";
 import { apiFetch } from "@/lib/apiClient";
 import { getPermissionForRoute } from "@/lib/data/nav";
 
 vi.mock("@/lib/apiClient", () => ({ apiFetch: vi.fn() }));
 vi.mock("@/actions/mikrotik", () => ({ getMikrotikDevices: vi.fn() }));
 vi.mock("@/actions/network", () => ({
+  getRegions: vi.fn(),
   getRouters: vi.fn(),
   getRouterMonitoringLatest: vi.fn(),
 }));
@@ -138,5 +140,68 @@ describe("getZtpProvisioningStatus", () => {
   it("never polls for a placeholder id", async () => {
     expect(await getZtpProvisioningStatus("0")).toEqual({ status: null, online: false });
     expect(mockedFetch).not.toHaveBeenCalled();
+  });
+});
+
+describe("station and internet port", () => {
+  it("sends the chosen station and a non-default internet port", async () => {
+    await generateZtpScript({ ...input, stationIdxno: 3, wanInterface: " sfp-sfpplus1 " });
+
+    expect(mockedFetch.mock.calls[0][1]?.body).toEqual({ ...input, stationIdxno: 3, wanInterface: "sfp-sfpplus1" });
+  });
+
+  it("leaves the default internet port to the backend", async () => {
+    await generateZtpScript({ ...input, wanInterface: "ether1" });
+
+    expect(mockedFetch.mock.calls[0][1]?.body).toEqual(input);
+  });
+
+  it("rejects an internet port that is not an interface name before calling the backend", async () => {
+    const result = await generateZtpScript({ ...input, wanInterface: "ether1; reboot" });
+
+    expect(result.success).toBe(false);
+    expect(mockedFetch).not.toHaveBeenCalled();
+  });
+
+  it("accepts the approved dashed router names", async () => {
+    const result = await generateZtpScript({ ...input, identity: "bedak-mombasa-town" });
+
+    expect(result.success).toBe(true);
+  });
+
+  it("lists active stations as Location — Station", async () => {
+    vi.mocked(getRegions).mockResolvedValue({
+      success: true,
+      data: [
+        {
+          idxno: 1,
+          name: "Coast",
+          locations: [
+            {
+              idxno: 10,
+              name: "Mombasa",
+              stations: [
+                { idxno: 7, name: "Town", isActive: true },
+                { idxno: 8, name: "Closed", isActive: false },
+              ],
+            },
+            { idxno: 11, name: "Kilifi", stations: [{ idxno: 9, name: "Main", isActive: true }] },
+          ],
+        },
+      ],
+    } as never);
+
+    const result = await getZtpStations();
+
+    expect(result.stations).toEqual([
+      { idxno: 9, label: "Kilifi — Main" },
+      { idxno: 7, label: "Mombasa — Town" },
+    ]);
+  });
+
+  it("reports a failed station load without throwing", async () => {
+    vi.mocked(getRegions).mockResolvedValue({ success: false, status: 500, message: "DATA_SOURCE_UNAVAILABLE" });
+
+    expect(await getZtpStations()).toEqual({ stations: [], error: "DATA_SOURCE_UNAVAILABLE" });
   });
 });

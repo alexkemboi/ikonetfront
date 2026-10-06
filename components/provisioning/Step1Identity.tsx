@@ -2,20 +2,26 @@
 
 import React, { useState } from "react";
 import { AlertCircle, AlertTriangle } from "lucide-react";
-import type { ZtpBootstrapInput } from "@/lib/types/provisioning";
+import type { ZtpBootstrapInput, ZtpStationOption } from "@/lib/types/provisioning";
 import { validateZtpBootstrapInput } from "@/lib/utils/ztp-validation";
 
 interface Props {
  /** Resolves to an error message, or null once the wizard has moved on. */
  onContinue: (input: ZtpBootstrapInput) => Promise<string | null>;
  onCancel: () => void;
+ /** Stations of the signed-in company. When there are any, one must be chosen. */
+ stations?: ZtpStationOption[];
+ /** Shown when the station list could not be loaded. */
+ stationsError?: string | null;
 }
 
 const INPUT_CLASS =
  "mt-1 w-full rounded-lg border border-border bg-muted p-3 text-sm text-foreground focus:border-amber-500 focus:outline-none";
 
-export function Step1Identity({ onContinue, onCancel }: Props) {
+export function Step1Identity({ onContinue, onCancel, stations = [], stationsError = null }: Props) {
  const [identity, setIdentity] = useState("");
+ const [stationIdxno, setStationIdxno] = useState("");
+ const [wanInterface, setWanInterface] = useState("ether1");
  const [hotspot, setHotspot] = useState(true);
  const [pppoe, setPppoe] = useState(true);
  const [acknowledged, setAcknowledged] = useState(false);
@@ -32,6 +38,17 @@ export function Step1Identity({ onContinue, onCancel }: Props) {
  hotspotEnabled: hotspot,
  pppoeEnabled: pppoe,
  };
+ if (stations.length > 0 && !stationIdxno) {
+ setError("Choose the station this router serves.");
+ return;
+ }
+ if (stationIdxno) input.stationIdxno = Number(stationIdxno);
+ const port = wanInterface.trim();
+ if (!port) {
+ setError("Enter the port the internet cable is plugged into, for example ether1.");
+ return;
+ }
+ if (port !== "ether1") input.wanInterface = port;
  const invalid = validateZtpBootstrapInput(input);
  if (invalid) {
  setError(invalid);
@@ -70,7 +87,48 @@ export function Step1Identity({ onContinue, onCancel }: Props) {
  className={INPUT_CLASS}
  />
  <p className="mt-2 text-xs text-muted-foreground">
- Letters, numbers, and spaces — must start and end with a letter or number.
+ Letters, numbers, spaces, dots, dashes and underscores — must start and end with a letter or number.
+ </p>
+ </div>
+
+ <div>
+ <label htmlFor="ztp-station" className="text-xs font-sans tabular-nums text-muted-foreground">
+ Station{stations.length > 0 ? " *" : ""}
+ </label>
+ <select
+ id="ztp-station"
+ value={stationIdxno}
+ onChange={(e) => setStationIdxno(e.target.value)}
+ disabled={stations.length === 0}
+ className={INPUT_CLASS}
+ >
+ <option value="">{stations.length === 0 ? "No stations available" : "Select a station"}</option>
+ {stations.map((station) => (
+ <option key={station.idxno} value={station.idxno}>{station.label}</option>
+ ))}
+ </select>
+ <p className="mt-2 text-xs text-muted-foreground">
+ {stationsError
+ ? `Stations could not be loaded (${stationsError}). The router can be linked now and assigned later by linking it again with the same name.`
+ : stations.length === 0
+ ? "This company has no stations yet. Create one under Network, or link the router now and assign it later by linking it again with the same name."
+ : "The site this router serves."}
+ </p>
+ </div>
+
+ <div>
+ <label htmlFor="ztp-wan" className="text-xs font-sans tabular-nums text-muted-foreground">Internet (WAN) port *</label>
+ <input
+ id="ztp-wan"
+ type="text"
+ value={wanInterface}
+ onChange={(e) => setWanInterface(e.target.value)}
+ placeholder="ether1"
+ maxLength={32}
+ className={INPUT_CLASS}
+ />
+ <p className="mt-2 text-xs text-muted-foreground">
+ The port the internet cable is plugged into. Every other Ethernet and SFP port becomes a customer port.
  </p>
  </div>
 

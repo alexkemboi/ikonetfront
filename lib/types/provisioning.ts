@@ -62,6 +62,16 @@ export interface ZtpBootstrapInput {
   acknowledgeDestructiveReset: boolean;
   hotspotEnabled: boolean;
   pppoeEnabled: boolean;
+  /** network station (POP) the router serves; the backend derives nothing from the name. */
+  stationIdxno?: number;
+  /** RouterOS interface carrying the internet uplink. Omitted means ether1. */
+  wanInterface?: string;
+}
+
+/** One selectable station in the ZTP wizard. */
+export interface ZtpStationOption {
+  idxno: number;
+  label: string;
 }
 
 /** `data` of POST /provision/bootstrap-tokens (BootstrapTokenResponse). */
