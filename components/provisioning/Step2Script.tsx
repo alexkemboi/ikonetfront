@@ -2,23 +2,44 @@
 
 import React, { useState, useEffect } from "react";
 import { Copy, Check, AlertTriangle, Clock, RefreshCw } from "lucide-react";
-import { ProvisioningScriptResponse } from "@/lib/types/provisioning";
-import { getRouterConnectionStatus } from "@/actions/provisioning";
+import type { ProvisioningScriptResponse, ZtpSessionStatus } from "@/lib/types/provisioning";
+import { getZtpProvisioningStatus } from "@/actions/provisioning";
 
 interface Props {
  scriptData: ProvisioningScriptResponse;
  onConnected: () => void;
+ /** Back to step 1 to issue a fresh command (the old one expired or was revoked). */
+ onRestart: () => void;
 }
 
-const MAX_POLLS = 40;
+function formatExpiry(expiresAt: string | null): string | null {
+ if (!expiresAt) return null;
+ const date = new Date(expiresAt);
+ return Number.isNaN(date.getTime()) ? null : date.toLocaleString();
+}
+
+const MAX_POLLS = 200;
 const POLL_INTERVAL_MS = 3000;
 
-export function Step2Script({ scriptData, onConnected }: Props) {
+function describeProgress(status: ZtpSessionStatus | null): string {
+ switch (status) {
+ case "DELIVERED":
+ return "Router fetched the script — applying configuration...";
+ case "COMPLETED":
+ return "Script finished — waiting for the router to come online over the tunnel...";
+ default:
+ return "Waiting for the router to fetch the script...";
+ }
+}
+
+export function Step2Script({ scriptData, onConnected, onRestart }: Props) {
  const [copied, setCopied] = useState(false);
  const [isChecking, setIsChecking] = useState(true);
  const [pollCount, setPollCount] = useState(0);
  const [stopped, setStopped] = useState(false);
  const [restartToken, setRestartToken] = useState(0);
+ const [sessionStatus, setSessionStatus] = useState<ZtpSessionStatus | null>(null);
+ const commandDead = sessionStatus === "EXPIRED" || sessionStatus === "REVOKED";
 
  function handleCopy() {
  navigator.clipboard.writeText(scriptData.fetchCommand);
@@ -34,12 +55,18 @@ export function Step2Script({ scriptData, onConnected }: Props) {
  async function poll() {
  if (!mounted) return;
  try {
- const status = await getRouterConnectionStatus(scriptData.routerId);
+ const result = await getZtpProvisioningStatus(scriptData.deviceId);
  if (!mounted) return;
- if (status.apiAuthenticated || status.isOnline) {
+ // A failed poll (null status) keeps the last known stage.
+ if (result.status) setSessionStatus(result.status);
+ if (result.status === "COMPLETED" && result.online) {
  setPollCount(count);
  setIsChecking(false);
  onConnected();
+ return;
+ }
+ if (result.status === "EXPIRED" || result.status === "REVOKED") {
+ setIsChecking(false);
  return;
  }
  } catch {
@@ -60,7 +87,9 @@ export function Step2Script({ scriptData, onConnected }: Props) {
  mounted = false;
  clearTimeout(timer);
  };
- }, [scriptData.routerId, onConnected, restartToken]);
+ }, [scriptData.deviceId, onConnected, restartToken]);
+
+ const expiry = formatExpiry(scriptData.expiresAt);
 
  return (
  <div className="space-y-6">
@@ -90,6 +119,23 @@ export function Step2Script({ scriptData, onConnected }: Props) {
  </p>
  </div>
 
+ {(scriptData.allocatedVpnIp || expiry) && (
+ <dl className="mt-4 flex flex-wrap gap-x-8 gap-y-2 text-xs">
+ {scriptData.allocatedVpnIp && (
+ <div>
+ <dt className="text-muted-foreground">Allocated VPN IP</dt>
+ <dd className="font-sans tabular-nums text-foreground">{scriptData.allocatedVpnIp}</dd>
+ </div>
+ )}
+ {expiry && (
+ <div>
+ <dt className="text-muted-foreground">Single-use link expires</dt>
+ <dd className="font-sans tabular-nums text-foreground">{expiry}</dd>
+ </div>
+ )}
+ </dl>
+ )}
+
  <div className="relative mt-4 rounded-xl border border-border bg-[#101010] p-4 font-sans tabular-nums text-xs text-zinc-200 break-all">
  <code className="font-mono-tech">{scriptData.fetchCommand}</code>
  <button
@@ -107,29 +153,42 @@ export function Step2Script({ scriptData, onConnected }: Props) {
  {isChecking ? (
  <>
  <Clock className="h-4 w-4 animate-spin" />
- <span>Checking connection... (attempt {pollCount})</span>
+ <span>{describeProgress(sessionStatus)} (attempt {pollCount})</span>
  </>
+ ) : commandDead ? (
+ <span className="text-red-300">
+ {sessionStatus === "EXPIRED" ? "This command has expired." : "This command was revoked."}
+ </span>
+ ) : stopped ? (
+ <span className="text-muted-foreground">Not connected yet.</span>
  ) : (
  <span className="text-emerald-400">Router connected successfully!</span>
  )}
  </div>
 
- {isChecking && (
- <button
- onClick={onConnected}
- className="text-xs font-sans tabular-nums text-muted-foreground underline hover:text-accent-foreground"
- >
- Skip to Services →
- </button>
- )}
  </div>
+
+ {commandDead && (
+ <div className="mt-4 rounded-xl border border-red-500/30 bg-red-500/10 p-4">
+ <p className="text-xs text-red-300">
+ The router can no longer use this command. Generate a new one and paste it again.
+ </p>
+ <button
+ onClick={onRestart}
+ className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-secondary px-4 py-2 text-xs font-semibold text-foreground hover:bg-zinc-700"
+ >
+ <RefreshCw className="h-3.5 w-3.5" /> Generate a new command
+ </button>
+ </div>
+ )}
 
  {stopped && (
  <div className="mt-4 rounded-xl border border-red-500/30 bg-red-500/10 p-4">
  <p className="text-xs text-red-300">
- Router not detected after{" "}
- {Math.round((MAX_POLLS * POLL_INTERVAL_MS) / 1000)} seconds.
- Make sure the provisioning script ran in RouterOS, then retry.
+ Router not ready after{" "}
+ {Math.round((MAX_POLLS * POLL_INTERVAL_MS) / 60000)} minutes.
+ Make sure the provisioning script ran in RouterOS, then retry. The router stays listed as offline
+ under NAS Routers until it checks in.
  </p>
  <button
  onClick={() => {

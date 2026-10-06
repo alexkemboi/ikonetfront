@@ -1,31 +1,22 @@
 "use server";
 
-import { withCompanyContext } from "@/lib/companyContext";
 import { revalidatePath } from "next/cache";
-import { auth } from "@/lib/auth";
-import { BASE_URL, buildApiUrl } from "@/lib/constants";
+import { apiFetch } from "@/lib/apiClient";
 import type { RouterHealthSnapshot, RouterResponse } from "@/lib/types/network";
 import { getRouters, getRouterMonitoringLatest } from "@/actions/network";
 import { isRouterOnline } from "@/lib/utils/router-status";
 import {
   NasRouterItem,
   NasRouterKpis,
-  ProvisioningScriptResponse,
-  RouterServicesConfigRequest,
+  BootstrapTokenResponse,
+  ProvisioningStatusResponse,
+  ZtpBootstrapInput,
+  ZtpProvisioningStatus,
+  ZtpScriptResult,
 } from "@/lib/types/provisioning";
-import { getMikrotikDeviceStatus, getMikrotikDevices } from "@/actions/mikrotik";
+import { validateZtpBootstrapInput } from "@/lib/utils/ztp-validation";
+import { getMikrotikDevices } from "@/actions/mikrotik";
 import { getPermissionForRoute } from "@/lib/data/nav";
-
-async function getAuthHeaders(): Promise<HeadersInit> {
-  const session = await auth();
-  const headers: HeadersInit = { "Content-Type": "application/json" };
-  if (session?.user?.apiToken) {
-    (headers as Record<string, string>)["Authorization"] =
-      `Bearer ${session.user.apiToken}`;
-  }
-  // Forward the SYSADMIN-selected company so the backend scopes the call.
-  return withCompanyContext(headers as Record<string, string>);
-}
 
 function mapDeviceToNasRouter(device: {
   id: number;
@@ -171,189 +162,86 @@ export async function getNasRoutersData(): Promise<{
   }
 }
 
+/** The backend sends zoneless business-time (Africa/Nairobi, UTC+3) datetimes. */
+function eatToIso(value: string | null | undefined): string | null {
+  if (!value) return null;
+  return /(Z|[+-]\d{2}:?\d{2})$/.test(value) ? value : `${value}+03:00`;
+}
+
 /**
- * Step 1: Creates/resolves the router in the backend (yielding a real numeric
- * id) and returns the RouterOS `/tool fetch` one-liner pointed at the active
- * backend host. The Step 2 poller only ever auto-advances on a REAL numeric
- * router id that reports online — string placeholders never do, which is what
- * previously caused the premature advance then "Invalid router id." error.
+ * Step 1: registers the router for zero-touch provisioning. The backend
+ * creates the network_device and network_routers rows, allocates the VPN IP,
+ * issues the API account and SNMP community, and returns the RouterOS
+ * `/tool fetch` one-liner, which is shown verbatim — the router must reach the
+ * backend's public host, which this app's BASE_API_URL may not be.
  */
-export async function createBootstrapToken(payload: Record<string, unknown> = {}): Promise<{ token: string } | null> {
-  const session = await auth();
-  if (!session?.user?.apiToken) return null;
+export async function generateZtpScript(input: ZtpBootstrapInput): Promise<ZtpScriptResult> {
+  const request: ZtpBootstrapInput = {
+    identity: input.identity.trim(),
+    acknowledgeDestructiveReset: input.acknowledgeDestructiveReset === true,
+    hotspotEnabled: input.hotspotEnabled === true,
+    pppoeEnabled: input.pppoeEnabled === true,
+  };
+  const invalid = validateZtpBootstrapInput(request);
+  if (invalid) return { success: false, message: invalid };
+
+  const pagePerms = await getPermissionForRoute("/network/routers");
+  if (!pagePerms.canCreate) {
+    return { success: false, message: "Not authorized to provision routers." };
+  }
 
   try {
-    const res = await fetch(buildApiUrl("/provision/bootstrap-tokens"), {
+    const res = await apiFetch<BootstrapTokenResponse>("/provision/bootstrap-tokens", {
       method: "POST",
-      headers: await getAuthHeaders(),
-      body: JSON.stringify({
-        identity: payload.identity ?? "router",
-        routerName: payload.routerName ?? payload.identity ?? "router",
-        ...payload,
-      }),
+      auth: "required",
+      body: request,
     });
-
-    if (!res.ok) {
-      console.warn("Bootstrap token minting failed:", res.status);
-      return null;
+    if (!res.success) {
+      return { success: false, message: res.message || `Provisioning request failed (HTTP ${res.status}).` };
     }
 
-    const body = (await res.json()) as { data?: { token?: string } | null; token?: string };
-    const token = body.data?.token ?? body.token;
-    return token ? { token } : null;
+    const deviceId = res.data?.routerId;
+    const fetchCommand = res.data?.fetchCommand?.trim();
+    if (!fetchCommand || !Number.isInteger(deviceId)) {
+      return { success: false, message: "The backend did not return a provisioning command for this router." };
+    }
+
+    revalidatePath("/network/routers");
+    return {
+      success: true,
+      data: {
+        deviceId: String(deviceId),
+        routerIdxno: res.data?.routerIdxno ?? null,
+        identity: res.data?.identity ?? request.identity,
+        fetchCommand,
+        allocatedVpnIp: res.data?.allocatedVpnIp ?? null,
+        expiresAt: eatToIso(res.data?.expiresAt),
+      },
+    };
   } catch (error: unknown) {
-    console.warn("Failed to mint bootstrap token:", error);
-    return null;
+    console.error("Failed to register router for ZTP:", error);
+    return { success: false, message: "Could not reach the provisioning backend." };
   }
 }
 
-export async function getBootstrapScript(token: string): Promise<string> {
-  if (!token) return "";
-
+/**
+ * Step 2: where the router is in zero-touch provisioning, keyed by
+ * network_device.id. The wizard is done once `status` is COMPLETED (the router
+ * ran the script to its last line) and `online` is true (monitoring reached it
+ * over the tunnel).
+ */
+export async function getZtpProvisioningStatus(deviceId: string): Promise<ZtpProvisioningStatus> {
+  if (!/^[1-9]\d*$/.test(deviceId)) return { status: null, online: false };
   try {
-    const res = await fetch(buildApiUrl(`/provision/bootstrap?token=${encodeURIComponent(token)}`), {
-      method: "GET",
-      headers: { Accept: "text/plain" },
+    const res = await apiFetch<ProvisioningStatusResponse>(`/provision/devices/${deviceId}/status`, {
+      auth: "required",
       cache: "no-store",
     });
-
-    if (!res.ok) {
-      console.warn("Bootstrap script fetch failed:", res.status);
-      return "";
-    }
-
-    return await res.text();
-  } catch (error: unknown) {
-    console.warn("Failed to fetch bootstrap script:", error);
-    return "";
-  }
-}
-
-export async function generateZtpScript(
-  identity: string
-): Promise<ProvisioningScriptResponse> {
-  const session = await auth();
-  const token = session?.user?.apiToken;
-
-  let routerId = "";
-  if (token) {
-    try {
-      const createRes = await fetch(buildApiUrl("/network-devices"), {
-        method: "POST",
-        headers: await getAuthHeaders(),
-        body: JSON.stringify({
-          name: identity,
-          deviceType: "ROUTER",
-          active: true,
-        }),
-      });
-      if (createRes.ok) {
-        const created = (await createRes.json()) as {
-          data?: { id?: string | number } | null;
-          id?: string | number;
-        };
-        const createdId = String(created?.data?.id ?? created?.id ?? "");
-        if (/^\d+$/.test(createdId)) routerId = createdId;
-      }
-    } catch (error: unknown) {
-      console.warn("Failed to create router record on backend:", error);
-    }
-  }
-
-  if (!token) {
-    throw new Error("Not authenticated. One-time setup requires a signed-in session with a backend API token.");
-  }
-
-  const mintedToken = (await createBootstrapToken({ identity, routerName: identity }))?.token;
-  if (!mintedToken) {
-    // Fail loudly instead of silently producing a client-side fake token that
-    // points at the unmapped legacy /network/provisioning/{token} route.
-    throw new Error("Failed to mint ZTP bootstrap token from the backend provisioning controller.");
-  }
-
-  return {
-    routerId: routerId || "0",
-    identity,
-    token: mintedToken,
-    fetchCommand: buildFetchCommand(mintedToken),
-    deviceModeRequired: true,
-  };
-}
-
-/**
- * Step 2: authoritative router check-in status for the Step 2 poller.
- * ONLY a numeric router id that the backend reports ONLINE is treated as
- * connected. String/sandbox ids never auto-advance, so Step 3 never receives
- * an invalid router id.
- */
-export async function getRouterConnectionStatus(routerId: string): Promise<{
-  isOnline: boolean;
-  apiAuthenticated: boolean;
-}> {
-  const session = await auth();
-  if (!session?.user?.apiToken || !/^\d+$/.test(routerId)) {
-    return { isOnline: false, apiAuthenticated: false };
-  }
-  try {
-    const res = await getMikrotikDeviceStatus(Number(routerId));
-    const online = !!res.data?.online;
-    return { isOnline: online, apiAuthenticated: online };
-  } catch (error: unknown) {
-    console.warn(`Connection status poll failed for router ${routerId}.`, error);
-  }
-  return { isOnline: false, apiAuthenticated: false };
-}
-
-/**
- * Step 3: Activates chosen network services (Hotspot / PPPoE).
- */
-export async function finalizeZtpServices(
-  request: RouterServicesConfigRequest
-): Promise<{ success: boolean; message: string }> {
-  const session = await auth();
-  if (!session?.user?.apiToken) {
-    return { success: false, message: "Not authenticated." };
-  }
-  if (!/^\d+$/.test(request.routerId)) {
-    return { success: false, message: "Invalid router id." };
-  }
-  const pagePerms = await getPermissionForRoute("/network/routers");
-  if (!pagePerms.canEdit) {
-    return { success: false, message: "Not authorized to configure routers." };
-  }
-  try {
-    const response = await fetch(
-      `${BASE_URL}network-routers/${request.routerId}`,
-      {
-        method: "PATCH",
-        headers: await getAuthHeaders(),
-        body: JSON.stringify({
-          hotspotEnabled: request.enableHotspot,
-          pppoeEnabled: request.enablePppoe,
-        }),
-      }
-    );
-    if (!response.ok) {
-      console.warn(
-        `Backend rejected router config PATCH (HTTP ${response.status}); recorded locally.`
-      );
-      return {
-        success: false,
-        message: `HTTP ${response.status}: Failed to update router services`,
-      };
+    if (res.success && res.data) {
+      return { status: res.data.status ?? null, online: res.data.online === true };
     }
   } catch (error: unknown) {
-    console.warn("Failed to reach backend for router config; recorded locally.", error);
-    return { success: false, message: "Failed to reach provisioning backend." };
+    console.warn(`Provisioning status poll failed for device ${deviceId}.`, error);
   }
-  revalidatePath("/network/routers");
-  return { success: true, message: "Router successfully provisioned and linked to IBS control plane." };
-}
-
-function buildFetchCommand(token: string): string {
-  // Verified backend contract: `GET /api/v1/provision/bootstrap?token=<token>`
-  // (permitAll, text/plain, attachment `ibs-init.rsc`). The old
-  // `/network/provisioning/{token}` route has no controller mapping.
-  const url = buildApiUrl(`/provision/bootstrap?token=${token}`);
-  return `/tool fetch mode=https url="${url}" dst-path=ibs-init.rsc check-certificate=no;:delay 2s;/import ibs-init.rsc;`;
+  return { status: null, online: false };
 }
