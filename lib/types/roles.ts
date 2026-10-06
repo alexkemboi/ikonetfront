@@ -172,8 +172,14 @@ export type ApiRoleUser = {
   canLogin: boolean;
   companyId?: string | null;
   stationId?: string | null;
+  /** Investor party a Network Partner account is linked to; null until linked. */
   investorId?: string | null;
 };
+
+/** True for the Network Partner (investor) role, by code or by name. */
+export function isInvestorRole(role?: string | null): boolean {
+  return normalizeRole(role) === ROLE_NAME.INVESTOR || /NETWORK_PARTNER/i.test(role ?? "");
+}
 
 /** Raw role shape returned by the API */
 export type ApiRole = {

@@ -141,3 +141,12 @@ export function investorSectionError<T>(message: string): ApiResponse<T> {
     timestamp: new Date().toISOString(),
   };
 }
+
+/** An investor party offered when creating or linking a Network Partner account. */
+export interface InvestorOption {
+  investorId: string;
+  /** "Name (code)" of the party's agreements; empty when it only owns routers. */
+  agreements: string[];
+  /** Accounts already linked to this party. */
+  usernames: string[];
+}

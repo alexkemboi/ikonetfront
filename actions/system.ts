@@ -62,6 +62,8 @@ export type UserData = {
   email?:      string;
   phoneNumber?: string;
   companyId:   string;
+  /** Investor party id. Required by the backend for the Network Partner role, refused for any other. */
+  investorId?: string;
 };
 
 export type SystemUserUpdate = Partial<

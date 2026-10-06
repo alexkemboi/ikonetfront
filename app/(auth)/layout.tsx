@@ -27,7 +27,7 @@ export default function AuthLayout({
         className="
           mx-auto
           flex
-          h-[80vh]
+          min-h-[80vh]
           min-h-[560px]
           w-full
           max-w-7xl
