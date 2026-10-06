@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { apiFetch } from "@/lib/apiClient";
 import type { RouterHealthSnapshot, RouterResponse } from "@/lib/types/network";
-import { getRouters, getRouterMonitoringLatest } from "@/actions/network";
+import { getRegions, getRouters, getRouterMonitoringLatest } from "@/actions/network";
 import { isRouterOnline } from "@/lib/utils/router-status";
 import {
   NasRouterItem,
@@ -13,6 +13,7 @@ import {
   ZtpBootstrapInput,
   ZtpProvisioningStatus,
   ZtpScriptResult,
+  ZtpStationOption,
 } from "@/lib/types/provisioning";
 import { validateZtpBootstrapInput } from "@/lib/utils/ztp-validation";
 import { getMikrotikDevices } from "@/actions/mikrotik";
@@ -182,6 +183,10 @@ export async function generateZtpScript(input: ZtpBootstrapInput): Promise<ZtpSc
     hotspotEnabled: input.hotspotEnabled === true,
     pppoeEnabled: input.pppoeEnabled === true,
   };
+  if (input.stationIdxno !== undefined) request.stationIdxno = input.stationIdxno;
+  // ether1 is the backend's default; only another port is sent
+  const wanInterface = input.wanInterface?.trim();
+  if (wanInterface && wanInterface !== "ether1") request.wanInterface = wanInterface;
   const invalid = validateZtpBootstrapInput(request);
   if (invalid) return { success: false, message: invalid };
 
@@ -221,6 +226,32 @@ export async function generateZtpScript(input: ZtpBootstrapInput): Promise<ZtpSc
   } catch (error: unknown) {
     console.error("Failed to register router for ZTP:", error);
     return { success: false, message: "Could not reach the provisioning backend." };
+  }
+}
+
+/**
+ * Active stations of the signed-in company for the wizard's station picker,
+ * labelled "Location — Station". The backend refuses a station of another
+ * company, so this list is a convenience, not the access check.
+ */
+export async function getZtpStations(): Promise<{ stations: ZtpStationOption[]; error?: string }> {
+  try {
+    const res = await getRegions(true);
+    if (!res.success) return { stations: [], error: res.message || "Could not load stations." };
+    const stations: ZtpStationOption[] = [];
+    for (const region of res.data ?? []) {
+      for (const location of region.locations ?? []) {
+        for (const station of location.stations ?? []) {
+          if (station.isActive === false) continue;
+          stations.push({ idxno: station.idxno, label: `${location.name} — ${station.name}` });
+        }
+      }
+    }
+    stations.sort((a, b) => a.label.localeCompare(b.label));
+    return { stations };
+  } catch (error: unknown) {
+    console.error("Failed to load stations for ZTP:", error);
+    return { stations: [], error: "Could not load stations." };
   }
 }
 

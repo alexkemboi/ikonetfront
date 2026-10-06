@@ -1,18 +1,32 @@
 "use client";
 
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ProvisioningStepper } from "@/components/provisioning/ProvisioningStepper";
 import { Step1Identity } from "@/components/provisioning/Step1Identity";
 import { Step2Script } from "@/components/provisioning/Step2Script";
 import { Step3Done } from "@/components/provisioning/Step3Done";
-import { generateZtpScript } from "@/actions/provisioning";
-import type { ProvisioningScriptResponse, ZtpBootstrapInput } from "@/lib/types/provisioning";
+import { generateZtpScript, getZtpStations } from "@/actions/provisioning";
+import type { ProvisioningScriptResponse, ZtpBootstrapInput, ZtpStationOption } from "@/lib/types/provisioning";
 
 export default function RouterSetupWizardPage() {
  const router = useRouter();
  const [step, setStep] = useState(1);
  const [scriptData, setScriptData] = useState<ProvisioningScriptResponse | null>(null);
+ const [stations, setStations] = useState<ZtpStationOption[]>([]);
+ const [stationsError, setStationsError] = useState<string | null>(null);
+
+ useEffect(() => {
+ let cancelled = false;
+ void getZtpStations().then((result) => {
+ if (cancelled) return;
+ setStations(result.stations);
+ setStationsError(result.error ?? null);
+ });
+ return () => {
+ cancelled = true;
+ };
+ }, []);
 
  async function handleIdentitySubmit(input: ZtpBootstrapInput): Promise<string | null> {
  const result = await generateZtpScript(input);
@@ -53,6 +67,8 @@ export default function RouterSetupWizardPage() {
  <Step1Identity
  onContinue={handleIdentitySubmit}
  onCancel={() => router.push("/network/routers")}
+ stations={stations}
+ stationsError={stationsError}
  />
  )}
 
