@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Building2, Loader2, Plus, ShieldAlert, Palette, Radio } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -38,6 +39,8 @@ import {
   getCompanyPaymentAccounts,
   updateCompanyBranding,
   testCompanyPaymentAccount,
+  updatePaymentAccountAction,
+  type PaymentReadiness,
   type CompanySummary,
   type PaymentAccountPayload,
   type CompanyPaymentAccountView,
@@ -46,7 +49,18 @@ import {
 
 type Props = {
   companies: CompanySummary[];
+  /** Whether each active company can take payments; empty when it could not be read. */
+  readiness: PaymentReadiness[];
   canMutate: boolean;
+};
+
+type CredentialsForm = {
+  account: CompanyPaymentAccountView;
+  clientKey: string;
+  clientSecret: string;
+  passkey: string;
+  isDefault: boolean;
+  isActive: boolean;
 };
 
 type BrandingForm = {
@@ -69,7 +83,9 @@ const EMPTY_BRANDING: BrandingForm = {
   customDomain: "",
 };
 
-export default function CompaniesClient({ companies, canMutate }: Props) {
+export default function CompaniesClient({ companies, readiness, canMutate }: Props) {
+  const router = useRouter();
+  const [credentialsFor, setCredentialsFor] = useState<CredentialsForm | null>(null);
   const [rows, setRows] = useState<CompanySummary[]>(companies);
   const [companyOpen, setCompanyOpen] = useState(false);
   const [accountFor, setAccountFor] = useState<CompanySummary | null>(null);
@@ -218,6 +234,48 @@ export default function CompaniesClient({ companies, canMutate }: Props) {
     });
   }
 
+  function reloadAccounts(company: CompanySummary) {
+    startTransition(async () => {
+      const res = await getCompanyPaymentAccounts(company.code);
+      if (res.success && res.data) setPaymentAccounts(res.data);
+      router.refresh();
+    });
+  }
+
+  function handleSaveCredentials() {
+    if (!credentialsFor || !accountsFor) return;
+    const f = credentialsFor;
+    const company = accountsFor;
+    const payload = {
+      // a blank field keeps what is stored
+      ...(f.clientKey.trim() ? { clientKey: f.clientKey.trim() } : {}),
+      ...(f.clientSecret.trim() ? { clientSecret: f.clientSecret.trim() } : {}),
+      ...(f.passkey.trim() ? { passkey: f.passkey.trim() } : {}),
+      ...(f.isDefault !== Boolean(f.account.isDefault) ? { isDefault: f.isDefault } : {}),
+      ...(f.isActive !== Boolean(f.account.isActive) ? { isActive: f.isActive } : {}),
+    };
+    if (Object.keys(payload).length === 0) {
+      toast.error("Nothing to change: fill in the credential to replace, or change a switch.");
+      return;
+    }
+    startTransition(async () => {
+      const res = await withStepUp(
+        (token) => updatePaymentAccountAction(company.code, f.account.id, payload, token),
+        "Updating payment gateway credentials requires re-authentication."
+      );
+      if (res.success) {
+        toast.success(`Payment account ${f.account.shortCode} updated`, {
+          description: "Use Test Ping to confirm M-Pesa accepts the new credentials.",
+        });
+        setCredentialsFor(null);
+        setProbeResult(null);
+        reloadAccounts(company);
+      } else {
+        toast.error(res.message || "Failed to update the payment account");
+      }
+    });
+  }
+
   function handleTestPing() {
     if (!accountsFor) return;
     startTransition(async () => {
@@ -273,13 +331,14 @@ export default function CompaniesClient({ companies, canMutate }: Props) {
                 <TableHead>Code</TableHead>
                 <TableHead>Name</TableHead>
                 <TableHead>Alias</TableHead>
+                <TableHead>Payments</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {rows.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
                     No companies found.
                   </TableCell>
                 </TableRow>
@@ -289,6 +348,19 @@ export default function CompaniesClient({ companies, canMutate }: Props) {
                     <TableCell className="font-mono text-xs font-medium">{company.code}</TableCell>
                     <TableCell className="font-medium">{company.name}</TableCell>
                     <TableCell className="text-muted-foreground">{company.alias}</TableCell>
+                    <TableCell className="max-w-xs text-xs">
+                      {(() => {
+                        const state = readiness.find((r) => r.companyCode === company.code);
+                        if (!state) return <span className="text-muted-foreground">{"\u2014"}</span>;
+                        return state.ready ? (
+                          <span className="text-emerald-500">
+                            Ready · {state.accountType} {state.shortCode}
+                          </span>
+                        ) : (
+                          <span className="text-rose-500">Cannot take payments: {state.problem}</span>
+                        );
+                      })()}
+                    </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-2">
                         <Button
@@ -490,6 +562,69 @@ export default function CompaniesClient({ companies, canMutate }: Props) {
         </DialogContent>
       </Dialog>
 
+      {/* Replace credentials dialog */}
+      <Dialog open={credentialsFor !== null} onOpenChange={(open) => !open && setCredentialsFor(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              Replace credentials — {credentialsFor?.account.accountType} {credentialsFor?.account.shortCode}
+            </DialogTitle>
+            <DialogDescription>
+              Fill in only what you are replacing; a blank field keeps what is stored. The short code cannot be
+              changed: for a different paybill or till, add a new account and make it the default.
+            </DialogDescription>
+          </DialogHeader>
+          {credentialsFor && (
+            <div className="space-y-3">
+              {(
+                [
+                  ["clientKey", "Consumer key"],
+                  ["clientSecret", "Consumer secret"],
+                  ["passkey", "Passkey (M-Pesa online)"],
+                ] as const
+              ).map(([key, label]) => (
+                <div key={key} className="space-y-1">
+                  <Label htmlFor={`cred-${key}`}>{label}</Label>
+                  <Input
+                    id={`cred-${key}`}
+                    type="password"
+                    autoComplete="off"
+                    placeholder="Leave blank to keep"
+                    value={credentialsFor[key]}
+                    onChange={(e) => setCredentialsFor({ ...credentialsFor, [key]: e.target.value })}
+                  />
+                </div>
+              ))}
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="cred-default"
+                  checked={credentialsFor.isDefault}
+                  onCheckedChange={(v) => setCredentialsFor({ ...credentialsFor, isDefault: v === true })}
+                />
+                <Label htmlFor="cred-default">Default account (the one customers pay into)</Label>
+              </div>
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="cred-active"
+                  checked={credentialsFor.isActive}
+                  onCheckedChange={(v) => setCredentialsFor({ ...credentialsFor, isActive: v === true })}
+                />
+                <Label htmlFor="cred-active">Active</Label>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCredentialsFor(null)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveCredentials} disabled={isPending}>
+              {isPending && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
+              Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Paybills & Tills dialog */}
       <Dialog open={accountsFor !== null} onOpenChange={(open) => !open && setAccountsFor(null)}>
         <DialogContent className="sm:max-w-2xl">
@@ -516,8 +651,10 @@ export default function CompaniesClient({ companies, canMutate }: Props) {
                     <TableHead>Reference</TableHead>
                     <TableHead>Provider</TableHead>
                     <TableHead>Consumer Key</TableHead>
+                    <TableHead>Credentials</TableHead>
                     <TableHead>Default</TableHead>
                     <TableHead>Active</TableHead>
+                    {canMutate && <TableHead />}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -528,8 +665,38 @@ export default function CompaniesClient({ companies, canMutate }: Props) {
                       <TableCell className="text-xs">{acct.accountReference ?? "\u2014"}</TableCell>
                       <TableCell className="text-xs">{acct.provider}</TableCell>
                       <TableCell className="font-mono text-xs">{acct.maskedConsumerKey ?? "\u2014"}</TableCell>
+                      <TableCell className="text-xs">
+                        {acct.credentialsComplete === null || acct.credentialsComplete === undefined ? (
+                          "\u2014"
+                        ) : acct.credentialsComplete ? (
+                          <span className="text-emerald-500">Complete</span>
+                        ) : (
+                          <span className="text-rose-500">Incomplete</span>
+                        )}
+                      </TableCell>
                       <TableCell className="text-xs">{acct.isDefault ? "Yes" : "No"}</TableCell>
                       <TableCell className="text-xs">{acct.isActive ? "Yes" : "No"}</TableCell>
+                      {canMutate && (
+                        <TableCell className="text-right">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7"
+                            onClick={() =>
+                              setCredentialsFor({
+                                account: acct,
+                                clientKey: "",
+                                clientSecret: "",
+                                passkey: "",
+                                isDefault: Boolean(acct.isDefault),
+                                isActive: Boolean(acct.isActive),
+                              })
+                            }
+                          >
+                            Replace credentials
+                          </Button>
+                        </TableCell>
+                      )}
                     </TableRow>
                   ))}
                 </TableBody>

@@ -108,6 +108,13 @@ export function EditUserSheet({
         toast.error("Failed to update user", { description: details.message });
         return;
       }
+      const becomesInvestor = values.role === "04" && user.role !== "04";
+      if (becomesInvestor && canLinkInvestor && !investorId.trim()) {
+        toast.error("Choose the investor this account belongs to", {
+          description: "A Network Partner account shows one investor's routers and revenue.",
+        });
+        return;
+      }
       if (values.role !== user.role) {
         const roleResult = await updateSystemUserRole(user.idxno, values.role);
         if (!roleResult.success) {
@@ -116,6 +123,14 @@ export function EditUserSheet({
           });
           onLinked();
           return;
+        }
+        if (becomesInvestor && investorId.trim()) {
+          const linked = await linkSystemUserInvestor(user.idxno, investorId.trim());
+          if (!linked.success) {
+            toast.error("Role changed, but the investor was not linked", { description: linked.message });
+            onLinked();
+            return;
+          }
         }
       }
       toast.success("System user updated");
@@ -202,17 +217,21 @@ export function EditUserSheet({
                   onCheckedChange={(value) => formik.setFieldValue("canLogin", value)}
                 />
               </div>
-              {canLinkInvestor && user.role === "04" && (
+              {canLinkInvestor && (user.role === "04" || formik.values.role === "04") && (
                 <div className="space-y-2 rounded-md border p-3">
                   <Label>Investor</Label>
                   <InvestorPicker value={investorId} onChange={setInvestorId} options={investors} />
                   <p className="text-xs text-muted-foreground">
-                    Linking updates investor scope on the next sign-in.
+                    {user.role === "04"
+                      ? "Linking updates investor scope on the next sign-in."
+                      : "Saving changes the role and links this investor. The account then sees only that investor's routers and revenue."}
                   </p>
+                  {user.role === "04" && (
                   <Button type="button" variant="outline" onClick={handleInvestorLink} disabled={linking || !investorId.trim()}>
                     {linking && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     Link investor
                   </Button>
+                  )}
                 </div>
               )}
             </div>

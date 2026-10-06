@@ -42,6 +42,32 @@ export type CompanyPaymentAccountView = {
   provider: string;
   maskedConsumerKey: string | null;
   companyBranding: CompanySummary;
+  id: string;
+  /** True when key, secret and passkey are all stored and readable. */
+  credentialsComplete: boolean | null;
+  pullRegistrationStatus: string | null;
+};
+
+/** Can this company take mobile-money payments right now? */
+export type PaymentReadiness = {
+  companyCode: string;
+  companyName: string;
+  ready: boolean;
+  /** What is missing when not ready. */
+  problem: string | null;
+  provider: string | null;
+  accountType: string | null;
+  shortCode: string | null;
+  pullRegistrationStatus: string | null;
+};
+
+/** Every field is optional: only what is sent is changed. */
+export type PaymentAccountUpdatePayload = {
+  clientKey?: string;
+  clientSecret?: string;
+  passkey?: string;
+  isDefault?: boolean;
+  isActive?: boolean;
 };
 
 export type UpdateCompanyBrandingRequest = {
@@ -157,5 +183,31 @@ export async function createPaymentAccountAction(
       cache: "no-store",
       stepUpToken,
     }
+  );
+}
+
+/** One line per active company (SYSADMIN: all; others: their own). Reads stored data only. */
+export async function getPaymentReadiness(): Promise<PaymentReadiness[]> {
+  const res = await apiFetch<PaymentReadiness[]>("/companies/payment-readiness", {
+    auth: "required",
+    cache: "no-store",
+  });
+  return res.success && Array.isArray(res.data) ? res.data : [];
+}
+
+/**
+ * SYSADMIN-only: replace credentials of an existing payment account, or change
+ * whether it is the default / active. Step-up gated. The short code and type
+ * cannot be changed: a different paybill or till is a new account.
+ */
+export async function updatePaymentAccountAction(
+  companyCode: string,
+  accountId: string,
+  payload: PaymentAccountUpdatePayload,
+  stepUpToken?: string
+): Promise<ApiResponse<PaymentAccountSummary>> {
+  return apiFetch<PaymentAccountSummary>(
+    `/companies/${encodeURIComponent(companyCode)}/payment-accounts/${encodeURIComponent(accountId)}`,
+    { method: "PUT", body: payload, auth: "required", cache: "no-store", stepUpToken }
   );
 }

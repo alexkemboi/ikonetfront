@@ -69,6 +69,8 @@ describe("system user CRUD actions", () => {
       [expect.stringContaining("/system-users/23/investor"), "PUT"],
       [expect.stringContaining("/system-users/23"), "DELETE"],
     ]);
+    // the backend reads `roleCode`; sending `role` is refused as "Validation failed"
+    expect(apiFetchMock.mock.calls[1][1].body).toEqual({ roleCode: "02" });
     expect(apiFetchMock.mock.calls[2][1].body).toEqual({ investorId: "investor-uuid" });
     expect(deleted.success).toBe(true);
   });
