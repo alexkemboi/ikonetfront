@@ -4,6 +4,7 @@ import React, { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { useCompanyScope } from "@/providers/CompanyScopeProvider";
 import { Loader2, Plus } from "lucide-react";
 import type { VoucherBatchItem, VoucherBatchKpis } from "@/lib/types/payments";
 import { generateVoucherBatch, getVoucherBatchDetails } from "@/actions/payments";
@@ -43,6 +44,7 @@ function toKsh(value: string | number): string {
 export function VoucherBatchLedger({ kpis, batches, packageOptions, routerOptions = [], page }: Props) {
   const router = useRouter();
   const [mintOpen, setMintOpen] = useState(false);
+  const { requireCompany } = useCompanyScope();
   const [saving, setSaving] = useState(false);
   const [packageId, setPackageId] = useState("");
   const [deviceId, setDeviceId] = useState("");
@@ -155,7 +157,7 @@ export function VoucherBatchLedger({ kpis, batches, packageOptions, routerOption
           Paid voucher batches — minted through the RADIUS path, GL at sale
         </span>
         <Button
-          onClick={() => setMintOpen(true)}
+          onClick={() => requireCompany(() => setMintOpen(true))}
           disabled={packageOptions.length === 0}
           className="bg-amber-500 text-black hover:bg-amber-400"
           size="sm"

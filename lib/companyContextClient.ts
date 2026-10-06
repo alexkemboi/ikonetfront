@@ -10,6 +10,8 @@ export const COMPANY_CONTEXT_COOKIE = "ibs_company_context";
 
 /** Error code of the backend's 400 for a selected company that does not exist. */
 export const UNKNOWN_COMPANY_CONTEXT = "UNKNOWN_COMPANY_CONTEXT";
+/** A SYSADMIN viewing all companies tried to change company data: a company must be selected first. */
+export const COMPANY_REQUIRED = "COMPANY_REQUIRED";
 
 const COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 7;
 

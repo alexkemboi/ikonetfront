@@ -27,6 +27,7 @@ import { cn } from "@/lib/utils";
 import { DataTable } from "@/components/ui/data-table";
 import { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
+import { useCompanyScope } from "@/providers/CompanyScopeProvider";
 import Link from "next/link";
 import {
  getCustomerStatements,
@@ -120,6 +121,7 @@ export default function StatementExplorer() {
  const [error, setError] = useState("");
  const [page, setPage] = useState(0);
  const [dialogOpen, setDialogOpen] = useState(false);
+ const { requireCompany } = useCompanyScope();
 
  // Generate form
  const [genCustomerId, setGenCustomerId] = useState("");
@@ -194,7 +196,7 @@ export default function StatementExplorer() {
  <p className="text-sm text-muted-foreground">View, generate, and download statements</p>
  </div>
  <div className="flex items-center gap-2">
- <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+ <Dialog open={dialogOpen} onOpenChange={(open) => (open ? requireCompany(() => setDialogOpen(true)) : setDialogOpen(false))}>
  <DialogTrigger asChild>
  <Button size="sm" className="h-8 gap-1">
  <Plus className="w-3.5 h-3.5" /> Generate Statement

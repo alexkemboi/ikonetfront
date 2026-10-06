@@ -70,6 +70,17 @@ function envelopeError<T>(
   return { status, success: false, message, data, timestamp: new Date().toISOString() };
 }
 
+/**
+ * Machine-readable error code of a refused request. The backend sends it either at the top
+ * level (`code`, written by its request filters) or inside `data.code` (coded exceptions
+ * such as `COMPANY_REQUIRED`).
+ */
+function errorCode(api: { code?: unknown; data?: unknown }): { code?: string } {
+  if (typeof api.code === "string") return { code: api.code };
+  const nested = (api.data as { code?: unknown } | null | undefined)?.code;
+  return typeof nested === "string" ? { code: nested } : {};
+}
+
 export async function apiFetch<T = unknown>(
   path: string,
   options: ApiFetchOptions = {}
@@ -191,7 +202,7 @@ export async function apiFetch<T = unknown>(
           data: (api.data as T) ?? null,
           timestamp: api.timestamp ?? new Date().toISOString(),
           requestId: responseRequestId,
-          ...(errorCode ? { code: errorCode } : {}),
+          ...errorCode(api),
         };
       }
 

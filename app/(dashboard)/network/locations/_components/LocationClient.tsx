@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { LocationForm } from "./LocationForm";
 import { toast } from "sonner";
+import { useCompanyScope } from "@/providers/CompanyScopeProvider";
 import { MapPin, Plus, Trash2 } from "lucide-react";
 import { ColumnDef } from "@tanstack/react-table";
 import { usePermissions } from "@/providers/PermissionsProvider";
@@ -22,6 +23,8 @@ export function LocationClient({ regionsTree }: LocationClientProps) {
 
  const [locations, setLocations] = useState<LocationResponse[]>(flatten(regionsTree));
  const [isDialogOpen, setIsOpen] = useState(false);
+ // A location, its stations and routers belong to one company; only regions are shared.
+ const { requireCompany } = useCompanyScope();
  const perms = usePermissions("/network/locations");
 
  const handleDelete = async (id: number, regionIdxno: number) => {
@@ -82,7 +85,7 @@ export function LocationClient({ regionsTree }: LocationClientProps) {
  <div className="space-y-4">
  <div className="flex justify-end">
  {perms.canCreate && (
- <Dialog open={isDialogOpen} onOpenChange={setIsOpen}>
+ <Dialog open={isDialogOpen} onOpenChange={(open) => (open ? requireCompany(() => setIsOpen(true)) : setIsOpen(false))}>
 <DialogTrigger asChild>
           <Button className="inline-flex items-center gap-2 rounded-xl bg-amber-500 px-5 py-2.5 text-black hover:bg-amber-400 transition shadow-lg shadow-amber-500/20">
             <Plus className="h-4 w-4" /> Add Location
