@@ -55,8 +55,14 @@ export type PackageUpdatePayload = PackagePayload & {
 
 export type VoucherPackageOption = Pick<InternetPackage, "idxno" | "packageName" | "packageCategory" | "validityType" | "validityValue" | "speedDownload" | "speedUpload" | "rateLimit" | "activeStatus" | "price">;
 
+/**
+ * The packages a voucher batch can be minted for: the company's active and
+ * approved hotspot packages, as the mint endpoint itself judges them. Not
+ * `/system/packages/category/HOTSPOT` — a package's category is its duration
+ * bucket (Hourly, Daily, Weekly, Monthly), so that filter matches none of them.
+ */
 export async function getActiveHotspotPackagesAction() {
-  return apiFetch<VoucherPackageOption[]>("/system/packages/category/HOTSPOT?includeInactive=false", {
+  return apiFetch<VoucherPackageOption[]>("/finance/voucher-batches/packages", {
     auth: "required",
     cache: "no-store",
   });
