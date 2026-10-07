@@ -1,5 +1,6 @@
 "use server";
 
+import { headers } from "next/headers";
 import { withCompanyContext } from "@/lib/companyContext";
 import { BASE_URL, buildApiUrl, resolveApiLink } from "@/lib/constants";
 import { safeJsonParse } from "@/lib/utils/api";
@@ -325,9 +326,16 @@ export interface TunnelAllocation {
 
 export const allocateTunnel = async (deviceId: number): Promise<ApiResponse<TunnelAllocation | null>> => {
   try {
+    // The backend locks the WinBox relay and the web console to one address. This call
+    // leaves from our server, so the admin's own address (set by nginx) is passed on.
+    const incoming = await headers();
+    const adminIp = (incoming.get("x-real-ip") || incoming.get("x-forwarded-for")?.split(",")[0] || "").trim();
     const response = await fetch(
       `${BASE_URL}network-devices/${deviceId}/tunnel/allocate`,
-      { method: "POST", headers: await getAuthHeaders() }
+      {
+        method: "POST",
+        headers: { ...(await getAuthHeaders()), ...(adminIp ? { "X-Tunnel-Client-Ip": adminIp } : {}) },
+      }
     );
 
     const data = (await response.json()) as {

@@ -102,7 +102,7 @@ export default function HotspotShell({ packages, initialCompanyCode, clientMac, 
           ))}
         </div>
         <div id="tv-service-panel" hidden={service !== "tv"}>
-          <TvDeviceSetup brand={brand} initialDevice={initialTvDevice} packages={tvPackages} packagesError={tvPackagesError} routerIdentity={routerIdentity} />
+          <TvDeviceSetup brand={brand} initialDevice={initialTvDevice} packages={tvPackages} packagesError={tvPackagesError} routerIdentity={routerIdentity} clientIp={clientIp} />
         </div>
         <div id="hotspot-service-panel" hidden={service !== "hotspot"} className="flex-1 w-full max-w-2xl">
           <HotspotFlow
