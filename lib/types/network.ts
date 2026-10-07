@@ -142,6 +142,29 @@ export interface RouterReachability {
   incidents: { startedAt: string; recoveredAt: string | null; durationSeconds: number; ongoing: boolean }[];
 }
 
+/**
+ * `GET /network/outages` — a confirmed outage: the router failed 4 health checks in a
+ * row (about 2 minutes) and the outage ends after 2 good checks in a row.
+ */
+export interface RouterOutage {
+  id: string;
+  routerId: number;
+  routerName: string | null;
+  /** `network_device.id` linked to the router: the id hotspot sessions carry. */
+  networkDeviceId: number | null;
+  stationId: string | null;
+  companyId: string | null;
+  status: "OPEN" | "CLOSED";
+  startedAt: string;
+  resolvedAt: string | null;
+  durationSeconds: number;
+  /** POWER_LOSS: the router restarted. LINK_LOSS: it stayed on, the connection to it was lost. */
+  cause: "POWER_LOSS" | "LINK_LOSS" | "UNKNOWN";
+  routerRestarted: boolean | null;
+  detectedBy: string | null;
+  reason: string | null;
+}
+
 /** `GET /network/monitoring/router/{id}/interfaces` — read live from RouterOS. */
 export interface RouterLiveInterface {
   name: string;

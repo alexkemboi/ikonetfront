@@ -29,6 +29,7 @@ import {
   RouterResponse,
   RouterLiveInterface,
   RouterLiveSessions,
+  RouterOutage,
   RouterReachability,
   RouterSeries,
   RouterSeriesRange,
@@ -976,6 +977,24 @@ export async function getRouterReachability(
   return res.success && res.data
     ? { data: res.data, error: null }
     : { data: null, error: res.message || "Could not load the router's uptime." };
+}
+
+/** Confirmed router outages: open ones first, then closed ones from the last `days`. */
+export async function getRouterOutages(
+  options: { routerId?: number; openOnly?: boolean; days?: number } = {}
+): Promise<{ data: RouterOutage[] | null; error: string | null }> {
+  const params = new URLSearchParams();
+  if (options.routerId != null) params.set("routerId", String(options.routerId));
+  if (options.openOnly) params.set("openOnly", "true");
+  if (options.days != null) params.set("days", String(options.days));
+  const query = params.toString();
+  const res = await apiFetch<RouterOutage[]>(
+    `/network/outages${query ? `?${query}` : ""}`,
+    { auth: "required", cache: "no-store" }
+  );
+  return res.success && res.data
+    ? { data: res.data, error: null }
+    : { data: null, error: res.message || "Could not load router outages." };
 }
 
 /**

@@ -1,4 +1,6 @@
 import { getLiveSessionsData } from "@/actions/sessions";
+import { getRouterOutages } from "@/actions/network";
+import { RouterOutageBanner } from "@/components/sessions/RouterOutageBanner";
 import { getPermissionForRoute } from "@/lib/data/nav";
 import { redirect } from "next/navigation";
 import { LiveSessionHeaderCards } from "@/components/sessions/LiveSessionHeaderCards";
@@ -15,7 +17,10 @@ export default async function LiveSessionsPage() {
   const pagePerms = await getPermissionForRoute("/network/live-sessions");
   if (!pagePerms.canView) redirect("/dashboard");
 
-  const result = await getLiveSessionsData();
+  const [result, outages] = await Promise.all([
+    getLiveSessionsData(),
+    getRouterOutages({ openOnly: true }),
+  ]);
 
   return (
   <div className="min-h-screen p-4 text-foreground sm:p-6 lg:p-8">
@@ -32,6 +37,11 @@ export default async function LiveSessionsPage() {
   {result.error ? "Live session data is unavailable." : `${result.kpis.currentlyConnected} active sessions · refreshes every ${REFRESH_INTERVAL_SECONDS}s`}
   </p>
   </div>
+
+  <RouterOutageBanner
+    initialOutages={outages.data ?? []}
+    refreshIntervalSeconds={REFRESH_INTERVAL_SECONDS}
+  />
 
   {result.error ? (
  	 <div role="alert" className="rounded-lg border border-destructive/30 bg-destructive/5 p-5 text-sm">
