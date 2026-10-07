@@ -99,6 +99,70 @@ export interface RouterHealthSnapshot {
   uptime: string;
   latencyMs: number;
   createdAt: string;
+  /** False when the router did not answer that collection; the readings are then zero. */
+  reachable?: boolean;
+  packetLossPct?: number | null;
+  totalDisk?: number | null;
+  freeDisk?: number | null;
+  routerOsVersion?: string | null;
+  /** Sum over the router's WAN interfaces; null on routers without the "ibs-wan" list. */
+  wanRxBps?: number | null;
+  wanTxBps?: number | null;
+}
+
+export type RouterSeriesRange = "1h" | "24h" | "7d" | "30d";
+
+/** One bucket of `GET /network/monitoring/router/{id}/series`; a null value means no reading in it. */
+export interface RouterSeriesPoint {
+  at: string;
+  cpuPct: number | null;
+  memoryPct: number | null;
+  diskPct: number | null;
+  latencyMs: number | null;
+  packetLossPct: number | null;
+  wanRxBps: number | null;
+  wanTxBps: number | null;
+  pppoeSessions: number | null;
+  hotspotSessions: number | null;
+}
+
+export interface RouterSeries {
+  range: RouterSeriesRange;
+  bucketSeconds: number;
+  points: RouterSeriesPoint[];
+}
+
+/** `GET /network/monitoring/router/{id}/reachability`. Hours with no row at all are simply absent (no data). */
+export interface RouterReachability {
+  days: number;
+  uptimePct: number | null;
+  incidentCount: number;
+  downtimeSeconds: number;
+  hours: { at: string; status: "UP" | "PARTIAL" | "DOWN" }[];
+  incidents: { startedAt: string; recoveredAt: string | null; durationSeconds: number; ongoing: boolean }[];
+}
+
+/**
+ * `GET /network/outages` — a confirmed outage: the router failed 4 health checks in a
+ * row (about 2 minutes) and the outage ends after 2 good checks in a row.
+ */
+export interface RouterOutage {
+  id: string;
+  routerId: number;
+  routerName: string | null;
+  /** `network_device.id` linked to the router: the id hotspot sessions carry. */
+  networkDeviceId: number | null;
+  stationId: string | null;
+  companyId: string | null;
+  status: "OPEN" | "CLOSED";
+  startedAt: string;
+  resolvedAt: string | null;
+  durationSeconds: number;
+  /** POWER_LOSS: the router restarted. LINK_LOSS: it stayed on, the connection to it was lost. */
+  cause: "POWER_LOSS" | "LINK_LOSS" | "UNKNOWN";
+  routerRestarted: boolean | null;
+  detectedBy: string | null;
+  reason: string | null;
 }
 
 /** `GET /network/monitoring/router/{id}/interfaces` — read live from RouterOS. */

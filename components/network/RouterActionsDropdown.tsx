@@ -413,10 +413,21 @@ export function RouterActionsDropdown({
         Live Hardware Vitals
       </button>
 
+      {Number.isFinite(actionRouterId) && actionRouterId > 0 && (
+        <a
+          role="menuitem"
+          href={`/network/routers/${actionRouterId}/monitoring`}
+          className="flex items-center w-full px-4 py-2.5 hover:bg-muted hover:text-foreground gap-2.5 transition text-left"
+        >
+          <Activity className="h-4 w-4 text-amber-500" />
+          History, Uptime &amp; Incidents
+        </a>
+      )}
+
       <button
         type="button"
         role="menuitem"
-        disabled={!router.links?.deviceInterfaces}
+        disabled={!router.links?.deviceInterfaces && !(actionRouterId > 0)}
         onClick={() => openDrawer("interfaces")}
         className="flex items-center w-full px-4 py-2.5 hover:bg-muted hover:text-foreground gap-2.5 transition text-left"
       >

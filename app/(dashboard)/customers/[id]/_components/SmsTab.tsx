@@ -32,6 +32,17 @@ function formatSentAt(value: string): string {
   });
 }
 
+const STATUS_LABELS: Record<
+  string,
+  { label: string; variant: "default" | "secondary" | "destructive" | "outline" }
+> = {
+  QUEUED: { label: "Waiting to send", variant: "secondary" },
+  SENDING: { label: "Sending", variant: "secondary" },
+  SENT: { label: "Sent", variant: "default" },
+  FAILED: { label: "Not sent", variant: "destructive" },
+  EXPIRED: { label: "Not sent (too late)", variant: "destructive" },
+};
+
 export function SmsTab({ customerId }: SmsTabProps) {
   const [messages, setMessages] = useState<SmsHistoryItem[]>([]);
   const [loaded, setLoaded] = useState(false);
@@ -64,12 +75,12 @@ export function SmsTab({ customerId }: SmsTabProps) {
         ) : error ? (
           <DataLoadError message="Unable to load SMS history for this customer." />
         ) : messages.length === 0 ? (
-          <EmptyState message="No SMS sent to this customer yet." />
+          <EmptyState message="No SMS for this customer yet." />
         ) : (
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Sent</TableHead>
+                <TableHead>Date</TableHead>
                 <TableHead>Phone</TableHead>
                 <TableHead>Type</TableHead>
                 <TableHead>Status</TableHead>
@@ -91,7 +102,18 @@ export function SmsTab({ customerId }: SmsTabProps) {
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    <Badge variant="outline">{message.status}</Badge>
+                    <Badge
+                      variant={STATUS_LABELS[message.status]?.variant ?? "outline"}
+                    >
+                      {STATUS_LABELS[message.status]?.label ?? message.status}
+                    </Badge>
+                    {message.failureReason &&
+                      (message.status === "FAILED" ||
+                        message.status === "EXPIRED") && (
+                        <p className="mt-1 max-w-[220px] whitespace-normal text-xs text-muted-foreground">
+                          {message.failureReason}
+                        </p>
+                      )}
                   </TableCell>
                   <TableCell className="max-w-[280px] truncate text-muted-foreground">
                     {message.content || "—"}

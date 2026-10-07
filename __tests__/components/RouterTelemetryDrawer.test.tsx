@@ -93,7 +93,8 @@ describe("RouterTelemetryDrawer", () => {
     render(<RouterTelemetryDrawer router={router} defaultTab="vitals" onClose={() => {}} />);
     await user.click(screen.getByRole("tab", { name: /interfaces/i }));
 
-    expect(mockInterfaces).toHaveBeenCalledWith(1, "/network-devices/1/interfaces");
+    // the router id (third argument) selects the live read from the router itself
+    expect(mockInterfaces).toHaveBeenCalledWith(1, "/network-devices/1/interfaces", 1);
     await waitFor(() => {
       expect(screen.getByText(/ether1/i)).toBeInTheDocument();
       expect(screen.getByText(/1\.5 GB/i)).toBeInTheDocument(); // rx-byte formatted in decimal units
@@ -187,7 +188,7 @@ describe("RouterTelemetryDrawer", () => {
     // Interfaces must hit the device id (99).
     await user.click(screen.getByRole("tab", { name: /interfaces/i }));
     await waitFor(() => {
-      expect(mockInterfaces).toHaveBeenCalledWith(99, "/network-devices/99/interfaces");
+      expect(mockInterfaces).toHaveBeenCalledWith(99, "/network-devices/99/interfaces", 7);
     });
   });
 });

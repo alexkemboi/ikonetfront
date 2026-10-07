@@ -52,8 +52,13 @@ export interface SmsHistoryItem {
   direction: string;
   templateCode: string | null;
   content: string | null;
+  /** QUEUED, SENDING, SENT, FAILED or EXPIRED. */
   status: string;
   sentAt: string;
+  attempts?: number | null;
+  providerStatus?: string | null;
+  /** Why the message did not go out, when status is FAILED or EXPIRED. */
+  failureReason?: string | null;
 }
 
 export type TicketSummaryItem = Ticket;

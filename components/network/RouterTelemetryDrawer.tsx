@@ -45,6 +45,8 @@ interface TelemetryRouter {
 
 const POLL_MS = 5000;
 const CONNECT_MS = 10000;
+/** How long an open stream may stay silent before the drawer reads /latest instead. */
+const FIRST_FRAME_MS = 6000;
 /** Interfaces carry a one-second traffic sample, so 5s keeps rates current. */
 const INTERFACES_POLL_MS = 5000;
 const SESSIONS_POLL_MS = 15000;
@@ -112,7 +114,8 @@ export function RouterTelemetryDrawer({
 }) {
   const [tab, setTab] = useState<Tab>(defaultTab);
   const [latest, setLatest] = useState<RouterHealthSnapshot | null>(null);
-  const [mode, setMode] = useState<"streaming" | "polling" | "offline">("streaming");
+  // "connecting" until a reading has actually arrived: an open stream is not yet live data.
+  const [mode, setMode] = useState<"connecting" | "streaming" | "polling" | "offline">("connecting");
 
   const deviceId = Number(router.deviceId);
   const hasNumericDevice = Number.isFinite(deviceId) && deviceId > 0;
@@ -122,8 +125,8 @@ export function RouterTelemetryDrawer({
   // Interfaces belong to network_device (device id + its HALO link); telemetry
   // and sessions belong to network_routers (idxno). Never cross the two.
   const loadInterfaces = useCallback(
-    () => getRouterLiveInterfaces(deviceId, router.links?.deviceInterfaces),
-    [deviceId, router.links?.deviceInterfaces]
+    () => getRouterLiveInterfaces(deviceId, router.links?.deviceInterfaces, hasNumericRouter ? telemetryRouterId : null),
+    [deviceId, router.links?.deviceInterfaces, hasNumericRouter, telemetryRouterId]
   );
   const liveInterfaces = useLivePoll<RouterLiveInterface[]>(
     hasNumericDevice && tab === "interfaces",
@@ -161,6 +164,12 @@ export function RouterTelemetryDrawer({
 
     const apply = (snap: RouterHealthSnapshot) => {
       if (cancelled) return;
+      if (stallTimer) clearTimeout(stallTimer);
+      // An outage frame carries no readings: keep the last real ones on screen.
+      if (snap.reachable === false) {
+        setMode("offline");
+        return;
+      }
       setLatest(snap);
       setMode("streaming");
     };
@@ -213,9 +222,15 @@ export function RouterTelemetryDrawer({
         startPolling();
         return;
       }
-      setMode("streaming");
+      setMode("connecting");
       stopTimers();
       source = new EventSource(`/api/monitoring/router/${telemetryRouterId}/live`);
+
+      // The backend sends its latest reading as the first frame. An open stream that
+      // stays silent is being held up somewhere on the way, so read /latest instead.
+      stallTimer = setTimeout(() => {
+        if (!cancelled) degradeToPolling();
+      }, FIRST_FRAME_MS);
 
       connectTimer = setTimeout(() => {
         if (source && source.readyState === EventSource.CONNECTING) {
@@ -271,7 +286,9 @@ export function RouterTelemetryDrawer({
                   ? "LIVE"
                   : displayMode === "polling"
                     ? "POLLING"
-                    : "OFFLINE"}
+                    : displayMode === "connecting"
+                      ? "CONNECTING"
+                      : "OFFLINE"}
               </span>
             </h2>
             <p className="text-xs text-muted-foreground mt-0.5 font-sans tabular-nums">
@@ -408,6 +425,44 @@ export function RouterTelemetryDrawer({
                   </div>
                 </div>
               </div>
+
+              <dl className="col-span-2 rounded-xl border border-border bg-card divide-y divide-border text-xs">
+                {[
+                  ["Latency", latest?.latencyMs ? `${latest.latencyMs} ms` : "—"],
+                  ["Packet loss", latest?.packetLossPct != null ? `${latest.packetLossPct}%` : "—"],
+                  [
+                    "Disk used",
+                    latest?.totalDisk && latest.freeDisk != null
+                      ? `${Math.round(((latest.totalDisk - latest.freeDisk) / latest.totalDisk) * 100)}% of ${formatBytes(latest.totalDisk)}`
+                      : "—",
+                  ],
+                  [
+                    "Internet link now",
+                    latest?.wanRxBps != null
+                      ? `↓ ${formatBps(latest.wanRxBps)} · ↑ ${formatBps(latest.wanTxBps)}`
+                      : "—",
+                  ],
+                  ["RouterOS", latest?.routerOsVersion || "—"],
+                ].map(([label, value]) => (
+                  <div key={label} className="flex items-center justify-between px-4 py-2.5">
+                    <dt className="text-muted-foreground">{label}</dt>
+                    <dd className="font-sans tabular-nums font-medium">{value}</dd>
+                  </div>
+                ))}
+              </dl>
+
+              {displayMode === "offline" && (
+                <p className="col-span-2 rounded-lg border border-destructive/20 bg-destructive/10 p-3 text-xs text-destructive">
+                  The router is not answering. {latest ? "These are its last readings." : "No readings have been received yet."}
+                </p>
+              )}
+
+              <a
+                href={`/network/routers/${telemetryRouterId}/monitoring`}
+                className="col-span-2 text-center rounded-lg border border-border py-2.5 text-xs font-medium hover:bg-muted"
+              >
+                Open history, uptime and incidents
+              </a>
             </div>
           )}
 

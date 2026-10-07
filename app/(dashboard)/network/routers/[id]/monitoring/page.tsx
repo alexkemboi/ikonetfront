@@ -1,6 +1,7 @@
 import { getPermissionForRoute } from "@/lib/data/nav";
 import { getRouterHistory } from "@/actions/network";
 import { RouterLiveMonitor } from "./_components/RouterLiveMonitor";
+import { RouterHealthHistory } from "./_components/RouterHealthHistory";
 import { notFound, redirect } from "next/navigation";
 
 interface MonitoringPageProps {
@@ -34,8 +35,10 @@ export default async function RouterMonitoringPage({ params }: MonitoringPagePro
 
  <RouterLiveMonitor 
  routerId={routerId} 
- initialHistory={historicalData.reverse()}
+ initialHistory={historicalData.filter((snapshot) => snapshot.reachable !== false).reverse()}
  />
+
+ <RouterHealthHistory routerId={routerId} />
  </div>
  );
 }
