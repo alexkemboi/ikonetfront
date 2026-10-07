@@ -20,6 +20,11 @@ export type PaymentAccountPayload = {
   clientSecret?: string;
   /** M-Pesa online (STK push) passkey. Required for PAYBILL and TILL. */
   passkey?: string;
+  /**
+   * A Safaricom line of the organisation that owns the paybill / till. With it the
+   * account is registered for Safaricom's transaction statement when it is added.
+   */
+  nominatedNumber?: string;
   isDefault: boolean;
 };
 
@@ -45,7 +50,22 @@ export type CompanyPaymentAccountView = {
   id: string;
   /** True when key, secret and passkey are all stored and readable. */
   credentialsComplete: boolean | null;
+  /** REGISTERED, ALREADY_REGISTERED (confirmed on a repeat), FAILED, or null when never attempted. */
   pullRegistrationStatus: string | null;
+  /** When Safaricom last answered a registration or a check. Nairobi time, no zone. */
+  pullRegisteredAt?: string | null;
+  /** What Safaricom said when the registration failed. */
+  pullRegistrationError?: string | null;
+  pullNominatedNumber?: string | null;
+};
+
+/** Safaricom's answer to registering a paybill / till for its transaction statement. */
+export type StatementRegistrationResult = {
+  paymentAccountId: string;
+  status: string;
+  shortCode: string;
+  succeeded: boolean;
+  detail: string;
 };
 
 /** Can this company take mobile-money payments right now? */
@@ -66,6 +86,8 @@ export type PaymentAccountUpdatePayload = {
   clientKey?: string;
   clientSecret?: string;
   passkey?: string;
+  /** Setting it registers an account that is not registered yet. */
+  nominatedNumber?: string;
   isDefault?: boolean;
   isActive?: boolean;
 };
@@ -209,5 +231,23 @@ export async function updatePaymentAccountAction(
   return apiFetch<PaymentAccountSummary>(
     `/companies/${encodeURIComponent(companyCode)}/payment-accounts/${encodeURIComponent(accountId)}`,
     { method: "PUT", body: payload, auth: "required", cache: "no-store", stepUpToken }
+  );
+}
+
+/**
+ * Registers a paybill / till for Safaricom's transaction statement, or confirms a
+ * registration when it is already registered. Uses the nominated number stored on the
+ * account unless one is given.
+ */
+export async function registerPaymentAccountStatementAction(
+  accountId: string,
+  nominatedNumber?: string
+): Promise<ApiResponse<StatementRegistrationResult>> {
+  const query = nominatedNumber?.trim()
+    ? `?nominatedNumber=${encodeURIComponent(nominatedNumber.trim())}`
+    : "";
+  return apiFetch<StatementRegistrationResult>(
+    `/payments/mpesa/pull/register/${encodeURIComponent(accountId)}${query}`,
+    { method: "POST", auth: "required", cache: "no-store" }
   );
 }
