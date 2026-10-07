@@ -99,6 +99,47 @@ export interface RouterHealthSnapshot {
   uptime: string;
   latencyMs: number;
   createdAt: string;
+  /** False when the router did not answer that collection; the readings are then zero. */
+  reachable?: boolean;
+  packetLossPct?: number | null;
+  totalDisk?: number | null;
+  freeDisk?: number | null;
+  routerOsVersion?: string | null;
+  /** Sum over the router's WAN interfaces; null on routers without the "ibs-wan" list. */
+  wanRxBps?: number | null;
+  wanTxBps?: number | null;
+}
+
+export type RouterSeriesRange = "1h" | "24h" | "7d" | "30d";
+
+/** One bucket of `GET /network/monitoring/router/{id}/series`; a null value means no reading in it. */
+export interface RouterSeriesPoint {
+  at: string;
+  cpuPct: number | null;
+  memoryPct: number | null;
+  diskPct: number | null;
+  latencyMs: number | null;
+  packetLossPct: number | null;
+  wanRxBps: number | null;
+  wanTxBps: number | null;
+  pppoeSessions: number | null;
+  hotspotSessions: number | null;
+}
+
+export interface RouterSeries {
+  range: RouterSeriesRange;
+  bucketSeconds: number;
+  points: RouterSeriesPoint[];
+}
+
+/** `GET /network/monitoring/router/{id}/reachability`. Hours with no row at all are simply absent (no data). */
+export interface RouterReachability {
+  days: number;
+  uptimePct: number | null;
+  incidentCount: number;
+  downtimeSeconds: number;
+  hours: { at: string; status: "UP" | "PARTIAL" | "DOWN" }[];
+  incidents: { startedAt: string; recoveredAt: string | null; durationSeconds: number; ongoing: boolean }[];
 }
 
 /** `GET /network/monitoring/router/{id}/interfaces` — read live from RouterOS. */

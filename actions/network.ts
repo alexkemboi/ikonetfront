@@ -29,6 +29,9 @@ import {
   RouterResponse,
   RouterLiveInterface,
   RouterLiveSessions,
+  RouterReachability,
+  RouterSeries,
+  RouterSeriesRange,
 } from "@/lib/types/network";
 import { revalidatePath, revalidateTag, updateTag } from "next/cache";
 import { auth } from "@/lib/auth";
@@ -928,10 +931,51 @@ export const getNetworkDeviceInterfaces = async (
  */
 export async function getRouterLiveInterfaces(
   deviceId: number,
-  interfacesUrl?: string | null
+  interfacesUrl?: string | null,
+  routerId?: number | null
 ): Promise<{ data: RouterLiveInterface[]; error: string | null }> {
+  // With a network_routers id the list is read from the router itself, with current
+  // rates. The device-row endpoint below is a stored copy and is only the fallback
+  // for a device that has no router record.
+  if (routerId && routerId > 0) {
+    const res = await apiFetch<RouterLiveInterface[]>(
+      `/network/monitoring/router/${routerId}/interfaces`,
+      { auth: "required", cache: "no-store", timeoutMs: 20_000 }
+    );
+    return res.success
+      ? { data: res.data ?? [], error: null }
+      : { data: [], error: res.message || "Could not read interfaces from the router." };
+  }
   const rows = await getNetworkDeviceInterfaces(deviceId, interfacesUrl);
   return { data: rows as unknown as RouterLiveInterface[], error: null };
+}
+
+/** Bucketed averages for the history charts. */
+export async function getRouterSeries(
+  routerId: number,
+  range: RouterSeriesRange
+): Promise<{ data: RouterSeries | null; error: string | null }> {
+  const res = await apiFetch<RouterSeries>(
+    `/network/monitoring/router/${routerId}/series?range=${range}`,
+    { auth: "required", cache: "no-store" }
+  );
+  return res.success && res.data
+    ? { data: res.data, error: null }
+    : { data: null, error: res.message || "Could not load the router history." };
+}
+
+/** Uptime, hourly status and outage incidents. */
+export async function getRouterReachability(
+  routerId: number,
+  days: number = 7
+): Promise<{ data: RouterReachability | null; error: string | null }> {
+  const res = await apiFetch<RouterReachability>(
+    `/network/monitoring/router/${routerId}/reachability?days=${days}`,
+    { auth: "required", cache: "no-store" }
+  );
+  return res.success && res.data
+    ? { data: res.data, error: null }
+    : { data: null, error: res.message || "Could not load the router's uptime." };
 }
 
 /**

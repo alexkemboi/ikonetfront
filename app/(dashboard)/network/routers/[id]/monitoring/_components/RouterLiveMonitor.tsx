@@ -43,6 +43,11 @@ export function RouterLiveMonitor({ routerId, initialHistory }: RouterLiveMonito
 
  const append = (snap: RouterHealthSnapshot) => {
  if (cancelled) return;
+ // An outage frame has no readings: mark the router down and keep the last real ones.
+ if (snap.reachable === false) {
+ setIsOnline(false);
+ return;
+ }
  setLatest(snap);
  setIsOnline(true);
  setDataStream((prev) => {
