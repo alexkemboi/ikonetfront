@@ -51,7 +51,8 @@ const BasicInfoStep = ({
  <Input
  id="username"
  type="text"
- placeholder="johndoe"
+ placeholder="john.doe"
+ autoComplete="off"
  {...formik.getFieldProps("username")}
  className={
  formik.touched.username && formik.errors.username
@@ -59,8 +60,10 @@ const BasicInfoStep = ({
  : ""
  }
  />
- {formik.touched.username && formik.errors.username && (
+ {formik.touched.username && formik.errors.username ? (
  <p className="text-xs text-destructive">{formik.errors.username}</p>
+ ) : (
+ <p className="text-xs text-muted-foreground">The PPPoE login for this customer. No spaces.</p>
  )}
  </div>
 
@@ -70,6 +73,7 @@ const BasicInfoStep = ({
  id="password"
  type="password"
  placeholder="Min. 6 characters"
+ autoComplete="new-password"
  {...formik.getFieldProps("password")}
  className={
  formik.touched.password && formik.errors.password
@@ -83,7 +87,7 @@ const BasicInfoStep = ({
  </div>
 
  <div className="space-y-2">
- <Label htmlFor="email">Email</Label>
+ <Label htmlFor="email">Email <span className="font-normal text-muted-foreground">(optional)</span></Label>
  <Input
  id="email"
  type="email"
@@ -105,7 +109,7 @@ const BasicInfoStep = ({
  <Input
  id="phoneNumber"
  type="text"
- placeholder="+254 700 000 000"
+ placeholder="0712345678"
  {...formik.getFieldProps("phoneNumber")}
  className={
  formik.touched.phoneNumber && formik.errors.phoneNumber

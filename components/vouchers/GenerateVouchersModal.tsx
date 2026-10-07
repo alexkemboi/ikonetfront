@@ -51,6 +51,7 @@ export function GenerateVouchersModal({ isOpen, onClose, routerOptions = [] }: P
  // against a real, live package.
  const [packages, setPackages] = useState<PackageOption[]>([]);
  const [packagesError, setPackagesError] = useState(false);
+ const [packagesLoaded, setPackagesLoaded] = useState(false);
  const [packageId, setPackageId] = useState(0);
  const [voucherType, setVoucherType] = useState<"DEMO" | "MIGRATION">("DEMO");
  const [idempotencyKey, setIdempotencyKey] = useState("");
@@ -71,6 +72,7 @@ export function GenerateVouchersModal({ isOpen, onClose, routerOptions = [] }: P
  getActiveHotspotPackagesAction()
  .then((res) => {
  if (cancelled) return;
+ setPackagesLoaded(true);
  if (!res.success) {
  setPackagesError(true);
  return;
@@ -92,6 +94,7 @@ export function GenerateVouchersModal({ isOpen, onClose, routerOptions = [] }: P
  })
  .catch(() => {
  if (cancelled) return;
+ setPackagesLoaded(true);
  setPackagesError(true);
  });
  return () => {
@@ -224,8 +227,10 @@ const res = await generateVouchers({
  <p className="mt-1.5 text-[11px] text-muted-foreground">
  {packagesError
  ? "Live packages unavailable — vouchers cannot be minted right now."
- : packages.length === 0
+ : !packagesLoaded
  ? "Loading live packages…"
+ : packages.length === 0
+ ? "No hotspot package is both active and approved. Approve one under System → Packages."
  : `Live packages · ${packages.length} active`}
  </p>
  </div>

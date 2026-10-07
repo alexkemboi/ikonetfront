@@ -49,5 +49,7 @@ export function resolveExpiryStatusVariant(
  * Returns "N/A" for null/undefined values.
  */
 export function formatCustomerDate(dateString: string | null | undefined): string {
-  return formatDateOnly(dateString);
+  // The backend sends expiry as a date-time (2026-10-07T13:02:22); show its calendar day.
+  const dayOnly = dateString && /^\d{4}-\d{2}-\d{2}T/.test(dateString) ? dateString.slice(0, 10) : dateString;
+  return formatDateOnly(dayOnly);
 }

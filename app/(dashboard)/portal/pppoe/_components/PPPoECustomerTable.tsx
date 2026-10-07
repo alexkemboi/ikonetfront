@@ -1,7 +1,8 @@
 "use client";
 
+import { PppoeServiceDialog, type PppoeServiceRequest } from "./PppoeServiceDialog";
 import { useCompanyScope } from "@/providers/CompanyScopeProvider";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
@@ -25,6 +26,7 @@ export function PPPoECustomerTable({ customers }: PPPoECustomerTableProps) {
  const router = useRouter();
  const perms = usePermissions("/portal/pppoe");
  const { requireCompany } = useCompanyScope();
+ const [serviceRequest, setServiceRequest] = useState<PppoeServiceRequest | null>(null);
 
  async function handleToggleActive(customer: Customer) {
  toast.loading(`Updating ${customer.fullName}…`);
@@ -43,7 +45,7 @@ const result = await toggleCustomerActiveStatus(customer.userIdxno);
  }
 
 const columns = useMemo(
-  () => createPPPoEColumns(router, dispatch, handleToggleActive),
+  () => createPPPoEColumns(router, dispatch, handleToggleActive, setServiceRequest),
   [router, dispatch]
   );
 
@@ -90,6 +92,7 @@ const columns = useMemo(
  />
  </div>
 
+ <PppoeServiceDialog request={serviceRequest} onClose={() => setServiceRequest(null)} />
  <RenewSubscriptionSheet customers={customers} />
  <ChangePasswordSheet customers={customers} />
  </>
