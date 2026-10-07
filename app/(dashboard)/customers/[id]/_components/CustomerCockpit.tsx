@@ -10,6 +10,7 @@ import { CustomerLifecycleBanner } from "./CustomerLifecycleBanner";
 import { CustomerInfoGrid } from "./CustomerInfoGrid";
 import { CustomerSubscriptionPanel } from "./CustomerSubscriptionPanel";
 import { LiveSpeedGauges } from "./LiveSpeedGauges";
+import { CustomerDeviceCheckCard } from "./CustomerDeviceCheckCard";
 import { ActivityCalendarHeatmap } from "./ActivityCalendarHeatmap";
 import { PeakHoursHeatmap } from "./PeakHoursHeatmap";
 import { CustomerNotesTab } from "./CustomerNotesTab";
@@ -64,6 +65,7 @@ export function CustomerCockpit({ customer }: CustomerCockpitProps) {
 
         <TabsContent value="sessions" className="mt-6">
           <LiveSpeedGauges customerId={customerId} />
+          <CustomerDeviceCheckCard customerId={customerId} />
         </TabsContent>
 
         <TabsContent value="reports" className="mt-6 space-y-6">

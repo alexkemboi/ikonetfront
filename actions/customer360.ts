@@ -45,6 +45,40 @@ export async function getLiveSpeed(
   }
 }
 
+export interface CustomerDeviceCheck {
+  state: "REACHABLE" | "NO_REPLY" | "SESSION_OFFLINE" | "NO_PPPOE_ACCOUNT" | "NO_ROUTER" | "ROUTER_UNREACHABLE";
+  message: string;
+  checkedAt: string;
+  pppoeUsername?: string;
+  routerName?: string;
+  sessionAddress?: string;
+  deviceMac?: string;
+  sessionUptime?: string;
+  sent?: number;
+  received?: number;
+  packetLossPct?: number | null;
+  avgRttMs?: number | null;
+  maxRttMs?: number | null;
+}
+
+/** Pings the customer's own router from the MikroTik that serves their PPPoE session (takes about 4 seconds). */
+export async function checkCustomerDevice(
+  customerId: number
+): Promise<ApiResponse<CustomerDeviceCheck>> {
+  try {
+    const res = await apiFetch<CustomerDeviceCheck>(
+      `/customers/${customerId}/device-ping`,
+      { method: "POST", auth: "required", cache: "no-store", timeoutMs: 20_000 }
+    );
+    return nullOnFailure(res);
+  } catch (error: unknown) {
+    return failed(
+      (error instanceof Error ? error.message : String(error)) ||
+        "Unable to test the customer's device"
+    );
+  }
+}
+
 export async function getActivityHeatmap(
   customerId: number
 ): Promise<ApiResponse<ActivityHeatmapPoint[]>> {
