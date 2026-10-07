@@ -2,8 +2,9 @@
 
 import { ColumnDef } from "@tanstack/react-table";
 import { AppRouterInstance } from "next/dist/shared/lib/app-router-context.shared-runtime";
-import { MoreHorizontal, RefreshCw, KeyRound, UserCheck, UserX, Eye } from "lucide-react";
+import { MoreHorizontal, RefreshCw, KeyRound, UserCheck, UserX, Eye, PackageCheck, Smartphone } from "lucide-react";
 import { Customer } from "@/lib/types/customer";
+import type { PppoeServiceRequest } from "./PppoeServiceDialog";
 import { AppDispatch } from "@/store";
 import { openRenewSheet, openPasswordSheet } from "@/store/slices/customerslice";
 import { DataTableColumnHeader } from "@/components/shared/column-header";
@@ -26,7 +27,8 @@ import { cn } from "@/lib/utils";
 export function createPPPoEColumns(
  router: AppRouterInstance,
  dispatch: AppDispatch,
- onToggleActive: (customer: Customer) => void
+ onToggleActive: (customer: Customer) => void,
+ onService: (request: PppoeServiceRequest) => void
 ): ColumnDef<Customer>[] {
  return [
  {
@@ -71,7 +73,7 @@ export function createPPPoEColumns(
  const pkg: string | null = row.getValue("packageName");
  return (
  <span className={cn("text-sm", !pkg && "text-muted-foreground italic")}>
- {pkg ?? "No package"}
+ {pkg || "No package"}
  </span>
  );
  },
@@ -164,11 +166,28 @@ export function createPPPoEColumns(
  : <><UserCheck className="w-3.5 h-3.5" /> Activate</>}
  </DropdownMenuItem>
  <DropdownMenuSeparator />
+ {/* Customers with a PPPoE account are managed through packages and payments. */}
+ {customer.customerId && (
+ <>
+ <DropdownMenuItem
+ className="gap-2 cursor-pointer"
+ onClick={() => onService({ kind: "package", customer })}
+ >
+ <PackageCheck className="w-3.5 h-3.5" /> Assign package
+ </DropdownMenuItem>
+ <DropdownMenuItem
+ className="gap-2 cursor-pointer"
+ onClick={() => onService({ kind: "payment", customer })}
+ >
+ <Smartphone className="w-3.5 h-3.5" /> Request M-Pesa payment
+ </DropdownMenuItem>
+ </>
+ )}
  <DropdownMenuItem
  className="gap-2 cursor-pointer"
  onClick={() => dispatch(openRenewSheet(customer.userIdxno))}
  >
- <RefreshCw className="w-3.5 h-3.5" /> Renew Subscription
+ <RefreshCw className="w-3.5 h-3.5" /> {customer.customerId ? "Renew one period (paid offline)" : "Renew Subscription"}
  </DropdownMenuItem>
  <DropdownMenuItem
  className="gap-2 cursor-pointer"

@@ -20,6 +20,10 @@ export interface Customer {
   startDate: string | null;
   expiryDate: string | null;
   lastActiveDate: string | null;
+  /** Id used by the PPPoE package and payment actions; absent when the customer has no PPPoE account. */
+  customerId?: string | null;
+  /** PPPoE account state (ACTIVE / SUSPENDED / DISABLED); absent with no PPPoE account. */
+  pppoeAccountStatus?: string | null;
 }
 
 export type CustomerPageable = PageResponse<never>["pageable"];
@@ -30,19 +34,18 @@ export type CustomerApiResponse<T = unknown> = BaseApiResponse<PageResponse<T>> 
 
 export interface AddCustomerPayload {
   username: string;
-  password?: string; // Password is required for new PPPoE customers
+  /** Also the customer's PPPoE password. */
+  password: string;
   firstname: string;
   lname: string;
-  email: string;
+  email?: string;
   phoneNumber: string;
   isActive: boolean;
   canLogin: boolean;
-  acno?: string;
-  packageName?: string;
-  custtype?: string;
-  isSubActive?: boolean;
-  duration?: number;
-  unit?: string;
+  /** House number. */
+  acno: string;
+  /** Serving MikroTik router: gives the customer a PPPoE account that packages and payments act on. */
+  networkDeviceId: number;
 }
 
 export interface UpdateCustomerPayload {
