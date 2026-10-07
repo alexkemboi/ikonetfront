@@ -7,10 +7,10 @@ import { getPermissionForRoute } from "@/lib/data/nav";
 import { isPlatformAdminRole, normalizeRole, ROLE_NAME } from "@/lib/types/roles";
 import type { RouterAttributionItem } from "@/lib/types/investor";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { AgreementsTable, BillingSnapshotsTable, RouterAttributionTable } from "./_components/InvestorTables";
 
 export const dynamic = "force-dynamic";
 
@@ -23,9 +23,6 @@ const formatKES = (value: number): string =>
   new Intl.NumberFormat("en-KE", { style: "currency", currency: "KES", maximumFractionDigits: 0 }).format(
     Number.isFinite(value) ? value : 0
   );
-
-const formatDate = (value: string | null): string =>
-  value ? new Date(value).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) : "—";
 
 export default async function InvestorPortalPage({
   searchParams,
@@ -156,28 +153,7 @@ export default async function InvestorPortalPage({
               {routerRows.length === 0 ? (
                 <p className="text-sm text-muted-foreground">No router attribution for this period.</p>
               ) : (
-                <table className="w-full text-sm">
-                  <thead className="border-b text-left text-muted-foreground">
-                    <tr>
-                      <th className="py-2 pr-4 font-medium">Router</th>
-                      <th className="py-2 pr-4 font-medium">Station</th>
-                      <th className="py-2 pr-4 font-medium">Hotspot Revenue</th>
-                      <th className="py-2 pr-4 font-medium">PPPoE Subscribers</th>
-                      <th className="py-2 font-medium">Attributed Revenue</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {routerRows.map((row) => (
-                      <tr key={row.routerId} className="border-b">
-                        <td className="py-2 pr-4">{row.routerName || row.routerId}</td>
-                        <td className="py-2 pr-4">{row.stationName || "—"}</td>
-                        <td className="py-2 pr-4">{formatKES(row.hotspotRevenue)}</td>
-                        <td className="py-2 pr-4">{row.pppoeSubscribers}</td>
-                        <td className="py-2 font-medium">{formatKES(row.totalAttributedRevenue)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                <RouterAttributionTable rows={routerRows} />
               )}
             </CardContent>
           </Card>
@@ -195,38 +171,7 @@ export default async function InvestorPortalPage({
                   {data.snapshotsMessage || "No billing snapshots yet."}
                 </p>
               ) : (
-                <table className="w-full text-sm">
-                  <thead className="border-b text-left text-muted-foreground">
-                    <tr>
-                      <th className="py-2 pr-4 font-medium">#</th>
-                      <th className="py-2 pr-4 font-medium">Period</th>
-                      <th className="py-2 pr-4 font-medium">Maintenance Due</th>
-                      <th className="py-2 font-medium">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {data.snapshots.map((snapshot) => (
-                      <tr key={snapshot.id} className="border-b">
-                        <td className="py-2 pr-4">{snapshot.snapshotNumber}</td>
-                        <td className="py-2 pr-4">{snapshot.periodYearMonth}</td>
-                        <td className="py-2 pr-4">{formatKES(snapshot.totalMaintenanceDue)}</td>
-                        <td className="py-2">
-                          <Badge
-                            variant={
-                              snapshot.status === "PAID"
-                                ? "default"
-                                : snapshot.status === "FINALIZED"
-                                  ? "secondary"
-                                  : "outline"
-                            }
-                          >
-                            {snapshot.status}
-                          </Badge>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                <BillingSnapshotsTable rows={data.snapshots} />
               )}
             </CardContent>
           </Card>
@@ -241,32 +186,7 @@ export default async function InvestorPortalPage({
                   {data.agreementsMessage || "No agreements found."}
                 </p>
               ) : (
-                <table className="w-full text-sm">
-                  <thead className="border-b text-left text-muted-foreground">
-                    <tr>
-                      <th className="py-2 pr-4 font-medium">Name</th>
-                      <th className="py-2 pr-4 font-medium">Code</th>
-                      <th className="py-2 pr-4 font-medium">Effective</th>
-                      <th className="py-2 font-medium">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {data.agreements.map((agreement) => (
-                      <tr key={agreement.id} className="border-b">
-                        <td className="py-2 pr-4">{agreement.name}</td>
-                        <td className="py-2 pr-4">{agreement.agreementCode}</td>
-                        <td className="py-2 pr-4">
-                          {formatDate(agreement.effectiveStartDate)} → {formatDate(agreement.effectiveEndDate)}
-                        </td>
-                        <td className="py-2">
-                          <Badge variant={agreement.status === "ACTIVE" ? "default" : "outline"}>
-                            {agreement.status}
-                          </Badge>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                <AgreementsTable rows={data.agreements} />
               )}
             </CardContent>
           </Card>

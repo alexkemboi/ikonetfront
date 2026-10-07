@@ -157,9 +157,9 @@ export function RouterTunnelCell({
   }
 
   return (
-    <>
-      <td className="py-4 px-6">{winboxCell}</td>
-      <td className="py-4 px-6">{consoleCell}</td>
-    </>
+    <div className="flex items-center gap-4">
+      {winboxCell}
+      {consoleCell}
+    </div>
   );
 }

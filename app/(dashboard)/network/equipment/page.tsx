@@ -13,18 +13,19 @@ export const metadata = {
 
 export const dynamic = "force-dynamic";
 
-export default async function EquipmentHubPage({ searchParams }: { searchParams: Promise<{ page?: string; status?: string; type?: string; search?: string; dataQuality?: string }> }) {
+export default async function EquipmentHubPage({ searchParams }: { searchParams: Promise<{ page?: string; status?: string; type?: string; search?: string; dataQuality?: string; size?: string }> }) {
  const pagePerms = await getPermissionForRoute("/network/equipment");
  if (!pagePerms.canView) redirect("/dashboard");
 
  const params = await searchParams;
  const page = Math.max(0, Number(params?.page ?? 0) || 0);
+ const size = [10, 20, 25, 30, 40, 50].includes(Number(params?.size)) ? Number(params.size) : 50;
  const status = params?.status as import("@/lib/types/equipment").EquipmentStatus | undefined;
  const allowedTypes = ["ROUTER", "SWITCH", "CPE_MODEM", "ONU", "ANTENNA", "SMART_TV", "WIFI_AP", "CABLE"];
  const type = allowedTypes.includes(params?.type ?? "") ? params.type as import("@/lib/types/equipment").EquipmentType : undefined;
  const allowedQualityFilters = ["VERIFIED", "PLACEHOLDER", "MISSING", "NEEDS_CORRECTION"];
  const dataQuality = allowedQualityFilters.includes(params?.dataQuality ?? "") ? params.dataQuality : undefined;
- const result = await getEquipmentData({ page, size: 50, status, type, search: params?.search, dataQuality });
+ const result = await getEquipmentData({ page, size, status, type, search: params?.search, dataQuality });
 
  return (
  <div className="min-h-screen p-4 text-foreground sm:p-6 lg:p-8">

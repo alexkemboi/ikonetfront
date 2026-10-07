@@ -27,6 +27,8 @@ export default async function VouchersPage({
     search?: string;
     voucherState?: string;
     source?: string;
+    size?: string;
+    batchSize?: string;
   }>;
 }) {
   const pagePerms = await getPermissionForRoute("/finance/vouchers");
@@ -35,6 +37,8 @@ export default async function VouchersPage({
   const params = await searchParams;
   const page = Math.max(0, Number(params.page ?? 0) || 0);
   const batchPage = Math.max(0, Number(params.batchPage ?? 0) || 0);
+  const size = [10, 20, 25, 30, 40, 50].includes(Number(params.size)) ? Number(params.size) : 50;
+  const batchSize = [10, 20, 25, 30, 40, 50].includes(Number(params.batchSize)) ? Number(params.batchSize) : 50;
   const voucherState = (VOUCHER_STATES.includes(params.voucherState as "ALL" | VoucherStatus)
     ? params.voucherState
     : "ALL") as "ALL" | VoucherStatus;
@@ -46,12 +50,12 @@ export default async function VouchersPage({
   // Row filters go to the list endpoint only; statistics stays unfiltered by state.
   const data = await getVouchersData({
     page,
-    size: 50,
+    size,
     search: params.search,
     voucherState: voucherState === "ALL" ? undefined : voucherState,
     source: source === "ALL" ? undefined : source,
   });
-  const batches = await getVoucherBatches(batchPage);
+  const batches = await getVoucherBatches(batchPage, batchSize);
   const packages = await getPackagesAction();
   const devices = await getMikrotikDevices();
   // Vouchers are minted per router and are redeemable only on it.

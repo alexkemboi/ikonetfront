@@ -10,6 +10,7 @@ import type {
   ReconciliationDay,
   SafaricomCheckStatus,
 } from "@/lib/types/payments";
+import { Button } from "@/components/ui/button";
 
 interface Props {
   initialDate: string;
@@ -206,25 +207,25 @@ export function ReconciliationDayView({ initialDate, initialData, initialMessage
                           {voucher}
                         </span>
                       ) : item.action === "ISSUE_VOUCHER" ? (
-                        <button
+                        <Button
                           type="button"
+                          size="sm"
                           disabled={busyKey === key}
                           onClick={() => act(item, key)}
-                          className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-semibold text-black hover:bg-amber-400 disabled:opacity-50"
                         >
                           {busyKey === key ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RotateCcw className="h-3.5 w-3.5" />}
                           Issue voucher
-                        </button>
+                        </Button>
                       ) : item.action === "POST_TO_LEDGER" ? (
-                        <button
+                        <Button
                           type="button"
+                          size="sm"
                           disabled={busyKey === key}
                           onClick={() => act(item, key)}
-                          className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-semibold text-black hover:bg-amber-400 disabled:opacity-50"
                         >
                           {busyKey === key ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <BookCheck className="h-3.5 w-3.5" />}
                           Post to ledger
-                        </button>
+                        </Button>
                       ) : item.action === "ASSIGN_COMPANY" ? (
                         <span className="text-xs text-muted-foreground">Set the payment&apos;s company first</span>
                       ) : (

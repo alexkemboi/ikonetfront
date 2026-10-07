@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { CheckCircle2, Loader2, RefreshCw, X } from "lucide-react";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
 import { getPublicVoucherStatus, initiatePublicHotspotPayment, PENDING_HOTSPOT_PURCHASE_KEY } from "@/lib/hotspotPublicClient";
 import type { HotspotPackage, HotspotVoucherStatusResponse, PendingHotspotPurchase } from "@/lib/types/hotspot";
 import { sanitizeErrorMessage } from "@/lib/brand";
@@ -132,7 +133,7 @@ try {
     <div className="bg-card rounded-xl max-w-md w-full shadow-lg border border-border">
       <div className="flex items-center justify-between p-4 border-b border-border">
         <div><h3 className="text-lg font-normal text-foreground">{view === "active" ? "You’re connected" : view === "checkout" ? "Confirm Purchase" : "Payment status"}</h3><p className="text-xs text-muted-foreground">{brand}</p></div>
-        <button onClick={onClose} disabled={!canClose} className="p-1 hover:bg-secondary rounded transition-colors disabled:opacity-50" aria-label="Close"><X className="w-5 h-5" /></button>
+        <Button onClick={onClose} disabled={!canClose} variant="ghost" size="icon-sm" aria-label="Close"><X className="w-5 h-5" /></Button>
       </div>
       <div className="p-4 space-y-4">
         {view === "checkout" && pkg && <>
@@ -145,7 +146,7 @@ try {
         {(view === "failed" || view === "unavailable") && <div className="space-y-3"><p role="alert" className="text-sm">{notice}</p>{reference !== undefined && <p className="text-xs text-muted-foreground">Session reference: <span className="font-mono">{reference}</span></p>}</div>}
       </div>
       <div className="flex gap-2 p-4 border-t border-border">
-        {view === "checkout" ? <><button onClick={onClose} disabled={!canClose} className="flex-1 px-4 py-2 border border-border rounded-lg text-sm font-medium disabled:opacity-50">Cancel</button><button onClick={handleConfirm} disabled={isProcessing || !phoneNumber.trim() || !hasUsableMac} className="flex-1 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium disabled:opacity-50 flex items-center justify-center gap-2">{isProcessing && <Loader2 className="w-4 h-4 animate-spin" />}{isProcessing ? "Processing..." : "Pay with M-Pesa"}</button></> : view === "active" ? <button onClick={onClose} className="w-full px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium">Done</button> : <><button onClick={onClose} className="flex-1 px-4 py-2 border border-border rounded-lg text-sm font-medium">Close</button>{(view === "failed" || view === "unavailable") && <button onClick={retryStatus} className="flex-1 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium flex items-center justify-center gap-2"><RefreshCw className="w-4 h-4" />Check status</button>}</>}
+        {view === "checkout" ? <><Button onClick={onClose} disabled={!canClose} variant="secondary" className="flex-1">Cancel</Button><Button onClick={handleConfirm} disabled={isProcessing || !phoneNumber.trim() || !hasUsableMac} className="flex-1">{isProcessing && <Loader2 className="w-4 h-4 animate-spin" />}{isProcessing ? "Processing..." : "Pay with M-Pesa"}</Button></> : view === "active" ? <Button onClick={onClose} className="w-full">Done</Button> : <><Button onClick={onClose} variant="secondary" className="flex-1">Close</Button>{(view === "failed" || view === "unavailable") && <Button onClick={retryStatus} className="flex-1"><RefreshCw className="w-4 h-4" />Check status</Button>}</>}
       </div>
     </div>
   </div>;

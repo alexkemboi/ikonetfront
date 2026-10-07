@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { AlertCircle, AlertTriangle } from "lucide-react";
 import type { ZtpBootstrapInput, ZtpStationOption } from "@/lib/types/provisioning";
 import { validateZtpBootstrapInput } from "@/lib/utils/ztp-validation";
+import { Button } from "@/components/ui/button";
 
 interface Props {
  /** Resolves to an error message, or null once the wizard has moved on. */
@@ -197,20 +198,12 @@ export function Step1Identity({ onContinue, onCancel, stations = [], stationsErr
  )}
 
  <div className="flex justify-end gap-3 border-t border-border pt-4">
- <button
- type="button"
- onClick={onCancel}
- className="rounded-lg border border-border px-5 py-2.5 text-xs font-semibold text-muted-foreground hover:bg-accent"
- >
+ <Button type="button" variant="secondary" onClick={onCancel}>
  Cancel
- </button>
- <button
- type="submit"
- disabled={isSubmitting}
- className="rounded-lg bg-amber-500 px-6 py-2.5 text-xs font-semibold text-black hover:bg-amber-400 transition disabled:opacity-50"
- >
+ </Button>
+ <Button type="submit" disabled={isSubmitting}>
  {isSubmitting ? "Generating script..." : "Continue →"}
- </button>
+ </Button>
  </div>
  </form>
  );

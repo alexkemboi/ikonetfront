@@ -9,6 +9,7 @@ import {
  DialogHeader,
  DialogTitle,
 } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 
 interface Props {
  isOpen: boolean;
@@ -83,23 +84,22 @@ export function CompensatePaymentModal({ isOpen, onClose }: Props) {
  {issued.code}
  </div>
  <div className="flex justify-end gap-3 border-t border-border pt-4">
- <button
+ <Button
  type="button"
+ variant="secondary"
  onClick={reset}
- className="rounded-lg border border-border px-4 py-2.5 text-xs font-semibold text-muted-foreground hover:bg-accent"
  >
  Compensate another
- </button>
- <button
+ </Button>
+ <Button
  type="button"
  onClick={() => {
  reset();
  onClose();
  }}
- className="rounded-lg bg-amber-500 px-5 py-2.5 text-xs font-semibold text-black hover:bg-amber-400"
  >
  Done
- </button>
+ </Button>
  </div>
  </div>
  ) : (
@@ -139,14 +139,13 @@ export function CompensatePaymentModal({ isOpen, onClose }: Props) {
  )}
 
  <div className="flex justify-end gap-3 border-t border-border pt-4">
- <button
+ <Button
  type="button"
  onClick={handleIssue}
  disabled={isSubmitting || receipt.trim().length < 8}
- className="rounded-lg bg-amber-500 px-5 py-2.5 text-xs font-semibold text-black hover:bg-amber-400 disabled:opacity-50"
  >
  {isSubmitting ? "Issuing..." : "Issue voucher"}
- </button>
+ </Button>
  </div>
  </div>
  )}

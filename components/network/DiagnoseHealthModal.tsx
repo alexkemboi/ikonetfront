@@ -2,6 +2,7 @@
 
 import { X, Cpu, Clock, Thermometer, Globe, Activity, Shield, AlertTriangle } from "lucide-react";
 import type { DiagnoseDetails } from "@/lib/types/network-router";
+import { Button } from "@/components/ui/button";
 
 interface DiagnoseHealthModalProps {
   routerName: string;
@@ -49,13 +50,14 @@ export function DiagnoseHealthModal({
               {routerName}
             </p>
           </div>
-          <button
+          <Button
             onClick={onClose}
             aria-label="Close diagnostics modal"
-            className="p-2 text-muted-foreground hover:text-foreground rounded-lg border border-border hover:bg-muted"
+            variant="ghost"
+            size="icon-sm"
           >
             <X className="h-5 w-5" />
-          </button>
+          </Button>
         </div>
 
         <div className="flex-1 overflow-y-auto px-6 py-4">
@@ -160,12 +162,9 @@ export function DiagnoseHealthModal({
         </div>
 
         <div className="border-t border-border px-6 py-4 text-right">
-          <button
-            onClick={onClose}
-            className="rounded-lg border border-border px-4 py-2 text-xs font-medium text-foreground hover:bg-muted transition"
-          >
+          <Button onClick={onClose} variant="secondary" size="sm">
             Close
-          </button>
+          </Button>
         </div>
       </div>
     </div>

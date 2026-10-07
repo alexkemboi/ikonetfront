@@ -19,6 +19,7 @@ import {
   getRouterLiveInterfaces,
   getRouterLiveSessions,
 } from "@/actions/network";
+import { Button } from "@/components/ui/button";
 import type {
   RouterHealthSnapshot,
   RouterLiveInterface,
@@ -278,31 +279,34 @@ export function RouterTelemetryDrawer({
               {router.managementIp || router.vpnIp || "—"}
             </p>
           </div>
-          <button
+          <Button
             onClick={onClose}
             aria-label="Close telemetry drawer"
-            className="p-2 text-muted-foreground hover:text-foreground rounded-lg border border-border hover:bg-muted"
+            variant="ghost"
+            size="icon-sm"
           >
             <X className="h-5 w-5" />
-          </button>
+          </Button>
         </div>
 
         {/* Tabs */}
         <div className="flex gap-1 px-4 py-3 border-b border-border" role="tablist">
           {(["vitals", "interfaces", "sessions"] as Tab[]).map((t) => (
-            <button
+            <Button
               key={t}
               role="tab"
               aria-selected={tab === t}
               onClick={() => setTab(t)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium capitalize transition ${
+              variant="ghost"
+              size="sm"
+              className={`capitalize ${
                 tab === t
-                  ? "bg-primary/10 text-primary border border-primary/20"
-                  : "text-muted-foreground hover:bg-muted"
+                  ? "bg-primary/10 text-primary border border-primary/20 hover:bg-primary/10 hover:text-primary"
+                  : "text-muted-foreground"
               }`}
             >
               {t === "vitals" ? "Hardware Vitals" : t}
-            </button>
+            </Button>
           ))}
         </div>
 
@@ -419,14 +423,16 @@ export function RouterTelemetryDrawer({
                     ? `${interfaces.filter((i) => i.running).length} of ${interfaces.length} interfaces up · live from router`
                     : "Interfaces · live from router"}
                 </p>
-                <button
+                <Button
                   onClick={() => void liveInterfaces.refresh()}
                   disabled={liveInterfaces.loading}
-                  className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+                  variant="ghost"
+                  size="sm"
+                  className="h-auto gap-1 p-0 text-xs text-muted-foreground hover:bg-transparent hover:text-foreground"
                 >
                   <RefreshCw className={`h-3.5 w-3.5 ${liveInterfaces.loading ? "animate-spin" : ""}`} />
                   Refresh
-                </button>
+                </Button>
               </div>
               {liveInterfaces.error && (
                 <p className="rounded-lg border border-destructive/20 bg-destructive/10 p-3 text-xs text-destructive">
@@ -518,14 +524,16 @@ export function RouterTelemetryDrawer({
 
               <div className="flex items-center justify-between">
                 <p className="text-xs text-muted-foreground font-medium">Online now · live from router</p>
-                <button
+                <Button
                   onClick={() => void liveSessions.refresh()}
                   disabled={liveSessions.loading}
-                  className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+                  variant="ghost"
+                  size="sm"
+                  className="h-auto gap-1 p-0 text-xs text-muted-foreground hover:bg-transparent hover:text-foreground"
                 >
                   <RefreshCw className={`h-3.5 w-3.5 ${liveSessions.loading ? "animate-spin" : ""}`} />
                   Refresh
-                </button>
+                </Button>
               </div>
 
               {liveSessions.error && (

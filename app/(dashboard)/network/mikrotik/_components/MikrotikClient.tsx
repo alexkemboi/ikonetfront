@@ -46,7 +46,7 @@ import {
 } from "@/actions/mikrotik";
 import { toast } from "sonner"; // Using sonner for notifications
 import { Loader2, ArrowUpDown } from "lucide-react"; // Assuming lucide-react for icons
-import { DataTable } from "@/components/ui/data-table"; // Import the new DataTable
+import { DataTable } from "@/components/shared/data-table";
 
 interface MikrotikClientProps {
  initialDevices: MikrotikDevice[];
@@ -524,7 +524,7 @@ export function MikrotikClient({ initialDevices }: MikrotikClientProps) {
  </Dialog>
  </CardHeader>
  <CardContent>
- <DataTable columns={columns} data={devices} filterColumnId="name" />
+ <DataTable columns={columns} data={devices} searchPlaceholder="Search devices…" />
 
  {/* Device Status Dialog */}
  <Dialog

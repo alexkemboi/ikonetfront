@@ -6,7 +6,7 @@ import { getInvestorRouters } from "@/actions/investor";
 import { getPermissionForRoute } from "@/lib/data/nav";
 import { isPlatformAdminRole, normalizeRole, ROLE_NAME } from "@/lib/types/roles";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { InvestorRoutersTable } from "./_components/InvestorRoutersTable";
 
 export const dynamic = "force-dynamic";
 
@@ -14,9 +14,6 @@ export const metadata: Metadata = {
   title: "Assigned Routers | Investor Portal",
   description: "Read-only view of routers assigned to an investor scope.",
 };
-
-const formatDateTime = (value: string | null): string =>
-  value ? new Date(value).toLocaleString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "—";
 
 export default async function InvestorRoutersPage() {
   const session = await auth();
@@ -62,45 +59,7 @@ export default async function InvestorRoutersPage() {
                 No routers are currently assigned to this investor scope.
               </p>
             ) : (
-              <table className="w-full text-sm">
-                <thead className="border-b text-left text-muted-foreground">
-                  <tr>
-                    <th className="py-2 pr-4 font-medium">Router</th>
-                    <th className="py-2 pr-4 font-medium">Model</th>
-                    <th className="py-2 pr-4 font-medium">IP</th>
-                    <th className="py-2 pr-4 font-medium">Station</th>
-                    <th className="py-2 pr-4 font-medium">Status</th>
-                    <th className="py-2 pr-4 font-medium">Last online</th>
-                    <th className="py-2 pr-4 font-medium">Uptime</th>
-                    <th className="py-2 font-medium">Snapshot</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {routers.map((router) => {
-                    const traits = router.snapshotTraits;
-                    return (
-                      <tr key={router.routerId} className="border-b">
-                        <td className="py-2 pr-4 font-medium">{router.routerName || `Router ${router.routerId}`}</td>
-                        <td className="py-2 pr-4">{router.model || "—"}</td>
-                        <td className="py-2 pr-4 font-sans tabular-nums text-xs">{router.ipAddress || "—"}</td>
-                        <td className="py-2 pr-4">{router.stationName || "—"}</td>
-                        <td className="py-2 pr-4">
-                          <Badge variant={router.status ? "default" : "destructive"}>
-                            {router.status ? "Online" : "Offline"}
-                          </Badge>
-                        </td>
-                        <td className="py-2 pr-4">{formatDateTime(router.lastOnline)}</td>
-                        <td className="py-2 pr-4">{router.uptime || "—"}</td>
-                        <td className="py-2">
-                          {traits
-                            ? `CPU ${traits.cpuUsage}% · ${traits.activePppoeSessions} PPPoE · ${traits.activeHotspotSessions} hotspot`
-                            : "No telemetry"}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+              <InvestorRoutersTable routers={routers} />
             )}
           </CardContent>
         </Card>

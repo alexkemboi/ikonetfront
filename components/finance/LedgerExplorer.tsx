@@ -9,8 +9,10 @@ import {
   FilterX,
   RefreshCw,
 } from "lucide-react";
+import type { ColumnDef } from "@tanstack/react-table";
 import { cn } from "@/lib/utils";
 import { getLedgerPostings } from "@/actions/finance";
+import { DataTable } from "@/components/shared/data-table";
 import type {
   AccountBalanceProjection,
   AccountPosting,
@@ -71,6 +73,8 @@ export default function LedgerExplorer({
   const [selectedCode, setSelectedCode] = useState<string | null>(null);
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(20);
   const [postings, setPostings] = useState<SpringPage<AccountPosting>>(initialPostings);
   const [isLoading, setIsLoading] = useState(false);
   const [openCategories, setOpenCategories] = useState<Record<string, boolean>>(() =>
@@ -107,11 +111,11 @@ export default function LedgerExplorer({
     [categoryKeys, initialTree]
   );
 
-  // Debounced refetch driven purely by filter state. The server already
+  // Debounced refetch driven by filter + page state. The server already
   // supplies initialPostings on first mount (skipped); any subsequent change
-  // to the account filter or date range refetches page 0. A monotonic request
-  // token discards out-of-order responses so a slow earlier request can never
-  // overwrite a newer one.
+  // to the account filter or date range resets to page 0 (via the handlers
+  // below) and refetches. A monotonic request token discards out-of-order
+  // responses so a slow earlier request can never overwrite a newer one.
   useEffect(() => {
     if (!mountedRef.current) {
       mountedRef.current = true;
@@ -121,15 +125,15 @@ export default function LedgerExplorer({
     const timer = setTimeout(async () => {
       setIsLoading(true);
       try {
-        const page = await getLedgerPostings({
+        const result = await getLedgerPostings({
           accountCode: selectedCode || undefined,
           fromDate: fromDate || undefined,
           toDate: toDate || undefined,
-          page: 0,
-          size: 20,
+          page,
+          size: pageSize,
         });
         if (token === requestRef.current) {
-          setPostings(page);
+          setPostings(result);
           setIsLoading(false);
         }
       } catch {
@@ -139,11 +143,74 @@ export default function LedgerExplorer({
     return () => {
       clearTimeout(timer);
     };
-  }, [selectedCode, fromDate, toDate]);
+  }, [selectedCode, fromDate, toDate, page, pageSize]);
 
   const handleSelect = (code: string) => {
     setSelectedCode(code === selectedCode ? null : code);
+    setPage(0);
   };
+
+  const postingColumns = useMemo<ColumnDef<AccountPosting>[]>(
+    () => [
+      {
+        id: "date",
+        header: "Date",
+        accessorFn: (p) => p.occurredAt,
+        cell: ({ row }) => (
+          <span className="font-sans tabular-nums text-muted-foreground">
+            {row.original.occurredAt.replace("T", " ").slice(0, 16)}
+          </span>
+        ),
+      },
+      {
+        accessorKey: "accountCode",
+        header: "Account",
+        cell: ({ row }) => (
+          <span className="font-sans tabular-nums font-semibold text-amber-500">{row.original.accountCode}</span>
+        ),
+      },
+      {
+        accessorKey: "sourceType",
+        header: "Source",
+        cell: ({ row }) => <span className="text-muted-foreground">{row.original.sourceType}</span>,
+      },
+      {
+        accessorKey: "amount",
+        header: "Amount",
+        cell: ({ row }) => {
+          const negative = row.original.amount < 0;
+          return (
+            <span
+              className={cn(
+                "text-right font-sans tabular-nums font-bold tabular-nums",
+                negative ? "text-emerald-400" : "text-foreground"
+              )}
+            >
+              {negative ? "-Ksh " : "+Ksh "}
+              {Math.abs(row.original.amount).toLocaleString()}
+            </span>
+          );
+        },
+      },
+      {
+        accessorKey: "serviceType",
+        header: "Service",
+        cell: ({ row }) => (
+          <span className="rounded-full bg-muted px-2 py-0.5 text-[10px]">{row.original.serviceType || "—"}</span>
+        ),
+      },
+      {
+        id: "dimensions",
+        header: "Dimensions",
+        cell: ({ row }) => (
+          <span className="font-sans tabular-nums text-[11px] text-muted-foreground">
+            {row.original.companyId ?? "—"} · Rtr: {row.original.routerId ?? "—"}
+          </span>
+        ),
+      },
+    ],
+    []
+  );
 
   return (
     <div className="space-y-6">
@@ -321,20 +388,27 @@ export default function LedgerExplorer({
                 <input
                   type="date"
                   value={fromDate}
-                  onChange={(e) => setFromDate(e.target.value)}
+                  onChange={(e) => {
+                    setFromDate(e.target.value);
+                    setPage(0);
+                  }}
                   className="h-8 rounded-lg border border-input bg-muted px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-amber-500"
                 />
                 <span className="text-xs text-muted-foreground">to</span>
                 <input
                   type="date"
                   value={toDate}
-                  onChange={(e) => setToDate(e.target.value)}
+                  onChange={(e) => {
+                    setToDate(e.target.value);
+                    setPage(0);
+                  }}
                   className="h-8 rounded-lg border border-input bg-muted px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-amber-500"
                 />
                 <button
                   onClick={() => {
                     setFromDate("");
                     setToDate("");
+                    setPage(0);
                   }}
                   className="inline-flex h-8 items-center gap-1 rounded-lg border border-border bg-muted px-2.5 text-xs text-muted-foreground transition hover:text-foreground"
                 >
@@ -344,64 +418,26 @@ export default function LedgerExplorer({
               </div>
             </div>
 
-            <div className="mt-4 overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead>
-                  <tr className="border-b border-border text-[11px] font-sans tabular-nums tracking-wider text-muted-foreground uppercase">
-                    <th className="py-3 pr-3">Date</th>
-                    <th className="py-3 pr-3">Account</th>
-                    <th className="py-3 pr-3">Source</th>
-                    <th className="py-3 pr-3 text-right">Amount</th>
-                    <th className="py-3 pr-3">Service</th>
-                    <th className="py-3 text-right">Dimensions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {postings.content.length > 0 ? (
-                    postings.content.map((p) => {
-                      const negative = p.amount < 0;
-                      return (
-                        <tr key={p.id} className="transition hover:bg-muted/40">
-                          <td className="py-3 pr-3 font-sans tabular-nums text-muted-foreground">
-                            {p.occurredAt.replace("T", " ").slice(0, 16)}
-                          </td>
-                          <td className="py-3 pr-3 font-sans tabular-nums font-semibold text-amber-500">
-                            {p.accountCode}
-                          </td>
-                          <td className="py-3 pr-3 text-muted-foreground">{p.sourceType}</td>
-                          <td
-                            className={cn(
-                              "py-3 pr-3 text-right font-sans tabular-nums font-bold tabular-nums",
-                              negative ? "text-emerald-400" : "text-foreground"
-                            )}
-                          >
-                            {negative ? "-Ksh " : "+Ksh "}
-                            {Math.abs(p.amount).toLocaleString()}
-                          </td>
-                          <td className="py-3 pr-3">
-                            <span className={cn("rounded-full bg-muted px-2 py-0.5", "text-[10px]")}>
-                              {p.serviceType || "—"}
-                            </span>
-                          </td>
-                          <td className="py-3 text-right font-sans tabular-nums text-[11px] text-muted-foreground">
-                            {p.companyId ?? "—"} · Rtr: {p.routerId ?? "—"}
-                          </td>
-                        </tr>
-                      );
-                    })
-                  ) : (
-                    <tr>
-                      <td colSpan={6} className="py-12 text-center text-sm text-muted-foreground">
-                        {isLoading ? "Loading postings…" : "No postings recorded for this filter."}
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-
-            <div className="mt-3 border-t border-border pt-3 text-xs text-muted-foreground">
-              Showing {postings.content.length} of {postings.totalElements} records
+            <div className="mt-4">
+              <DataTable
+                columns={postingColumns}
+                data={postings.content}
+                loading={isLoading}
+                manualPagination
+                pageCount={postings.totalPages}
+                pageIndex={postings.number}
+                pageSize={pageSize}
+                totalRows={postings.totalElements}
+                onPaginationChange={(pageIndex, newPageSize) => {
+                  if (newPageSize !== pageSize) {
+                    setPageSize(newPageSize);
+                    setPage(0);
+                  } else {
+                    setPage(pageIndex);
+                  }
+                }}
+                hideSearch
+              />
             </div>
           </div>
         </div>
