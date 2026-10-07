@@ -182,8 +182,8 @@ const res = await generateVouchers({
  }
  }}
  >
- <DialogContent className="max-w-lg border-border bg-card text-foreground">
- <DialogHeader>
+ <DialogContent className="flex max-h-[85vh] w-full flex-col gap-0 overflow-hidden border-border bg-card p-0 text-foreground sm:max-w-lg">
+ <DialogHeader className="shrink-0 gap-2 border-b border-border px-6 pt-6 pb-4">
  <DialogTitle className="text-base font-semibold text-foreground">
  Generate Vouchers
  </DialogTitle>
@@ -204,7 +204,7 @@ const res = await generateVouchers({
  </p>
  </DialogHeader>
 
- <div className="space-y-4 py-2">
+ <div className="flex-1 space-y-4 overflow-y-auto px-6 py-4">
  {step === 1 ? (
  <div>
  <label className="text-xs font-sans tabular-nums text-muted-foreground">
@@ -354,9 +354,10 @@ max={500}
  <span>{error}{requestId ? ` Ref: ${requestId}` : ""}</span>
  </div>
  )}
+ </div>
 
  {/* Actions */}
- <div className="flex justify-end gap-3 border-t border-border pt-4">
+ <div className="flex shrink-0 justify-end gap-3 border-t border-border px-6 py-4">
  {step === 2 ? (
  <>
  <button
@@ -395,7 +396,6 @@ className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500 px-5 py-2.5 
   Next: Configure <ArrowRight className="h-3.5 w-3.5" />
  </button>
  )}
- </div>
  </div>
  </DialogContent>
  </Dialog>
