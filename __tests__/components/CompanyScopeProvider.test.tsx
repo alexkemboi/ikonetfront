@@ -13,6 +13,7 @@ const router = { refresh, push: vi.fn() };
 
 vi.mock("next/navigation", () => ({
   useRouter: () => router,
+  usePathname: () => "/",
 }));
 
 const companies = [
