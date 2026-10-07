@@ -29,6 +29,25 @@ describe("TV captive-portal flow", () => {
     expect(await screen.findByRole("status")).toHaveTextContent("No TV packages are available");
   });
 
+  it("lets the customer pick a nearby TV and verifies it by token, never by a typed MAC", async () => {
+    const user = userEvent.setup();
+    mockedApiFetch
+      .mockResolvedValueOnce({ status: 200, success: true, message: "ok", timestamp: "", data: [{ hostname: "Samsung-TV", maskedMac: "AA:BB:CC:••:••:FF", deviceToken: "dev-token" }] } as never)
+      .mockResolvedValueOnce({ ...verified([]), data: { ...verified([]).data, softWarnings: ["DEVICE_NOT_YET_SEEN_ON_NETWORK"] } } as never);
+    render(<TvDeviceSetup brand="BeeSmart Wi-Fi" initialDevice={{ macAddress: "", customerPhone: "" }} packages={[]} clientIp="10.5.50.7" />);
+    await user.type(screen.getByLabelText("Customer phone number"), "0712345678");
+    await user.click(screen.getByRole("button", { name: "Find my TV" }));
+    expect(mockedApiFetch).toHaveBeenCalledWith("/tv/devices/nearby?ip=10.5.50.7", expect.objectContaining({ auth: "public" }));
+    await user.click(await screen.findByRole("button", { name: /Samsung-TV/ }));
+    expect(await screen.findByText("AA:BB:CC:DD:EE:FF")).toBeInTheDocument();
+    const body = mockedApiFetch.mock.calls[1][1]?.body as Record<string, unknown>;
+    expect(body.deviceToken).toBe("dev-token");
+    expect(body.macAddress).toBeUndefined();
+    await user.click(screen.getByRole("button", { name: "Confirm this TV" }));
+    expect(await screen.findByText(/We can’t see this TV on BeeSmart Wi-Fi yet/)).toBeInTheDocument();
+    expect(screen.queryByText(/DEVICE_NOT_YET_SEEN/)).not.toBeInTheDocument();
+  });
+
   it("uses portal token for payment and polls until provisioned", async () => {
     const user = userEvent.setup();
     mockedApiFetch.mockImplementation(async (path, options) => {
