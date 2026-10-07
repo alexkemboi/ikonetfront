@@ -37,6 +37,7 @@ import {
   createCompanyAction,
   createPaymentAccountAction,
   getCompanyPaymentAccounts,
+  registerPaymentAccountStatementAction,
   updateCompanyBranding,
   testCompanyPaymentAccount,
   updatePaymentAccountAction,
@@ -59,9 +60,28 @@ type CredentialsForm = {
   clientKey: string;
   clientSecret: string;
   passkey: string;
+  nominatedNumber: string;
   isDefault: boolean;
   isActive: boolean;
 };
+
+/** How the Safaricom statement registration of one account reads to an operator. */
+function statementStatus(acct: CompanyPaymentAccountView): { label: string; tone: string; detail?: string } {
+  const at = acct.pullRegisteredAt ? ` \u00b7 ${acct.pullRegisteredAt.replace("T", " ").slice(0, 16)}` : "";
+  switch (acct.pullRegistrationStatus) {
+    case "REGISTERED":
+      return { label: `Registered${at}`, tone: "text-emerald-500" };
+    case "ALREADY_REGISTERED":
+      return { label: `Confirmed${at}`, tone: "text-emerald-500" };
+    case "FAILED":
+      return { label: `Failed${at}`, tone: "text-rose-500", detail: acct.pullRegistrationError ?? undefined };
+    default:
+      return {
+        label: acct.pullNominatedNumber ? "Not registered" : "Needs nominated number",
+        tone: "text-amber-500",
+      };
+  }
+}
 
 type BrandingForm = {
   primaryColor: string;
@@ -103,6 +123,7 @@ export default function CompaniesClient({ companies, readiness, canMutate }: Pro
   const [clientKey, setClientKey] = useState("");
   const [clientSecret, setClientSecret] = useState("");
   const [passkey, setPasskey] = useState("");
+  const [nominatedNumber, setNominatedNumber] = useState("");
   const [isDefault, setIsDefault] = useState(false);
 
   const [branding, setBranding] = useState<BrandingForm>(EMPTY_BRANDING);
@@ -124,6 +145,7 @@ export default function CompaniesClient({ companies, readiness, canMutate }: Pro
     setClientKey("");
     setClientSecret("");
     setPasskey("");
+    setNominatedNumber("");
     setIsDefault(false);
   }
 
@@ -174,6 +196,7 @@ export default function CompaniesClient({ companies, readiness, canMutate }: Pro
       clientKey: clientKey.trim() || undefined,
       clientSecret: clientSecret.trim() || undefined,
       passkey: passkey.trim() || undefined,
+      nominatedNumber: accountType !== "BANK" ? nominatedNumber.trim() || undefined : undefined,
       isDefault,
     };
     startTransition(async () => {
@@ -182,7 +205,11 @@ export default function CompaniesClient({ companies, readiness, canMutate }: Pro
         "Updating payment gateway credentials requires re-authentication."
       );
       if (res.success) {
-        toast.success(`Payment account added for ${accountFor.code}`);
+        toast.success(`Payment account added for ${accountFor.code}`, {
+          description: payload.nominatedNumber
+            ? "Open Paybills & Tills to see whether Safaricom registered it for the transaction statement."
+            : "No nominated number given: it is not registered for Safaricom's transaction statement yet.",
+        });
         setAccountFor(null);
         resetAccountForm();
       } else {
@@ -251,11 +278,14 @@ export default function CompaniesClient({ companies, readiness, canMutate }: Pro
       ...(f.clientKey.trim() ? { clientKey: f.clientKey.trim() } : {}),
       ...(f.clientSecret.trim() ? { clientSecret: f.clientSecret.trim() } : {}),
       ...(f.passkey.trim() ? { passkey: f.passkey.trim() } : {}),
+      ...(f.nominatedNumber.trim() && f.nominatedNumber.trim() !== (f.account.pullNominatedNumber ?? "")
+        ? { nominatedNumber: f.nominatedNumber.trim() }
+        : {}),
       ...(f.isDefault !== Boolean(f.account.isDefault) ? { isDefault: f.isDefault } : {}),
       ...(f.isActive !== Boolean(f.account.isActive) ? { isActive: f.isActive } : {}),
     };
     if (Object.keys(payload).length === 0) {
-      toast.error("Nothing to change: fill in the credential to replace, or change a switch.");
+      toast.error("Nothing to change: fill in the credential or number to replace, or change a switch.");
       return;
     }
     startTransition(async () => {
@@ -273,6 +303,35 @@ export default function CompaniesClient({ companies, readiness, canMutate }: Pro
       } else {
         toast.error(res.message || "Failed to update the payment account");
       }
+    });
+  }
+
+  /** Registers the account with Safaricom, or confirms it when it is registered already. */
+  function handleRegisterStatement(acct: CompanyPaymentAccountView) {
+    if (!accountsFor) return;
+    const company = accountsFor;
+    if (!acct.pullNominatedNumber) {
+      toast.error("Add the nominated Safaricom number first.", {
+        description: "Use Replace credentials on this account and fill in the nominated number.",
+      });
+      return;
+    }
+    startTransition(async () => {
+      const res = await registerPaymentAccountStatementAction(acct.id);
+      if (res.success && res.data) {
+        if (res.data.succeeded) {
+          toast.success(
+            res.data.status === "ALREADY_REGISTERED"
+              ? `Safaricom confirms ${acct.shortCode} is registered`
+              : `${acct.shortCode} registered with Safaricom`
+          );
+        } else {
+          toast.error(`Safaricom did not register ${acct.shortCode}`, { description: res.data.detail });
+        }
+      } else {
+        toast.error(res.message || "Registration could not be sent");
+      }
+      reloadAccounts(company);
     });
   }
 
@@ -488,6 +547,13 @@ export default function CompaniesClient({ companies, readiness, canMutate }: Pro
               <Input id="pa-passkey" type="password" placeholder="••••••••" value={passkey} onChange={(e) => setPasskey(e.target.value)} />
               <p className="text-xs text-muted-foreground">Issued by Safaricom with the consumer key and secret. Without it customers cannot be prompted to pay.</p>
             </div>
+            {accountType !== "BANK" && (
+              <div className="space-y-2">
+                <Label htmlFor="pa-nominated">Nominated Safaricom number</Label>
+                <Input id="pa-nominated" inputMode="tel" placeholder="e.g. 0722000000" value={nominatedNumber} onChange={(e) => setNominatedNumber(e.target.value)} />
+                <p className="text-xs text-muted-foreground">A Safaricom line of the organisation that owns this paybill or till. Safaricom needs it to release the transaction statement; it can be added later.</p>
+              </div>
+            )}
             <div className="flex items-center gap-2">
               <Checkbox id="pa-default" checked={isDefault} onCheckedChange={(checked) => setIsDefault(checked === true)} />
               <Label htmlFor="pa-default" className="text-sm font-normal cursor-pointer">
@@ -595,6 +661,19 @@ export default function CompaniesClient({ companies, readiness, canMutate }: Pro
                   />
                 </div>
               ))}
+              <div className="space-y-2">
+                <Label htmlFor="cred-nominated">Nominated Safaricom number</Label>
+                <Input
+                  id="cred-nominated"
+                  inputMode="tel"
+                  placeholder="e.g. 0722000000"
+                  value={credentialsFor.nominatedNumber}
+                  onChange={(e) => setCredentialsFor({ ...credentialsFor, nominatedNumber: e.target.value })}
+                />
+                <p className="text-xs text-muted-foreground">
+                  A Safaricom line of the organisation that owns this paybill or till. Saving a new number registers the account for Safaricom&apos;s transaction statement if it is not registered yet.
+                </p>
+              </div>
               <div className="flex items-center gap-2">
                 <Checkbox
                   id="cred-default"
@@ -627,7 +706,7 @@ export default function CompaniesClient({ companies, readiness, canMutate }: Pro
 
       {/* Paybills & Tills dialog */}
       <Dialog open={accountsFor !== null} onOpenChange={(open) => !open && setAccountsFor(null)}>
-        <DialogContent className="sm:max-w-2xl">
+        <DialogContent className="sm:max-w-4xl">
           <DialogHeader>
             <DialogTitle>Paybills &amp; Tills — {accountsFor?.code}</DialogTitle>
             <DialogDescription>
@@ -652,6 +731,7 @@ export default function CompaniesClient({ companies, readiness, canMutate }: Pro
                     <TableHead>Provider</TableHead>
                     <TableHead>Consumer Key</TableHead>
                     <TableHead>Credentials</TableHead>
+                    <TableHead>Safaricom statement</TableHead>
                     <TableHead>Default</TableHead>
                     <TableHead>Active</TableHead>
                     {canMutate && <TableHead />}
@@ -674,10 +754,33 @@ export default function CompaniesClient({ companies, readiness, canMutate }: Pro
                           <span className="text-rose-500">Incomplete</span>
                         )}
                       </TableCell>
+                      <TableCell className="text-xs">
+                        {acct.accountType === "BANK" ? (
+                          "\u2014"
+                        ) : (
+                          <span className={statementStatus(acct).tone} title={statementStatus(acct).detail}>
+                            {statementStatus(acct).label}
+                          </span>
+                        )}
+                      </TableCell>
                       <TableCell className="text-xs">{acct.isDefault ? "Yes" : "No"}</TableCell>
                       <TableCell className="text-xs">{acct.isActive ? "Yes" : "No"}</TableCell>
                       {canMutate && (
-                        <TableCell className="text-right">
+                        <TableCell className="text-right whitespace-nowrap">
+                          {acct.accountType !== "BANK" && acct.isActive && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7"
+                              disabled={isPending}
+                              onClick={() => handleRegisterStatement(acct)}
+                            >
+                              {acct.pullRegistrationStatus === "REGISTERED" ||
+                              acct.pullRegistrationStatus === "ALREADY_REGISTERED"
+                                ? "Check registration"
+                                : "Register"}
+                            </Button>
+                          )}
                           <Button
                             variant="ghost"
                             size="sm"
@@ -688,6 +791,7 @@ export default function CompaniesClient({ companies, readiness, canMutate }: Pro
                                 clientKey: "",
                                 clientSecret: "",
                                 passkey: "",
+                                nominatedNumber: acct.pullNominatedNumber ?? "",
                                 isDefault: Boolean(acct.isDefault),
                                 isActive: Boolean(acct.isActive),
                               })
