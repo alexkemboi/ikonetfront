@@ -95,6 +95,9 @@ describe("addCustomer", () => {
 
     const result = await addCustomer({
       username: "johndoe",
+      password: "secret1",
+      acno: "Westland 12",
+      networkDeviceId: 3,
       firstname: "John",
       lname: "Doe",
       email: "john@example.com",
@@ -116,6 +119,9 @@ describe("addCustomer", () => {
 
     const result = await addCustomer({
       username: "johndoe",
+      password: "secret1",
+      acno: "Westland 12",
+      networkDeviceId: 3,
       firstname: "John",
       lname: "Doe",
       email: "john@example.com",
