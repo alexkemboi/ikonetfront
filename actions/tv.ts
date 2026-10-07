@@ -5,20 +5,49 @@ import type { TvPackage, TvPackageOptionResponse, TvPackagesResult, TvPortalSess
 import { tvDeviceSchema, type TvDeviceDetails } from "@/lib/validation/tv-device";
 import { withPortalRouter, type PortalRouter } from "@/lib/hotspot/portalRouter";
 
-export async function prepareTvDeviceAction(values: TvDeviceDetails, portalRouter?: PortalRouter | null): Promise<
+/** A device on the customer's hotspot. The full MAC stays on the server; the token stands in for it. */
+export interface TvNearbyDevice {
+  hostname: string;
+  maskedMac: string;
+  deviceToken: string;
+}
+
+/** Devices connected to the same hotspot router, for picking the TV instead of typing its MAC. */
+export async function getNearbyTvDevicesAction(clientIp?: string | null, portalRouter?: PortalRouter | null): Promise<
+  { devices: TvNearbyDevice[]; error?: string }
+> {
+  const path = clientIp?.trim() ? `/tv/devices/nearby?ip=${encodeURIComponent(clientIp.trim())}` : "/tv/devices/nearby";
+  const result = await apiFetch<TvNearbyDevice[]>(withPortalRouter(path, portalRouter), { auth: "public", cache: "no-store" });
+  if (!result.success || !result.data) {
+    return { devices: [], error: "We couldn’t list the devices on this Wi-Fi. Enter the address from your TV’s settings." };
+  }
+  return { devices: result.data };
+}
+
+/**
+ * Verifies the TV. With `deviceToken` (a device picked from the nearby list) the MAC is not
+ * typed: the backend takes it from the token and returns it for the confirmation step.
+ */
+export async function prepareTvDeviceAction(values: TvDeviceDetails, portalRouter?: PortalRouter | null, deviceToken?: string): Promise<
   | { success: true; device: TvDeviceDetails; portal: TvPortalSession; recommendedPackages: TvPackage[]; warnings: string[] }
   | { success: false; error: string }
 > {
   try {
-    const device = await tvDeviceSchema.validate(values, { stripUnknown: true });
+    const device = deviceToken
+      ? { ...(await tvDeviceSchema.pick(["customerPhone"]).validate(values, { stripUnknown: true })), macAddress: undefined }
+      : await tvDeviceSchema.validate(values, { stripUnknown: true });
     const verification = await apiFetch<TvDeviceVerification>(withPortalRouter("/tv/devices/verify", portalRouter), {
       method: "POST",
-      body: { customerPhone: device.customerPhone, macAddress: device.macAddress, routerIdentity: values.routerIdentity },
+      body: deviceToken
+        ? { customerPhone: device.customerPhone, deviceToken, routerIdentity: values.routerIdentity }
+        : { customerPhone: device.customerPhone, macAddress: device.macAddress, routerIdentity: values.routerIdentity },
       auth: "public",
       cache: "no-store",
     });
     if (!verification.success || !verification.data?.eligible) {
-      return { success: false, error: verification.message || "This TV is not eligible for activation." };
+      // the backend puts its error code in `message` and the sentence for the customer in `data.detail`
+      const detail = (verification.data as { detail?: string } | null | undefined)?.detail;
+      return { success: false, error: detail || verification.message || "This TV is not eligible for activation." };
     }
     return {
       success: true,
@@ -36,7 +65,7 @@ export async function prepareTvDeviceAction(values: TvDeviceDetails, portalRoute
       warnings: verification.data.softWarnings,
     };
   } catch {
-    return { success: false, error: "Check your TV’s MAC address and try again." };
+    return { success: false, error: deviceToken ? "Check your phone number and try again." : "Check your TV’s MAC address and try again." };
   }
 }
 
