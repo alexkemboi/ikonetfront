@@ -11,7 +11,7 @@ import {
   useTransition,
   type ReactNode,
 } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useDispatch } from "react-redux";
 import { Building2 } from "lucide-react";
 import { toast } from "sonner";
@@ -81,6 +81,7 @@ export function CompanyScopeProvider({
   children: ReactNode;
 }) {
   const router = useRouter();
+  const path = usePathname();
   const dispatch = useDispatch<AppDispatch>();
   const [isPending, startTransition] = useTransition();
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -126,7 +127,10 @@ export function CompanyScopeProvider({
     selectCompany(null);
   }, [selectionIsStale, companyCode, selectCompany]);
 
-  const needsCompany = isPlatformAdmin && (companyCode === null || selectionIsStale);
+  // a platform admin does not require a strict check 
+  // A temporary path logic is needed for the vouchers page since this section is a dependency in the application
+ 
+  const needsCompany = path.includes("/finance/vouchers") && isPlatformAdmin ? false :(companyCode === null || selectionIsStale) ? true : false;
 
   const requireCompany = useCallback(
     (action: () => void) => {
