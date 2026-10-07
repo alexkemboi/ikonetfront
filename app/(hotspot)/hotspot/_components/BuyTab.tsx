@@ -39,8 +39,24 @@ function readPendingPurchase(): PendingHotspotPurchase | null {
   }
 }
 
+// useSyncExternalStore compares snapshots by identity: a freshly parsed object on
+// every call reads as "the store changed" and re-renders until React gives up
+// ("Maximum update depth exceeded"). Re-parse only when the stored text changes.
+let snapshotSource: string | null = null;
+let snapshot: PendingHotspotPurchase | null = null;
+
 function getPendingPurchase(): PendingHotspotPurchase | null {
-  return readPendingPurchase();
+  let stored: string | null = null;
+  try {
+    stored = window.sessionStorage.getItem(PENDING_HOTSPOT_PURCHASE_KEY);
+  } catch {
+    stored = null;
+  }
+  if (stored !== snapshotSource) {
+    snapshotSource = stored;
+    snapshot = readPendingPurchase();
+  }
+  return snapshot;
 }
 
 /** Server render: nothing parked yet, so the modal starts closed. */
