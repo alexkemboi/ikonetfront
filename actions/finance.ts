@@ -220,8 +220,8 @@ function toFinanceDateTime(value: string, endOfDay: boolean): string {
 
 /**
  * Map the backend `ProfitLossReport` into the dashboard's `ProfitAndLossSummary`.
- * Revenue lines are matched by account code (4100 = PPPoE, 4200 = Hotspot per the
- * contract fixture) with a name-substring fallback; missing lines never fail.
+ * Revenue is split by account family (41xx = hotspot, 42xx = PPPoE, as the backend
+ * posts it) with a name-substring fallback; missing lines never fail.
  */
 function normalizeProfitLossReport(
   json: unknown,
@@ -243,14 +243,20 @@ function normalizeProfitLossReport(
       isFiniteNumber(line.amount)
   );
 
-  const match = (codes: string[], needles: string[]): number => {
-    const byCode = revenue.find((line) => codes.includes(line.accountCode));
-    if (byCode) return Math.abs(byCode.amount);
-    const byName = revenue.find((line) =>
-      needles.some((n) => (line.accountName ?? "").toLowerCase().includes(n))
-    );
-    return Math.abs(byName?.amount ?? 0);
-  };
+  // Revenue by service, from the chart of accounts the backend posts to
+  // (AccountingService.resolveRevenueAccount and the seeded chart):
+  //   41xx  hotspot family (4100 Hotspot Revenue, 4110 time, 4120 data, 4130 TV)
+  //   42xx  PPPoE family   (4200 PPPoE Revenue, 4210 residential, 4220 business, 4230 enterprise)
+  // Every line of the family is added up. Only when a report has no line in either
+  // family (a chart with other codes) are lines matched by their name instead.
+  const sumWhere = (keep: (line: (typeof revenue)[number]) => boolean): number =>
+    Math.abs(revenue.filter(keep).reduce((total, line) => total + line.amount, 0));
+  const inFamily = (prefix: string) => (line: (typeof revenue)[number]) => line.accountCode.startsWith(prefix);
+  const named = (needle: string) => (line: (typeof revenue)[number]) =>
+    (line.accountName ?? "").toLowerCase().includes(needle);
+  const hasFamilies = revenue.some(inFamily("41")) || revenue.some(inFamily("42"));
+  const hotspotRevenue = hasFamilies ? sumWhere(inFamily("41")) : sumWhere(named("hotspot"));
+  const pppoeRevenue = hasFamilies ? sumWhere(inFamily("42")) : sumWhere(named("pppoe"));
 
   // The ledger stores credit-normal income as negative balances. The report
   // contract fixtures use positive totals, so invert net income only when the
@@ -260,8 +266,8 @@ function normalizeProfitLossReport(
     totalRevenue: Math.abs(report.totalRevenue),
     totalExpenses: Math.abs(report.totalExpenses),
     netProfit: signedLedgerConvention ? -report.netIncome : report.netIncome,
-    pppoeRevenue: match(["4100"], ["pppoe"]),
-    hotspotRevenue: match(["4200"], ["hotspot"]),
+    pppoeRevenue,
+    hotspotRevenue,
     startDate: report.startDate ?? from,
     endDate: report.endDate ?? to,
   };
