@@ -14,7 +14,7 @@ export function CompanyScopeBanner() {
   return (
     <div
       role="status"
-      className="flex items-center gap-2 border-b border-border bg-muted/60 px-4 py-1.5 text-xs text-muted-foreground md:px-6"
+      className="mx-3 mt-2 flex items-center gap-2 rounded-2xl border border-border bg-muted/60 px-4 py-2 text-xs text-muted-foreground shadow-sm md:px-6"
     >
       <Building2 className="h-3.5 w-3.5 shrink-0" />
       <span>

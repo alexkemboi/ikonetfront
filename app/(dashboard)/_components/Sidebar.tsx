@@ -108,7 +108,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
 
 function NavIcon({ name, className }: { name: string; className?: string }) {
  const Icon = ICON_MAP[name] ?? Settings;
- return <Icon className={cn("w-4 h-4 shrink-0", className)} />;
+ return <Icon className={cn("h-[18px] w-[18px] shrink-0", className)} />;
 }
 
 // ── Animation variants ─────────────────────────────────────────────────
@@ -149,10 +149,10 @@ function NavLeaf({
         href={item.href}
         aria-current={isActive ? "page" : undefined}
         className={cn(
-          "group flex items-center justify-center rounded-lg p-2.5 transition-colors duration-150 border-l-2 border-transparent",
+          "group flex items-center justify-center rounded-xl p-2.5 transition-colors duration-150 border-l-2 border-transparent",
           isActive
-            ? "bg-sidebar-accent text-warning border-l-warning"
-            : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+            ? "bg-sidebar-accent text-sidebar-foreground"
+            : "text-sidebar-foreground/65 hover:bg-sidebar-accent/70 hover:text-sidebar-foreground"
         )}
         title={item.label}
       >
@@ -167,11 +167,11 @@ function NavLeaf({
       href={item.href}
         aria-current={isActive ? "page" : undefined}
       className={cn(
-        "group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors duration-150",
+        "group flex items-center gap-3 rounded-xl border-l-2 border-transparent px-3 py-2.5 text-sm font-medium transition-colors duration-150",
         isChild && "ml-4 py-2 text-[13px]",
         isActive
-          ? "bg-sidebar-accent text-warning border-l-2 border-warning pl-2.5"
-          : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground border-l-2 border-transparent pl-2.5"
+          ? "bg-sidebar-accent text-sidebar-foreground font-semibold"
+          : "text-sidebar-foreground/65 hover:bg-sidebar-accent/70 hover:text-sidebar-foreground border-l-2 border-transparent pl-2.5"
       )}
     >
       {!isChild && <NavIcon name={item.icon} />}
@@ -180,14 +180,14 @@ function NavLeaf({
           className={cn(
             "w-1.5 h-1.5 rounded-full shrink-0 transition-colors",
             isActive
-              ? "bg-warning"
+              ? "bg-sidebar-foreground/80"
               : "bg-sidebar-foreground/30 group-hover:bg-sidebar-foreground/60"
           )}
         />
       )}
       <span className="flex-1 leading-none">{item.label}</span>
       {item.badge !== undefined && (
-        <Badge className="h-4 min-w-4 px-1 text-[10px] bg-warning text-warning-foreground rounded-full">
+        <Badge className="h-5 min-w-7 rounded-full border border-sidebar-border bg-sidebar-accent px-1.5 text-[10px] font-medium text-sidebar-foreground/75">
           {item.badge}
         </Badge>
       )}
@@ -225,10 +225,10 @@ function NavParent({ item }: { item: NavItem }) {
           <button
             type="button"
             className={cn(
-              "w-full flex items-center justify-center rounded-lg p-2.5 text-sm font-medium transition-colors duration-150 border-l-2 border-transparent",
+              "w-full flex items-center justify-center rounded-xl p-2.5 text-sm font-medium transition-colors duration-150 border-l-2 border-transparent",
               isAnyChildActive
-                ? "text-warning bg-sidebar-accent/30 border-l-warning"
-                : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+                ? "text-sidebar-foreground bg-sidebar-accent"
+                : "text-sidebar-foreground/65 hover:bg-sidebar-accent/70 hover:text-sidebar-foreground"
             )}
             title={item.label}
           >
@@ -251,14 +251,14 @@ function NavParent({ item }: { item: NavItem }) {
                   className={cn(
                     "w-full flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-colors",
                     isChildActive
-                      ? "bg-sidebar-accent text-warning font-semibold"
-                      : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50"
+                      ? "bg-sidebar-accent text-sidebar-foreground font-semibold"
+                      : "text-sidebar-foreground/65 hover:bg-sidebar-accent/70"
                   )}
                 >
                   <span
                     className={cn(
                       "w-1.5 h-1.5 rounded-full shrink-0",
-                      isChildActive ? "bg-warning" : "bg-sidebar-foreground/30"
+                      isChildActive ? "bg-sidebar-foreground/80" : "bg-sidebar-foreground/30"
                     )}
                   />
                   <span>{child.label}</span>
@@ -278,10 +278,10 @@ function NavParent({ item }: { item: NavItem }) {
         type="button"
         onClick={() => setOpen((v) => !v)}
         className={cn(
-          "w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors duration-150 border-l-2 border-transparent pl-2.5",
+          "w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors duration-150 border-l-2 border-transparent pl-2.5",
           isAnyChildActive || open
-            ? "text-warning bg-sidebar-accent/30 border-l-warning"
-            : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+          ? "text-sidebar-foreground bg-sidebar-accent"
+          : "text-sidebar-foreground/65 hover:bg-sidebar-accent/70 hover:text-sidebar-foreground"
         )}
       >
         <NavIcon name={item.icon} />
@@ -293,7 +293,7 @@ function NavParent({ item }: { item: NavItem }) {
           transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
           className="shrink-0"
         >
-          <ChevronRight className="w-3.5 h-3.5" />
+          <ChevronRight className="h-4 w-4 text-sidebar-foreground/50" />
         </motion.div>
       </button>
 
@@ -321,18 +321,15 @@ function NavParent({ item }: { item: NavItem }) {
 }
 
 // ── Nav group ──────────────────────────────────────────────────────────
-function NavGroupSection({ group, index }: { group: NavGroup; index: number }) {
+function NavGroupSection({ group }: { group: NavGroup }) {
   const { isCollapsed } = useContext(SidebarContext);
 
   return (
     <div className="space-y-0.5">
       {group.label && !isCollapsed && (
-        <p className="px-3 pt-4 pb-1 text-[10px] font-semibold uppercase tracking-widest text-sidebar-foreground/35 select-none">
+        <p className="px-3 pt-6 pb-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-sidebar-foreground/45 select-none">
           {group.label}
         </p>
-      )}
-      {group.label && isCollapsed && index > 0 && (
-        <hr className="my-2 border-sidebar-border mx-2" />
       )}
       {group.items.map((item) =>
         item.children && (item.canView ?? true) ? (
@@ -379,25 +376,21 @@ export function SidebarInner({
 
   return (
     <SidebarContext.Provider value={{ isCollapsed }}>
-      <div className="flex h-full w-full flex-col bg-sidebar">
+      <div className="sidebar-panel flex h-full w-full flex-col overflow-hidden rounded-[20px] bg-sidebar text-sidebar-foreground">
+        <ScrollArea className="h-full w-full">
+          <div className="flex min-h-full flex-col">
         {/* ── Brand ── */}
         <div className={cn(
-          "flex h-16 items-center border-b border-sidebar-border shrink-0 transition-all duration-300",
+          "flex h-[3.25rem] items-center border-b border-sidebar-border/80 shrink-0 transition-all duration-300",
           isCollapsed ? "justify-center px-0" : "justify-between px-5"
         )}>
           {!isCollapsed ? (
             <div className="flex items-center gap-3">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/15">
-                <svg width="16" height="16" viewBox="0 0 22 22" fill="none" aria-hidden>
-                  <circle cx="11" cy="11" r="4" fill="white" />
-                  <circle cx="11" cy="11" r="8" stroke="white" strokeWidth="1.5" />
-                  <line x1="3" y1="11" x2="19" y2="11" stroke="white" strokeWidth="1" />
-                  <line x1="11" y1="3" x2="11" y2="19" stroke="white" strokeWidth="1" />
-                </svg>
+              <div className="min-w-0">
+                <span className="block truncate text-base font-semibold tracking-tight text-sidebar-foreground">
+                  {brandName}
+                </span>
               </div>
-              <span className="text-base font-semibold text-sidebar-foreground tracking-tight">
-                {brandName}
-              </span>
             </div>
           ) : null}
 
@@ -405,7 +398,7 @@ export function SidebarInner({
             <button
               type="button"
               onClick={onCloseMobile}
-              className="rounded-lg p-2 text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+              className="rounded-lg p-2 text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
               aria-label="Close navigation"
             >
               <X className="h-5 w-5" />
@@ -415,7 +408,7 @@ export function SidebarInner({
               type="button"
               onClick={onToggleCollapse}
               className={cn(
-                "text-sidebar-foreground/60 hover:text-sidebar-foreground transition-colors p-1.5 rounded-lg hover:bg-sidebar-accent/50",
+                "text-sidebar-foreground/60 hover:text-sidebar-foreground transition-colors p-1.5 rounded-lg hover:bg-sidebar-accent",
                 isCollapsed && "mx-auto"
               )}
               aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
@@ -436,14 +429,14 @@ export function SidebarInner({
         </div>
 
         {/* ── Nav items ── */}
-        <ScrollArea className={cn(
-          "flex-1 min-h-0 py-3 transition-all duration-300",
-          isCollapsed ? "px-1.5" : "px-3"
+        <div className={cn(
+          "sidebar-navigation flex-1 min-h-0 py-3 transition-all duration-300",
+          isCollapsed ? "px-1.5" : "px-5"
         )}>
-          <nav className="space-y-1">
+          <nav className="space-y-2">
             {navGroups.length > 0 ? (
               navGroups.map((group, i) => (
-                <NavGroupSection key={group.label ?? i} group={group} index={i} />
+                <NavGroupSection key={group.label ?? i} group={group} />
               ))
             ) : (
               <p className="text-sm text-sidebar-foreground/50">
@@ -451,20 +444,20 @@ export function SidebarInner({
               </p>
             )}
           </nav>
-        </ScrollArea>
+        </div>
 
         {/* ── User profile ── */}
         {user && (
           <div className={cn(
-            "sticky bottom-0 mt-auto shrink-0 border-t border-sidebar-border bg-sidebar transition-all duration-300",
-            isCollapsed ? "px-0 py-3" : "px-3 py-3"
+            "sticky bottom-0 mt-auto shrink-0 border-t border-sidebar-border/80 bg-sidebar transition-all duration-300",
+            isCollapsed ? "px-0 py-3" : "px-5 py-3"
           )}>
             {isCollapsed ? (
               <div className="flex justify-center">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <button type="button" className="focus:outline-none">
-                      <Avatar className="h-8 w-8 hover:ring-2 hover:ring-warning transition-all cursor-pointer">
+                      <Avatar className="h-8 w-8 hover:ring-2 hover:ring-sidebar-foreground/30 transition-all cursor-pointer">
                         <AvatarFallback className="bg-white/20 text-sidebar-foreground text-xs font-semibold">
                           {user.initials}
                         </AvatarFallback>
@@ -500,8 +493,8 @@ export function SidebarInner({
                 </DropdownMenu>
               </div>
             ) : (
-              <div className="flex items-center gap-3 rounded-lg px-2 py-2">
-                <Avatar className="h-8 w-8 shrink-0">
+              <div className="flex items-center gap-3 rounded-xl border border-sidebar-border/80 bg-sidebar-accent/50 px-2.5 py-2.5">
+                <Avatar className="h-9 w-9 shrink-0">
                   <AvatarFallback className="bg-white/20 text-sidebar-foreground text-xs font-semibold">
                     {user.initials}
                   </AvatarFallback>
@@ -518,7 +511,7 @@ export function SidebarInner({
                   type="button"
                   aria-label="Sign out"
                   onClick={() => router.push("/signout")}
-                  className="text-sidebar-foreground/40 hover:text-sidebar-foreground transition-colors shrink-0"
+                  className="rounded-lg p-2 text-sidebar-foreground/45 transition-colors hover:bg-destructive/10 hover:text-destructive shrink-0"
                 >
                   <LogOut className="w-4 h-4" />
                 </button>
@@ -526,6 +519,8 @@ export function SidebarInner({
             )}
           </div>
         )}
+          </div>
+        </ScrollArea>
       </div>
     </SidebarContext.Provider>
   );
@@ -548,8 +543,8 @@ export default function Sidebar(props: SidebarProps) {
 
   return (
     <aside className={cn(
-      "hidden md:flex h-screen shrink-0 flex-col border-r border-sidebar-border transition-all duration-300 ease-in-out",
-      isMounted && isCollapsed ? "w-[70px]" : "w-64"
+      "my-3 ml-3 mr-3 hidden h-[calc(100vh-1.5rem)] shrink-0 flex-col rounded-[20px] border border-sidebar-border shadow-xl shadow-black/15 transition-all duration-300 ease-in-out md:flex",
+      isMounted && isCollapsed ? "w-[70px]" : "w-[240px]"
     )}>
       <SidebarInner
         {...props}

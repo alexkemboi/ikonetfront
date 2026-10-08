@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { DM_Sans, JetBrains_Mono } from "next/font/google";
 import ReduxProvider from "@/providers/ReduxProvider";
-import { Toaster } from "sonner";
+import { AppThemeProvider } from "@/providers/AppThemeProvider";
 import "./globals.css";
 import AuthProvider from "./authProvider";
 
@@ -32,10 +32,11 @@ export default function RootLayout({
  <body
  className={`${dmSans.variable} ${jetbrainsMono.variable} font-sans antialiased`}
  >
- <AuthProvider>
- <ReduxProvider>{children}</ReduxProvider>
- <Toaster richColors position="top-right" />
- </AuthProvider>
+ <AppThemeProvider>
+  <AuthProvider>
+   <ReduxProvider>{children}</ReduxProvider>
+  </AuthProvider>
+ </AppThemeProvider>
  </body>
  </html>
  );

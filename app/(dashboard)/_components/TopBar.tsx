@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { Bell, LogOut, Menu, Search, Shield } from "lucide-react";
+import { Bell, LogOut, Menu, Moon, Search, Shield, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -21,6 +21,7 @@ import CompanyContextSwitcher from "./CompanyContextSwitcher";
 import StepUpIndicator from "@/components/chrome/StepUpIndicator";
 import { openOmniSearch } from "@/lib/omniSearchEvents";
 import type { NavGroup } from "@/lib/nav";
+import { useAppTheme } from "@/providers/AppThemeProvider";
 
 // Derives a human-readable title from the current pathname
 function useBreadcrumb() {
@@ -54,6 +55,7 @@ export default function TopBar({
 }: TopBarProps) {
 const breadcrumbs = useBreadcrumb();
 	const [mobileOpen, setMobileOpen] = useState(false);
+	const { theme, toggleTheme } = useAppTheme();
 
 
 
@@ -80,7 +82,7 @@ const breadcrumbs = useBreadcrumb();
  </SheetContent>
  </Sheet>
 
- <header className="flex h-14 min-w-0 shrink-0 items-center gap-2 border-b border-border bg-card px-2 sm:gap-4 sm:px-4 md:px-6">
+ <header className="mx-3 mt-3 flex h-14 min-w-0 shrink-0 items-center gap-2 rounded-2xl border border-border bg-muted/60 px-3 shadow-sm sm:gap-4 sm:px-5 md:px-6">
  {/* Hamburger — mobile only */}
  <Button
  variant="ghost"
@@ -124,6 +126,17 @@ const breadcrumbs = useBreadcrumb();
 
 	{/* Tenant context switcher (SYSADMIN only) */}
 	{user && <CompanyContextSwitcher companyScope={user.companyScope} />}
+
+	<Button
+	  variant="ghost"
+	  size="icon"
+	  className="h-8 w-8"
+	  aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+	  title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+	  onClick={toggleTheme}
+	>
+	  {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+	</Button>
 
 	{/* Notifications */}
  <div className="relative">

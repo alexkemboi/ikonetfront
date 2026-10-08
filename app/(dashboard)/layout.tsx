@@ -92,7 +92,7 @@ return (
   user={sidebarUser}
   />
 
-  <div className="flex flex-1 flex-col overflow-hidden">
+  <div className="dashboard-main-scroll flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden overflow-y-auto">
 <TopBar
    notificationCount={0}
    user={sidebarUser
@@ -112,7 +112,7 @@ return (
    sidebarUser={sidebarUser}
    />
 <CompanyScopeBanner />
-<main className="flex-1 overflow-y-auto py-4 pb-16">
+<main className="flex-1 py-4 pb-16">
   {children}
   </main>
   </div>
