@@ -9,6 +9,8 @@ export interface NasRouterItem {
   /** Raw online flag when the source row carries a boolean (device API). */
   online?: boolean;
   activeSessions: number | null;
+  /** Deactivated/retired record (network_device.active = false). Hidden from the list unless asked for. */
+  retired?: boolean;
   managementIp: string; // e.g. "10.9.86.246"
   lastOnlineText: string; // e.g. "Jul 20, 03:34 AM"
   /** network_routers.idxno — the id the telemetry/action endpoints expect. */

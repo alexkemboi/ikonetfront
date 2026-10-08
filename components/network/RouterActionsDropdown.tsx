@@ -281,7 +281,7 @@ export function RouterActionsDropdown({
     }
 
     const confirmed = window.confirm(
-      `Are you sure you want to delete ${router.name}? This will purge its credentials and allow fresh re-onboarding.`
+      `Remove ${router.name}? A router that customers have used is retired: its record is kept for history and hidden from this list. One with no history is deleted. Either way its name and tunnel address become free for a fresh onboarding.`
     );
     if (!confirmed) {
       closeMenu();

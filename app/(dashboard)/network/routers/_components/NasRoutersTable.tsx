@@ -19,17 +19,24 @@ export function NasRoutersTable({
   canEdit: boolean;
 }) {
   const [filter, setFilter] = useState<StatusFilter>("all");
+  // Retired routers keep their record for history but are not part of the fleet.
+  const [showRetired, setShowRetired] = useState(false);
 
-  const onlineCount = useMemo(() => routers.filter(isRouterOnline).length, [routers]);
+  const retiredCount = useMemo(() => routers.filter((r) => r.retired).length, [routers]);
+  const fleet = useMemo(
+    () => (showRetired ? routers : routers.filter((r) => !r.retired)),
+    [routers, showRetired]
+  );
+  const onlineCount = useMemo(() => fleet.filter(isRouterOnline).length, [fleet]);
 
   const visible = useMemo(() => {
-    return routers.filter((r) => {
+    return fleet.filter((r) => {
       const online = isRouterOnline(r);
       if (filter === "online" && !online) return false;
       if (filter === "offline" && online) return false;
       return true;
     });
-  }, [routers, filter]);
+  }, [fleet, filter]);
 
   const columns: ColumnDef<NasRouterItem>[] = [
     {
@@ -183,14 +190,19 @@ export function NasRoutersTable({
       filters={
         <div className="flex items-center gap-1.5">
           <DataTableFilterPill active={filter === "all"} onClick={() => setFilter("all")}>
-            All <span className="ml-1 font-sans tabular-nums">{routers.length}</span>
+            All <span className="ml-1 font-sans tabular-nums">{fleet.length}</span>
           </DataTableFilterPill>
           <DataTableFilterPill active={filter === "online"} onClick={() => setFilter("online")}>
             Online <span className="ml-1 font-sans tabular-nums">{onlineCount}</span>
           </DataTableFilterPill>
           <DataTableFilterPill active={filter === "offline"} onClick={() => setFilter("offline")}>
-            Offline <span className="ml-1 font-sans tabular-nums">{routers.length - onlineCount}</span>
+            Offline <span className="ml-1 font-sans tabular-nums">{fleet.length - onlineCount}</span>
           </DataTableFilterPill>
+          {retiredCount > 0 && (
+            <DataTableFilterPill active={showRetired} onClick={() => setShowRetired((v) => !v)}>
+              Show retired <span className="ml-1 font-sans tabular-nums">{retiredCount}</span>
+            </DataTableFilterPill>
+          )}
         </div>
       }
     />
