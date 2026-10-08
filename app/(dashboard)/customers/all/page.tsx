@@ -3,6 +3,8 @@ import { getCustomers } from "@/actions/customer";
 import { getLiveSessionsData } from "@/actions/sessions";
 import { CustomerClient } from "./_components/CustomerClient";
 import { LiveSessionDataTable } from "@/components/sessions/LiveSessionDataTable";
+import { HotspotSubscribers } from "./_components/HotspotSubscribers";
+import { getPausedHotspotSessions } from "@/actions/subscriberTime";
 import { getCurrentUserPermissions, NO_PERMISSIONS } from "@/lib/data/nav";
 import { redirect } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -25,7 +27,7 @@ type DirectoryView = "accounts" | "hotspot" | "tv";
 const SESSION_VIEWS: Record<Exclude<DirectoryView, "accounts">, { protocol: SessionProtocol; blurb: string }> = {
  hotspot: {
  protocol: "HOTSPOT",
- blurb: "Customers with a paid, unexpired hotspot package. They have no account: each row is the phone that paid.",
+ blurb: "Everyone with a hotspot package that is running or paused, shown by the phone number that paid. Use Manage to add time, pause or disconnect a customer.",
  },
  tv: {
  protocol: "TV",
@@ -48,12 +50,14 @@ export default async function AllCustomersPage({
  const requested = (await searchParams).view;
  const view: DirectoryView = requested === "hotspot" || requested === "tv" ? requested : "accounts";
 
- const [firstPage, activeRes, pppoeRes, live] = await Promise.all([
+ const [firstPage, activeRes, pppoeRes, live, pausedRes] = await Promise.all([
  getCustomers(0, 10),
  getCustomers(0, 1, { isActive: true }),
  getCustomers(0, 1, { custtype: "pppoe" }),
  getLiveSessionsData(),
+ getPausedHotspotSessions(),
  ]);
+ const pausedSessions = pausedRes.success ? pausedRes.data : [];
 
  const sessionsOf = (protocol: SessionProtocol) => live.sessions.filter((s) => s.protocol === protocol);
  const accountsTotal = firstPage?.data?.totalElements ?? 0;
@@ -62,7 +66,7 @@ export default async function AllCustomersPage({
 
  const tabs: { id: DirectoryView; label: string; count: number | null }[] = [
  { id: "accounts", label: "Registered accounts", count: accountsTotal },
- { id: "hotspot", label: "Hotspot customers", count: live.error ? null : hotspotSessions.length },
+ { id: "hotspot", label: "Hotspot customers", count: live.error ? null : hotspotSessions.length + pausedSessions.length },
  { id: "tv", label: "TV customers", count: live.error ? null : tvSessions.length },
  ];
 
@@ -112,8 +116,8 @@ return (
               <h1 className="text-3xl font-sans font-normal text-foreground">
                 {view === "hotspot" ? "Hotspot customers." : "TV customers."}
               </h1>
-              <p className="mt-1 text-xs text-muted-foreground">
-                {sessionView.blurb} Refreshes every {REFRESH_INTERVAL_SECONDS}s.
+              <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
+                {sessionView.blurb} The list updates every {REFRESH_INTERVAL_SECONDS} seconds.
               </p>
             </div>
             {live.error ? (
@@ -122,8 +126,17 @@ return (
                 <p className="mt-1 text-muted-foreground">{live.error}</p>
               </div>
             ) : (
-              // Keyed by view so a switch starts from that view's own rows.
-              <LiveSessionDataTable key={view} sessions={sessions} refreshIntervalSeconds={REFRESH_INTERVAL_SECONDS} />
+              view === "hotspot" ? (
+                <HotspotSubscribers
+                  sessions={hotspotSessions}
+                  paused={pausedSessions}
+                  pausedError={pausedRes.success ? undefined : pausedRes.message}
+                  refreshIntervalSeconds={REFRESH_INTERVAL_SECONDS}
+                />
+              ) : (
+                // Keyed by view so a switch starts from that view's own rows.
+                <LiveSessionDataTable key={view} sessions={sessions} refreshIntervalSeconds={REFRESH_INTERVAL_SECONDS} />
+              )
             )}
           </div>
         )}
