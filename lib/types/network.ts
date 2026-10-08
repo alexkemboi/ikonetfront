@@ -163,6 +163,13 @@ export interface RouterOutage {
   routerRestarted: boolean | null;
   detectedBy: string | null;
   reason: string | null;
+  /** PENDING until decided; APPLIED = sessions got the lost time back. */
+  creditStatus: "PENDING" | "APPLIED" | "NOT_ELIGIBLE" | "REFUSED";
+  creditedSessions: number;
+  creditedMinutes: number;
+  /** Phone numbers the outage SMS was queued for; null when none was sent. */
+  outageSmsCount: number | null;
+  closedBy: string | null;
 }
 
 /** `GET /network/monitoring/router/{id}/interfaces` — read live from RouterOS. */
