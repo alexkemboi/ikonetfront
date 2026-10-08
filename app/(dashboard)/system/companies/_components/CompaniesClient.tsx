@@ -1,9 +1,20 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Building2, Loader2, Plus, ShieldAlert, Palette, Radio } from "lucide-react";
+import {
+  AlertCircle,
+  Building2,
+  CheckCircle2,
+  Loader2,
+  Plus,
+  Search,
+  ShieldAlert,
+  Palette,
+  Radio,
+  WalletCards,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { withStepUp } from "@/lib/stepUp";
@@ -107,6 +118,8 @@ export default function CompaniesClient({ companies, readiness, canMutate }: Pro
   const router = useRouter();
   const [credentialsFor, setCredentialsFor] = useState<CredentialsForm | null>(null);
   const [rows, setRows] = useState<CompanySummary[]>(companies);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | "ready" | "needs-setup" | "unavailable">("all");
   const [companyOpen, setCompanyOpen] = useState(false);
   const [accountFor, setAccountFor] = useState<CompanySummary | null>(null);
   const [brandingFor, setBrandingFor] = useState<CompanySummary | null>(null);
@@ -131,6 +144,31 @@ export default function CompaniesClient({ companies, readiness, canMutate }: Pro
   const [loadingAccounts, setLoadingAccounts] = useState(false);
 
   const [isPending, startTransition] = useTransition();
+  const readinessByCode = useMemo(
+    () => new Map(readiness.map((state) => [state.companyCode, state])),
+    [readiness]
+  );
+  const readyCount = rows.filter((company) => readinessByCode.get(company.code)?.ready).length;
+  const setupCount = rows.filter((company) => {
+    const state = readinessByCode.get(company.code);
+    return state !== undefined && !state.ready;
+  }).length;
+  const unavailableCount = rows.length - readyCount - setupCount;
+  const filteredCompanies = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    return rows.filter((company) => {
+      const state = readinessByCode.get(company.code);
+      const matchesSearch =
+        !query ||
+        [company.name, company.alias, company.code].some((value) => value.toLowerCase().includes(query));
+      const matchesStatus =
+        statusFilter === "all" ||
+        (statusFilter === "ready" && state?.ready === true) ||
+        (statusFilter === "needs-setup" && state !== undefined && !state.ready) ||
+        (statusFilter === "unavailable" && state === undefined);
+      return matchesSearch && matchesStatus;
+    });
+  }, [readinessByCode, rows, search, statusFilter]);
 
   function resetCompanyForm() {
     setCode("");
@@ -351,116 +389,252 @@ export default function CompaniesClient({ companies, readiness, canMutate }: Pro
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold text-foreground">Companies</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            Manage tenant companies and their M-Pesa payment accounts.
+    <div className="mx-auto w-full max-w-7xl space-y-6 p-4 pb-8 sm:p-6 lg:p-8">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div className="space-y-2">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
+            System management
           </p>
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Companies</h1>
+            <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+              Manage tenant profiles and keep each company&apos;s payment setup ready.
+            </p>
+          </div>
         </div>
         {canMutate && (
           <Button
-            className="gap-2 h-9"
+            className="h-10 w-full gap-2 rounded-full px-5 sm:w-auto"
             onClick={() => {
               resetCompanyForm();
               setCompanyOpen(true);
             }}
           >
-            <Plus className="w-4 h-4" />
-            New Company
+            <Plus className="h-4 w-4" />
+            New company
           </Button>
         )}
       </div>
 
+      <div className="grid gap-3 sm:grid-cols-3">
+        <Card className="border-border/70 shadow-sm">
+          <CardContent className="flex items-center justify-between p-4">
+            <div>
+              <p className="text-sm text-muted-foreground">Total companies</p>
+              <p className="mt-1 text-2xl font-semibold tabular-nums">{rows.length}</p>
+            </div>
+            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
+              <Building2 className="h-5 w-5" />
+            </span>
+          </CardContent>
+        </Card>
+        <Card className="border-border/70 shadow-sm">
+          <CardContent className="flex items-center justify-between p-4">
+            <div>
+              <p className="text-sm text-muted-foreground">Payment ready</p>
+              <p className="mt-1 text-2xl font-semibold tabular-nums">{readyCount}</p>
+            </div>
+            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-success/10 text-success">
+              <CheckCircle2 className="h-5 w-5" />
+            </span>
+          </CardContent>
+        </Card>
+        <Card className="border-border/70 shadow-sm">
+          <CardContent className="flex items-center justify-between p-4">
+            <div>
+              <p className="text-sm text-muted-foreground">Needs setup</p>
+              <p className="mt-1 text-2xl font-semibold tabular-nums">{setupCount}</p>
+            </div>
+            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-warning/15 text-warning">
+              <AlertCircle className="h-5 w-5" />
+            </span>
+          </CardContent>
+        </Card>
+      </div>
+
       {!canMutate && (
-        <Card className="border-warning/30 bg-warning/5">
-          <CardContent className="flex items-center gap-2 py-3 text-xs text-foreground">
-            <ShieldAlert className="w-4 h-4 text-warning" />
-            Creating companies and payment accounts is restricted to SYSADMIN.
+        <Card className="border-warning/30 bg-warning/5 shadow-sm">
+          <CardContent className="flex items-center gap-2 py-3 text-sm text-foreground">
+            <ShieldAlert className="h-4 w-4 text-warning" />
+            Company creation and payment account changes are restricted to SYSADMIN.
           </CardContent>
         </Card>
       )}
 
-      <Card>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Code</TableHead>
-                <TableHead>Name</TableHead>
-                <TableHead>Alias</TableHead>
-                <TableHead>Payments</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {rows.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
-                    No companies found.
-                  </TableCell>
-                </TableRow>
-              ) : (
-                rows.map((company) => (
-                  <TableRow key={company.code}>
-                    <TableCell className="font-mono text-xs font-medium">{company.code}</TableCell>
-                    <TableCell className="font-medium">{company.name}</TableCell>
-                    <TableCell className="text-muted-foreground">{company.alias}</TableCell>
-                    <TableCell className="max-w-xs text-xs">
-                      {(() => {
-                        const state = readiness.find((r) => r.companyCode === company.code);
-                        if (!state) return <span className="text-muted-foreground">{"\u2014"}</span>;
-                        return state.ready ? (
-                          <span className="text-emerald-500">
-                            Ready · {state.accountType} {state.shortCode}
-                          </span>
-                        ) : (
-                          <span className="text-rose-500">Cannot take payments: {state.problem}</span>
-                        );
-                      })()}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-8 gap-1.5"
-                          onClick={() => openBranding(company)}
-                        >
-                          <Palette className="w-3.5 h-3.5" />
-                          Edit Brand Profile
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-8 gap-1.5"
-                          onClick={() => openAccounts(company)}
-                        >
-                          <Radio className="w-3.5 h-3.5" />
-                          Paybills &amp; Tills
-                        </Button>
-                        {canMutate && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-8 gap-1.5"
-                            onClick={() => {
-                              resetAccountForm();
-                              setAccountFor(company);
-                            }}
-                          >
-                            <Building2 className="w-3.5 h-3.5" />
-                            Payment Account
-                          </Button>
-                        )}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
+      <Card className="overflow-hidden border-border/70 shadow-sm">
+        <div className="flex flex-col gap-4 border-b border-border px-4 py-4 sm:px-5 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <h2 className="font-semibold text-foreground">Company directory</h2>
+            <p className="mt-0.5 text-sm text-muted-foreground">
+              Search profiles, check payment readiness, and manage company settings.
+            </p>
+          </div>
+          <div className="relative w-full lg:max-w-sm">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              aria-label="Search companies"
+              placeholder="Search name, alias, or code"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              className="h-10 rounded-full pl-9"
+            />
+          </div>
+        </div>
+        <CardContent className="space-y-4 p-4 sm:p-5">
+          <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1" aria-label="Filter companies by payment status">
+            {([
+              ["all", "All companies", rows.length],
+              ["ready", "Payment ready", readyCount],
+              ["needs-setup", "Needs setup", setupCount],
+              ["unavailable", "Status unavailable", unavailableCount],
+            ] as const).map(([value, label, count]) => (
+              <button
+                key={value}
+                type="button"
+                aria-pressed={statusFilter === value}
+                onClick={() => setStatusFilter(value)}
+                className={`inline-flex shrink-0 items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                  statusFilter === value
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground"
+                }`}
+              >
+                {label}
+                <span
+                  className={`rounded-full px-1.5 py-0.5 text-[10px] tabular-nums ${
+                    statusFilter === value ? "bg-primary-foreground/15" : "bg-muted"
+                  }`}
+                >
+                  {count}
+                </span>
+              </button>
+            ))}
+          </div>
+
+          {filteredCompanies.length === 0 ? (
+            <div className="flex min-h-52 flex-col items-center justify-center rounded-lg border border-dashed border-border bg-muted/20 px-4 text-center">
+              <span className="flex h-11 w-11 items-center justify-center rounded-full bg-primary/10 text-primary">
+                <Building2 className="h-5 w-5" />
+              </span>
+              <p className="mt-3 font-medium text-foreground">
+                {rows.length === 0 ? "No companies yet" : "No matching companies"}
+              </p>
+              <p className="mt-1 max-w-sm text-sm text-muted-foreground">
+                {rows.length === 0
+                  ? "Create a company to start configuring its profile and payment setup."
+                  : "Try a different search or payment status filter."}
+              </p>
+              {rows.length === 0 && canMutate && (
+                <Button
+                  className="mt-4 rounded-full"
+                  onClick={() => {
+                    resetCompanyForm();
+                    setCompanyOpen(true);
+                  }}
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  Create company
+                </Button>
               )}
-            </TableBody>
-          </Table>
+            </div>
+          ) : (
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+              {filteredCompanies.map((company) => {
+                const state = readinessByCode.get(company.code);
+                return (
+                  <article
+                    key={company.code}
+                    className="flex min-w-0 flex-col rounded-lg border border-border bg-card p-4 shadow-sm transition-shadow hover:shadow-md"
+                  >
+                    <div className="flex items-start gap-3">
+                      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-lg font-semibold text-primary">
+                        {company.name.trim().charAt(0).toUpperCase() || "C"}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <h3 className="truncate font-semibold text-foreground" title={company.name}>
+                          {company.name}
+                        </h3>
+                        <p className="mt-0.5 truncate text-sm text-muted-foreground" title={company.alias}>
+                          {company.alias}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 flex flex-wrap items-center gap-2">
+                      <span className="rounded-full bg-muted px-2.5 py-1 font-mono text-[11px] font-medium text-muted-foreground">
+                        {company.code}
+                      </span>
+                      {state?.ready ? (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-success/10 px-2.5 py-1 text-xs font-medium text-success">
+                          <CheckCircle2 className="h-3.5 w-3.5" />
+                          Payment ready
+                        </span>
+                      ) : state ? (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-warning/15 px-2.5 py-1 text-xs font-medium text-warning">
+                          <AlertCircle className="h-3.5 w-3.5" />
+                          Needs setup
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
+                          <AlertCircle className="h-3.5 w-3.5" />
+                          Status unavailable
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="mt-3 min-h-10 text-sm text-muted-foreground">
+                      {state?.ready ? (
+                        <p>
+                          Default account: <span className="font-medium text-foreground">{state.accountType} {state.shortCode}</span>
+                        </p>
+                      ) : state ? (
+                        <p className="line-clamp-2 text-warning" title={state.problem ?? undefined}>
+                          {state.problem || "Payment setup needs attention."}
+                        </p>
+                      ) : (
+                        <p>Payment readiness could not be loaded.</p>
+                      )}
+                    </div>
+
+                    <div className="mt-4 flex flex-wrap gap-2 border-t border-border pt-3">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-9 flex-1 gap-1.5 px-2 text-xs sm:px-3"
+                        onClick={() => openBranding(company)}
+                      >
+                        <Palette className="h-3.5 w-3.5 shrink-0" />
+                        Brand profile
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-9 flex-1 gap-1.5 px-2 text-xs sm:px-3"
+                        onClick={() => openAccounts(company)}
+                      >
+                        <Radio className="h-3.5 w-3.5 shrink-0" />
+                        Accounts
+                      </Button>
+                      {canMutate && (
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          className="h-9 w-full gap-1.5 text-xs"
+                          onClick={() => {
+                            resetAccountForm();
+                            setAccountFor(company);
+                          }}
+                        >
+                          <WalletCards className="h-3.5 w-3.5" />
+                          Add payment account
+                        </Button>
+                      )}
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          )}
         </CardContent>
       </Card>
 
