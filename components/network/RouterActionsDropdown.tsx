@@ -20,6 +20,7 @@ import {
   Monitor,
   Gift,
   Pencil,
+  Download,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -531,6 +532,19 @@ export function RouterActionsDropdown({
         >
           <ExternalLink className="h-4 w-4" />
           Open in WinBox
+        </a>
+      )}
+
+      {hasNumericDevice && (
+        <a
+          href={`/api/network-devices/${deviceId}/hotspot-login-page`}
+          download="login.html"
+          role="menuitem"
+          title="Signed for this router only. Upload it to the router as hotspot/login.html."
+          className="flex items-center w-full px-4 py-2.5 hover:bg-muted hover:text-foreground gap-2.5 transition text-left"
+        >
+          <Download className="h-4 w-4 text-sky-500" />
+          Download hotspot login page
         </a>
       )}
 
