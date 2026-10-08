@@ -24,6 +24,7 @@ function mapDeviceToNasRouter(device: {
   name: string;
   deviceType?: string | null;
   online?: boolean;
+  active?: boolean | null;
   ipAddress?: string;
   uptime?: string | null;
   cpuLoad?: string | null;
@@ -44,6 +45,8 @@ function mapDeviceToNasRouter(device: {
     model: device.deviceType ?? "—",
     status: device.online ? "ONLINE" : "OFFLINE",
     online: device.online ?? false,
+    // a router with customer history is retired, not deleted: kept for the record, hidden by default
+    retired: device.active === false,
     activeSessions: 0,
     winboxTunnelAddress: device.winboxTunnelAddress ?? null,
     winboxTunnelPort: device.winboxTunnelPort ?? null,
@@ -152,7 +155,8 @@ export async function getNasRoutersData(): Promise<{
       })
     );
 
-    return { kpis: deriveNasKpis(routers), routers };
+    // retired routers are not part of the fleet: they never count as offline
+    return { kpis: deriveNasKpis(routers.filter((r) => !r.retired)), routers };
   } catch (error: unknown) {
     console.error("Error fetching NAS routers:", error);
     return {

@@ -48,7 +48,9 @@ export function initiatePublicHotspotPayment(
 export function getPublicVoucherStatus(
   voucherCode: string
 ): Promise<HotspotVoucherStatusApiResponse> {
+  // carries the signed router id like every other portal call, so the lookup runs
+  // under that router's company (without it the backend has no company to look in)
   return publicJson<HotspotVoucherStatusApiResponse>(
-    `/hotspot/vouchers/${encodeURIComponent(voucherCode)}`
+    withPortalRouter(`/hotspot/vouchers/${encodeURIComponent(voucherCode)}`, getPortalRouter())
   );
 }
