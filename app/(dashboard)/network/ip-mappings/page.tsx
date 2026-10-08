@@ -52,7 +52,6 @@ export default async function IpMappingsPage() {
   const { items: mappings, error } = await getIpMappingsResult();
 
   const onlineCount = mappings.filter((mapping: IpMappingResponse) => mapping.status === "ONLINE").length;
-  const expiredCount = mappings.filter((mapping: IpMappingResponse) => mapping.status === "EXPIRED").length;
   const lostCount = mappings.filter((mapping: IpMappingResponse) => mapping.status === "LOST").length;
 
   return (
@@ -68,7 +67,7 @@ export default async function IpMappingsPage() {
               Active Session Bindings.
             </h1>
             <p className="mt-1 text-xs text-muted-foreground">
-              Latest {mappings.length} bindings · {onlineCount} online · {lostCount} lost contact · {expiredCount} ended — each tied to its customer, payment and router
+{mappings.length} current bindings · {onlineCount} online · {lostCount} lost contact — each tied to its customer, payment and router. Ended sessions are not listed.
             </p>
           </div>
         </div>
@@ -94,21 +93,21 @@ export default async function IpMappingsPage() {
 
           <div className="rounded-2xl border border-border bg-card p-5 shadow-lg">
             <span className="text-[11px] font-sans tabular-nums tracking-wider text-muted-foreground uppercase">
-              Expired Sessions
+              Lost Contact
             </span>
             <div className="mt-2 flex items-center gap-2">
               <Wifi className="h-4 w-4 text-amber-500" />
-              <span className="text-2xl font-sans tabular-nums font-bold text-amber-500">{expiredCount}</span>
+              <span className="text-2xl font-sans tabular-nums font-bold text-amber-500">{lostCount}</span>
             </div>
-            <p className="mt-1 text-xs text-muted-foreground">no longer active</p>
+            <p className="mt-1 text-xs text-muted-foreground">paid and valid, router not reporting</p>
           </div>
 
           <div className="rounded-2xl border border-border bg-card p-5 shadow-lg">
             <span className="text-[11px] font-sans tabular-nums tracking-wider text-muted-foreground uppercase">
-              Total Mappings
+              Current Bindings
             </span>
             <div className="mt-2 text-2xl font-sans tabular-nums font-bold text-foreground">{mappings.length}</div>
-            <p className="mt-1 text-xs text-muted-foreground">observed session bindings</p>
+            <p className="mt-1 text-xs text-muted-foreground">online or lost contact</p>
           </div>
         </div>
 

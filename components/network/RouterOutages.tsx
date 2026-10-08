@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { ZapOff } from "lucide-react";
-import { getRouterOutages } from "@/actions/network";
+import { closeRouterOutage, getRouterOutages, refuseRouterOutageCredit } from "@/actions/network";
+import { toast } from "sonner";
 import type { RouterOutage } from "@/lib/types/network";
-import { formatOutageDuration, outageCauseLabel } from "@/lib/utils/outages";
+import { formatOutageDuration, outageCauseLabel, outageCreditLabel } from "@/lib/utils/outages";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 const REFRESH_MS = 60_000;
@@ -22,6 +23,26 @@ const when = (value: string) =>
 export function RouterOutages({ routerId }: { routerId: number }) {
   const [outages, setOutages] = useState<RouterOutage[] | null>(null);
   const [error, setError] = useState("");
+  const [reloadKey, setReloadKey] = useState(0);
+  /** "close:<id>" or "refuse:<id>" while the operator is being asked to confirm. */
+  const [confirming, setConfirming] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  async function act(kind: "close" | "refuse", outageId: string) {
+    setBusy(true);
+    try {
+      const res = kind === "close" ? await closeRouterOutage(outageId) : await refuseRouterOutageCredit(outageId);
+      if (res.success) {
+        toast.success(res.message);
+        setReloadKey((key) => key + 1);
+      } else {
+        toast.error(res.message);
+      }
+    } finally {
+      setBusy(false);
+      setConfirming(null);
+    }
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -37,7 +58,7 @@ export function RouterOutages({ routerId }: { routerId: number }) {
       cancelled = true;
       clearInterval(timer);
     };
-  }, [routerId]);
+  }, [routerId, reloadKey]);
 
   return (
     <Card className="border shadow-sm">
@@ -74,6 +95,44 @@ export function RouterOutages({ routerId }: { routerId: number }) {
                   {formatOutageDuration(outage.durationSeconds)}
                 </span>
                 <span className="text-muted-foreground">{outageCauseLabel(outage)}</span>
+                <span className="basis-full text-xs text-muted-foreground">
+                  {outageCreditLabel(outage)}
+                  {outage.outageSmsCount != null ? ` · outage SMS to ${outage.outageSmsCount} phone ${outage.outageSmsCount === 1 ? "number" : "numbers"}` : ""}
+                </span>
+                {(outage.status === "OPEN" || outage.creditStatus === "APPLIED" || outage.creditStatus === "PENDING") && (
+                  <span className="basis-full">
+                    {confirming?.endsWith(outage.id) ? (
+                      <span className="inline-flex items-center gap-2 text-xs">
+                        <button type="button" disabled={busy}
+                          onClick={() => act(confirming.startsWith("close") ? "close" : "refuse", outage.id)}
+                          className="rounded-md bg-destructive px-2 py-1 font-medium text-white disabled:opacity-50">
+                          {busy ? "Working…" : "Confirm"}
+                        </button>
+                        <button type="button" disabled={busy} onClick={() => setConfirming(null)} className="text-muted-foreground">
+                          Cancel
+                        </button>
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-3 text-xs">
+                        {outage.status === "OPEN" && (
+                          <button type="button" onClick={() => setConfirming(`close:${outage.id}`)}
+                            title="For a retired router or a false alarm. Nothing is given back for an outage closed by hand."
+                            className="font-medium text-foreground underline-offset-2 hover:underline">
+                            Close by hand
+                          </button>
+                        )}
+                        {outage.status === "CLOSED" && (
+                          <button type="button" onClick={() => setConfirming(`refuse:${outage.id}`)}
+                            title="For a planned restart or maintenance. Time already given back is taken back from sessions still running."
+                            className="font-medium text-destructive underline-offset-2 hover:underline">
+                            Refuse credit
+                          </button>
+                        )}
+                        <span className="text-muted-foreground">Administrators only</span>
+                      </span>
+                    )}
+                  </span>
+                )}
               </li>
             ))}
           </ul>
