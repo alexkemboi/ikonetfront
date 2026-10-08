@@ -2,48 +2,12 @@ import { getIpMappingsResult } from "@/actions/network";
 import type { IpMappingResponse } from "@/lib/types/api";
 import { getPermissionForRoute } from "@/lib/data/nav";
 import { redirect } from "next/navigation";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { Wifi } from "lucide-react";
+import { IpMappingsTable } from "./_components/IpMappingsTable";
 
 export const dynamic = "force-dynamic";
 
 export const metadata = { title: "IP Mappings — IBS" };
-
-function formatExpiryCountdown(expiresAt?: string): string {
-  if (!expiresAt) return "—";
-  const now = new Date();
-  const expiry = new Date(expiresAt);
-  const diffMs = expiry.getTime() - now.getTime();
-  if (diffMs <= 0) return "Ended";
-  const diffMins = Math.floor(diffMs / 60000);
-  if (diffMins < 60) return `${diffMins}m left`;
-  const diffHours = Math.floor(diffMins / 60);
-  if (diffHours < 24) return `${diffHours}h left`;
-  const diffDays = Math.floor(diffHours / 24);
-  return `${diffDays}d left`;
-}
-
-/** 254725134318 → 0725 134 318 */
-function formatPhone(phone?: string): string | undefined {
-  if (!phone) return undefined;
-  const digits = phone.replace(/\D/g, "");
-  const local = digits.startsWith("254") && digits.length === 12 ? `0${digits.slice(3)}` : digits;
-  return local.length === 10 ? `${local.slice(0, 4)} ${local.slice(4, 7)} ${local.slice(7)}` : phone;
-}
-
-function formatBytes(bytes?: number): string {
-  if (!bytes || bytes <= 0) return "0 B";
-  const units = ["B", "KB", "MB", "GB", "TB"];
-  const i = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
-  return `${(bytes / Math.pow(1024, i)).toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
-}
 
 export default async function IpMappingsPage() {
   const pagePerms = await getPermissionForRoute("/network/ip-mappings");
@@ -120,119 +84,7 @@ export default async function IpMappingsPage() {
             </div>
           </div>
         ) : (
-          <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-lg">
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow className="hover:bg-transparent">
-                    <TableHead className="border-b border-border text-[11px] font-sans tabular-nums tracking-wider text-muted-foreground uppercase">
-                      IP Address
-                    </TableHead>
-                    <TableHead className="border-b border-border text-[11px] font-sans tabular-nums tracking-wider text-muted-foreground uppercase">
-                      MAC Address
-                    </TableHead>
-                    <TableHead className="border-b border-border text-[11px] font-sans tabular-nums tracking-wider text-muted-foreground uppercase">
-                      Subscriber / Phone
-                    </TableHead>
-                    <TableHead className="border-b border-border text-[11px] font-sans tabular-nums tracking-wider text-muted-foreground uppercase">
-                      Router
-                    </TableHead>
-                    <TableHead className="border-b border-border text-[11px] font-sans tabular-nums tracking-wider text-muted-foreground uppercase">
-                      Receipt / Voucher
-                    </TableHead>
-                    <TableHead className="border-b border-border text-[11px] font-sans tabular-nums tracking-wider text-muted-foreground uppercase">
-                      Traffic
-                    </TableHead>
-                    <TableHead className="border-b border-border text-[11px] font-sans tabular-nums tracking-wider text-muted-foreground uppercase">
-                      Status
-                    </TableHead>
-                    <TableHead className="border-b border-border text-right text-[11px] font-sans tabular-nums tracking-wider text-muted-foreground uppercase">
-                      Remaining
-                    </TableHead>
-                    <TableHead className="border-b border-border text-right text-[11px] font-sans tabular-nums tracking-wider text-muted-foreground uppercase">
-                      Last Seen
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {mappings.map((mapping: IpMappingResponse, idx: number) => (
-                    <TableRow
-                      key={`${mapping.ipAddress}-${mapping.macAddress}-${idx}`}
-                      className="border-b border-border hover:bg-muted/40"
-                    >
-                      <TableCell className="font-sans tabular-nums text-sm font-medium">{mapping.ipAddress}</TableCell>
-                      <TableCell className="font-sans tabular-nums text-sm">{mapping.macAddress}</TableCell>
-                      <TableCell className="text-sm">
-                        <div className="font-medium text-foreground">
-                          {formatPhone(mapping.subscriberPhone) || mapping.subscriberName || mapping.username || "—"}
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          {mapping.packageName
-                            ? mapping.packageName
-                            : mapping.serviceType === "PPPOE"
-                              ? `PPPoE · ${mapping.username}`
-                              : "Not linked to a purchase"}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-sm">
-                        <div className="text-foreground">{mapping.routerName || "—"}</div>
-                        <div className="text-xs text-muted-foreground">{mapping.stationName || mapping.nasIp || "—"}</div>
-                      </TableCell>
-                      <TableCell className="text-sm">
-                        {mapping.mpesaReceipt || mapping.voucher ? (
-                          <>
-                            {mapping.mpesaReceipt && (
-                              <div className="font-mono text-xs font-semibold text-emerald-400">{mapping.mpesaReceipt}</div>
-                            )}
-                            {mapping.voucher && (
-                              <div className="text-xs text-muted-foreground font-mono">Voucher: {mapping.voucher}</div>
-                            )}
-                          </>
-                        ) : (
-                          <span className="text-muted-foreground">—</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="whitespace-nowrap font-sans tabular-nums text-sm">
-                        <div className="text-foreground">{formatBytes(mapping.bytesOut)} ↓</div>
-                        <div className="text-xs text-muted-foreground">{formatBytes(mapping.bytesIn)} ↑</div>
-                      </TableCell>
-                      <TableCell>
-                        <span
-                          className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-medium ${
-                            mapping.status === "ONLINE"
-                              ? "bg-success/10 text-success border-success/20"
-                              : mapping.status === "LOST"
-                                ? "bg-amber-500/10 text-amber-500 border-amber-500/20"
-                                : "bg-destructive/10 text-destructive border-destructive/20"
-                          }`}
-                          title={
-                            mapping.status === "LOST"
-                              ? "The router stopped reporting this session without ending it — router or CPE lost power/link."
-                              : undefined
-                          }
-                        >
-                          {mapping.status === "LOST" ? "LOST CONTACT" : mapping.status === "EXPIRED" ? "ENDED" : mapping.status || "—"}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-right text-sm text-muted-foreground">
-                        {formatExpiryCountdown(mapping.expiresAt)}
-                      </TableCell>
-                      <TableCell className="text-right text-sm text-muted-foreground">
-                        {mapping.lastSeen
-                          ? new Date(mapping.lastSeen).toLocaleString("en-US", {
-                              month: "short",
-                              day: "numeric",
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })
-                          : "—"}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          </div>
+          <IpMappingsTable mappings={mappings} />
         )}
 
         {/* Info Box */}

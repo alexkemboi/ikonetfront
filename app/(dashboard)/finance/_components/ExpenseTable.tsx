@@ -43,7 +43,7 @@ import {
  SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { DataTable } from "@/components/ui/data-table";
+import { DataTable } from "@/components/shared/data-table";
 import { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import { useCompanyScope } from "@/providers/CompanyScopeProvider";
@@ -108,6 +108,7 @@ export default function ExpenseTable({
  const [endDate, setEndDate] = useState(() => new Date().toISOString().slice(0, 10));
  const [category, setCategory] = useState<string>("");
  const [page, setPage] = useState(0);
+ const [pageSize, setPageSize] = useState(20);
  const [dialogOpen, setDialogOpen] = useState(false);
  const { requireCompany } = useCompanyScope();
 
@@ -126,7 +127,7 @@ export default function ExpenseTable({
  setError("");
  try {
  const [expRes, sumRes] = await Promise.all([
- getExpenses({ startDate, endDate, category: category as ExpenseCategory || undefined, page, size: 20 }),
+ getExpenses({ startDate, endDate, category: category as ExpenseCategory || undefined, page, size: pageSize }),
  category ? Promise.resolve(null) : getExpenseSummary(startDate, endDate),
  ]);
  if (expRes.success && expRes.data) setExpenses(expRes.data);
@@ -137,7 +138,7 @@ export default function ExpenseTable({
  } finally {
  setLoading(false);
  }
- }, [startDate, endDate, category, page]);
+ }, [startDate, endDate, category, page, pageSize]);
 
 // Skip the first-mount fetch only when the server actually supplied data.
 // When the server-side seed fails (initialExpenses undefined), fall through and
@@ -392,7 +393,7 @@ export default function ExpenseTable({
  <Input type="date" value={startDate} onChange={(e) => { setStartDate(e.target.value); setPage(0); }} className="h-8 w-36 text-xs" />
  <span className="text-xs text-muted-foreground">to</span>
  <Input type="date" value={endDate} onChange={(e) => { setEndDate(e.target.value); setPage(0); }} className="h-8 w-36 text-xs" />
- <Select value={category} onValueChange={(v) => { setCategory(v); setPage(0); }}>
+ <Select value={category || "all"} onValueChange={(v) => { setCategory(v === "all" ? "" : v); setPage(0); }}>
  <SelectTrigger className="h-8 w-36 text-xs">
  <SelectValue placeholder="All categories" />
  </SelectTrigger>
@@ -408,18 +409,25 @@ export default function ExpenseTable({
 {/* Table */}
   <Card>
     <CardContent className="p-0">
-      <DataTable columns={columns} data={Array.isArray(expenses.content) ? expenses.content : []} />
- {expenses.totalPages > 1 && (
- <div className="flex items-center justify-between px-4 pb-4 pt-2">
- <p className="text-xs text-muted-foreground">
- Page {expenses.number + 1} of {expenses.totalPages} ({expenses.totalElements} total)
- </p>
- <div className="flex gap-2">
- <Button variant="outline" size="sm" disabled={expenses.first} onClick={() => setPage((p) => Math.max(0, p - 1))}>Previous</Button>
- <Button variant="outline" size="sm" disabled={expenses.last} onClick={() => setPage((p) => p + 1)}>Next</Button>
- </div>
- </div>
- )}
+      <DataTable
+        columns={columns}
+        data={Array.isArray(expenses.content) ? expenses.content : []}
+        loading={loading}
+        manualPagination
+        pageCount={expenses.totalPages}
+        pageIndex={expenses.number}
+        pageSize={pageSize}
+        totalRows={expenses.totalElements}
+        onPaginationChange={(pageIndex, newPageSize) => {
+          if (newPageSize !== pageSize) {
+            setPageSize(newPageSize);
+            setPage(0);
+          } else {
+            setPage(pageIndex);
+          }
+        }}
+        hideSearch
+      />
  </CardContent>
  </Card>
  </div>

@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
-import { Inter, JetBrains_Mono } from "next/font/google";
+import { DM_Sans, JetBrains_Mono } from "next/font/google";
 import ReduxProvider from "@/providers/ReduxProvider";
 import { Toaster } from "sonner";
 import "./globals.css";
 import AuthProvider from "./authProvider";
 
-const inter = Inter({
- variable: "--font-inter",
+const dmSans = DM_Sans({
+ variable: "--font-dm-sans",
  subsets: ["latin"],
  display: "swap",
 });
@@ -30,7 +30,7 @@ export default function RootLayout({
  return (
  <html lang="en">
  <body
- className={`${inter.variable} ${jetbrainsMono.variable} font-sans antialiased`}
+ className={`${dmSans.variable} ${jetbrainsMono.variable} font-sans antialiased`}
  >
  <AuthProvider>
  <ReduxProvider>{children}</ReduxProvider>

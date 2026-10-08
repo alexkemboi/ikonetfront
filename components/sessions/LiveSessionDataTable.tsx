@@ -2,12 +2,15 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Power, Search } from "lucide-react";
+import { Power } from "lucide-react";
 import { toast } from "sonner";
+import { ColumnDef } from "@tanstack/react-table";
 import { cn } from "@/lib/utils";
 import { disconnectLiveSession } from "@/actions/sessions";
 import { formatBytes } from "@/lib/utils/formatBytes";
 import { sessionState, type LiveSessionItem } from "@/lib/types/sessions";
+import { DataTable } from "@/components/shared/data-table";
+import { DataTableFilterPill } from "@/components/shared/data-table-filter-pill";
 
 const TABS = [
  { key: "ALL", label: "All" },
@@ -19,8 +22,6 @@ const TABS = [
 ] as const;
 
 type TabKey = (typeof TABS)[number]["key"];
-
-const TH = "px-4 py-3 text-[11px] font-sans tabular-nums uppercase tracking-wider text-muted-foreground";
 
 function matchesTab(session: LiveSessionItem, tab: TabKey): boolean {
  switch (tab) {
@@ -158,65 +159,12 @@ export function LiveSessionDataTable({
  }
  }
 
- return (
- <div className="overflow-hidden rounded-lg border border-border bg-card">
- {/* Toolbar */}
- <div className="flex flex-col gap-3 border-b border-border p-4 lg:flex-row lg:items-center lg:justify-between">
- <div className="flex flex-wrap items-center gap-1.5">
- {TABS.map(({ key, label }) => {
- const active = tab === key;
- return (
- <button
- key={key}
- type="button"
- onClick={() => setTab(key)}
- className={cn(
- "rounded-lg px-3 py-1.5 text-xs font-medium transition-colors",
- active ? "bg-zinc-100 text-zinc-900" : "text-muted-foreground hover:text-accent-foreground"
- )}
- >
- {label}
- <span className="ml-1.5 font-sans tabular-nums text-muted-foreground">{counts[key]}</span>
- </button>
- );
- })}
- </div>
-
- <div className="relative">
- <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
- <input
- value={search}
- onChange={(e) => setSearch(e.target.value)}
- placeholder="Phone, receipt, voucher, MAC, IP…"
- className="h-8 w-64 rounded-lg border border-border bg-muted pl-8 pr-3 text-xs text-foreground outline-none transition-colors placeholder:text-zinc-600 focus:border-zinc-500"
- />
- </div>
- </div>
-
- {/* Table */}
- <div className="overflow-x-auto">
- <table className="w-full min-w-[1080px] text-left">
- <thead>
- <tr className="border-b border-border">
- <th className={TH}>Customer</th>
- <th className={TH}>Package · Payment</th>
- <th className={TH}>Status</th>
- <th className={TH}>Traffic</th>
- <th className={TH}>Device</th>
- <th className={TH}>Router</th>
- <th className={TH}>Time</th>
- <th className={cn(TH, "text-right")}>Action</th>
- </tr>
- </thead>
- <tbody>
- {filtered.length === 0 ? (
- <tr>
- <td colSpan={8} className="px-4 py-14 text-center text-sm text-muted-foreground">
- {items.length === 0 ? "No one is connected right now." : "No sessions match your filters."}
- </td>
- </tr>
- ) : (
- filtered.map((session) => {
+ const columns: ColumnDef<LiveSessionItem>[] = [
+ {
+ id: "customer",
+ header: "Customer",
+ cell: ({ row }) => {
+ const session = row.original;
  const phone = formatPhone(session.phone);
  const primary = phone ?? session.subscriberName ?? session.subscriberCode;
  const secondary =
@@ -227,11 +175,8 @@ export function LiveSessionDataTable({
  : session.sessionId
  ? `Session #${session.sessionId}`
  : "Not linked to a purchase";
- const canDisconnect = session.protocol === "HOTSPOT" && !!session.sessionId;
  return (
- <tr key={session.id} className="border-b border-border transition-colors hover:bg-accent">
- {/* Customer */}
- <td className="px-4 py-3">
+ <div>
  <div className="flex items-center gap-2">
  <p className="max-w-[160px] truncate font-sans tabular-nums text-sm font-medium text-foreground">
  {primary}
@@ -246,10 +191,17 @@ export function LiveSessionDataTable({
  </span>
  </div>
  <p className="mt-0.5 max-w-[180px] truncate text-[11px] text-muted-foreground">{secondary}</p>
- </td>
-
- {/* Package · Payment */}
- <td className="px-4 py-3">
+ </div>
+ );
+ },
+ },
+ {
+ id: "package",
+ header: "Package · Payment",
+ cell: ({ row }) => {
+ const session = row.original;
+ return (
+ <div>
  <p className="max-w-[180px] truncate text-sm text-foreground">
  {session.packageName ?? "—"}
  {session.amountPaid ? ` · Ksh ${Number(session.amountPaid).toLocaleString()}` : ""}
@@ -257,37 +209,62 @@ export function LiveSessionDataTable({
  <p className="font-sans tabular-nums text-[11px] text-muted-foreground">
  {session.mpesaReceipt ? `M-Pesa ${session.mpesaReceipt}` : session.voucherCode ? `Voucher ${session.voucherCode}` : "—"}
  </p>
- </td>
-
- {/* Status */}
- <td className="px-4 py-3">
- <StatusBadge session={session} />
- </td>
-
- {/* Traffic */}
- <td className="px-4 py-3">
+ </div>
+ );
+ },
+ },
+ {
+ id: "status",
+ header: "Status",
+ cell: ({ row }) => <StatusBadge session={row.original} />,
+ },
+ {
+ id: "traffic",
+ header: "Traffic",
+ cell: ({ row }) => {
+ const session = row.original;
+ return (
+ <div>
  <p className="whitespace-nowrap font-sans tabular-nums text-sm font-semibold text-amber-400">
  {formatBytes(session.downloadBytes)} · {formatBytes(session.uploadBytes)}
  </p>
  <p className="text-[11px] text-muted-foreground">down · up</p>
- </td>
-
- {/* Device */}
- <td className="px-4 py-3">
- <p className="font-sans tabular-nums text-sm text-foreground">{session.deviceMac}</p>
- <p className="font-sans tabular-nums text-[11px] text-muted-foreground">{session.assignedIp}</p>
- </td>
-
- {/* Router */}
- <td className="px-4 py-3">
+ </div>
+ );
+ },
+ },
+ {
+ id: "device",
+ header: "Device",
+ cell: ({ row }) => (
+ <div>
+ <p className="font-sans tabular-nums text-sm text-foreground">{row.original.deviceMac}</p>
+ <p className="font-sans tabular-nums text-[11px] text-muted-foreground">{row.original.assignedIp}</p>
+ </div>
+ ),
+ },
+ {
+ id: "router",
+ header: "Router",
+ cell: ({ row }) => {
+ const session = row.original;
+ return (
+ <div>
  <p className="max-w-[170px] truncate text-sm text-foreground">{session.routerName}</p>
  <p className="font-sans tabular-nums text-[11px] text-muted-foreground">
  {session.nasIp || session.routerManagementIp || "—"}
  </p>
- </td>
-
- {/* Time */}
- <td className="px-4 py-3">
+ </div>
+ );
+ },
+ },
+ {
+ id: "time",
+ header: "Time",
+ cell: ({ row }) => {
+ const session = row.original;
+ return (
+ <div>
  <p className="whitespace-nowrap text-sm text-foreground">
  {sessionState(session) === "ONLINE"
  ? `Online ${session.onlineDurationFormatted}`
@@ -298,10 +275,18 @@ export function LiveSessionDataTable({
  <p className="whitespace-nowrap text-[11px] text-muted-foreground">
  {session.protocol === "HOTSPOT" ? remainingText(session.minutesRemaining) : session.expiryFormatted}
  </p>
- </td>
-
- {/* Action */}
- <td className="px-4 py-3 text-right">
+ </div>
+ );
+ },
+ },
+ {
+ id: "action",
+ header: () => <span className="block text-right">Action</span>,
+ cell: ({ row }) => {
+ const session = row.original;
+ const canDisconnect = session.protocol === "HOTSPOT" && !!session.sessionId;
+ return (
+ <div className="text-right">
  {!canDisconnect ? (
  <span
  className="inline-flex h-8 items-center text-[11px] text-muted-foreground"
@@ -343,15 +328,32 @@ export function LiveSessionDataTable({
  Disconnect
  </button>
  )}
- </td>
- </tr>
- );
- })
- )}
- </tbody>
- </table>
  </div>
+ );
+ },
+ },
+ ];
 
+ return (
+ <div className="overflow-hidden rounded-lg border border-border bg-card">
+ <DataTable
+ columns={columns}
+ data={filtered}
+ searchPlaceholder="Phone, receipt, voucher, MAC, IP…"
+ searchValue={search}
+ onSearchChange={setSearch}
+ manualFiltering
+ filters={
+ <div className="flex flex-wrap items-center gap-1.5">
+ {TABS.map(({ key, label }) => (
+ <DataTableFilterPill key={key} active={tab === key} onClick={() => setTab(key)}>
+ {label}
+ <span className="ml-1.5 font-sans tabular-nums">{counts[key]}</span>
+ </DataTableFilterPill>
+ ))}
+ </div>
+ }
+ />
  <div className="flex items-center justify-between border-t border-border px-4 py-2.5 text-xs text-muted-foreground">
  <span>
  Showing {filtered.length} of {items.length} sessions

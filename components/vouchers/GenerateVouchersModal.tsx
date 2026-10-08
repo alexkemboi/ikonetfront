@@ -10,6 +10,7 @@ import {
  DialogHeader,
  DialogTitle,
 } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 
 interface Props {
  isOpen: boolean;
@@ -193,7 +194,7 @@ const res = await generateVouchers({
  key={s}
  onClick={() => !isSubmitting && step > s && setStep(s)}
  className={`h-1.5 flex-1 rounded-full transition ${
- step >= s ? "bg-amber-500" : "bg-secondary"
+ step >= s ? "bg-primary" : "bg-secondary"
  }`}
  />
  ))}
@@ -360,27 +361,26 @@ max={500}
  <div className="flex shrink-0 justify-end gap-3 border-t border-border px-6 py-4">
  {step === 2 ? (
  <>
- <button
+ <Button
  type="button"
+ variant="secondary"
  onClick={() => setStep(1)}
  disabled={isSubmitting}
- className="inline-flex items-center gap-1.5 rounded-lg border border-border px-4 py-2.5 text-xs font-semibold text-muted-foreground hover:bg-accent disabled:opacity-50"
  >
  <ChevronLeft className="h-3.5 w-3.5" /> Back
- </button>
- <button
+ </Button>
+ <Button
  type="button"
  onClick={handleGenerate}
  disabled={isSubmitting}
- className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500 px-5 py-2.5 text-xs font-semibold text-black hover:bg-amber-400 disabled:opacity-50"
  >
  {isSubmitting
  ? "Minting..."
  : priceOverride ? `Confirm new price · KES ${priceOverride}` : "Mint Vouchers"}
- </button>
+ </Button>
  </>
  ) : (
- <button
+ <Button
  type="button"
  disabled={packagesError || packages.length === 0}
  onClick={() => {
@@ -391,10 +391,9 @@ max={500}
  setError(null);
  setStep(2);
  }}
-className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500 px-5 py-2.5 text-xs font-semibold text-black hover:bg-amber-400 disabled:opacity-50"
-  >
-  Next: Configure <ArrowRight className="h-3.5 w-3.5" />
- </button>
+ >
+ Next: Configure <ArrowRight className="h-3.5 w-3.5" />
+ </Button>
  )}
  </div>
  </DialogContent>

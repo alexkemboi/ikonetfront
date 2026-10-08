@@ -2,17 +2,16 @@
 
 import { useMemo, useState } from "react";
 import {
-  Search,
   CheckCircle2,
   MoreHorizontal,
   Download,
   Mail,
   Eye,
   Loader2,
-  Inbox,
   RotateCcw,
 } from "lucide-react";
 import { toast } from "sonner";
+import type { ColumnDef } from "@tanstack/react-table";
 import type { PaymentConnection, PaymentLedgerItem } from "@/lib/types/payments";
 import { downloadReceiptPdf, emailReceipt } from "@/actions/payments";
 import { compensateHotspotPayment } from "@/actions/vouchers";
@@ -25,8 +24,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import { DataTable } from "@/components/shared/data-table";
 
 interface Props {
   payments: PaymentLedgerItem[];
@@ -57,8 +56,7 @@ function ConnectionBadge({ connection }: { connection: PaymentConnection }) {
 }
 
 export function PaymentsDataTable({ payments, canIssueVoucher = true }: Props) {
-  const [search, setSearch] = useState("");
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
   const [emailTarget, setEmailTarget] = useState<PaymentLedgerItem | null>(null);
   const [viewTarget, setViewTarget] = useState<PaymentLedgerItem | null>(null);
@@ -75,26 +73,6 @@ export function PaymentsDataTable({ payments, canIssueVoucher = true }: Props) {
   const [compensateTarget, setCompensateTarget] = useState<PaymentLedgerItem | null>(null);
   const [compensating, setCompensating] = useState(false);
   const [issuedVoucher, setIssuedVoucher] = useState<string | null>(null);
-
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase().replace(/\s/g, "");
-    if (!q) return rows;
-    return rows.filter((p) =>
-      [
-        p.receiptNumber,
-        p.subscriberCode,
-        p.subscriberPhone,
-        p.phone,
-        p.customerName,
-        p.voucherCode,
-        p.compensationVoucher,
-        p.packageName,
-        p.routerName,
-      ]
-        .filter(Boolean)
-        .some((field) => String(field).toLowerCase().replace(/\s/g, "").includes(q))
-    );
-  }, [rows, search]);
 
   function openCompensate(p: PaymentLedgerItem) {
     setCompensateTarget(p);
@@ -122,30 +100,6 @@ export function PaymentsDataTable({ payments, canIssueVoucher = true }: Props) {
     } finally {
       setCompensating(false);
     }
-  }
-
-  const allFilteredSelected = filtered.length > 0 && filtered.every((p) => selectedIds.has(p.id));
-  const someFilteredSelected = filtered.some((p) => selectedIds.has(p.id));
-
-  function toggleAll() {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (allFilteredSelected) {
-        for (const p of filtered) next.delete(p.id);
-      } else {
-        for (const p of filtered) next.add(p.id);
-      }
-      return next;
-    });
-  }
-
-  function toggleOne(id: string) {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
   }
 
  function openEmailDialog(p: PaymentLedgerItem) {
@@ -203,97 +157,51 @@ export function PaymentsDataTable({ payments, canIssueVoucher = true }: Props) {
  }
  }
 
+ const columns = useMemo<ColumnDef<PaymentLedgerItem>[]>(
+ () => [
+ {
+ id: "subscriber",
+ header: "Subscriber",
+ accessorFn: (p) =>
+ [p.subscriberCode, p.subscriberPhone, p.phone, p.customerName, p.voucherCode, p.compensationVoucher]
+ .filter(Boolean)
+ .join(" "),
+ cell: ({ row }) => {
+ const p = row.original;
  return (
- <div className="rounded-2xl border border-border bg-card p-6 shadow-xl">
- <div className="flex items-center justify-between border-b border-border pb-4">
- <div className="relative w-72">
- <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
- <input
- type="text"
- value={search}
- onChange={(e) => setSearch(e.target.value)}
- placeholder="Phone, receipt, voucher, customer, package…"
- className="h-9 w-full rounded-lg border border-border bg-muted pl-9 pr-4 text-xs text-foreground placeholder-zinc-500 focus:border-amber-500 focus:outline-none font-sans tabular-nums"
- />
+ <div className="font-sans">
+ <div className="font-semibold text-foreground">{p.subscriberCode}</div>
+ <div className="text-[11px] text-muted-foreground font-sans tabular-nums">
+ {p.customerName ? p.subscriberPhone : p.voucherCode ? `Voucher ${p.voucherCode}` : p.subscriberPhone}
  </div>
  </div>
-
- <div className="mt-4 overflow-x-auto">
- <table className="w-full text-left text-xs min-w-[920px]">
- <thead>
-<tr className="border-b border-border text-[11px] font-sans tabular-nums tracking-wider text-muted-foreground uppercase">
-    <th className="py-3 px-3 w-10">
-      <Checkbox
-        checked={someFilteredSelected && !allFilteredSelected ? "indeterminate" : allFilteredSelected}
-        onCheckedChange={toggleAll}
-        aria-label="Select all payments"
-      />
-    </th>
- <th className="py-3 px-3">SUBSCRIBER</th>
- <th className="py-3 px-3">RECEIPT</th>
- <th className="py-3 px-3">METHOD</th>
- <th className="py-3 px-3">TYPE</th>
- <th className="py-3 px-3">CONNECTION</th>
- <th className="py-3 px-3">PACKAGE · ROUTER</th>
- <th className="py-3 px-3">AMOUNT</th>
- <th className="py-3 px-3">DATE</th>
- <th className="py-3 px-3 text-right" />
- </tr>
- </thead>
-<tbody className="divide-y divide-zinc-800/50 font-sans tabular-nums">
-    {filtered.length === 0 ? (
-      <tr>
-        <td
-          colSpan={10}
-          className="px-4 py-14 text-center text-sm text-muted-foreground font-sans"
-        >
-          {rows.length === 0 ? (
-            <div className="flex flex-col items-center gap-2">
-              <Inbox className="h-8 w-8 text-muted-foreground/60" />
-              <span>
-                No postings recorded for Account 1110 (M-Pesa Clearing).
-              </span>
-              <span className="text-xs text-muted-foreground/70">
-                Confirmed M-Pesa payments will appear here automatically.
-              </span>
-            </div>
-          ) : (
-            "No payments match your search."
-          )}
-        </td>
-      </tr>
-    ) : (
-      filtered.map((p) => (
-        <tr key={p.id} data-row-id={(p.receiptNumber ?? "").toUpperCase()} className="hover:bg-zinc-800/30 transition">
-          <td className="py-3.5 px-3">
-            <Checkbox
-              checked={selectedIds.has(p.id)}
-              onCheckedChange={() => toggleOne(p.id)}
-              aria-label={`Select payment ${p.receiptNumber}`}
-            />
-          </td>
-
-          <td className="py-3.5 px-3 font-sans">
-            <div className="font-semibold text-foreground">{p.subscriberCode}</div>
-            <div className="text-[11px] text-muted-foreground font-sans tabular-nums">
-              {p.customerName ? p.subscriberPhone : p.voucherCode ? `Voucher ${p.voucherCode}` : p.subscriberPhone}
-            </div>
-          </td>
-
-          <td className="py-3.5 px-3">
-            <span className="font-bold text-amber-400 tracking-wider text-sm">
-              {p.receiptNumber}
-            </span>
-          </td>
-
- <td className="py-3.5 px-3 font-sans text-muted-foreground">
- {p.paymentMethod}
- </td>
-
- <td className="py-3.5 px-3 font-sans text-muted-foreground">{p.serviceType}</td>
-
- <td className="py-3.5 px-3">
- {p.connection ? (
+ );
+ },
+ },
+ {
+ accessorKey: "receiptNumber",
+ header: "Receipt",
+ cell: ({ row }) => (
+ <span className="font-bold text-amber-400 tracking-wider text-sm">{row.original.receiptNumber}</span>
+ ),
+ },
+ {
+ accessorKey: "paymentMethod",
+ header: "Method",
+ cell: ({ row }) => <span className="font-sans text-muted-foreground">{row.original.paymentMethod}</span>,
+ },
+ {
+ accessorKey: "serviceType",
+ header: "Type",
+ cell: ({ row }) => <span className="font-sans text-muted-foreground">{row.original.serviceType}</span>,
+ },
+ {
+ id: "connection",
+ header: "Connection",
+ accessorFn: (p) => p.connection ?? (p.isReconciled ? "reconciled" : ""),
+ cell: ({ row }) => {
+ const p = row.original;
+ return p.connection ? (
  <div>
  <ConnectionBadge connection={p.connection} />
  {p.compensationVoucher && (
@@ -306,34 +214,54 @@ export function PaymentsDataTable({ payments, canIssueVoucher = true }: Props) {
  </span>
  ) : (
  <span className="text-muted-foreground">—</span>
- )}
- </td>
-
- <td className="py-3.5 px-3 font-sans text-muted-foreground">
- {p.packageName || p.routerName ? (
+ );
+ },
+ },
+ {
+ id: "packageRouter",
+ header: "Package · Router",
+ accessorFn: (p) => [p.packageName, p.routerName].filter(Boolean).join(" "),
+ cell: ({ row }) => {
+ const p = row.original;
+ return p.packageName || p.routerName ? (
  <>
  <div className="text-foreground">{p.packageName ?? "—"}</div>
- <div className="text-[11px]">{p.routerName ?? "—"}</div>
+ <div className="text-[11px] text-muted-foreground">{p.routerName ?? "—"}</div>
  </>
  ) : (
- p.payoutType
- )}
- </td>
-
- <td className="py-3.5 px-3 font-bold text-foreground">Ksh {p.amount}</td>
-
- <td className="py-3.5 px-3 text-muted-foreground">
- <span>{p.dateFormatted}</span>
+ <span className="text-muted-foreground">{p.payoutType}</span>
+ );
+ },
+ },
+ {
+ accessorKey: "amount",
+ header: "Amount",
+ cell: ({ row }) => <span className="font-bold text-foreground">Ksh {row.original.amount}</span>,
+ },
+ {
+ id: "date",
+ header: "Date",
+ accessorFn: (p) => p.dateFormatted,
+ cell: ({ row }) => (
+ <span className="text-muted-foreground">
+ {row.original.dateFormatted}
  <span className="ml-2 text-[10px] text-muted-foreground font-sans tabular-nums">
- {p.latencyText}
+ {row.original.latencyText}
  </span>
- </td>
-
- <td className="py-3.5 px-3 text-right relative">
+ </span>
+ ),
+ },
+ {
+ id: "actions",
+ header: "",
+ enableSorting: false,
+ enableHiding: false,
+ cell: ({ row }) => {
+ const p = row.original;
+ return (
+ <div className="relative text-right">
  <button
- onClick={() =>
- setActiveMenuId(activeMenuId === p.id ? null : p.id)
- }
+ onClick={() => setActiveMenuId(activeMenuId === p.id ? null : p.id)}
  className="text-muted-foreground hover:text-accent-foreground"
  aria-label="Payment actions"
  >
@@ -341,7 +269,7 @@ export function PaymentsDataTable({ payments, canIssueVoucher = true }: Props) {
  </button>
 
  {activeMenuId === p.id && (
- <div className="absolute right-0 top-10 z-20 w-44 rounded-xl border border-border bg-popover py-1 shadow-2xl">
+ <div className="absolute right-0 top-8 z-20 w-44 rounded-xl border border-border bg-popover py-1 shadow-2xl text-left">
  <button
  onClick={() => openViewDialog(p)}
  className="flex w-full items-center gap-2 px-3 py-2 text-xs text-muted-foreground hover:bg-accent hover:text-accent-foreground"
@@ -377,20 +305,29 @@ export function PaymentsDataTable({ payments, canIssueVoucher = true }: Props) {
  </button>
  </div>
  )}
- </td>
- </tr>
- ))
- )}
- </tbody>
- </table>
  </div>
+ );
+ },
+ },
+ ],
+ [activeMenuId, downloadingId, canIssueVoucher]
+ );
 
-<div className="mt-2 border-t border-border pt-3 text-xs font-sans tabular-nums text-muted-foreground">
-    Showing {filtered.length} of {rows.length} payments
-    {selectedIds.size > 0 && (
-      <span className="text-amber-400"> · {selectedIds.size} selected</span>
-    )}
-  </div>
+ return (
+ <div className="rounded-2xl border border-border bg-card p-6 shadow-xl">
+ <DataTable
+ columns={columns}
+ data={rows}
+ searchPlaceholder="Phone, receipt, voucher, customer, package…"
+ enableRowSelection
+ getRowId={(p) => p.id}
+ onRowSelectionChange={setSelectedIds}
+ toolbar={
+ selectedIds.length > 0 ? (
+ <span className="text-xs font-sans tabular-nums text-amber-400">{selectedIds.length} selected</span>
+ ) : undefined
+ }
+ />
 
  {/* View payment dialog */}
  <Dialog open={viewTarget !== null} onOpenChange={(o) => !o && setViewTarget(null)}>

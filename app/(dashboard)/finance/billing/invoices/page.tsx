@@ -3,6 +3,8 @@ import { redirect } from "next/navigation";
 import React from "react";
 import type { Metadata } from "next";
 import { getInvoicesLedgerData } from "@/actions/payments";
+import { Button } from "@/components/ui/button";
+import { InvoicesTable } from "./_components/InvoicesTable";
 
 export const dynamic = "force-dynamic";
 
@@ -32,9 +34,7 @@ export default async function InvoicesLedgerPage() {
  </p>
  </div>
 
- <button className="rounded-xl bg-amber-500 px-5 py-2.5 text-xs font-semibold text-black hover:bg-amber-400 transition shadow-lg shadow-amber-500/20">
- + Create invoice
- </button>
+ <Button>+ Create invoice</Button>
  </div>
 
  <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
@@ -89,55 +89,7 @@ export default async function InvoicesLedgerPage() {
  </p>
  </div>
  ) : (
- <div className="rounded-2xl border border-border bg-card shadow-xl">
- <div className="overflow-x-auto">
- <table className="w-full text-left text-xs font-sans tabular-nums min-w-[720px]">
- <thead>
- <tr className="border-b border-border text-[11px] tracking-wider text-muted-foreground uppercase">
- <th className="py-3 px-3">NUMBER</th>
- <th className="py-3 px-3">CUSTOMER</th>
- <th className="py-3 px-3">AMOUNT</th>
- <th className="py-3 px-3">OUTSTANDING</th>
- <th className="py-3 px-3">STATUS</th>
- <th className="py-3 px-3">DUE DATE</th>
- </tr>
- </thead>
- <tbody className="divide-y divide-zinc-800/50">
- {invoices.map((inv) => (
- <tr key={inv.id} className="hover:bg-zinc-800/30 transition">
- <td className="py-3.5 px-3 font-semibold text-foreground">
- {inv.invoiceNumber}
- </td>
- <td className="py-3.5 px-3 text-muted-foreground">
- <div className="text-foreground font-sans">{inv.customerName}</div>
- <div className="text-[11px] text-muted-foreground">{inv.customerPhone}</div>
- </td>
- <td className="py-3.5 px-3 font-bold text-foreground">
- Ksh {inv.amount.toLocaleString()}
- </td>
- <td className="py-3.5 px-3 text-amber-400">
- Ksh {inv.outstanding.toLocaleString()}
- </td>
- <td className="py-3.5 px-3">
- <span
- className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${
- inv.status === "PAID"
- ? "bg-emerald-500/15 text-emerald-400"
- : inv.status === "OVERDUE"
- ? "bg-rose-500/15 text-rose-400"
- : "bg-amber-500/15 text-amber-400"
- }`}
- >
- {inv.status}
- </span>
- </td>
- <td className="py-3.5 px-3 text-muted-foreground">{inv.dueDate}</td>
- </tr>
- ))}
- </tbody>
- </table>
- </div>
- </div>
+ <InvoicesTable invoices={invoices} />
  )}
  </div>
  </div>

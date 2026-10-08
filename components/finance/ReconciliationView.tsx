@@ -8,10 +8,12 @@ import {
   RefreshCw,
   ShieldAlert,
 } from "lucide-react";
+import { ColumnDef } from "@tanstack/react-table";
 import { forcePostReconcile } from "@/actions/payments";
 import type { DarajaReconciliationEntry } from "@/lib/types/payments";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { DataTable } from "@/components/shared/data-table";
 import {
   Dialog,
   DialogContent,
@@ -90,6 +92,91 @@ export function ReconciliationView({ entries, date, onRefresh }: Props) {
   const [forceBusy, setForceBusy] = useState(false);
   const [forceError, setForceError] = useState<string | null>(null);
 
+  const columns: ColumnDef<DarajaReconciliationEntry>[] = [
+    {
+      accessorKey: "transactionDate",
+      header: "Paid at",
+      cell: ({ row }) => (
+        <span className="font-sans tabular-nums text-xs text-muted-foreground">
+          {formatPaidAt(row.original.transactionDate)}
+        </span>
+      ),
+    },
+    {
+      accessorKey: "receiptNumber",
+      header: "Receipt",
+      cell: ({ row }) => (
+        <span className="font-sans tabular-nums text-xs font-semibold text-foreground">
+          {row.original.receiptNumber}
+          {row.original.serviceType ? (
+            <span className="ml-1.5 rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
+              {row.original.serviceType}
+            </span>
+          ) : null}
+        </span>
+      ),
+    },
+    {
+      accessorKey: "phoneNumber",
+      header: "Phone number",
+      cell: ({ row }) => (
+        <span className="font-sans tabular-nums text-xs text-foreground">
+          {row.original.phoneNumber || "—"}
+        </span>
+      ),
+    },
+    {
+      accessorKey: "customerName",
+      header: "Subscriber / Service",
+      cell: ({ row }) => (
+        <span className="text-muted-foreground">{row.original.customerName || "—"}</span>
+      ),
+    },
+    {
+      accessorKey: "amount",
+      header: "Amount",
+      cell: ({ row }) => (
+        <span className="tabular-nums text-foreground">
+          {Number(row.original.amount).toLocaleString("en-KE", {
+            style: "currency",
+            currency: "KES",
+            maximumFractionDigits: 0,
+          })}
+        </span>
+      ),
+    },
+    {
+      accessorKey: "outcome",
+      header: "Outcome",
+      cell: ({ row }) => outcomeBadge(row.original.outcome),
+    },
+    {
+      id: "auditAction",
+      header: "Audit context & action",
+      cell: ({ row }) => {
+        const entry = row.original;
+        return (
+          <div className="text-muted-foreground">
+            <span className="block max-w-[280px] text-xs leading-snug">
+              {entry.notes || "—"}
+            </span>
+            {entry.canForceReconcile && (
+              <button
+                onClick={() => {
+                  setForceError(null);
+                  setForceTarget(entry);
+                }}
+                className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-semibold text-amber-600 transition hover:text-amber-400"
+              >
+                Force Post to GL (Account 1110) →
+              </button>
+            )}
+          </div>
+        );
+      },
+    },
+  ];
+
   async function handleForcePost() {
     if (!forceTarget) return;
     setForceBusy(true);
@@ -109,72 +196,13 @@ export function ReconciliationView({ entries, date, onRefresh }: Props) {
 
   return (
     <>
-      <div className="overflow-x-auto">
+      <div>
         {entries.length === 0 ? (
           <p className="text-sm text-muted-foreground">
             No reconciliation entries for this date yet.
           </p>
         ) : (
-          <table className="w-full text-left text-sm">
-            <thead className="border-b text-muted-foreground">
-              <tr>
-                <th className="py-2 pr-4 font-medium">Paid at</th>
-                <th className="py-2 pr-4 font-medium">Receipt</th>
-                <th className="py-2 pr-4 font-medium">Phone number</th>
-                <th className="py-2 pr-4 font-medium">Subscriber / Service</th>
-                <th className="py-2 pr-4 font-medium">Amount</th>
-                <th className="py-2 pr-4 font-medium">Outcome</th>
-                <th className="py-2 pr-4 font-medium">Audit context &amp; action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {entries.map((entry) => (
-                <tr key={entry.receiptNumber} className="border-b align-top">
-                  <td className="py-2 pr-4 font-sans tabular-nums text-xs text-muted-foreground">
-                    {formatPaidAt(entry.transactionDate)}
-                  </td>
-                  <td className="py-2 pr-4 font-sans tabular-nums text-xs font-semibold text-foreground">
-                    {entry.receiptNumber}
-                    {entry.serviceType ? (
-                      <span className="ml-1.5 rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
-                        {entry.serviceType}
-                      </span>
-                    ) : null}
-                  </td>
-                  <td className="py-2 pr-4 font-sans tabular-nums text-xs text-foreground">
-                    {entry.phoneNumber || "—"}
-                  </td>
-                  <td className="py-2 pr-4 text-muted-foreground">
-                    {entry.customerName || "—"}
-                  </td>
-                  <td className="py-2 pr-4 tabular-nums text-foreground">
-                    {Number(entry.amount).toLocaleString("en-KE", {
-                      style: "currency",
-                      currency: "KES",
-                      maximumFractionDigits: 0,
-                    })}
-                  </td>
-                  <td className="py-2 pr-4">{outcomeBadge(entry.outcome)}</td>
-                  <td className="py-2 text-muted-foreground">
-                    <span className="block max-w-[280px] text-xs leading-snug">
-                      {entry.notes || "—"}
-                    </span>
-                    {entry.canForceReconcile && (
-                      <button
-                        onClick={() => {
-                          setForceError(null);
-                          setForceTarget(entry);
-                        }}
-                        className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-semibold text-amber-600 transition hover:text-amber-400"
-                      >
-                        Force Post to GL (Account 1110) →
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <DataTable columns={columns} data={entries} searchPlaceholder="Search receipt, phone, subscriber…" />
         )}
       </div>
 

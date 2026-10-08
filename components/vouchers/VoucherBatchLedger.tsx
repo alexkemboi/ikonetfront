@@ -6,10 +6,12 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useCompanyScope } from "@/providers/CompanyScopeProvider";
 import { Loader2, Plus } from "lucide-react";
+import type { ColumnDef } from "@tanstack/react-table";
 import type { VoucherBatchItem, VoucherBatchKpis } from "@/lib/types/payments";
 import { generateVoucherBatch, getVoucherBatchDetails } from "@/actions/payments";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DataTable } from "@/components/shared/data-table";
 import {
   Select,
   SelectContent,
@@ -134,6 +136,55 @@ export function VoucherBatchLedger({ kpis, batches, packageOptions, routerOption
     }
   }
 
+  const batchColumns: ColumnDef<VoucherBatchItem>[] = [
+    { id: "batch", header: "BATCH", cell: ({ row }) => <span className="font-bold text-amber-400">{row.original.batchNumber}</span> },
+    { id: "package", header: "PACKAGE", cell: ({ row }) => <span className="text-muted-foreground">{row.original.packageName}</span> },
+    { id: "qty", header: "QTY", cell: ({ row }) => row.original.quantity },
+    { id: "unit", header: "UNIT", cell: ({ row }) => toKsh(row.original.unitPrice) },
+    { id: "value", header: "VALUE", cell: ({ row }) => <span className="font-bold text-foreground">{toKsh(row.original.totalValue)}</span> },
+    { id: "channel", header: "CHANNEL", cell: ({ row }) => <span className="text-muted-foreground">{row.original.channel}</span> },
+    {
+      id: "status",
+      header: "STATUS",
+      cell: ({ row }) => (
+        <span
+          className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${
+            row.original.status === "ACTIVE" ? "bg-emerald-500/15 text-emerald-400" : "bg-zinc-500/15 text-muted-foreground"
+          }`}
+        >
+          {row.original.status}
+        </span>
+      ),
+    },
+    { id: "by", header: "BY", cell: ({ row }) => <span className="text-muted-foreground">{row.original.createdByUsername}</span> },
+    {
+      id: "created",
+      header: "CREATED",
+      cell: ({ row }) => <span className="text-muted-foreground">{row.original.createdAt ? new Date(row.original.createdAt).toLocaleDateString() : "—"}</span>,
+    },
+    {
+      id: "details",
+      header: "DETAILS / CODES",
+      cell: ({ row }) => {
+        const b = row.original;
+        return (
+          <div className="flex items-center gap-3">
+            <button type="button" className="text-primary underline" onClick={() => void openBatchDetails(b)}>
+              Details
+            </button>
+            {b.sessionBatchId ? (
+              <Link className="text-primary underline" href={`/api/vouchers/batch-print?voucherBatchId=${encodeURIComponent(b.sessionBatchId)}`} target="_blank" rel="noreferrer">
+                Print codes
+              </Link>
+            ) : (
+              <span className="text-muted-foreground">Codes unavailable</span>
+            )}
+          </div>
+        );
+      },
+    },
+  ];
+
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-3 gap-4">
@@ -166,69 +217,22 @@ export function VoucherBatchLedger({ kpis, batches, packageOptions, routerOption
         </Button>
       </div>
 
-      <div className="rounded-lg border border-border bg-card">
-        {batches.length === 0 ? (
-          <div className="p-12 text-center">
-            <p className="text-sm text-muted-foreground">
-              No voucher batches yet. Mint the first paid batch to post revenue.
-            </p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[760px] text-left text-xs font-sans tabular-nums">
-              <thead>
-                <tr className="border-b border-border text-[11px] tracking-wider text-muted-foreground uppercase">
-                  <th className="py-3 px-3">BATCH</th>
-                  <th className="py-3 px-3">PACKAGE</th>
-                  <th className="py-3 px-3">QTY</th>
-                  <th className="py-3 px-3">UNIT</th>
-                  <th className="py-3 px-3">VALUE</th>
-                  <th className="py-3 px-3">CHANNEL</th>
-                  <th className="py-3 px-3">STATUS</th>
-                  <th className="py-3 px-3">BY</th>
-                  <th className="py-3 px-3">CREATED</th>
-                  <th className="py-3 px-3">DETAILS / CODES</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-zinc-800/50">
-                {batches.map((b) => (
-                  <tr key={b.batchId} className="hover:bg-zinc-800/30 transition">
-                    <td className="py-3.5 px-3 font-bold text-amber-400">{b.batchNumber}</td>
-                    <td className="py-3.5 px-3 text-muted-foreground">{b.packageName}</td>
-                    <td className="py-3.5 px-3">{b.quantity}</td>
-                    <td className="py-3.5 px-3">{toKsh(b.unitPrice)}</td>
-                    <td className="py-3.5 px-3 font-bold text-foreground">{toKsh(b.totalValue)}</td>
-                    <td className="py-3.5 px-3 text-muted-foreground">{b.channel}</td>
-                    <td className="py-3.5 px-3">
-                      <span
-                        className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${
-                          b.status === "ACTIVE"
-                            ? "bg-emerald-500/15 text-emerald-400"
-                            : "bg-zinc-500/15 text-muted-foreground"
-                        }`}
-                      >
-                        {b.status}
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-3 text-muted-foreground">{b.createdByUsername}</td>
-                    <td className="py-3.5 px-3 text-muted-foreground">
-                      {b.createdAt ? new Date(b.createdAt).toLocaleDateString() : "—"}
-                    </td>
-                    <td className="py-3.5 px-3">
-                      <div className="flex items-center gap-3">
-                        <button type="button" className="text-primary underline" onClick={() => void openBatchDetails(b)}>Details</button>
-                        {b.sessionBatchId ? <Link className="text-primary underline" href={`/api/vouchers/batch-print?voucherBatchId=${encodeURIComponent(b.sessionBatchId)}`} target="_blank" rel="noreferrer">Print codes</Link> : <span className="text-muted-foreground">Codes unavailable</span>}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-
-      <div className="flex items-center justify-between border-t px-3 py-3 text-xs text-muted-foreground"><span>Showing {page.totalElements === 0 ? 0 : page.number * page.size + 1}-{Math.min((page.number + 1) * page.size, page.totalElements)} of {page.totalElements} batches</span><div className="flex items-center gap-2"><button type="button" disabled={page.number <= 0} onClick={() => { const query = new URLSearchParams(window.location.search); query.set("batchPage", String(page.number - 1)); router.push(`/finance/vouchers?${query}`); }} className="rounded border px-2 py-1 disabled:opacity-40">Previous</button><span>{page.number + 1}/{Math.max(1, page.totalPages)}</span><button type="button" disabled={page.number + 1 >= page.totalPages} onClick={() => { const query = new URLSearchParams(window.location.search); query.set("batchPage", String(page.number + 1)); router.push(`/finance/vouchers?${query}`); }} className="rounded border px-2 py-1 disabled:opacity-40">Next</button></div></div>
+      <DataTable
+        columns={batchColumns}
+        data={batches}
+        manualPagination
+        pageCount={page.totalPages}
+        pageIndex={page.number}
+        pageSize={page.size}
+        totalRows={page.totalElements}
+        onPaginationChange={(pageIndex, pageSize) => {
+          const query = new URLSearchParams(window.location.search);
+          query.set("batchPage", String(pageIndex));
+          query.set("batchSize", String(pageSize));
+          router.push(`/finance/vouchers?${query}`);
+        }}
+        hideSearch
+      />
 
       <Dialog open={mintOpen} onOpenChange={setMintOpen}>
         <DialogContent className="bg-card border-border text-foreground">

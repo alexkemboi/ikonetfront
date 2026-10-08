@@ -21,9 +21,9 @@ import {
 } from "@/actions/finance";
 import type { ChartOfAccountNode, ChartOfAccountsTree } from "@/lib/types/finance";
 import { getPermissionForRoute } from "@/lib/data/nav";
-import type { AccountPosting } from "@/lib/types/finance";
 import { cn } from "@/lib/utils";
 import FinanceToolbar from "./_components/FinanceToolbar";
+import RecentTransactionsTable from "./_components/RecentTransactionsTable";
 
 export const dynamic = "force-dynamic";
 
@@ -312,77 +312,10 @@ export default async function FinancePage({ searchParams }: FinancePageProps) {
           </p>
         </CardHeader>
         <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border bg-muted/40">
-                  <th className="text-left px-5 py-2.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                    Date
-                  </th>
-                  <th className="text-left px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                    Account
-                  </th>
-                  <th className="text-left px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                    Source
-                  </th>
-                  <th className="text-left px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground hidden sm:table-cell">
-                    Memo
-                  </th>
-                  <th className="text-left px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground hidden md:table-cell">
-                    Service
-                  </th>
-                  <th className="text-right px-5 py-2.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                    Amount
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {dashboard.transactionsAvailable && recentTransactions.length > 0 ? (
-                  recentTransactions.map((p: AccountPosting) => (
-                    <tr
-                      key={p.id}
-                      className="transition-colors hover:bg-muted/30 border-b border-border last:border-0"
-                    >
-                      <td className="px-5 py-3 font-sans tabular-nums text-xs text-muted-foreground">
-                        {p.occurredAt.replace("T", " ").slice(0, 16)}
-                      </td>
-                      <td className="px-4 py-3 font-sans tabular-nums font-semibold text-amber-500 text-xs">
-                        {p.accountCode}
-                      </td>
-                      <td className="px-4 py-3 text-xs text-muted-foreground">{p.sourceType}</td>
-                      <td className="px-4 py-3 text-xs text-foreground hidden sm:table-cell max-w-[220px] truncate">
-                        {p.memo || "—"}
-                      </td>
-                      <td className="px-4 py-3 hidden md:table-cell">
-                        <span className="rounded-full bg-muted px-2 py-0.5 text-[10px]">
-                          {p.serviceType || "—"}
-                        </span>
-                      </td>
-                      <td
-                        className={cn(
-                          "px-5 py-3 text-right font-bold text-xs tabular-nums",
-                          p.amount < 0 ? "text-success" : "text-foreground"
-                        )}
-                      >
-                        {p.amount < 0 ? "-" : "+"}{formatKes(Math.abs(p.amount))}
-                      </td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td
-                      colSpan={6}
-                      className="px-5 py-12 text-center text-sm text-muted-foreground"
-                    >
-                      {dashboard.transactionsAvailable
-                        ? "No recent transactions were returned."
-                        : "Recent transactions are unavailable."}
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+          <RecentTransactionsTable
+            transactions={recentTransactions}
+            available={dashboard.transactionsAvailable}
+          />
         </CardContent>
       </Card>
     </div>

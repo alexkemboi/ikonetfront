@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useCompanyScope } from "@/providers/CompanyScopeProvider";
 import { useRouter } from "next/navigation";
 import { Plus, RotateCcw } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { VoucherKpiCards } from "./VoucherKpiCards";
 import { VoucherDataTable } from "./VoucherDataTable";
 import { GenerateVouchersModal } from "./GenerateVouchersModal";
@@ -69,18 +70,17 @@ export function VouchersClient({
   </p>
   </div>
   <div className="flex flex-wrap gap-2">
-  <button
+  <Button
+  variant="secondary"
   onClick={() => setIsCompensateOpen(true)}
-  className="inline-flex items-center gap-2 rounded-lg border border-border px-5 py-2.5 text-xs font-semibold text-foreground hover:bg-accent"
   >
   <RotateCcw className="h-4 w-4" /> Compensate Payment
-  </button>
-  <button
+  </Button>
+  <Button
   onClick={() => requireCompany(() => setIsModalOpen(true))}
-  className="inline-flex items-center gap-2 rounded-lg bg-amber-500 px-5 py-2.5 text-xs font-semibold text-black hover:bg-amber-400"
   >
   <Plus className="h-4 w-4" /> Generate Vouchers
-  </button>
+  </Button>
   </div>
   </div>
 

@@ -11,6 +11,7 @@ import {
  ColumnFiltersState,
  getFilteredRowModel,
  VisibilityState,
+ RowSelectionState,
 } from "@tanstack/react-table"
 
 import {
@@ -23,8 +24,9 @@ import {
 } from "@/components/ui/table"
 import { DataTablePagination } from "./pagination"
 import { DataTableViewOptions } from "./column-toggle"
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { Input } from "@/components/ui/input"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Search } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -32,8 +34,12 @@ interface DataTableProps<TData, TValue> {
  columns: ColumnDef<TData, TValue>[]
  data: TData[]
  searchPlaceholder?: string
+ /** Hides the built-in search box — use when manualPagination/manualFiltering makes it inert, or a custom search already lives in `filters` */
+ hideSearch?: boolean
  /** Slot for action buttons rendered to the right of the search bar */
  toolbar?: React.ReactNode
+ /** Slot for custom filter UI (status pills, date range, etc.), rendered as its own row below the search bar */
+ filters?: React.ReactNode
  /** Server-side pagination props (when manualPagination = true): */
  manualPagination?: boolean
  pageCount?: number
@@ -43,14 +49,23 @@ interface DataTableProps<TData, TValue> {
  onPaginationChange?: (pageIndex: number, pageSize: number) => void
  searchValue?: string
  onSearchChange?: (value: string) => void
+ /** Set true when `data` is already filtered by the caller (e.g. a custom cross-field search) — stops tanstack's own column-based filter from re-filtering rows whose columns have no accessorKey/accessorFn, which would otherwise zero out every row. Defaults to `manualPagination`. */
+ manualFiltering?: boolean
  loading?: boolean
+ /** Adds a select-all/select-row checkbox column and tracks selection state */
+ enableRowSelection?: boolean
+ /** Derives the id used for selection tracking; defaults to row index */
+ getRowId?: (row: TData) => string
+ onRowSelectionChange?: (selectedIds: string[]) => void
 }
 
 export function DataTable<TData, TValue>({
  columns,
  data,
  searchPlaceholder = "Search…",
+ hideSearch,
  toolbar,
+ filters,
  manualPagination,
  pageCount: externalPageCount,
  pageIndex: externalPageIndex,
@@ -59,16 +74,48 @@ export function DataTable<TData, TValue>({
  onPaginationChange,
  searchValue,
  onSearchChange,
+ manualFiltering: manualFilteringProp,
  loading,
+ enableRowSelection,
+ getRowId,
+ onRowSelectionChange,
 }: DataTableProps<TData, TValue>) {
  const [sorting, setSorting] = useState<SortingState>([])
  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
  const [globalFilter, setGlobalFilter] = useState("")
+ const [rowSelection, setRowSelection] = useState<RowSelectionState>({})
+
+ const tableColumns = useMemo<ColumnDef<TData, TValue>[]>(() => {
+ if (!enableRowSelection) return columns
+ const selectionColumn: ColumnDef<TData, TValue> = {
+ id: "select",
+ header: ({ table }) => (
+ <Checkbox
+ checked={
+ table.getIsAllPageRowsSelected() ||
+ (table.getIsSomePageRowsSelected() && "indeterminate")
+ }
+ onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+ aria-label="Select all"
+ />
+ ),
+ cell: ({ row }) => (
+ <Checkbox
+ checked={row.getIsSelected()}
+ onCheckedChange={(value) => row.toggleSelected(!!value)}
+ aria-label="Select row"
+ />
+ ),
+ enableSorting: false,
+ enableHiding: false,
+ }
+ return [selectionColumn, ...columns]
+ }, [columns, enableRowSelection])
 
  const table = useReactTable({
  data,
- columns,
+ columns: tableColumns,
  getCoreRowModel: getCoreRowModel(),
  ...(manualPagination ? {} : { getPaginationRowModel: getPaginationRowModel() }),
  getSortedRowModel: getSortedRowModel(),
@@ -76,15 +123,24 @@ export function DataTable<TData, TValue>({
  onSortingChange: setSorting,
  onColumnFiltersChange: setColumnFilters,
  onColumnVisibilityChange: setColumnVisibility,
+ enableRowSelection,
+ ...(getRowId ? { getRowId: (row: TData) => getRowId(row) } : {}),
+ onRowSelectionChange: (updater) => {
+ setRowSelection((current) => {
+ const next = typeof updater === "function" ? updater(current) : updater
+ onRowSelectionChange?.(Object.keys(next).filter((id) => next[id]))
+ return next
+ })
+ },
  onGlobalFilterChange: (updater) => {
  const next = typeof updater === "function" ? updater(searchValue ?? globalFilter) : updater
  if (onSearchChange) onSearchChange(next)
  else setGlobalFilter(next)
  },
  manualPagination,
- manualFiltering: Boolean(manualPagination),
+ manualFiltering: manualFilteringProp ?? Boolean(manualPagination),
  pageCount: manualPagination ? externalPageCount : undefined,
- state: { sorting, columnFilters, columnVisibility, globalFilter: searchValue ?? globalFilter, ...(manualPagination ? { pagination: { pageIndex: externalPageIndex ?? 0, pageSize: externalPageSize ?? 10 } } : {}) },
+ state: { sorting, columnFilters, columnVisibility, rowSelection, globalFilter: searchValue ?? globalFilter, ...(manualPagination ? { pagination: { pageIndex: externalPageIndex ?? 0, pageSize: externalPageSize ?? 10 } } : {}) },
  ...(manualPagination && onPaginationChange ? {
  onPaginationChange: (updater) => {
  const current = { pageIndex: externalPageIndex ?? 0, pageSize: externalPageSize ?? 10 };
@@ -101,7 +157,8 @@ export function DataTable<TData, TValue>({
  return (
  <div className="flex flex-col gap-0 rounded-xl border border-border bg-card shadow-sm overflow-hidden relative">
  {/* Toolbar */}
- <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-border bg-muted/30">
+ <div className={cn("flex items-center gap-3 px-4 py-3 border-b border-border bg-muted/30", hideSearch ? "justify-end" : "justify-between")}>
+ {!hideSearch && (
  <div className="relative flex-1 max-w-xs">
  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
  <Input
@@ -111,11 +168,19 @@ export function DataTable<TData, TValue>({
  className="pl-8 h-8 text-sm bg-background"
  />
  </div>
+ )}
  <div className="flex items-center gap-2">
  {toolbar}
  <DataTableViewOptions table={table} />
  </div>
  </div>
+
+ {/* Custom filters (status pills, date range, etc.) */}
+ {filters && (
+ <div className="flex flex-wrap items-center gap-2 px-4 py-3 border-b border-border bg-muted/10">
+ {filters}
+ </div>
+ )}
 
  {/* Table */}
  <Table>

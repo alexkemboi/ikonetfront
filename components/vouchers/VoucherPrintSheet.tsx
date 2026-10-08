@@ -3,6 +3,7 @@
 import React from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Printer } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { VoucherItem } from "@/lib/types/vouchers";
 
 interface Props {
@@ -32,12 +33,12 @@ export function VoucherPrintSheet({
  Mint vouchers first, then revisit this print sheet.
  </p>
  </>}
- <button
+ <Button
+ className="mt-4"
  onClick={() => router.push("/finance/vouchers")}
- className="mt-4 inline-flex items-center gap-1.5 rounded-md bg-card px-4 py-2 text-xs font-semibold text-foreground hover:bg-zinc-700"
  >
  <ArrowLeft className="h-3.5 w-3.5" /> Back to Vouchers
- </button>
+ </Button>
  </div>
  </div>
  );
@@ -48,12 +49,13 @@ export function VoucherPrintSheet({
  {/* Toolbar — hidden when printing */}
  <div className="sticky top-0 z-10 border-b border-zinc-200 bg-white/95 backdrop-blur print:hidden">
  <div className="mx-auto flex max-w-[210mm] items-center justify-between gap-4 px-4 py-3">
- <button
+ <Button
+ variant="secondary"
+ size="sm"
  onClick={() => router.push("/finance/vouchers")}
- className="inline-flex items-center gap-1.5 rounded-md border border-zinc-300 px-3 py-2 text-xs font-semibold text-zinc-700 hover:bg-zinc-100"
  >
  <ArrowLeft className="h-3.5 w-3.5" /> Back
- </button>
+ </Button>
  <div className="text-center">
  <p className="text-sm font-bold uppercase tracking-widest">
  Voucher Print Sheet
@@ -62,12 +64,12 @@ export function VoucherPrintSheet({
  {vouchers.length} un-issued vouchers
  </p>
  </div>
- <button
+ <Button
+ size="sm"
  onClick={() => window.print()}
- className="inline-flex items-center gap-1.5 rounded-md bg-card px-4 py-2 text-xs font-semibold text-foreground hover:bg-zinc-700"
  >
  <Printer className="h-3.5 w-3.5" /> Print
- </button>
+ </Button>
  </div>
  </div>
 

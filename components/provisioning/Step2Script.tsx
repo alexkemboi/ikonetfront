@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { Copy, Check, AlertTriangle, Clock, RefreshCw } from "lucide-react";
 import type { ProvisioningScriptResponse, ZtpSessionStatus } from "@/lib/types/provisioning";
 import { getZtpProvisioningStatus } from "@/actions/provisioning";
+import { Button } from "@/components/ui/button";
 
 interface Props {
  scriptData: ProvisioningScriptResponse;
@@ -138,13 +139,15 @@ export function Step2Script({ scriptData, onConnected, onRestart }: Props) {
 
  <div className="relative mt-4 rounded-xl border border-border bg-[#101010] p-4 font-sans tabular-nums text-xs text-zinc-200 break-all">
  <code className="font-mono-tech">{scriptData.fetchCommand}</code>
- <button
+ <Button
  onClick={handleCopy}
- className="absolute right-3 top-3 flex items-center gap-1.5 rounded-lg bg-secondary px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-zinc-700 transition"
+ variant="secondary"
+ size="sm"
+ className="absolute right-3 top-3"
  >
  {copied ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5" />}
  {copied ? "Copied!" : "Copy script"}
- </button>
+ </Button>
  </div>
 
  {/* Live Status Listener */}
@@ -173,12 +176,9 @@ export function Step2Script({ scriptData, onConnected, onRestart }: Props) {
  <p className="text-xs text-red-300">
  The router can no longer use this command. Generate a new one and paste it again.
  </p>
- <button
- onClick={onRestart}
- className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-secondary px-4 py-2 text-xs font-semibold text-foreground hover:bg-zinc-700"
- >
+ <Button onClick={onRestart} variant="secondary" size="sm" className="mt-3">
  <RefreshCw className="h-3.5 w-3.5" /> Generate a new command
- </button>
+ </Button>
  </div>
  )}
 
@@ -190,16 +190,18 @@ export function Step2Script({ scriptData, onConnected, onRestart }: Props) {
  Make sure the provisioning script ran in RouterOS, then retry. The router stays listed as offline
  under NAS Routers until it checks in.
  </p>
- <button
+ <Button
  onClick={() => {
  setIsChecking(true);
  setStopped(false);
  setRestartToken((t) => t + 1);
  }}
- className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-secondary px-4 py-2 text-xs font-semibold text-foreground hover:bg-zinc-700"
+ variant="secondary"
+ size="sm"
+ className="mt-3"
  >
  <RefreshCw className="h-3.5 w-3.5" /> Retry check
- </button>
+ </Button>
  </div>
  )}
  </div>

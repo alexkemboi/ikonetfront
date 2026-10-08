@@ -24,7 +24,7 @@ import {
  DialogTrigger,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import { DataTable } from "@/components/ui/data-table";
+import { DataTable } from "@/components/shared/data-table";
 import { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import { useCompanyScope } from "@/providers/CompanyScopeProvider";
@@ -120,6 +120,7 @@ export default function StatementExplorer() {
  const [loading, setLoading] = useState(false);
  const [error, setError] = useState("");
  const [page, setPage] = useState(0);
+ const [pageSize, setPageSize] = useState(20);
  const [dialogOpen, setDialogOpen] = useState(false);
  const { requireCompany } = useCompanyScope();
 
@@ -130,12 +131,12 @@ export default function StatementExplorer() {
  const [genYearMonth, setGenYearMonth] = useState("");
  const [submitting, setSubmitting] = useState(false);
 
- const fetchData = useCallback(async () => {
+ const fetchData = useCallback(async (targetPage: number, targetSize: number) => {
  if (!customerId) return;
  setLoading(true);
  setError("");
  try {
- const res = await getCustomerStatements(parseInt(customerId), page, 20);
+ const res = await getCustomerStatements(parseInt(customerId), targetPage, targetSize);
  if (res.success && res.data) setStatements(res.data);
  else setError(res.message);
  } catch {
@@ -143,11 +144,11 @@ export default function StatementExplorer() {
  } finally {
  setLoading(false);
  }
- }, [customerId, page]);
+ }, [customerId]);
 
  const handleSearch = () => {
  setPage(0);
- fetchData();
+ fetchData(0, pageSize);
  };
 
  const handleGenerate = async () => {
@@ -171,7 +172,7 @@ export default function StatementExplorer() {
  setGenStartDate("");
  setGenEndDate("");
  setGenYearMonth("");
- fetchData();
+ fetchData(page, pageSize);
  } else {
  toast.error(res.message || "Failed to generate statement");
  }
@@ -276,20 +277,27 @@ export default function StatementExplorer() {
  </CardHeader>
  <CardContent className="p-0">
  {customerId ? (
- <>
- <DataTable columns={columns} data={statements.content} />
- {statements.totalPages > 1 && (
- <div className="flex items-center justify-between px-4 pb-4 pt-2">
- <p className="text-xs text-muted-foreground">
- Page {statements.number + 1} of {statements.totalPages} ({statements.totalElements} total)
- </p>
- <div className="flex gap-2">
- <Button variant="outline" size="sm" disabled={statements.first} onClick={() => setPage((p) => Math.max(0, p - 1))}>Previous</Button>
- <Button variant="outline" size="sm" disabled={statements.last} onClick={() => setPage((p) => p + 1)}>Next</Button>
- </div>
- </div>
- )}
- </>
+ <DataTable
+ columns={columns}
+ data={statements.content}
+ loading={loading}
+ manualPagination
+ pageCount={statements.totalPages}
+ pageIndex={statements.number}
+ pageSize={pageSize}
+ totalRows={statements.totalElements}
+ onPaginationChange={(pageIndex, newPageSize) => {
+ if (newPageSize !== pageSize) {
+ setPageSize(newPageSize);
+ setPage(0);
+ fetchData(0, newPageSize);
+ } else {
+ setPage(pageIndex);
+ fetchData(pageIndex, pageSize);
+ }
+ }}
+ hideSearch
+ />
  ) : (
  <div className="py-12 text-center text-muted-foreground text-sm">
  Enter a customer ID to view their statements

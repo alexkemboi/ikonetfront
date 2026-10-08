@@ -5,8 +5,8 @@
 
 /* ============================================================
    Beesmart Billing System — Quiet Finance Design System
-   Primary Font : Inter (UI)
-   Technical Font: JetBrains Mono (router logs, scripts)
+   Primary Font : DM Sans (UI) — weight 800/300 contrast voice
+   Technical Font: JetBrains Mono (router logs, MAC/IP, scripts only)
    ============================================================ */
 
 :root {
@@ -36,7 +36,7 @@
 
   /* ── Borders & Inputs ── */
   --border: oklch(0.935 0 0);              /* #EEEEEE subtle borders */
-  --input: oklch(0.86 0.04 248);           /* navy-tinted resting border */
+  --input: oklch(0.72 0.05 248);           /* navy-tinted hairline — Level 1 elevation */
   --ring: oklch(0.27 0.09 248);            /* focus ring = Navy Trust */
 
   /* ── Brand Semantics ── */
@@ -47,8 +47,8 @@
   --danger: oklch(0.63 0.26 29);           /* #FF0000 Alert Red (alias) */
   --danger-foreground: oklch(1 0 0);
 
-  /* ── Radius (8px grid) ── */
-  --radius: 0.75rem;                       /* 12px – containers */
+  /* ── Radius — Vodafone-inspired: 6px content, pill CTAs ── */
+  --radius: 0.375rem;                      /* 6px – canonical content radius */
 
   /* ── Charts ── */
   --chart-1: oklch(0.27 0.09 248);         /* Navy */
@@ -86,7 +86,7 @@
   --destructive: oklch(0.63 0.26 29);
   --destructive-foreground: oklch(1 0 0);
   --border: oklch(0.25 0 0);
-  --input: oklch(0.30 0.04 248);           /* navy-tinted resting border (dark) */
+  --input: oklch(0.40 0.06 248);           /* navy-tinted hairline (dark) */
   --ring: oklch(0.55 0.09 248);
   --success: oklch(0.52 0.1 155);
   --success-foreground: oklch(1 0 0);
@@ -110,7 +110,7 @@
 }
 
 @theme inline {
-  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-dm-sans), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-jetbrains-mono), ui-monospace, monospace;
 
   --color-background: var(--background);
@@ -143,10 +143,12 @@
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
-  --radius-sm: calc(var(--radius) - 6px);  /* 6px – inputs */
-  --radius-md: calc(var(--radius) - 2px);  /* 10px */
-  --radius-lg: var(--radius);              /* 12px – containers */
-  --radius-xl: calc(var(--radius) + 4px);  /* 16px – modals */
+  --radius-sm: var(--radius);              /* 6px – inputs */
+  --radius-md: var(--radius);              /* 6px */
+  --radius-lg: var(--radius);              /* 6px – containers */
+  --radius-xl: var(--radius);              /* 6px – modals */
+  --radius-pill: 60px;                     /* rounded-pill — the brand's signature CTA shape */
+  --radius-chip: 32px;                     /* rounded-chip — badges / inline chips */
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-primary: var(--sidebar-primary);
@@ -175,23 +177,48 @@
   h4,
   h5,
   h6 {
-    font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
-    font-weight: 700 !important;
-    letter-spacing: 0;
+    font-family: var(--font-dm-sans), ui-sans-serif, system-ui, sans-serif;
+    font-weight: 800;
+    letter-spacing: -0.5px;
     line-height: 1.2;
     text-wrap: pretty;
   }
 
   h1 {
-    font-size: 23px !important;
-    line-height: 56px !important;
+    font-size: 30px;
+    line-height: 36px;
+  }
+
+  h2 {
+    font-size: 24px;
+    line-height: 30px;
+  }
+
+  h3 {
+    font-size: 20px;
+    line-height: 26px;
+  }
+
+  h4 {
+    font-size: 18px;
+    line-height: 24px;
+  }
+
+  h5 {
+    font-size: 16px;
+    line-height: 22px;
+  }
+
+  h6 {
+    font-size: 14px;
+    line-height: 20px;
   }
 }
 
   body {
     @apply bg-background text-foreground;
-    font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
-    font-size: 0.875rem;
+    font-family: var(--font-dm-sans), ui-sans-serif, system-ui, sans-serif;
+    font-size: 1rem;
     line-height: 1.5;
   }
 }
@@ -215,5 +242,21 @@
     font-family: var(--font-jetbrains-mono), ui-monospace, monospace;
     font-variant-numeric: lining-nums tabular-nums;
     font-feature-settings: 'tnum' 1, 'lnum' 1;
+  }
+
+  /* Vodafone-inspired weight-contrast voice: 800 headings pair with
+     a 300-weight secondary line (doc's "shout, then a calm sentence"). */
+  .text-lead {
+    font-weight: 300;
+    letter-spacing: 0;
+  }
+
+  /* Table headers / metadata labels — doc's caption-uppercase token. */
+  .text-eyebrow {
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 16px;
+    letter-spacing: 0.57px;
+    text-transform: uppercase;
   }
 }

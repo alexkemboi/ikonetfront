@@ -10,16 +10,17 @@ export const dynamic = "force-dynamic";
 
 export const metadata = { title: "Subscribers — IBS" };
 
-export default async function SubscribersPage({ searchParams }: { searchParams: Promise<{ page?: string; statusFilter?: string; search?: string }> }) {
+export default async function SubscribersPage({ searchParams }: { searchParams: Promise<{ page?: string; statusFilter?: string; search?: string; size?: string }> }) {
  const permissions = await getCurrentUserPermissions();
  const pagePerms = permissions["/customers"] ?? NO_PERMISSIONS;
  if (!pagePerms.canView) redirect("/dashboard");
 
  const query = await searchParams;
  const page = Math.max(0, Number(query.page ?? 0) || 0);
+ const size = [10, 20, 25, 30, 40, 50].includes(Number(query.size)) ? Number(query.size) : 25;
  const validStatuses = ["ACTIVE", "GRACE", "EXPIRED", "SUSPENDED"] as const;
  const statusFilter = validStatuses.includes(query.statusFilter as typeof validStatuses[number]) ? query.statusFilter as typeof validStatuses[number] : "ALL";
- const result = await getSubscribersData({ page, size: 25, statusFilter, search: query.search });
+ const result = await getSubscribersData({ page, size, statusFilter, search: query.search });
 
  return (
  <div className="min-h-screen p-4 text-foreground sm:p-6 lg:p-8">

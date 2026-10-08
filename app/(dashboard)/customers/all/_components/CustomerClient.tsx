@@ -38,19 +38,21 @@ export function CustomerClient({
 
  const [page, setPage] = useState(0);
  const [pageSize, setPageSize] = useState(10);
+ const [search, setSearch] = useState("");
  const [data, setData] = useState<Customer[]>(initialData);
  const [totalElements, setTotalElements] = useState(initialTotalElements);
  const [loading, setLoading] = useState(false);
  const abortRef = useRef<AbortController | null>(null);
+ const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
- const fetchPage = useCallback(async (p: number, s: number) => {
+ const fetchPage = useCallback(async (p: number, s: number, q: string) => {
  abortRef.current?.abort();
  const controller = new AbortController();
  abortRef.current = controller;
 
  setLoading(true);
  try {
- const response = await getCustomers(p, s);
+ const response = await getCustomers(p, s, q ? { search: q } : undefined);
  if (controller.signal.aborted) return;
  if (response?.success && response?.data) {
  setData(response.data.content || []);
@@ -71,13 +73,22 @@ export function CustomerClient({
 
  const handlePageChange = (newPage: number) => {
  setPage(newPage);
- fetchPage(newPage, pageSize);
+ fetchPage(newPage, pageSize, search);
  };
 
  const handlePageSizeChange = (newSize: number) => {
  setPageSize(newSize);
  setPage(0);
- fetchPage(0, newSize);
+ fetchPage(0, newSize, search);
+ };
+
+ const handleSearchChange = (value: string) => {
+ setSearch(value);
+ if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+ searchDebounceRef.current = setTimeout(() => {
+ setPage(0);
+ fetchPage(0, pageSize, value);
+ }, 300);
  };
 
  async function handleToggleActive(customer: Customer) {
@@ -156,6 +167,8 @@ const columns = useMemo(
  columns={columns}
  data={data}
  searchPlaceholder="Search by name, email, username, package…"
+ searchValue={search}
+ onSearchChange={handleSearchChange}
  manualPagination
  pageCount={pageCount}
  pageIndex={page}

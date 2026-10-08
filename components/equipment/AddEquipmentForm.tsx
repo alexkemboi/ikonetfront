@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createEquipment } from "@/actions/equipment";
 import type { EquipmentStatus, EquipmentType } from "@/lib/types/equipment";
+import { Button } from "@/components/ui/button";
 
 export function AddEquipmentForm() {
   const router = useRouter();
@@ -35,6 +36,6 @@ export function AddEquipmentForm() {
     <div className="grid gap-4 sm:grid-cols-2"><div><label htmlFor="asset-cost" className="text-sm">Cost price (KES)</label><input id="asset-cost" inputMode="decimal" value={costPrice} onChange={(e) => setCostPrice(e.target.value)} className="mt-1 h-10 w-full rounded-md border bg-background px-3" /></div><div><label htmlFor="asset-paid" className="text-sm">Paid so far (KES)</label><input id="asset-paid" inputMode="decimal" value={paidSoFar} onChange={(e) => setPaidSoFar(e.target.value)} className="mt-1 h-10 w-full rounded-md border bg-background px-3" /></div></div>
     {!serialNumber && <div><label htmlFor="quality-reason" className="text-sm">Data quality note</label><input id="quality-reason" value={reason} onChange={(e) => setReason(e.target.value)} className="mt-1 h-10 w-full rounded-md border bg-background px-3" placeholder="Optional reason for missing serial" /></div>}
     {message && <p role="alert" className="text-sm text-destructive">{message}</p>}
-    <div className="flex justify-end gap-2"><button type="button" onClick={() => router.back()} className="rounded-md border px-4 py-2 text-sm">Cancel</button><button disabled={busy} className="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground disabled:opacity-50">{busy ? "Saving..." : "Save asset"}</button></div>
+    <div className="flex justify-end gap-2"><Button type="button" variant="secondary" size="sm" onClick={() => router.back()}>Cancel</Button><Button size="sm" disabled={busy}>{busy ? "Saving..." : "Save asset"}</Button></div>
   </form>;
 }
