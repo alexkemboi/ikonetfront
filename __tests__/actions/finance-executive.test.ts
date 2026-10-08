@@ -26,8 +26,11 @@ describe("getLiveExecutiveDashboardData — profit & loss", () => {
         expect(request.headers.get("authorization")).toBe(`Bearer ${TOKEN}`);
         return HttpResponse.json({
           revenue: [
-            { accountCode: "4100", accountName: "PPPoE Revenue", amount: 95000 },
-            { accountCode: "4200", accountName: "Hotspot Revenue", amount: 42000 },
+            // the backend's chart: 41xx is the hotspot family, 42xx the PPPoE family
+            { accountCode: "4200", accountName: "PPPoE Revenue", amount: 90000 },
+            { accountCode: "4210", accountName: "Residential PPPoE", amount: 5000 },
+            { accountCode: "4100", accountName: "Hotspot Revenue", amount: 40000 },
+            { accountCode: "4130", accountName: "Hotspot TV / Streaming Packages", amount: 2000 },
           ],
           expenses: [{ accountCode: "5100", accountName: "Operating Expenses", amount: 30000 }],
           totalRevenue: 137000,
@@ -42,6 +45,24 @@ describe("getLiveExecutiveDashboardData — profit & loss", () => {
     expect(pnl.totalExpenses).toBe(30000);
     expect(pnl.pppoeRevenue).toBe(95000);
     expect(pnl.hotspotRevenue).toBe(42000);
+  });
+
+  it("a company with hotspot sales only shows no PPPoE revenue", async () => {
+    server.use(
+      http.get(`${API_PREFIX}/finance/reports/profit-loss`, () =>
+        HttpResponse.json({
+          revenue: [{ accountCode: "4100", accountName: "Hotspot Revenue", amount: -9125 }],
+          expenses: [],
+          totalRevenue: -9125,
+          totalExpenses: 0,
+          netIncome: -9125,
+        })
+      )
+    );
+    const { pnl } = await getLiveExecutiveDashboardData();
+    expect(pnl.totalRevenue).toBe(9125);
+    expect(pnl.hotspotRevenue).toBe(9125);
+    expect(pnl.pppoeRevenue).toBe(0);
   });
 
   it("unwraps a { data: report } envelope", async () => {
@@ -89,8 +110,8 @@ describe("getLiveExecutiveDashboardData — profit & loss", () => {
       http.get(`${API_PREFIX}/finance/reports/profit-loss`, () =>
         HttpResponse.json({
           revenue: [
-            { accountCode: "4100", accountName: "PPPoE Revenue", amount: -7 },
-            { accountCode: "4200", accountName: "Hotspot Revenue", amount: -3 },
+            { accountCode: "4200", accountName: "PPPoE Revenue", amount: -7 },
+            { accountCode: "4100", accountName: "Hotspot Revenue", amount: -3 },
           ],
           expenses: [{ accountCode: "5100", accountName: "Operating Expenses", amount: 2 }],
           totalRevenue: -10,

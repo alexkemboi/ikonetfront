@@ -103,7 +103,8 @@ export default function LedgerExplorer({
   );
   const allAccounts = useMemo(
     () =>
-      categoryKeys.flatMap((key) => flattenAccounts(initialTree[key])).filter((n) => n.isActive),
+      // the chart endpoint sends no active flag: an account is active unless marked otherwise
+      categoryKeys.flatMap((key) => flattenAccounts(initialTree[key])).filter((n) => n.isActive !== false),
     [categoryKeys, initialTree]
   );
 
@@ -441,7 +442,7 @@ function AccountTreeRow({
           selectedCode === node.code
             ? "bg-amber-500 text-black font-bold"
             : "hover:bg-muted/60",
-          !node.isActive && "opacity-50"
+          node.isActive === false && "opacity-50"
         )}
       >
         <span className="flex min-w-0 items-center gap-2">

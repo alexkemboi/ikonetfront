@@ -10,6 +10,8 @@ import { useHotspotBrand } from "@/lib/hotspot/brand-context";
 
 const POLL_INTERVAL_MS = 5_000;
 const POLL_LIMIT_MS = 120_000;
+/** Status checks that may fail in a row before the customer is told we cannot check. */
+const MAX_FAILED_CHECKS = 3;
 const MAC_ADDRESS = /^(?:[0-9a-fA-F]{2}[:-]){5}[0-9a-fA-F]{2}$/;
 type PaymentView = "checkout" | "pending" | "active" | "failed" | "unavailable";
 
@@ -44,6 +46,7 @@ export default function CheckoutModal({ package: pkg, pendingPurchase: initialPe
   const [notice, setNotice] = useState<string | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const pollingRef = useRef(false);
+  const failedChecksRef = useRef(0);
   const brand = useHotspotBrand();
   const macAddress = clientMac?.trim() ?? "";
   const requestClientMac = redirectClientMac?.trim() || macAddress;
@@ -67,10 +70,15 @@ export default function CheckoutModal({ package: pkg, pendingPurchase: initialPe
     try {
       const result = await getPublicVoucherStatus(purchase.voucherCode);
       if (!result.success || !result.data) {
+        // One failed check (a busy server, a dropped request) must not end the wait:
+        // the payment may be seconds from confirming. Keep checking.
+        failedChecksRef.current += 1;
+        if (failedChecksRef.current < MAX_FAILED_CHECKS) return;
         setView("unavailable");
         setNotice(result.message || "We could not check your payment status. Your session reference is saved; do not pay again.");
         return;
       }
+      failedChecksRef.current = 0;
       setStatus(result.data);
       if (result.data.sessionStatus === "ACTIVE") {
         stopPolling();
@@ -85,8 +93,11 @@ export default function CheckoutModal({ package: pkg, pendingPurchase: initialPe
         setView("pending");
       }
     } catch (error) {
-      setView("unavailable");
-      setNotice(error instanceof Error ? sanitizeErrorMessage(error.message) : "We could not check your payment status. Your session reference is saved; do not pay again.");
+      failedChecksRef.current += 1;
+      if (failedChecksRef.current >= MAX_FAILED_CHECKS) {
+        setView("unavailable");
+        setNotice(error instanceof Error ? sanitizeErrorMessage(error.message) : "We could not check your payment status. Your session reference is saved; do not pay again.");
+      }
     } finally {
       pollingRef.current = false;
     }
@@ -124,7 +135,7 @@ try {
     }
   };
 
-  const retryStatus = () => { setNotice(null); setView("pending"); };
+  const retryStatus = () => { failedChecksRef.current = 0; setNotice(null); setView("pending"); };
   const reference = purchase?.sessionId ?? status?.sessionId;
   const canClose = !isProcessing;
 
