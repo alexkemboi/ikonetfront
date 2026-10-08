@@ -997,6 +997,28 @@ export async function getRouterOutages(
     : { data: null, error: res.message || "Could not load router outages." };
 }
 
+/** Administrators: close an open outage by hand (retired router, false alarm). Nothing is given back for it. */
+export async function closeRouterOutage(outageId: string, reason?: string): Promise<{ success: boolean; message: string }> {
+  const query = reason?.trim() ? `?reason=${encodeURIComponent(reason.trim())}` : "";
+  const res = await apiFetch<null>(`/network/outages/${outageId}/close${query}`, { method: "POST", auth: "required" });
+  return { success: res.success, message: res.success ? "Outage closed." : res.message || "Could not close the outage." };
+}
+
+/** Administrators: refuse the time credit of an outage; time already given back is taken back. */
+export async function refuseRouterOutageCredit(outageId: string, reason?: string): Promise<{ success: boolean; message: string }> {
+  const query = reason?.trim() ? `?reason=${encodeURIComponent(reason.trim())}` : "";
+  const res = await apiFetch<{ sessionsReversed: number }>(`/network/outages/${outageId}/refuse-credit${query}`, {
+    method: "POST",
+    auth: "required",
+  });
+  if (!res.success) return { success: false, message: res.message || "Could not refuse the credit." };
+  const reversed = res.data?.sessionsReversed ?? 0;
+  return {
+    success: true,
+    message: reversed > 0 ? `Credit refused. Time taken back from ${reversed} session(s).` : "Credit refused.",
+  };
+}
+
 /**
  * Delete a network device (the authoritative `network_device` row).
  *

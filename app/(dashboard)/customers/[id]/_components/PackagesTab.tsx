@@ -20,6 +20,8 @@ import {
 } from "@/components/ui/table";
 import { formatCustomerDate } from "@/lib/utils/customerFormatters";
 import { EmptyState, DataLoadError } from "./EmptyState";
+import { ManagePppoeSubscriptionDialog } from "./ManagePppoeSubscriptionDialog";
+import { Button } from "@/components/ui/button";
 
 interface PackagesTabProps {
   customerId: number;
@@ -49,6 +51,9 @@ export function PackagesTab({ customerId }: PackagesTabProps) {
   const [overview, setOverview] = useState<CustomerPppoeOverview>(EMPTY_OVERVIEW);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState(false);
+  const [managed, setManaged] = useState<PppoeSubscriptionSummary | null>(null);
+  /** Bumped after add time / pause / resume so the table shows the new dates. */
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -61,7 +66,7 @@ export function PackagesTab({ customerId }: PackagesTabProps) {
     return () => {
       cancelled = true;
     };
-  }, [customerId]);
+  }, [customerId, reloadKey]);
 
   return (
     <div className="space-y-6">
@@ -132,6 +137,7 @@ export function PackagesTab({ customerId }: PackagesTabProps) {
                   <TableHead>Start</TableHead>
                   <TableHead>Expiry</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -147,6 +153,11 @@ export function PackagesTab({ customerId }: PackagesTabProps) {
                       {formatCustomerDate(subscription.expiryDate)}
                     </TableCell>
                     <TableCell>{subscriptionStatusBadge(subscription)}</TableCell>
+                    <TableCell className="text-right">
+                      <Button type="button" variant="outline" size="sm" onClick={() => setManaged(subscription)}>
+                        Manage
+                      </Button>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -156,6 +167,11 @@ export function PackagesTab({ customerId }: PackagesTabProps) {
       </Card>
         </>
       )}
+      <ManagePppoeSubscriptionDialog
+        subscription={managed}
+        onClose={() => setManaged(null)}
+        onChanged={() => setReloadKey((key) => key + 1)}
+      />
     </div>
   );
 }
