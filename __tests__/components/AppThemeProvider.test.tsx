@@ -4,11 +4,17 @@ import userEvent from "@testing-library/user-event";
 import { AppThemeProvider, useAppTheme } from "@/providers/AppThemeProvider";
 
 let prefersDark = false;
-const mediaListeners = new Set<(event: MediaQueryListEvent) => void>();
+const mediaListeners = new Set<EventListenerOrEventListenerObject>();
+
+let mockMediaQueryList: MediaQueryList;
 
 function setSystemTheme(theme: "light" | "dark") {
   prefersDark = theme === "dark";
-  mediaListeners.forEach((listener) => listener(new Event("change") as MediaQueryListEvent));
+  const event = new Event("change");
+  mediaListeners.forEach((listener) => {
+    if (typeof listener === "function") listener.call(mockMediaQueryList, event);
+    else listener.handleEvent(event);
+  });
 }
 
 function ThemeToggle() {
@@ -20,12 +26,29 @@ describe("AppThemeProvider", () => {
   beforeEach(() => {
     prefersDark = false;
     mediaListeners.clear();
-    vi.stubGlobal("matchMedia", () => ({
-      matches: prefersDark,
-      media: "(prefers-color-scheme: dark)",
-      addEventListener: (_type: string, listener: (event: MediaQueryListEvent) => void) => mediaListeners.add(listener),
-      removeEventListener: (_type: string, listener: (event: MediaQueryListEvent) => void) => mediaListeners.delete(listener),
-    }) as MediaQueryList);
+    vi.stubGlobal("matchMedia", (query: string): MediaQueryList => {
+      mockMediaQueryList = {
+        matches: prefersDark,
+        media: query,
+        onchange: null,
+        addEventListener: (
+          _type: string,
+          listener: EventListenerOrEventListenerObject | null
+        ) => {
+          if (listener) mediaListeners.add(listener);
+        },
+        removeEventListener: (
+          _type: string,
+          listener: EventListenerOrEventListenerObject | null
+        ) => {
+          if (listener) mediaListeners.delete(listener);
+        },
+        addListener: () => undefined,
+        removeListener: () => undefined,
+        dispatchEvent: () => true,
+      };
+      return mockMediaQueryList;
+    });
     window.localStorage.removeItem("beesmart-theme");
     document.documentElement.classList.remove("dark");
   });
