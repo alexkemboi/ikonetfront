@@ -11,6 +11,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { AgreementsTable, BillingSnapshotsTable, RouterAttributionTable } from "./_components/InvestorTables";
+import { getMyFees } from "@/actions/platformFees";
+import { feeDate, kes, STANDING_CLASS, STANDING_LABEL } from "@/components/finance/systemFeeFormat";
 
 export const dynamic = "force-dynamic";
 
@@ -54,6 +56,8 @@ export default async function InvestorPortalPage({
     investorId: platformAdmin ? params.investorId : undefined,
   });
   const revenue = data.revenue;
+  // what the signed-in investor owes the platform; empty for every other role
+  const myFees = role === ROLE_NAME.INVESTOR ? await getMyFees() : [];
   const routerRows: RouterAttributionItem[] = revenue?.routerBreakdown ?? [];
 
   // Owner decision 2026-10-05 (choice 7): an investor sees payout and maintenance
@@ -155,6 +159,56 @@ export default async function InvestorPortalPage({
               ) : (
                 <RouterAttributionTable rows={routerRows} />
               )}
+            </CardContent>
+          </Card>
+        )}
+
+        {myFees.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">System fees you owe</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-5">
+              <p className="text-xs text-muted-foreground">
+                The maintenance fee of each month-end statement is owed to the platform. It is due on the 10th; new hotspot
+                purchases and PPPoE renewals on your routers are suspended from the 15th while it is unpaid.
+              </p>
+              {myFees.map(({ balance, entries }) => (
+                <div key={balance.agreementId} className="rounded-xl border border-border p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="text-sm font-medium">
+                      {balance.companyName} · {balance.agreementCode}
+                    </p>
+                    <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${STANDING_CLASS[balance.feeStatus]}`}>
+                      {STANDING_LABEL[balance.feeStatus]}
+                    </span>
+                  </div>
+                  <p className="mt-2 text-xl font-sans tabular-nums">{kes(Math.max(balance.balance, 0))}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {balance.balance > 0
+                      ? `Due ${feeDate(balance.oldestDueDate)} · suspension from ${feeDate(balance.suspendDate)}`
+                      : "Nothing outstanding"}
+                    {" · "}charged {kes(balance.charged)} · paid {kes(balance.paid)}
+                  </p>
+                  {entries.length > 0 && (
+                    <ul className="mt-3 space-y-1 text-sm">
+                      {entries.map((e) => (
+                        <li key={e.id} className="flex flex-wrap justify-between gap-2">
+                          <span>
+                            {feeDate(e.createdAt)} ·{" "}
+                            {e.entryType === "CHARGE"
+                              ? `Charge for ${e.period ?? "—"} (due ${feeDate(e.dueDate)})`
+                              : e.entryType === "PAYMENT"
+                                ? `Payment ${e.reference ?? ""}`
+                                : "Adjustment"}
+                          </span>
+                          <span className="font-sans tabular-nums">{kes(e.amount)}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              ))}
             </CardContent>
           </Card>
         )}

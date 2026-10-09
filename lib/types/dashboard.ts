@@ -16,7 +16,7 @@ export interface RouterTrafficItem {
 
 export interface WhatsNextItem {
   id: string;
-  type: "EXPIRY" | "SMS_CREDIT" | "UNRECONCILED_PAYMENT" | "OUTAGE";
+  type: "EXPIRY" | "SMS_CREDIT" | "UNRECONCILED_PAYMENT" | "OUTAGE" | "SYSTEM_FEE";
   title: string;
   description: string;
   isUrgent: boolean;

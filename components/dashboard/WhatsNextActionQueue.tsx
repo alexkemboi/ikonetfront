@@ -1,6 +1,6 @@
 import React from "react";
 import Link from "next/link";
-import { RefreshCw, Zap, ArrowUpRight, ChevronRight } from "lucide-react";
+import { RefreshCw, Zap, ArrowUpRight, ChevronRight, ReceiptText } from "lucide-react";
 import { WhatsNextItem } from "@/lib/types/dashboard";
 
 interface Props {
@@ -22,6 +22,9 @@ export function WhatsNextActionQueue({ items }: Props) {
  </div>
 
  <div className="mt-4 space-y-3">
+ {items.length === 0 && (
+ <p className="py-2 text-sm text-muted-foreground">Nothing needs your attention right now.</p>
+ )}
  {items.map((item) => (
  <Link
  key={item.id}
@@ -33,6 +36,7 @@ export function WhatsNextActionQueue({ items }: Props) {
  {item.type === "EXPIRY" && <RefreshCw className="h-4 w-4" />}
  {item.type === "SMS_CREDIT" && <Zap className="h-4 w-4 text-amber-400" />}
  {item.type === "UNRECONCILED_PAYMENT" && <ArrowUpRight className="h-4 w-4 text-emerald-400" />}
+ {item.type === "SYSTEM_FEE" && <ReceiptText className="h-4 w-4" />}
  </div>
 
  <div>

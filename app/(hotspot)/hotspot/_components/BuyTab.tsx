@@ -90,6 +90,12 @@ export default function BuyTab({ packages, companyCode, onCompanyResolved, onBac
  const [sortBy, setSortBy] = useState<SortBy>("price-asc");
  const [selectedPackage, setSelectedPackage] = useState<HotspotPackage | null>(null);
 const [showCheckout, setShowCheckout] = useState(false);
+  // Closed by the customer while a purchase is still parked: the box goes away (Close used
+  // to do nothing in that state) and the parked purchase is picked up again on the next load.
+  const [dismissed, setDismissed] = useState(false);
+  // The parked purchase was just cleared (connected, or M-Pesa said it was not paid): keep
+  // the box open so its result stays on screen until the customer closes it.
+  const [keepOpen, setKeepOpen] = useState(false);
 
   // A purchase interrupted by a redirect is parked in sessionStorage by the
   // checkout modal. Read it through useSyncExternalStore so the server snapshot
@@ -129,6 +135,8 @@ const [showCheckout, setShowCheckout] = useState(false);
  const handleSelect = (pkg: HotspotPackage) => {
  setSelectedPackage(pkg);
  setShowCheckout(true);
+ setDismissed(false);
+ setKeepOpen(false);
  };
 
  return (
@@ -209,10 +217,12 @@ const [showCheckout, setShowCheckout] = useState(false);
  </div>
 
 {/* Checkout Modal */}
-  {(showCheckout || pendingPurchase) && (selectedPackage || pendingPurchase) && (
+  {!dismissed && (showCheckout || pendingPurchase || keepOpen) && (selectedPackage || pendingPurchase || keepOpen) && (
     <CheckoutModal
       package={selectedPackage ?? undefined}
-      pendingPurchase={pendingPurchase ?? undefined}
+      // a package the customer has just chosen starts a new purchase; a parked one is
+      // resumed only when the page was opened without choosing anything
+      pendingPurchase={showCheckout ? undefined : pendingPurchase ?? undefined}
       companyCode={companyCode}
       onCompanyResolved={onCompanyResolved}
       clientMac={clientMac}
@@ -222,6 +232,8 @@ const [showCheckout, setShowCheckout] = useState(false);
       onClose={() => {
         setShowCheckout(false);
         setSelectedPackage(null);
+        setKeepOpen(false);
+        if (pendingPurchase) setDismissed(true);
       }}
       onPendingPurchase={(purchase) => {
         // The modal owns the parked purchase in sessionStorage; mirror its
@@ -233,8 +245,7 @@ const [showCheckout, setShowCheckout] = useState(false);
           );
         } else {
           window.sessionStorage.removeItem(PENDING_HOTSPOT_PURCHASE_KEY);
-          setShowCheckout(false);
-          setSelectedPackage(null);
+          setKeepOpen(true);
         }
         window.dispatchEvent(new Event(PENDING_HOTSPOT_PURCHASE_KEY));
       }}

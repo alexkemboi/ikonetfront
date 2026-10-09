@@ -11,6 +11,8 @@ import { WhatsNextActionQueue } from "@/components/dashboard/WhatsNextActionQueu
 import { TodayActivityFeed } from "@/components/dashboard/TodayActivityFeed";
 import { NetworkPulseHeatmap } from "@/components/dashboard/NetworkPulseHeatmap";
 import { LiveDataRefresh } from "@/providers/MonitoringHeartbeat";
+import { getCompanyFeeStatus } from "@/actions/platformFees";
+import { systemFeeNextItem } from "@/components/dashboard/systemFeeNextItem";
 
 export const dynamic = "force-dynamic";
 
@@ -26,12 +28,15 @@ export default async function OverviewDashboardPage() {
 
   if (!isOperator) redirect("/dashboard");
 
- const data = await getDashboardOverview();
+ const [data, feeStatus] = await Promise.all([getDashboardOverview(), getCompanyFeeStatus()]);
 
  if (!data.success) {
   return <div className="min-h-screen p-4 sm:p-6 lg:p-8"><div role="alert" className="mx-auto max-w-7xl rounded-lg border border-destructive/30 bg-destructive/5 p-5"><h1 className="text-lg font-medium">Dashboard unavailable</h1><p className="mt-1 text-sm text-muted-foreground">{data.message}{data.requestId ? ` · Ref: ${data.requestId}` : ""}</p></div></div>;
  }
  const overview = data.data;
+ // system fees owed come first: unpaid past the suspension day, sales stop
+ const feeItem = systemFeeNextItem(feeStatus);
+ const whatsNext = feeItem ? [feeItem, ...overview.whatsNextQueue] : overview.whatsNextQueue;
 
   return (
  <div className="min-h-screen p-4 text-foreground sm:p-6 lg:p-8">
@@ -71,7 +76,7 @@ export default async function OverviewDashboardPage() {
  {/* 5. What's Next Action Queue | Today Activity Feed */}
  <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
  <div className="lg:col-span-2">
- <WhatsNextActionQueue items={overview.whatsNextQueue} />
+ <WhatsNextActionQueue items={whatsNext} />
  </div>
  <TodayActivityFeed eventsCount={overview.todayEventsCount} payments={overview.todayRecentPayments} />
  </div>
