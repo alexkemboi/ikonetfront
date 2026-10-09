@@ -28,6 +28,8 @@ import {
 import { recordManualPayment } from "@/actions/payments";
 import { withStepUp } from "@/lib/stepUp";
 import RowHighlightWatcher from "@/components/network/RowHighlightWatcher";
+import { RefundsCard } from "@/components/payments/RefundsCard";
+import type { RefundItem } from "@/lib/types/refund";
 
 interface Props {
   kpis: PaymentLedgerKpis;
@@ -36,6 +38,11 @@ interface Props {
   /** False for the customer care desk (staff): read-only view. */
   canRecordPayment?: boolean;
   canIssueVoucher?: boolean;
+  /** Raise a refund against a payment. */
+  canRefund?: boolean;
+  /** Confirm a refund was paid back (posts it to the ledger). */
+  canProcessRefund?: boolean;
+  refunds?: RefundItem[];
 }
 
 export function PaymentsLedgerView({
@@ -44,6 +51,9 @@ export function PaymentsLedgerView({
   source,
   canRecordPayment = true,
   canIssueVoucher = true,
+  canRefund = false,
+  canProcessRefund = false,
+  refunds = [],
 }: Props) {
   const router = useRouter();
   const [recordOpen, setRecordOpen] = useState(false);
@@ -137,7 +147,8 @@ export function PaymentsLedgerView({
         </div>
 
         <PaymentsKpiCards kpis={kpis} />
-        <PaymentsDataTable payments={payments} canIssueVoucher={canIssueVoucher} />
+        <PaymentsDataTable payments={payments} canIssueVoucher={canIssueVoucher} canRefund={canRefund} />
+        <RefundsCard refunds={refunds} canProcess={canProcessRefund} />
       </div>
       <RowHighlightWatcher />
 

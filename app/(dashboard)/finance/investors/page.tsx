@@ -4,6 +4,8 @@ import { listInvestors } from "@/actions/investorRegistry";
 import { getMikrotikDevices } from "@/actions/mikrotik";
 import { isPlatformAdminRole, normalizeRole, ROLE_NAME } from "@/lib/types/roles";
 import InvestorsClient from "./_components/InvestorsClient";
+import SystemFeesLedger from "./_components/SystemFeesLedger";
+import { getFeeBalances } from "@/actions/platformFees";
 
 export const metadata = { title: "Investors" };
 
@@ -21,8 +23,13 @@ export default async function InvestorsPage() {
   const isCompanyAdmin = normalizeRole(role) === ROLE_NAME.ADMIN && !isPlatformAdmin;
   if (!isPlatformAdmin && !isCompanyAdmin) redirect("/dashboard");
 
-  const [investors, devices] = await Promise.all([listInvestors(), getMikrotikDevices()]);
+  const [investors, devices, feeBalances] = await Promise.all([listInvestors(), getMikrotikDevices(), getFeeBalances()]);
   const routers = (devices.data ?? []).map((d) => ({ id: d.id, name: d.name }));
 
-  return <InvestorsClient investors={investors} routers={routers} isPlatformAdmin={isPlatformAdmin} />;
+  return (
+    <>
+      <InvestorsClient investors={investors} routers={routers} isPlatformAdmin={isPlatformAdmin} />
+      <SystemFeesLedger balances={feeBalances} canRecordPayment={isPlatformAdmin} />
+    </>
+  );
 }

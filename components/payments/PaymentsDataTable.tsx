@@ -15,6 +15,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import type { PaymentConnection, PaymentLedgerItem } from "@/lib/types/payments";
 import { downloadReceiptPdf, emailReceipt } from "@/actions/payments";
 import { compensateHotspotPayment } from "@/actions/vouchers";
+import { requestRefund } from "@/actions/refunds";
 import {
   Dialog,
   DialogContent,
@@ -31,6 +32,8 @@ interface Props {
   payments: PaymentLedgerItem[];
   /** Hidden for the customer care desk; the backend refuses them anyway. */
   canIssueVoucher?: boolean;
+  /** Raise a refund against a payment (not for the customer care desk). */
+  canRefund?: boolean;
 }
 
 const CONNECTION_STYLE: Record<PaymentConnection, { label: string; className: string; hint: string }> = {
@@ -55,7 +58,7 @@ function ConnectionBadge({ connection }: { connection: PaymentConnection }) {
   );
 }
 
-export function PaymentsDataTable({ payments, canIssueVoucher = true }: Props) {
+export function PaymentsDataTable({ payments, canIssueVoucher = true, canRefund = false }: Props) {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
   const [emailTarget, setEmailTarget] = useState<PaymentLedgerItem | null>(null);
@@ -73,6 +76,49 @@ export function PaymentsDataTable({ payments, canIssueVoucher = true }: Props) {
   const [compensateTarget, setCompensateTarget] = useState<PaymentLedgerItem | null>(null);
   const [compensating, setCompensating] = useState(false);
   const [issuedVoucher, setIssuedVoucher] = useState<string | null>(null);
+  // Refund against one payment: recorded now, confirmed as paid back in the Refunds list.
+  const [refundTarget, setRefundTarget] = useState<PaymentLedgerItem | null>(null);
+  const [refundAmount, setRefundAmount] = useState("");
+  const [refundReason, setRefundReason] = useState("");
+  const [refunding, setRefunding] = useState(false);
+
+  const openRefund = (p: PaymentLedgerItem) => {
+    setActiveMenuId(null);
+    setRefundTarget(p);
+    setRefundAmount(String(p.amount));
+    setRefundReason("");
+  };
+
+  const handleRefund = async () => {
+    if (!refundTarget?.paymentId) return;
+    const amount = Number(refundAmount);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      toast.error("Enter an amount above zero.");
+      return;
+    }
+    if (!refundReason.trim()) {
+      toast.error("Say why the payment is being refunded.");
+      return;
+    }
+    setRefunding(true);
+    try {
+      const res = await requestRefund({
+        // TV is sold on the hotspot side and refunded as a hotspot payment
+        paymentType: refundTarget.serviceType === "PPPOE" ? "PPPOE" : "HOTSPOT",
+        paymentId: refundTarget.paymentId,
+        amount,
+        reason: refundReason.trim(),
+      });
+      if (res.success) {
+        toast.success("Refund recorded. Pay the customer back, then confirm it in the Refunds list.");
+        setRefundTarget(null);
+      } else {
+        toast.error(res.message);
+      }
+    } finally {
+      setRefunding(false);
+    }
+  };
 
   function openCompensate(p: PaymentLedgerItem) {
     setCompensateTarget(p);
@@ -284,6 +330,14 @@ export function PaymentsDataTable({ payments, canIssueVoucher = true }: Props) {
  <RotateCcw className="h-3.5 w-3.5" /> Issue voucher
  </button>
  )}
+ {canRefund && p.paymentId && (
+ <button
+ onClick={() => openRefund(p)}
+ className="flex w-full items-center gap-2 px-3 py-2 text-xs text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+ >
+ <RotateCcw className="h-3.5 w-3.5" /> Refund…
+ </button>
+ )}
  <button
  onClick={() => handleDownload(p)}
  disabled={downloadingId === p.id || !p.statementId}
@@ -310,7 +364,7 @@ export function PaymentsDataTable({ payments, canIssueVoucher = true }: Props) {
  },
  },
  ],
- [activeMenuId, downloadingId, canIssueVoucher]
+ [activeMenuId, downloadingId, canIssueVoucher, canRefund]
  );
 
  return (
@@ -388,6 +442,36 @@ export function PaymentsDataTable({ payments, canIssueVoucher = true }: Props) {
  <DialogFooter>
  <Button variant="outline" onClick={() => setViewTarget(null)}>
  Close
+ </Button>
+ </DialogFooter>
+ </DialogContent>
+ </Dialog>
+
+ {/* Raise a refund */}
+ <Dialog open={refundTarget !== null} onOpenChange={(o) => !o && !refunding && setRefundTarget(null)}>
+ <DialogContent className="bg-card border-border text-foreground">
+ <DialogHeader>
+ <DialogTitle className="text-foreground">Refund this payment?</DialogTitle>
+ <DialogDescription className="text-muted-foreground">
+ {`${refundTarget?.subscriberCode ?? ""} paid Ksh ${refundTarget?.amount ?? ""}${refundTarget?.mpesaReceipt ? ` (M-Pesa ${refundTarget.mpesaReceipt})` : ""}. This records the refund; it does not send money. Income is reduced once someone confirms the customer was paid back.`}
+ </DialogDescription>
+ </DialogHeader>
+ <div className="space-y-3">
+ <div className="space-y-1">
+ <label htmlFor="refund-amount" className="text-xs text-muted-foreground">Amount to refund (KES)</label>
+ <Input id="refund-amount" inputMode="decimal" value={refundAmount} onChange={(e) => setRefundAmount(e.target.value)} />
+ </div>
+ <div className="space-y-1">
+ <label htmlFor="refund-reason" className="text-xs text-muted-foreground">Reason</label>
+ <Input id="refund-reason" placeholder="e.g. paid twice, could not connect" value={refundReason} onChange={(e) => setRefundReason(e.target.value)} />
+ </div>
+ </div>
+ <DialogFooter>
+ <Button variant="outline" onClick={() => setRefundTarget(null)} disabled={refunding}>
+ Cancel
+ </Button>
+ <Button onClick={handleRefund} disabled={refunding}>
+ {refunding ? "Recording…" : "Record refund"}
  </Button>
  </DialogFooter>
  </DialogContent>
