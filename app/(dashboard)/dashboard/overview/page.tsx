@@ -37,6 +37,9 @@ export default async function OverviewDashboardPage() {
  // system fees owed come first: unpaid past the suspension day, sales stop
  const feeItem = systemFeeNextItem(feeStatus);
  const whatsNext = feeItem ? [feeItem, ...overview.whatsNextQueue] : overview.whatsNextQueue;
+ const online = overview.onlineHotspotCount != null && overview.onlinePppoeCount != null
+  ? { total: overview.onlineSubscribersCount, hotspot: overview.onlineHotspotCount, pppoe: overview.onlinePppoeCount }
+  : null;
 
   return (
  <div className="min-h-screen p-4 text-foreground sm:p-6 lg:p-8">
@@ -60,9 +63,9 @@ export default async function OverviewDashboardPage() {
  revenueToday={overview.revenueToday}
  revenueChangePercent={overview.revenueTodayChangePercent}
  mobileMoneyToday={overview.mobileMoneyRevenueToday}
- activeSubscriptions={overview.activeSubscriptionsCount}
- onlinePercentage={overview.onlinePercentage}
+ activePppoeSubscriptions={overview.activeSubscriptionsCount}
  onlineCount={overview.onlineSubscribersCount}
+ online={online}
  smsCredits={overview.smsCreditsCount}
  smsCreditLow={overview.smsCreditLow}
  />

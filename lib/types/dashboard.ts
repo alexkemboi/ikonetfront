@@ -58,7 +58,13 @@ export interface DashboardOverviewData {
   revenueToday: number;
   revenueTodayChangePercent: number;
   mobileMoneyRevenueToday: number;
+  /** Currently valid PPPoE subscriptions. */
   activeSubscriptionsCount: number;
+  /** Per-service split of onlineSubscribersCount; null/absent when the backend could not read it. */
+  onlineHotspotCount?: number | null;
+  onlinePppoeCount?: number | null;
+  onlineTvCount?: number | null;
+  /** PPPoE online ÷ active PPPoE subscriptions, 0..100. */
   onlinePercentage: number;
   smsCreditsCount: number | null;
 
