@@ -57,9 +57,22 @@ export type InitiatePaymentResponse = ApiResponse<HotspotSessionResponse>;
 /** Public voucher status returned while a captive-portal payment settles. */
 export type HotspotVoucherStatus = "PENDING" | "ACTIVE" | "FAILED";
 
+/**
+ * What M-Pesa answered for the latest payment attempt of a purchase that is still
+ * waiting. Absent while M-Pesa has not answered.
+ */
+export type HotspotPaymentOutcome =
+  | "UNREACHABLE"
+  | "CANCELLED"
+  | "NO_RESPONSE"
+  | "INSUFFICIENT_FUNDS"
+  | "WRONG_PIN"
+  | "FAILED";
+
 export interface HotspotVoucherStatusResponse {
   sessionId: string | number;
   sessionStatus: HotspotVoucherStatus;
+  paymentOutcome?: HotspotPaymentOutcome | null;
   voucherCode: string;
   expiresAt?: string;
   minutesRemaining: number;

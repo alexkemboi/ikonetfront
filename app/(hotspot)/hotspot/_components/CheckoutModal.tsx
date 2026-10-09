@@ -1,11 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { CheckCircle2, Loader2, RefreshCw, X } from "lucide-react";
+import { CheckCircle2, Loader2, RefreshCw, X, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { getPublicVoucherStatus, initiatePublicHotspotPayment, PENDING_HOTSPOT_PURCHASE_KEY } from "@/lib/hotspotPublicClient";
-import type { HotspotPackage, HotspotVoucherStatusResponse, PendingHotspotPurchase } from "@/lib/types/hotspot";
+import type { HotspotPackage, HotspotPaymentOutcome, HotspotVoucherStatusResponse, PendingHotspotPurchase } from "@/lib/types/hotspot";
 import { sanitizeErrorMessage } from "@/lib/brand";
 import { useHotspotBrand } from "@/lib/hotspot/brand-context";
 
@@ -14,7 +14,35 @@ const POLL_LIMIT_MS = 120_000;
 /** Status checks that may fail in a row before the customer is told we cannot check. */
 const MAX_FAILED_CHECKS = 3;
 const MAC_ADDRESS = /^(?:[0-9a-fA-F]{2}[:-]){5}[0-9a-fA-F]{2}$/;
-type PaymentView = "checkout" | "pending" | "active" | "failed" | "unavailable";
+type PaymentView = "checkout" | "pending" | "active" | "failed" | "unavailable" | "notPaid";
+
+/** What to tell the customer when M-Pesa answers that the payment did not happen. Nothing was charged in any of these. */
+const NOT_PAID_MESSAGE: Record<HotspotPaymentOutcome, { title: string; detail: string }> = {
+  UNREACHABLE: {
+    title: "M-Pesa could not reach that phone.",
+    detail: "Check that the phone is on, has network signal and is the SIM for the number you entered, then send the prompt again.",
+  },
+  CANCELLED: {
+    title: "The M-Pesa prompt was cancelled.",
+    detail: "Nothing was charged. Send the prompt again when you are ready, or use a different number.",
+  },
+  NO_RESPONSE: {
+    title: "The M-Pesa PIN was not entered in time.",
+    detail: "Nothing was charged. Send the prompt again and enter your PIN when it appears.",
+  },
+  INSUFFICIENT_FUNDS: {
+    title: "There is not enough money in that M-Pesa account.",
+    detail: "Nothing was charged. Top up, or pay from a different number.",
+  },
+  WRONG_PIN: {
+    title: "M-Pesa did not accept the PIN.",
+    detail: "Nothing was charged. Send the prompt again and enter your PIN carefully.",
+  },
+  FAILED: {
+    title: "M-Pesa could not complete the payment.",
+    detail: "Nothing was charged. Send the prompt again, or use a different number.",
+  },
+};
 
 interface CheckoutModalProps {
   package?: HotspotPackage;
@@ -45,6 +73,7 @@ export default function CheckoutModal({ package: pkg, pendingPurchase: initialPe
   const [purchase, setPurchase] = useState<PendingHotspotPurchase | null>(initialPendingPurchase ?? null);
   const [status, setStatus] = useState<HotspotVoucherStatusResponse | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [outcome, setOutcome] = useState<HotspotPaymentOutcome | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const pollingRef = useRef(false);
   const failedChecksRef = useRef(0);
@@ -86,6 +115,14 @@ export default function CheckoutModal({ package: pkg, pendingPurchase: initialPe
         window.sessionStorage.removeItem(PENDING_HOTSPOT_PURCHASE_KEY);
         onPendingPurchase(null);
         setView("active");
+      } else if (result.data.paymentOutcome) {
+        // M-Pesa has answered and the payment did not happen. The wait is over: say why,
+        // and forget this attempt so the customer can send the prompt again.
+        stopPolling();
+        window.sessionStorage.removeItem(PENDING_HOTSPOT_PURCHASE_KEY);
+        onPendingPurchase(null);
+        setOutcome(result.data.paymentOutcome);
+        setView("notPaid");
       } else if (result.data.sessionStatus === "FAILED") {
         stopPolling();
         setView("failed");
@@ -137,6 +174,11 @@ try {
   };
 
   const retryStatus = () => { failedChecksRef.current = 0; setNotice(null); setView("pending"); };
+  /** Back to the form, to pay from another number (or the same one). */
+  const changeNumber = () => { stopPolling(); setPurchase(null); setStatus(null); setOutcome(null); setNotice(null); failedChecksRef.current = 0; setView("checkout"); };
+  /** A fresh M-Pesa prompt to the same number. Only possible while the package and number are still on screen. */
+  const canResend = Boolean(pkg && hasUsableMac && phoneNumber.trim());
+  const resendPrompt = () => { setOutcome(null); setStatus(null); void handleConfirm(); };
   const reference = purchase?.sessionId ?? status?.sessionId;
   const canClose = !isProcessing;
 
@@ -154,10 +196,11 @@ try {
         </>}
         {view === "pending" && <div className="space-y-3 text-center"><Loader2 className="w-8 h-8 animate-spin text-primary mx-auto" /><p className="font-medium">Enter your M-Pesa PIN when prompted.</p><p className="text-sm text-muted-foreground">We’ll connect this device as soon as payment is confirmed.</p></div>}
         {view === "active" && <div className="space-y-3 text-center"><CheckCircle2 className="w-10 h-10 text-green-600 mx-auto" /><p className="font-medium">Your hotspot session is active.</p>{status?.voucherCode && <p className="text-sm">Voucher: <span className="font-mono">{status.voucherCode}</span></p>}{readableExpiry(status) && <p className="text-sm text-muted-foreground">Expires: {readableExpiry(status)}</p>}{status?.minutesRemaining !== undefined && <p className="text-sm text-muted-foreground">{status.minutesRemaining} minutes remaining</p>}</div>}
+        {view === "notPaid" && outcome && <div className="space-y-2 text-center" role="alert"><XCircle className="w-9 h-9 text-destructive mx-auto" /><p className="font-medium">{NOT_PAID_MESSAGE[outcome].title}</p><p className="text-sm text-muted-foreground">{NOT_PAID_MESSAGE[outcome].detail}</p></div>}
         {(view === "failed" || view === "unavailable") && <div className="space-y-3"><p role="alert" className="text-sm">{notice}</p>{reference !== undefined && <p className="text-xs text-muted-foreground">Session reference: <span className="font-mono">{reference}</span></p>}</div>}
       </div>
       <div className="flex gap-2 p-4 border-t border-border">
-        {view === "checkout" ? <><Button onClick={onClose} disabled={!canClose} variant="secondary" className="flex-1">Cancel</Button><Button onClick={handleConfirm} disabled={isProcessing || !phoneNumber.trim() || !hasUsableMac} className="flex-1">{isProcessing && <Loader2 className="w-4 h-4 animate-spin" />}{isProcessing ? "Processing..." : "Pay with M-Pesa"}</Button></> : view === "active" ? <Button onClick={onClose} className="w-full">Done</Button> : <><Button onClick={onClose} variant="secondary" className="flex-1">Close</Button>{(view === "failed" || view === "unavailable") && <Button onClick={retryStatus} className="flex-1"><RefreshCw className="w-4 h-4" />Check status</Button>}</>}
+        {view === "checkout" ? <><Button onClick={onClose} disabled={!canClose} variant="secondary" className="flex-1">Cancel</Button><Button onClick={handleConfirm} disabled={isProcessing || !phoneNumber.trim() || !hasUsableMac} className="flex-1">{isProcessing && <Loader2 className="w-4 h-4 animate-spin" />}{isProcessing ? "Processing..." : "Pay with M-Pesa"}</Button></> : view === "active" ? <Button onClick={onClose} className="w-full">Done</Button> : view === "notPaid" ? <>{pkg ? <Button onClick={changeNumber} disabled={isProcessing} variant="secondary" className="flex-1">Use a different number</Button> : <Button onClick={onClose} variant="secondary" className="flex-1">Close</Button>}{canResend && <Button onClick={resendPrompt} disabled={isProcessing} className="flex-1">{isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}Send the prompt again</Button>}</> : <><Button onClick={onClose} variant="secondary" className="flex-1">Close</Button>{(view === "failed" || view === "unavailable") && <Button onClick={retryStatus} className="flex-1"><RefreshCw className="w-4 h-4" />Check status</Button>}</>}
       </div>
     </div>
   </div>;
