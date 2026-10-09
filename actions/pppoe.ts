@@ -1,8 +1,9 @@
 "use server";
 
 /**
- * actions/pppoe.ts — PPPoE service actions for a customer who has a PPPoE
- * account: the package they are on, and the M-Pesa payment that renews it.
+ * actions/pppoe.ts — the company's PPPoE package catalogue, and the service
+ * actions for a customer who has a PPPoE account: the package they are on, and
+ * the M-Pesa payment that renews it.
  *
  * These go through the backend's subscription engine, which is also what the
  * expiry job and the M-Pesa callback act on: assigning a package or receiving a
@@ -20,10 +21,57 @@ export type PppoePackage = {
   durationDays: number | null;
   price: number | null;
   mikrotikRateLimit: string | null;
+  maxDevices?: number | null;
+  idleTimeoutSeconds?: number | null;
+  dataCapMb?: number | null;
+  loginTimeWindow?: string | null;
+  /** false once the package is withdrawn from sale; customers already on it keep it. */
+  isActive?: boolean;
+};
+
+/** Speeds are in Mbps. `mikrotikRateLimit` is what the router enforces, as upload/download. */
+export type PppoePackageInput = {
+  name: string;
+  uploadSpeed: number;
+  downloadSpeed: number;
+  durationDays: number;
+  price: number;
+  mikrotikRateLimit: string;
+  maxDevices?: number;
+  dataCapMb?: number;
 };
 
 export async function getPppoePackagesAction(): Promise<ApiResponse<PppoePackage[]>> {
   return apiFetch<PppoePackage[]>("/pppoe/packages", { auth: "required", cache: "no-store" });
+}
+
+export async function createPppoePackageAction(input: PppoePackageInput): Promise<ApiResponse<PppoePackage>> {
+  const res = await apiFetch<PppoePackage>("/pppoe/packages", {
+    method: "POST",
+    body: input,
+    auth: "required",
+    cache: "no-store",
+  });
+  if (res.success) revalidatePath("/portal/pppoe/packages");
+  return res;
+}
+
+/**
+ * Change a package, or withdraw it from sale with `isActive: false`. Customers
+ * already on it get a new speed or limit at their next renewal.
+ */
+export async function updatePppoePackageAction(
+  id: string,
+  changes: Partial<PppoePackageInput> & { isActive?: boolean }
+): Promise<ApiResponse<PppoePackage>> {
+  const res = await apiFetch<PppoePackage>(`/pppoe/packages/${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    body: changes,
+    auth: "required",
+    cache: "no-store",
+  });
+  if (res.success) revalidatePath("/portal/pppoe/packages");
+  return res;
 }
 
 function refreshCustomerLists() {

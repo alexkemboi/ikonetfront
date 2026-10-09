@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
@@ -80,7 +81,8 @@ function ServiceForm({ request, onClose }: { request: PppoeServiceRequest; onClo
         setPackages([]);
         return;
       }
-      const list = res.data ?? [];
+      // a withdrawn package is offered only to the customer who is already on it
+      const list = (res.data ?? []).filter((p) => p.isActive !== false || p.name === customer.packageName);
       setPackages(list);
       // Start from the customer's current package and its price.
       const current = list.find((p) => p.name === customer.packageName);
@@ -97,10 +99,17 @@ function ServiceForm({ request, onClose }: { request: PppoeServiceRequest; onClo
   const customerId = customer.customerId ?? "";
   const name = customer.fullName || customer.username;
   const amountValue = Number(amount);
+  // A payment renews the package the customer is on, and must cover its price.
+  const currentPrice = packages?.find((p) => p.name === customer.packageName)?.price ?? null;
+  const belowPrice = currentPrice != null && Number.isFinite(amountValue) && amountValue > 0 && amountValue < currentPrice;
   const valid =
     kind === "package"
       ? packageId !== ""
-      : PHONE.test(phone.trim()) && Number.isFinite(amountValue) && amountValue > 0;
+      : Boolean(customer.packageName) &&
+        PHONE.test(phone.trim()) &&
+        Number.isFinite(amountValue) &&
+        amountValue > 0 &&
+        !belowPrice;
 
   async function submit() {
     setSaving(true);
@@ -160,7 +169,13 @@ function ServiceForm({ request, onClose }: { request: PppoeServiceRequest; onClo
           {loadError ? (
             <p className="text-xs text-destructive">Packages could not be loaded: {loadError}</p>
           ) : packages.length === 0 ? (
-            <p className="text-xs text-destructive">This company has no PPPoE package yet. Create one first.</p>
+            <p className="text-xs text-destructive">
+              This company has no PPPoE package on sale.{" "}
+              <Link href="/portal/pppoe/packages" className="underline underline-offset-2">
+                Create one
+              </Link>{" "}
+              first.
+            </p>
           ) : (
             <p className="text-xs text-muted-foreground">
               Replaces the current package{customer.packageName ? ` (${customer.packageName})` : ""}.
@@ -171,7 +186,8 @@ function ServiceForm({ request, onClose }: { request: PppoeServiceRequest; onClo
         <div className="space-y-4">
           {!customer.packageName && (
             <p className="rounded-md border border-warning/30 bg-warning/5 p-2 text-xs text-foreground">
-              This customer has no package yet. Assign one first: a payment renews the package they are on.
+              This customer has no package yet. Assign one first: a payment renews the package they are on, so
+              no prompt can be sent until then.
             </p>
           )}
           <div className="space-y-1.5">
@@ -187,6 +203,15 @@ function ServiceForm({ request, onClose }: { request: PppoeServiceRequest; onClo
               onChange={(e) => setAmount(e.target.value)}
               placeholder="e.g. 2500"
             />
+            {belowPrice ? (
+              <p className="text-xs text-destructive">
+                {customer.packageName} costs KES {currentPrice}. The payment must cover it.
+              </p>
+            ) : currentPrice != null ? (
+              <p className="text-xs text-muted-foreground">
+                {customer.packageName} costs KES {currentPrice} for one period.
+              </p>
+            ) : null}
           </div>
         </div>
       )}
