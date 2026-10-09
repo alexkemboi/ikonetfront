@@ -84,7 +84,6 @@ export function CustomerProfileHeader({ customer }: CustomerProfileHeaderProps) 
  <CustomerActionButtons
  customerId={customer.userIdxno}
  isActive={customer.isActive}
- subscriptionId={customer.subscriberIdxno?.toString()}
  />
  </div>
  </CardContent>

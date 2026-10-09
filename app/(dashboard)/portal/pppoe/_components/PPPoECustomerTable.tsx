@@ -3,8 +3,9 @@
 import { PppoeServiceDialog, type PppoeServiceRequest } from "./PppoeServiceDialog";
 import { useCompanyScope } from "@/providers/CompanyScopeProvider";
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Plus } from "lucide-react";
+import { Boxes, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { Customer } from "@/lib/types/customer";
 import { toggleCustomerActiveStatus } from "@/actions/customer";
@@ -19,14 +20,19 @@ import { createPPPoEColumns } from "./columns";
 
 interface PPPoECustomerTableProps {
  customers: Customer[];
+ /** A customer just created: their package dialog opens straight away. */
+ assignUserIdxno?: number;
 }
 
-export function PPPoECustomerTable({ customers }: PPPoECustomerTableProps) {
+export function PPPoECustomerTable({ customers, assignUserIdxno }: PPPoECustomerTableProps) {
  const dispatch = useAppDispatch();
  const router = useRouter();
  const perms = usePermissions("/portal/pppoe");
  const { requireCompany } = useCompanyScope();
- const [serviceRequest, setServiceRequest] = useState<PppoeServiceRequest | null>(null);
+ const [serviceRequest, setServiceRequest] = useState<PppoeServiceRequest | null>(() => {
+ const created = customers.find((c) => c.userIdxno === assignUserIdxno && c.customerId);
+ return created ? { kind: "package", customer: created } : null;
+ });
 
  async function handleToggleActive(customer: Customer) {
  toast.loading(`Updating ${customer.fullName}…`);
@@ -51,6 +57,8 @@ const columns = useMemo(
 
  const activeCount = customers.filter((c) => c.isActive).length;
  const subActive = customers.filter((c) => c.isSubActive).length;
+ // a PPPoE account with no package yet cannot connect
+ const awaitingPackage = customers.filter((c) => c.customerId && !c.packageName);
 
  return (
  <>
@@ -74,15 +82,41 @@ const columns = useMemo(
         </Badge>
       </div>
     </div>
-    {perms.canCreate && (
-      <Button
-        onClick={() => requireCompany(() => router.push("/customers/new"))}
-        className="inline-flex items-center gap-2 rounded-xl bg-amber-500 px-5 py-2.5 text-black hover:bg-amber-400 transition shadow-lg shadow-amber-500/20 shrink-0"
-      >
-        <Plus className="h-4 w-4" /> Add Client
+    <div className="flex shrink-0 items-center gap-2">
+      <Button asChild variant="outline">
+        <Link href="/portal/pppoe/packages">
+          <Boxes className="h-4 w-4" /> Packages
+        </Link>
       </Button>
-    )}
+      {perms.canCreate && (
+        <Button
+          onClick={() => requireCompany(() => router.push("/customers/new"))}
+          className="inline-flex items-center gap-2 rounded-xl bg-amber-500 px-5 py-2.5 text-black hover:bg-amber-400 transition shadow-lg shadow-amber-500/20 shrink-0"
+        >
+          <Plus className="h-4 w-4" /> Add Client
+        </Button>
+      )}
+    </div>
   </div>
+
+  {awaitingPackage.length > 0 && (
+    <div className="flex flex-col gap-2 rounded-xl border border-warning/30 bg-warning/5 p-3 text-sm sm:flex-row sm:items-center sm:justify-between">
+      <p>
+        {awaitingPackage.length === 1
+          ? `${awaitingPackage[0].fullName || awaitingPackage[0].username} has no package yet and cannot connect.`
+          : `${awaitingPackage.length} clients have no package yet and cannot connect.`}
+      </p>
+      {perms.canEdit && (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setServiceRequest({ kind: "package", customer: awaitingPackage[0] })}
+        >
+          {awaitingPackage.length === 1 ? "Assign package" : "Assign the first one"}
+        </Button>
+      )}
+    </div>
+  )}
 
  {/* Table */}
  <DataTable
@@ -92,7 +126,14 @@ const columns = useMemo(
  />
  </div>
 
- <PppoeServiceDialog request={serviceRequest} onClose={() => setServiceRequest(null)} />
+ <PppoeServiceDialog
+ request={serviceRequest}
+ onClose={() => {
+ setServiceRequest(null);
+ // drop ?assign= so a reload does not reopen the dialog
+ if (assignUserIdxno) router.replace("/portal/pppoe");
+ }}
+ />
  <RenewSubscriptionSheet customers={customers} />
  <ChangePasswordSheet customers={customers} />
  </>

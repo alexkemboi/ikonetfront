@@ -25,7 +25,6 @@ import {
   RouterOnboardRequest,
   RouterHealthSnapshot,
   RouterCapacityResponse,
-  SubscriberProvisioningRequest,
   RouterResponse,
   RouterLiveInterface,
   RouterLiveSessions,
@@ -1097,33 +1096,6 @@ export const getStationLoad = async (
   } catch (error) {
     console.error(`getStationLoad Error for station ID ${stationId}:`, error);
     return [];
-  }
-};
-
-export const provisionSubscriber = async (
-  request: SubscriberProvisioningRequest
-): Promise<ApiResponse<void>> => {
-  try {
-    const headers = await getAuthHeaders();
-    const res = await fetch(`${BASE_URL}network/provisioning/pppoe`, {
-      method: "POST",
-      headers,
-      body: JSON.stringify(request),
-    });
-
-    const body = await res.json();
-    if (body.success) {
-      revalidateTag("network:regions", "max");
-    }
-    return body;
-  } catch (error: unknown) {
-    return {
-      status: 500,
-      success: false,
-      message: error instanceof Error ? error.message : "Failed to submit customer parameters to active terminal",
-      data: null as unknown as void,
-      timestamp: new Date().toISOString(),
-    };
   }
 };
 

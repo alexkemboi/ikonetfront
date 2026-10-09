@@ -241,14 +241,6 @@ export interface RouterCapacityResponse {
   healthStatus: 'HEALTHY' | 'WARNING' | 'CRITICAL';
 }
 
-export interface SubscriberProvisioningRequest {
-  customerId: string;
-  subscriptionId: string;
-  stationIdxno: number;
-  pppoeUsername: string;
-  pppoePassword?: string;
-}
-
 export interface RouterResponse {
   id: number;
   name: string;

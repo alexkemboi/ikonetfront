@@ -7,7 +7,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Check } from "lucide-react";
 import { toast } from "sonner";
 import { addCustomer } from "@/actions/customer";
-import { AddCustomerPayload } from "@/lib/types/customer";
+import { AddCustomerPayload, Customer } from "@/lib/types/customer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import BasicInfoStep from "./BasicInfoStep";
@@ -95,11 +95,13 @@ export default function MultiStepCustomerForm({ routers }: { routers: ServingRou
  });
  if (result.success) {
  toast.success("Customer created", {
- description: "Assign a package from PPPoE Clients to start their service.",
+ description: "Assign a package to start their service.",
  });
  resetForm();
  setCurrentStep(0);
- router.push("/portal/pppoe");
+ // the backend answers with the created customer: go straight to their package
+ const created = result.data as unknown as Partial<Customer> | null;
+ router.push(created?.userIdxno ? `/portal/pppoe?assign=${created.userIdxno}` : "/portal/pppoe");
  } else {
  toast.error(result.message || "Failed to create customer.");
  }
