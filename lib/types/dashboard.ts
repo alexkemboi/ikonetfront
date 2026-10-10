@@ -56,7 +56,8 @@ export interface DashboardOverviewData {
 
   // KPI Cards
   revenueToday: number;
-  revenueTodayChangePercent: number;
+  /** Today so far against yesterday up to the same time of day; null when yesterday had no revenue by then. */
+  revenueTodayChangePercent: number | null;
   mobileMoneyRevenueToday: number;
   /** Currently valid PPPoE subscriptions. */
   activeSubscriptionsCount: number;

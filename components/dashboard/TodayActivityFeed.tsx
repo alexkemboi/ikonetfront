@@ -16,7 +16,7 @@ export function TodayActivityFeed({ eventsCount, payments }: Props) {
  <div className="flex items-center justify-between border-b border-border pb-4">
  <div>
  <h2 className="text-lg font-normal text-foreground">Today</h2>
- <p className="text-xs text-muted-foreground">Payments &amp; signups · this shift</p>
+ <p className="text-xs text-muted-foreground">Payments received · since midnight</p>
  </div>
  <div className="flex items-center gap-2">
  <span className="inline-flex items-center gap-1.5 rounded-md bg-amber-500/15 px-2 py-0.5 text-[10px] font-sans tabular-nums font-bold tracking-wider text-amber-400 uppercase">
@@ -24,12 +24,15 @@ export function TodayActivityFeed({ eventsCount, payments }: Props) {
  LIVE
  </span>
  <span className="rounded-full bg-secondary px-2.5 py-0.5 font-sans tabular-nums text-xs font-semibold text-muted-foreground">
- {eventsCount} events
+ {eventsCount} {eventsCount === 1 ? "payment" : "payments"}
  </span>
  </div>
  </div>
 
  <div className="mt-4 divide-y divide-border">
+ {payments.length === 0 && (
+ <p className="py-6 text-center text-sm text-muted-foreground">No payments received yet today.</p>
+ )}
  {payments.map((payment) => {
  const accent = payment.amount >= 15 ? "bg-emerald-500" : "bg-amber-500";
  return (

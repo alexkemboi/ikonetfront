@@ -61,7 +61,7 @@ export default async function OverviewDashboardPage() {
  {/* 3. Primary KPI Metric Cards */}
  <OverviewKpiCards
  revenueToday={overview.revenueToday}
- revenueChangePercent={overview.revenueTodayChangePercent}
+ revenueChangePercent={overview.revenueTodayChangePercent ?? null}
  mobileMoneyToday={overview.mobileMoneyRevenueToday}
  activePppoeSubscriptions={overview.activeSubscriptionsCount}
  onlineCount={overview.onlineSubscribersCount}

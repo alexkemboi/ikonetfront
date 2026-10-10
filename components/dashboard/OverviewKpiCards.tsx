@@ -9,7 +9,8 @@ export interface OnlineBreakdown {
 
 interface Props {
  revenueToday: number;
- revenueChangePercent: number;
+ /** Today so far against yesterday up to the same time of day; null when there is nothing to compare with. */
+ revenueChangePercent: number | null;
  mobileMoneyToday: number;
  /** PPPoE (portal) subscriptions that are currently valid. */
  activePppoeSubscriptions: number;
@@ -57,9 +58,13 @@ export function OverviewKpiCards({
  </span>
  </div>
  <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
+ {revenueChangePercent === null ? (
+ <span>No sales by this time yesterday</span>
+ ) : (
  <span className={revenueChangePercent >= 0 ? "text-emerald-400" : "text-rose-400"}>
- {revenueChangePercent >= 0 ? `+${revenueChangePercent.toLocaleString("en-US", { maximumFractionDigits: 1 })}%` : `${revenueChangePercent.toLocaleString("en-US", { maximumFractionDigits: 1 })}%`} · since midnight
+ {revenueChangePercent >= 0 ? "+" : ""}{revenueChangePercent.toLocaleString("en-US", { maximumFractionDigits: 1 })}% · vs same time yesterday
  </span>
+ )}
  </div>
  <div className="mt-3 rounded-lg bg-muted px-2.5 py-1.5 text-[11px] font-sans tabular-nums text-muted-foreground">
  Mobile money: {formatKsh(mobileMoneyToday)}
