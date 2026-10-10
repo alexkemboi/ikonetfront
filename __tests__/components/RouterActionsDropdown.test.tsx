@@ -405,4 +405,34 @@ describe("RouterActionsDropdown", () => {
     });
     vi.restoreAllMocks();
   });
+
+  it("keeps the table row menu short and links to the router page", async () => {
+    const user = userEvent.setup();
+    render(<RouterActionsDropdown router={router} variant="row" />);
+    await user.click(screen.getByRole("button", { name: /router actions/i }));
+
+    expect(screen.getByRole("menuitem", { name: /open router page/i })).toHaveAttribute("href", "/network/routers/7");
+    expect(screen.getByText("Open in WinBox")).toBeInTheDocument();
+    expect(screen.getByText("Reboot Device")).toBeInTheDocument();
+    expect(screen.getByText("Delete Router")).toBeInTheDocument();
+    for (const moved of ["Live Hardware Vitals", "Sync Router Time", "Sync Hotspot Files", "Reprovision Router",
+      "Regenerate WinBox Port", "Refresh Telemetry", "Compensate Subscribers", "Diagnose Health"]) {
+      expect(screen.queryByText(moved)).not.toBeInTheDocument();
+    }
+  });
+
+  it("shows Diagnose and Reprovision as buttons on the router page", async () => {
+    const user = userEvent.setup();
+    render(<RouterActionsDropdown router={router} variant="page" />);
+
+    await user.click(screen.getByRole("button", { name: /^diagnose$/i }));
+    await waitFor(() =>
+      expect(mockExecute).toHaveBeenCalledWith(7, { action: "DIAGNOSE" }, undefined, "/network-routers/7/action")
+    );
+
+    await user.click(screen.getByRole("button", { name: /router actions/i }));
+    expect(screen.getByText("Sync Hotspot Files")).toBeInTheDocument();
+    expect(screen.queryByText("Live Hardware Vitals")).not.toBeInTheDocument();
+    expect(screen.queryByText("Reprovision Router")).not.toBeInTheDocument();
+  });
 });

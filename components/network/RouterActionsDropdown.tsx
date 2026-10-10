@@ -21,6 +21,7 @@ import {
   Gift,
   Pencil,
   Download,
+  LayoutDashboard,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -76,6 +77,15 @@ export interface RouterActionsRow {
 
 type Tab = "vitals" | "interfaces" | "sessions";
 
+/**
+ * - "full": every command (default).
+ * - "row": the routers table — open the router page, WinBox, web console, reboot, delete.
+ *   Everything else lives on the router page.
+ * - "page": the router page header — Diagnose and Reprovision as buttons next to the menu;
+ *   the telemetry drawer shortcuts are left out because the page shows the same tabs.
+ */
+export type RouterActionsVariant = "full" | "row" | "page";
+
 const MENU_WIDTH = 252; // px; keeps right-edge alignment consistent
 
 /**
@@ -96,9 +106,13 @@ const MENU_WIDTH = 252; // px; keeps right-edge alignment consistent
  */
 export function RouterActionsDropdown({
   router,
+  variant = "full",
 }: {
   router: RouterActionsRow;
+  variant?: RouterActionsVariant;
 }) {
+  const isRow = variant === "row";
+  const isPage = variant === "page";
   const routerNav = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
   const [coords, setCoords] = useState<{
@@ -301,7 +315,10 @@ export function RouterActionsDropdown({
         setDrawerTab(null);
         // The routers page is a force-dynamic Server Component — a full
         // refresh re-fetches the inventory (no client callback needed).
-        window.setTimeout(() => window.location.reload(), 450);
+        window.setTimeout(() => {
+          if (isPage) window.location.assign("/network/routers");
+          else window.location.reload();
+        }, 450);
       } else {
         toast.error(res.message || `Failed to delete ${router.name}.`);
         closeMenu();
@@ -403,6 +420,18 @@ export function RouterActionsDropdown({
       }`}
       onClick={(event) => event.stopPropagation()}
     >
+      {isRow && hasRouterRecord && (
+        <a
+          role="menuitem"
+          href={`/network/routers/${actionRouterId}`}
+          className="flex items-center w-full px-4 py-2.5 hover:bg-muted hover:text-foreground gap-2.5 transition text-left font-medium"
+        >
+          <LayoutDashboard className="h-4 w-4 text-primary" />
+          Open router page
+        </a>
+      )}
+
+      {variant === "full" && (<>
       <button
         type="button"
         role="menuitem"
@@ -448,7 +477,9 @@ export function RouterActionsDropdown({
       </button>
 
       <div className="h-px bg-border my-1" />
+      </>)}
 
+      {!isRow && (<>
       <button
         type="button"
         role="menuitem"
@@ -461,6 +492,7 @@ export function RouterActionsDropdown({
 
       <div className="h-px bg-border my-1" />
 
+      {!isPage && (
       <button
         type="button"
         role="menuitem"
@@ -471,6 +503,7 @@ export function RouterActionsDropdown({
         <Stethoscope className={`h-4 w-4 ${busyAction === "DIAGNOSE" ? "animate-pulse" : ""} text-cyan-500`} />
         Diagnose Health
       </button>
+      )}
 
       <button
         type="button"
@@ -494,6 +527,7 @@ export function RouterActionsDropdown({
         Sync Hotspot Files
       </button>
 
+      {!isPage && (
       <button
         type="button"
         role="menuitem"
@@ -504,10 +538,12 @@ export function RouterActionsDropdown({
         <RefreshCcw className={`h-4 w-4 ${busyAction === "REPROVISION" ? "animate-spin" : ""} text-teal-500`} />
         Reprovision Router
       </button>
+      )}
 
       <div className="h-px bg-border my-1" />
+      </>)}
 
-      {router.winboxTunnelAddress && (
+      {!isRow && router.winboxTunnelAddress && (
         <button
           type="button"
           role="menuitem"
@@ -535,7 +571,7 @@ export function RouterActionsDropdown({
         </a>
       )}
 
-      {hasNumericDevice && (
+      {!isRow && hasNumericDevice && (
         <a
           href={`/api/network-devices/${deviceId}/hotspot-login-page`}
           download="login.html"
@@ -561,7 +597,7 @@ export function RouterActionsDropdown({
         </a>
       )}
 
-      {hasNumericDevice && (
+      {!isRow && hasNumericDevice && (
         <button
           type="button"
           role="menuitem"
@@ -576,7 +612,7 @@ export function RouterActionsDropdown({
         </button>
       )}
 
-      {hasNumericDevice && (
+      {!isRow && hasNumericDevice && (
         <button
           type="button"
           role="menuitem"
@@ -589,6 +625,7 @@ export function RouterActionsDropdown({
         </button>
       )}
 
+      {!isRow && (
       <button
         type="button"
         role="menuitem"
@@ -599,6 +636,7 @@ export function RouterActionsDropdown({
         <RefreshCw className={`h-4 w-4 ${busyAction === "REFRESH" ? "animate-spin" : ""}`} />
         Refresh Telemetry
       </button>
+      )}
 
       <button
         type="button"
@@ -628,17 +666,55 @@ export function RouterActionsDropdown({
 
   return (
     <>
-      <button
-        ref={buttonRef}
-        type="button"
-        aria-label="Router actions"
-        aria-haspopup="menu"
-        aria-expanded={menuOpen}
-        onClick={toggleMenu}
-        className="p-1.5 text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted transition"
-      >
-        <MoreHorizontal className="h-4 w-4" />
-      </button>
+      {isPage ? (
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={!hasRouterAction || busyAction === "DIAGNOSE"}
+            onClick={() => void runAction("DIAGNOSE")}
+          >
+            <Stethoscope className={`h-4 w-4 ${busyAction === "DIAGNOSE" ? "animate-pulse" : ""}`} />
+            Diagnose
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={!hasRouterAction || busyAction === "REPROVISION"}
+            onClick={() => void runAction("REPROVISION")}
+          >
+            <RefreshCcw className={`h-4 w-4 ${busyAction === "REPROVISION" ? "animate-spin" : ""}`} />
+            Reprovision
+          </Button>
+          <Button
+            ref={buttonRef}
+            type="button"
+            variant="outline"
+            size="sm"
+            aria-label="Router actions"
+            aria-haspopup="menu"
+            aria-expanded={menuOpen}
+            onClick={toggleMenu}
+          >
+            <MoreHorizontal className="h-4 w-4" />
+            Actions
+          </Button>
+        </div>
+      ) : (
+        <button
+          ref={buttonRef}
+          type="button"
+          aria-label="Router actions"
+          aria-haspopup="menu"
+          aria-expanded={menuOpen}
+          onClick={toggleMenu}
+          className="p-1.5 text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted transition"
+        >
+          <MoreHorizontal className="h-4 w-4" />
+        </button>
+      )}
 
       {/* Portal into document.body — keeps the menu out of the table's DOM
           bounding box so opening it never distorts table layout/scrollbars. */}

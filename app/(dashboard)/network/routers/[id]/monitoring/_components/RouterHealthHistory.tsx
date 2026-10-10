@@ -6,6 +6,7 @@ import {
 } from "recharts";
 import { Activity, AlertTriangle, Cpu, Gauge, ShieldCheck, Timer } from "lucide-react";
 import { getRouterReachability, getRouterSeries } from "@/actions/network";
+import { getInvestorRouterReachability, getInvestorRouterSeries } from "@/actions/routerOperations";
 import type { RouterReachability, RouterSeries, RouterSeriesRange } from "@/lib/types/network";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { RouterOutages } from "@/components/network/RouterOutages";
@@ -45,8 +46,19 @@ const fullTime = (value: unknown) => new Date(String(value)).toLocaleString();
  * History behind the live tiles: bucketed charts for a chosen range, and the uptime
  * strip with outage incidents. Outages are recorded from the release that added them,
  * so earlier days show as "no data" rather than as up.
+ *
+ * With `investorDeviceId` the same charts load through the investor's read-only endpoints
+ * and the outage list (which carries staff actions) is left out.
  */
-export function RouterHealthHistory({ routerId }: { routerId: number }) {
+export function RouterHealthHistory({
+  routerId,
+  investorDeviceId,
+  title = "History",
+}: {
+  routerId: number;
+  investorDeviceId?: number;
+  title?: string;
+}) {
   const [range, setRange] = useState<RouterSeriesRange>("24h");
   const [series, setSeries] = useState<RouterSeries | null>(null);
   const [seriesError, setSeriesError] = useState("");
@@ -58,7 +70,9 @@ export function RouterHealthHistory({ routerId }: { routerId: number }) {
   useEffect(() => {
     let cancelled = false;
     const load = async () => {
-      const [s, r] = await Promise.all([getRouterSeries(routerId, range), getRouterReachability(routerId, 7)]);
+      const [s, r] = investorDeviceId
+        ? await Promise.all([getInvestorRouterSeries(investorDeviceId, range), getInvestorRouterReachability(investorDeviceId, 7)])
+        : await Promise.all([getRouterSeries(routerId, range), getRouterReachability(routerId, 7)]);
       if (cancelled) return;
       setSeriesError(s.error ?? "");
       if (s.data) setSeries(s.data);
@@ -72,7 +86,7 @@ export function RouterHealthHistory({ routerId }: { routerId: number }) {
       cancelled = true;
       clearInterval(timer);
     };
-  }, [routerId, range]);
+  }, [routerId, investorDeviceId, range]);
 
   const points = series?.range === range ? series.points : [];
   const hasBandwidth = points.some((p) => p.wanRxBps != null);
@@ -95,7 +109,7 @@ export function RouterHealthHistory({ routerId }: { routerId: number }) {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-xl font-normal">History</h2>
+        <h2 className="text-xl font-normal">{title}</h2>
         <div role="tablist" aria-label="History range" className="inline-flex rounded-lg border border-border p-1">
           {RANGES.map((r) => (
             <button
@@ -254,7 +268,7 @@ export function RouterHealthHistory({ routerId }: { routerId: number }) {
         </CardContent>
       </Card>
 
-      <RouterOutages routerId={routerId} />
+      {!investorDeviceId && <RouterOutages routerId={routerId} />}
     </div>
   );
 }

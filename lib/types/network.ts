@@ -259,3 +259,152 @@ export interface RouterResponse {
   monitoringEnabled?: boolean;
   createdAt?: string;
 }
+// ── Router operations page (`/network/routers/{id}`) ──
+
+/** `GET /network/routers/{id}/overview` — figures read from the database, no router call. */
+export interface RouterOverview {
+  router: {
+    routerId: number;
+    /** network_device.id: the id revenue, tunnels and the login page key on. */
+    deviceId: number | null;
+    name: string;
+    model: string | null;
+    routerOsVersion: string | null;
+    /** Absent in the investor view. */
+    ipAddress?: string | null;
+    vpnIp?: string | null;
+    uptime: string | null;
+    /** Answered within the last 3 minutes. */
+    online: boolean;
+    lastSeenAt: string | null;
+    companyId: string | null;
+    stationName: string | null;
+    hotspotEnabled: boolean | null;
+    pppoeEnabled: boolean | null;
+  };
+  figures: {
+    activePppoe: number | null;
+    activeHotspot: number | null;
+    activeUsers: number | null;
+    /** Distinct logins seen on this router in the last `registeredUsersDays` days. */
+    registeredUsers: number;
+    registeredUsersDays: number;
+    dataThisMonthBytes: number;
+    revenueThisMonth: number;
+    revenueDaily: { day: string; amount: number }[];
+    uptime30dPct: number | null;
+    currency: string;
+  };
+  health: RouterHealthScore;
+}
+
+export interface RouterHealthScore {
+  score: number;
+  band: "GOOD" | "FAIR" | "POOR";
+  cpuPct: number | null;
+  memoryPct: number | null;
+  diskPct: number | null;
+  latencyMs: number | null;
+  packetLossPct: number | null;
+  uptime24hPct: number | null;
+  /** Why points were taken off; empty when the score is 100. */
+  deductions: { reading: string; value: string; points: number }[];
+}
+
+export interface RouterPayment {
+  occurredAt: string;
+  amount: number;
+  serviceType: string | null;
+  memo: string | null;
+  customerId: number | null;
+  packageId: number | null;
+}
+
+export interface RouterLogEntry {
+  time: string | null;
+  topics: string | null;
+  message: string | null;
+}
+
+export interface RouterScheduleItem {
+  name: string | null;
+  startDate: string | null;
+  startTime: string | null;
+  interval: string | null;
+  nextRun: string | null;
+  runCount: string | null;
+  disabled: boolean;
+  /** SYSADMIN only; null for everyone else. */
+  onEvent: string | null;
+}
+
+export interface RouterScriptItem {
+  name: string | null;
+  owner: string | null;
+  lastStarted: string | null;
+  runCount: string | null;
+  /** SYSADMIN only; null for everyone else. */
+  source: string | null;
+}
+
+export interface RouterBackupFile {
+  name: string;
+  sizeBytes: number | null;
+  createdAt: string | null;
+}
+
+export interface RouterIpService {
+  name: string | null;
+  port: string | null;
+  address: string | null;
+  disabled: boolean;
+}
+
+export type LoginPageStatus = "CURRENT" | "OUTDATED" | "MISSING" | "NO_HOTSPOT" | "UNKNOWN";
+
+export interface RouterHotspotSettings {
+  servers: {
+    name: string | null;
+    interface: string | null;
+    profile: string | null;
+    addressPool: string | null;
+    addressesPerMac: string | null;
+    disabled: boolean;
+  }[];
+  idleTimeout: string | null;
+  keepaliveTimeout: string | null;
+  sharedUsers: string | null;
+  idleTimeoutOptions: string[];
+  keepaliveTimeoutOptions: string[];
+  loginPage: {
+    status: LoginPageStatus;
+    htmlDirectory: string | null;
+    path?: string | null;
+    expectedBytes: number | null;
+    actualBytes?: number | null;
+  };
+}
+
+/** `GET /network/routers/{id}/connection` — never carries a secret. */
+export interface RouterConnectionInfo {
+  apiHost: string | null;
+  apiUsername: string | null;
+  apiPort: number | null;
+  hasApiPassword: boolean;
+  radiusServer: string | null;
+  hasRadiusSecret: boolean;
+  deviceId: number | null;
+  remoteAccessEnabled: boolean;
+  winboxEndpoint: string | null;
+  webConsoleUrl: string | null;
+  tunnelExpiresAt: string | null;
+  tunnelAuthorizedIp: string | null;
+  /** True for SYSADMIN: the reveal button is shown. */
+  canRevealSecrets: boolean;
+}
+
+export interface RouterSecrets {
+  apiUsername: string | null;
+  apiPassword: string | null;
+  radiusSecret: string | null;
+}

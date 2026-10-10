@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import Link from "next/link";
 import type { ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/components/shared/data-table";
 import { Badge } from "@/components/ui/badge";
@@ -28,8 +29,14 @@ export function InvestorRoutersTable({ routers }: Props) {
         id: "router",
         header: "Router",
         accessorFn: (r) => r.routerName || `Router ${r.routerId}`,
+        // routerId here is network_device.id, the id the investor router page takes
         cell: ({ row }) => (
-          <span className="font-medium">{row.original.routerName || `Router ${row.original.routerId}`}</span>
+          <Link
+            href={`/finance/investor/routers/${row.original.routerId}`}
+            className="font-medium hover:text-primary hover:underline underline-offset-2"
+          >
+            {row.original.routerName || `Router ${row.original.routerId}`}
+          </Link>
         ),
       },
       { accessorKey: "model", header: "Model", cell: ({ row }) => row.original.model || "—" },
