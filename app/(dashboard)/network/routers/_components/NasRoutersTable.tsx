@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import type { ColumnDef } from "@tanstack/react-table";
 import type { NasRouterItem } from "@/lib/types/provisioning";
 import { isRouterOnline } from "@/lib/utils/router-status";
@@ -43,12 +44,24 @@ export function NasRoutersTable({
       id: "router",
       header: "Router / Model",
       accessorFn: (r) => `${r.name} ${r.model} ${r.managementIp}`,
-      cell: ({ row }) => (
-        <div>
-          <div className="font-semibold text-foreground">{row.original.name}</div>
-          <div className="text-[11px] text-muted-foreground font-sans tabular-nums">{row.original.model}</div>
-        </div>
-      ),
+      cell: ({ row }) => {
+        const routerId = Number(row.original.routerId);
+        return (
+          <div>
+            {Number.isFinite(routerId) && routerId > 0 ? (
+              <Link
+                href={`/network/routers/${routerId}`}
+                className="font-semibold text-foreground hover:text-primary hover:underline underline-offset-2"
+              >
+                {row.original.name}
+              </Link>
+            ) : (
+              <div className="font-semibold text-foreground">{row.original.name}</div>
+            )}
+            <div className="text-[11px] text-muted-foreground font-sans tabular-nums">{row.original.model}</div>
+          </div>
+        );
+      },
     },
     {
       id: "ip",
@@ -162,6 +175,7 @@ export function NasRoutersTable({
         return (
           <div className="text-right">
             <RouterActionsDropdown
+              variant="row"
               router={{
                 id: r.id,
                 deviceId: r.deviceId,
