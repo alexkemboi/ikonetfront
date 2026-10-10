@@ -35,11 +35,17 @@ export function LiveTransactionTicker({ ticker, routerTraffic }: Props) {
  <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" />
  LIVE
  </span>
+ {ticker.timeAgo ? (
+ <>
  <span className="text-zinc-200">
  Payment of <strong className="font-semibold text-foreground">Ksh {ticker.amount}</strong> from{" "}
  <strong className="font-sans tabular-nums text-amber-400">{ticker.account}</strong>
  </span>
  <span className="text-xs text-muted-foreground">· {ticker.timeAgo}</span>
+ </>
+ ) : (
+ <span className="text-muted-foreground">No payments received yet today</span>
+ )}
  </div>
 
  {/* Router Health Status */}

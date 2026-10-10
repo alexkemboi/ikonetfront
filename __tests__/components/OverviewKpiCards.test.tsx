@@ -19,7 +19,7 @@ describe("OverviewKpiCards", () => {
 
     expect(screen.getByText("KES 861")).toBeInTheDocument();
     expect(screen.getByText("Mobile money: KES 861")).toBeInTheDocument();
-    expect(screen.getByText("+2,000% · since midnight")).toBeInTheDocument();
+    expect(screen.getByText("+2,000% · vs same time yesterday")).toBeInTheDocument();
     expect(screen.getByText("Balance unavailable")).toBeInTheDocument();
     expect(screen.getByText("34")).toBeInTheDocument();
     expect(screen.getByText("sessions connected · breakdown unavailable")).toBeInTheDocument();
@@ -29,7 +29,7 @@ describe("OverviewKpiCards", () => {
     const { container } = render(
       <OverviewKpiCards
         revenueToday={1685}
-        revenueChangePercent={-61.2}
+        revenueChangePercent={null}
         mobileMoneyToday={1685}
         activePppoeSubscriptions={1}
         onlineCount={41}
@@ -39,6 +39,7 @@ describe("OverviewKpiCards", () => {
       />
     );
 
+    expect(screen.getByText("No sales by this time yesterday")).toBeInTheDocument();
     expect(screen.getByText("ACTIVE PPPOE CLIENTS")).toBeInTheDocument();
     expect(screen.getByText("0 of 1 online now")).toBeInTheDocument();
     expect(screen.getByText("41")).toBeInTheDocument();
