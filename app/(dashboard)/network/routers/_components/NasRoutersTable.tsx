@@ -105,7 +105,9 @@ export function NasRoutersTable({
       id: "cpu",
       header: "CPU Load",
       cell: ({ row }) => {
-        const cpu = Number.isFinite(Number(row.original.cpuUsage)) ? Number(row.original.cpuUsage) : null;
+        // No reading is not 0%: Number(null) is 0. An offline router's last figure is stale, so it is not shown.
+        const raw = row.original.cpuUsage;
+        const cpu = isRouterOnline(row.original) && raw != null && Number.isFinite(Number(raw)) ? Number(raw) : null;
         return cpu != null ? (
           <div className="flex items-center gap-2">
             <span className="text-xs font-sans tabular-nums text-foreground">{cpu}%</span>
@@ -122,7 +124,9 @@ export function NasRoutersTable({
       id: "ram",
       header: "RAM Usage",
       cell: ({ row }) => {
-        const freeMemMB = row.original.freeMemory ? Math.round(row.original.freeMemory / (1024 * 1024)) : null;
+        const freeMemMB = isRouterOnline(row.original) && row.original.freeMemory
+          ? Math.round(row.original.freeMemory / (1024 * 1024))
+          : null;
         return <span className="text-xs font-sans tabular-nums text-foreground">{freeMemMB != null ? `${freeMemMB} MB free` : "—"}</span>;
       },
     },
@@ -134,7 +138,12 @@ export function NasRoutersTable({
     {
       id: "uptime",
       header: "Uptime",
-      cell: ({ row }) => <span className="text-xs text-muted-foreground font-sans tabular-nums">{row.original.uptime || row.original.lastOnlineText || "—"}</span>,
+      // an offline router is not "up": its last uptime reading would read as if it were still running
+      cell: ({ row }) => (
+        <span className="text-xs text-muted-foreground font-sans tabular-nums">
+          {isRouterOnline(row.original) ? row.original.uptime || row.original.lastOnlineText || "—" : "—"}
+        </span>
+      ),
     },
     {
       id: "tunnel",
