@@ -243,10 +243,10 @@ function EmailPreview({
         <div className="px-5 py-4">
           <div className="flex items-center gap-2 mb-4 pb-3 border-b border-border">
             <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-xs font-bold text-primary-foreground">
-              B
+              I
             </div>
             <div>
-              <p className="text-xs font-medium text-foreground">Beesmart Internet</p>
+              <p className="text-xs font-medium text-foreground">Ikonex Systems</p>
               <p className="text-[11px] text-muted-foreground">noreply@beesmart.co.ke</p>
             </div>
           </div>

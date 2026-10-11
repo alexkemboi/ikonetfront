@@ -88,7 +88,7 @@ return (
   <div className="flex h-screen overflow-hidden bg-background">
   <Sidebar
   navGroups={navGroups}
-  brandName="Beesmart"
+  brandName="Ikonex Systems"
   user={sidebarUser}
   />
 
@@ -108,7 +108,7 @@ return (
    : undefined
    }
    navGroups={navGroups}
-   brandName="Beesmart"
+  brandName="Ikonex Systems"
    sidebarUser={sidebarUser}
    />
 <CompanyScopeBanner />

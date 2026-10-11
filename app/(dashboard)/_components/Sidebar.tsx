@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect, createContext, useContext } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -365,7 +366,7 @@ export type SidebarProps = {
 // ── Sidebar inner content (shared between desktop aside + mobile Sheet) ──
 export function SidebarInner({
   navGroups,
-  brandName = "Beesmart",
+  brandName = "Ikonex Systems",
   user,
   isCollapsed = false,
   onToggleCollapse,
@@ -382,17 +383,22 @@ export function SidebarInner({
         {/* ── Brand ── */}
         <div className={cn(
           "flex h-[3.25rem] items-center border-b border-sidebar-border/80 shrink-0 transition-all duration-300",
-          isCollapsed ? "justify-center px-0" : "justify-between px-5"
+          isCollapsed ? "justify-center gap-1 px-0" : "justify-between px-5"
         )}>
-          {!isCollapsed ? (
-            <div className="flex items-center gap-3">
-              <div className="min-w-0">
-                <span className="block truncate text-base font-semibold tracking-tight text-sidebar-foreground">
-                  {brandName}
-                </span>
-              </div>
-            </div>
-          ) : null}
+          <div className={cn("flex min-w-0 items-center gap-2", isCollapsed && "justify-center")}>
+            <Image
+              src="/logo.png"
+              alt={isCollapsed ? brandName : ""}
+              width={32}
+              height={32}
+              className="h-8 w-8 shrink-0 rounded-md bg-white p-0.5 object-contain"
+            />
+            {!isCollapsed && (
+              <span className="block truncate text-sm font-semibold tracking-tight text-sidebar-foreground">
+                {brandName}
+              </span>
+            )}
+          </div>
 
           {isMobile ? (
             <button
@@ -409,7 +415,6 @@ export function SidebarInner({
               onClick={onToggleCollapse}
               className={cn(
                 "text-sidebar-foreground/60 hover:text-sidebar-foreground transition-colors p-1.5 rounded-lg hover:bg-sidebar-accent",
-                isCollapsed && "mx-auto"
               )}
               aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
             >

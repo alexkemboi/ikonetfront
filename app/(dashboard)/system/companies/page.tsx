@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { getPaymentReadiness, listCompanies } from "@/actions/companies";
 import CompaniesClient from "./_components/CompaniesClient";
 
-export const metadata = { title: "Companies — Beesmart" };
+export const metadata = { title: "Companies — Ikonex Systems" };
 
 export default async function CompaniesPage() {
   const session = await auth();

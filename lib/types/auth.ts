@@ -1,5 +1,5 @@
 /**
- * Shared types for the Beesmart API auth layer.
+ * Shared types for the Ikonex Systems API auth layer.
  * Used by server actions, lib/auth.ts, and NextAuth callbacks.
  */
 

@@ -4,7 +4,7 @@ import { resolveDashboardPathForRole } from "@/lib/utils/dashboardRouting";
 import { auth } from "@/lib/auth";
 import { AdminDashboardView } from "../_components/AdminDashboardView";
 
-export const metadata = { title: "Admin Dashboard — Beesmart Billing" };
+export const metadata = { title: "Admin Dashboard — Ikonex Systems" };
 export const dynamic = "force-dynamic";
 
 export default async function AdminDashboardPage() {

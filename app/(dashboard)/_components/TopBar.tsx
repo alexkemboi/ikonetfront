@@ -50,7 +50,7 @@ export default function TopBar({
  notificationCount = 0,
  user,
  navGroups = [],
- brandName = "Beesmart",
+ brandName = "Ikonex Systems",
  sidebarUser,
 }: TopBarProps) {
 const breadcrumbs = useBreadcrumb();

@@ -14,6 +14,10 @@ describe("pickForeground", () => {
     expect(pickForeground("#000000")).toBe("#fff");
   });
 
+  it("uses charcoal text on the Ikonex logo green", () => {
+    expect(pickForeground("#0FAC5B")).toBe("#0b0d12");
+  });
+
   it("normalizes 3-digit hex", () => {
     expect(pickForeground("#fff")).toBe("#0b0d12");
     expect(pickForeground("#103766")).toBe("#fff");
@@ -45,8 +49,8 @@ describe("brandCssVars", () => {
   it("maps brand colors to design-system vars with computed foregrounds", () => {
     const vars = brandCssVars(branding) as Record<string, string>;
     expect(vars["--primary"]).toBe("#3b82f6");
-    // blue #3b82f6 is mid-dark → white foreground on primary
-    expect(vars["--primary-foreground"]).toBe("#fff");
+    // Dark foreground wins on blue by WCAG contrast ratio.
+    expect(vars["--primary-foreground"]).toBe("#0b0d12");
     expect(vars["--sidebar"]).toBe("#18181b");
     expect(vars["--sidebar-foreground"]).toBe("#fff");
     expect(vars["--ring"]).toBe("#3b82f6");
@@ -61,7 +65,7 @@ describe("brandCssVars", () => {
       alias: "X",
       subdomain: "x",
     }) as Record<string, string>;
-    expect(vars["--primary"]).toBe("#103766");
-    expect(vars["--primary-foreground"]).toBe("#fff");
+    expect(vars["--primary"]).toBe("#0FAC5B");
+    expect(vars["--primary-foreground"]).toBe("#0b0d12");
   });
 });

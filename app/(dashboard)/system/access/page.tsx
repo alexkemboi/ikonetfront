@@ -7,7 +7,7 @@ import type { MenuNode } from "@/lib/nav";
 import type { ApiRoleUser, PermissionMap } from "@/lib/types/roles";
 import { redirect } from "next/navigation";
 
-export const metadata = { title: "Roles & Permissions — Beesmart" };
+export const metadata = { title: "Roles & Permissions — Ikonex Systems" };
 
 // ── UI types ────────────────────────────────────────────────────────────
 

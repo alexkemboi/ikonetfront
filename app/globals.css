@@ -4,7 +4,7 @@
 @custom-variant dark (&:is(.dark *));
 
 /* ============================================================
-   Beesmart Billing System — Quiet Finance Design System
+  Ikonex Systems — Green and charcoal design system
    Primary Font : DM Sans (UI) — weight 800/300 contrast voice
    Technical Font: JetBrains Mono (router logs, MAC/IP, scripts only)
    ============================================================ */
@@ -18,17 +18,19 @@
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.2 0 0);
 
-  /* ── Brand: Navy Trust ── */
-  --primary: oklch(0.27 0.09 248);         /* #103766 – Navy Trust */
-  --primary-foreground: oklch(1 0 0);      /* white on navy */
+  /* ── Ikonex brand palette: sampled from Brand/logo_brand.jpg ── */
+  --brand-green: #0FAC5B;
+  --brand-charcoal: #222222;
+  --primary: var(--brand-green);
+  --primary-foreground: var(--brand-charcoal);
 
   /* ── Secondary & Muted ── */
   --secondary: oklch(0.965 0 0);
-  --secondary-foreground: oklch(0.27 0.09 248);
+  --secondary-foreground: #087A42;
   --muted: oklch(0.95 0 0);
   --muted-foreground: oklch(0.45 0 0);     /* ~#555 secondary text */
   --accent: oklch(0.95 0 0);
-  --accent-foreground: oklch(0.27 0.09 248);
+  --accent-foreground: #087A42;
 
   /* ── Semantic: Danger (Overdue / Suspended) ── */
   --destructive: oklch(0.63 0.26 29);      /* #FF0000 Alert Red */
@@ -36,8 +38,8 @@
 
   /* ── Borders & Inputs ── */
   --border: oklch(0.935 0 0);              /* #EEEEEE subtle borders */
-  --input: oklch(0.72 0.05 248);           /* navy-tinted hairline — Level 1 elevation */
-  --ring: oklch(0.27 0.09 248);            /* focus ring = Navy Trust */
+  --input: oklch(0.78 0.025 155);
+  --ring: var(--brand-green);
 
   /* ── Brand Semantics ── */
   --success: oklch(0.52 0.1 155);          /* #2E865F Growth Green */
@@ -51,21 +53,21 @@
   --radius: 0.375rem;                      /* 6px – canonical content radius */
 
   /* ── Charts ── */
-  --chart-1: oklch(0.27 0.09 248);         /* Navy */
-  --chart-2: oklch(0.52 0.1 155);          /* Green */
-  --chart-3: oklch(0.75 0.17 55);          /* Orange */
-  --chart-4: oklch(0.63 0.26 29);          /* Red */
-  --chart-5: oklch(0.6 0.06 248);          /* Light Navy */
+  --chart-1: var(--brand-green);
+  --chart-2: var(--brand-charcoal);
+  --chart-3: oklch(0.75 0.14 75);
+  --chart-4: oklch(0.63 0.2 29);
+  --chart-5: oklch(0.68 0.09 155);
 
   /* ── Sidebar ── */
-  --sidebar: oklch(0.27 0.09 248);         /* Navy sidebar background */
+  --sidebar: var(--brand-charcoal);
   --sidebar-foreground: oklch(1 0 0);
-  --sidebar-primary: oklch(1 0 0);
-  --sidebar-primary-foreground: oklch(0.27 0.09 248);
-  --sidebar-accent: oklch(0.32 0.09 248);  /* slightly lighter navy */
+  --sidebar-primary: var(--brand-green);
+  --sidebar-primary-foreground: var(--brand-charcoal);
+  --sidebar-accent: #303733;
   --sidebar-accent-foreground: oklch(1 0 0);
-  --sidebar-border: oklch(0.32 0.09 248);
-  --sidebar-ring: oklch(0.5 0.09 248);
+  --sidebar-border: #343B37;
+  --sidebar-ring: var(--brand-green);
 }
 
 .dark {
@@ -75,38 +77,38 @@
   --card-foreground: oklch(0.94 0 0);
   --popover: oklch(0.22 0 0);
   --popover-foreground: oklch(0.94 0 0);
-  --primary: oklch(0.65 0.16 153);
-  --primary-foreground: oklch(0.13 0.02 153);
+  --primary: var(--brand-green);
+  --primary-foreground: #17221B;
   --secondary: oklch(0.25 0 0);
-  --secondary-foreground: oklch(0.94 0 0);
+  --secondary-foreground: #C5EBD2;
   --muted: oklch(0.25 0 0);
   --muted-foreground: oklch(0.7 0 0);
-  --accent: oklch(0.28 0 0);
-  --accent-foreground: oklch(0.94 0 0);
+  --accent: #1B2A21;
+  --accent-foreground: #C5EBD2;
   --destructive: oklch(0.63 0.26 29);
   --destructive-foreground: oklch(1 0 0);
   --border: oklch(0.31 0 0);
-  --input: oklch(0.38 0 0);
-  --ring: oklch(0.65 0.16 153);
+  --input: #3B4840;
+  --ring: var(--brand-green);
   --success: oklch(0.68 0.14 153);
   --success-foreground: oklch(1 0 0);
   --warning: oklch(0.75 0.17 55);
   --warning-foreground: oklch(0.2 0 0);
   --danger: oklch(0.63 0.26 29);
   --danger-foreground: oklch(1 0 0);
-  --chart-1: oklch(0.65 0.16 153);
-  --chart-2: oklch(0.68 0.14 153);
-  --chart-3: oklch(0.75 0.17 55);
-  --chart-4: oklch(0.63 0.26 29);
-  --chart-5: oklch(0.7 0 0);
-  --sidebar: oklch(0.13 0 0);
+  --chart-1: var(--brand-green);
+  --chart-2: #A7B0AA;
+  --chart-3: oklch(0.78 0.14 75);
+  --chart-4: oklch(0.68 0.18 29);
+  --chart-5: #74C79A;
+  --sidebar: #171B18;
   --sidebar-foreground: oklch(0.94 0 0);
-  --sidebar-primary: oklch(0.65 0.16 153);
-  --sidebar-primary-foreground: oklch(0.13 0.02 153);
-  --sidebar-accent: oklch(0.22 0 0);
+  --sidebar-primary: var(--brand-green);
+  --sidebar-primary-foreground: #17221B;
+  --sidebar-accent: #242B27;
   --sidebar-accent-foreground: oklch(0.94 0 0);
-  --sidebar-border: oklch(0.25 0 0);
-  --sidebar-ring: oklch(0.65 0.16 153);
+  --sidebar-border: #303833;
+  --sidebar-ring: var(--brand-green);
 }
 
 @theme inline {
@@ -160,14 +162,14 @@
 }
 
 .dark .sidebar-panel {
-  --sidebar: oklch(0.17 0 0);
+  --sidebar: #171B18;
   --sidebar-foreground: oklch(0.94 0 0);
-  --sidebar-primary: oklch(0.94 0 0);
-  --sidebar-primary-foreground: oklch(0.17 0 0);
-  --sidebar-accent: oklch(0.25 0 0);
+  --sidebar-primary: var(--brand-green);
+  --sidebar-primary-foreground: #17221B;
+  --sidebar-accent: #242B27;
   --sidebar-accent-foreground: oklch(0.94 0 0);
-  --sidebar-border: oklch(0.28 0 0);
-  --sidebar-ring: oklch(0.55 0 0);
+  --sidebar-border: #303833;
+  --sidebar-ring: var(--brand-green);
   color-scheme: dark;
 }
 

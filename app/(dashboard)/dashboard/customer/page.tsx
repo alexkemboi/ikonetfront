@@ -4,7 +4,7 @@ import { resolveDashboardPathForRole } from "@/lib/utils/dashboardRouting";
 import { getCustomerById } from "@/actions/customer";
 import { CustomerDashboardShell } from "./_components/CustomerDashboardShell";
 
-export const metadata = { title: "Customer Dashboard — Beesmart Billing" };
+export const metadata = { title: "Customer Dashboard — Ikonex Systems" };
 
 export default async function CustomerDashboardPage() {
  const session = await auth();

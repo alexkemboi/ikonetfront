@@ -2,7 +2,7 @@ import { getPermissionForRoute } from "@/lib/data/nav";
 import { redirect } from "next/navigation";
 import ExpenseSummaryView from "../../_components/ExpenseSummaryView";
 
-export const metadata = { title: "Expense Summary — Beesmart Billing" };
+export const metadata = { title: "Expense Summary — Ikonex Systems" };
 
 export default async function SummaryPage() {
   const pagePerms = await getPermissionForRoute("/finance/expenses");

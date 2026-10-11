@@ -2,7 +2,7 @@ import { getPermissionForRoute } from "@/lib/data/nav";
 import { redirect } from "next/navigation";
 import StatementExplorer from "../_components/StatementExplorer";
 
-export const metadata = { title: "Customer Statements — Beesmart Billing" };
+export const metadata = { title: "Customer Statements — Ikonex Systems" };
 
 export default async function StatementsPage() {
   // TODO(tenancy choice 14): a finance manager (03) must be able to view statements.

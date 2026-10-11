@@ -53,7 +53,7 @@ export default function SignOutCard({ forceSignOut = false }: { forceSignOut?: b
  </h1>
  <p className="text-sm text-muted-foreground leading-relaxed">
  Are you sure you want to sign out of{" "}
- <span className="font-medium text-foreground">Beesmart</span>?
+ <span className="font-medium text-foreground">Ikonex Systems</span>?
  You&apos;ll need to sign in again to access your dashboard.
  </p>
  </div>
@@ -87,7 +87,7 @@ export default function SignOutCard({ forceSignOut = false }: { forceSignOut?: b
 
  {/* Footer */}
  <p className="text-center text-xs text-white/30 mt-6">
- © {new Date().getFullYear()} Beesmart. All rights reserved.
+ © {new Date().getFullYear()} Ikonex Systems. All rights reserved.
  </p>
  </div>
  );

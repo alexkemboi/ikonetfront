@@ -5,7 +5,7 @@ import { auth } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
-export const metadata = { title: "No access — Beesmart" };
+export const metadata = { title: "No access — Ikonex Systems" };
 
 /**
  * Unguarded terminal page for the fail-closed nav.

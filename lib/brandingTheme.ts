@@ -1,14 +1,13 @@
 import type { TenantBranding } from "@/lib/types/company";
 
-/** Default brand tokens when no tenant branding resolves (Beesmart navy). */
+/** Default brand tokens when no tenant branding resolves (Ikonex green and charcoal). */
 export const DEFAULT_BRAND_COLORS = {
-  primary: "#103766",
-  secondary: "#18181b",
+  primary: "#0FAC5B",
+  secondary: "#222222",
 } as const;
 
 /**
- * Pick a readable foreground (white or dark) for a hex background using
- * perceived luminance (WCAG-inspired, sRGB weights).
+ * Pick whichever of white or charcoal gives stronger WCAG contrast on a hex background.
  */
 export function pickForeground(hex: string): "#fff" | "#0b0d12" {
   const normalized = (hex ?? "").trim().replace(/^#/, "");
@@ -21,12 +20,20 @@ export function pickForeground(hex: string): "#fff" | "#0b0d12" {
       : normalized;
   if (!/^[0-9a-fA-F]{6}$/.test(full)) return "#0b0d12";
 
-  const r = parseInt(full.slice(0, 2), 16);
-  const g = parseInt(full.slice(2, 4), 16);
-  const b = parseInt(full.slice(4, 6), 16);
-  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-  // Above ~0.55 perceived brightness the surface is light → dark text wins.
-  return luminance > 0.55 ? "#0b0d12" : "#fff";
+  const toLinear = (channel: number) => {
+    const normalized = channel / 255;
+    return normalized <= 0.04045
+      ? normalized / 12.92
+      : ((normalized + 0.055) / 1.055) ** 2.4;
+  };
+  const red = toLinear(parseInt(full.slice(0, 2), 16));
+  const green = toLinear(parseInt(full.slice(2, 4), 16));
+  const blue = toLinear(parseInt(full.slice(4, 6), 16));
+  const luminance = 0.2126 * red + 0.7152 * green + 0.0722 * blue;
+  const darkTextLuminance = 0.004;
+  const whiteContrast = 1.05 / (luminance + 0.05);
+  const darkContrast = (luminance + 0.05) / (darkTextLuminance + 0.05);
+  return darkContrast >= whiteContrast ? "#0b0d12" : "#fff";
 }
 
 /**

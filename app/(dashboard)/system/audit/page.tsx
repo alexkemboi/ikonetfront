@@ -8,7 +8,7 @@ import { isPlatformAdminRole } from "@/lib/types/roles";
 import { cn } from "@/lib/utils";
 import AuditLogsClient from "./_components/AuditLogsClient";
 
-export const metadata = { title: "Audit Logs — Beesmart" };
+export const metadata = { title: "Audit Logs — Ikonex Systems" };
 
 export default async function AuditLogsPage({
  searchParams,

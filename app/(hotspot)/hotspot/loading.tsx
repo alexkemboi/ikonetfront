@@ -1,4 +1,5 @@
-import { Phone, Wifi } from "lucide-react";
+import Image from "next/image";
+import { Phone } from "lucide-react";
 
 export default function HotspotLoading() {
  return (
@@ -6,12 +7,12 @@ export default function HotspotLoading() {
  <div className="min-h-screen animate-pulse flex flex-col px-5 sm:px-8 py-8">
  {/* Header */}
  <div className="mb-8 text-center space-y-2">
- <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-primary mb-1">
- <Wifi className="w-7 h-7 text-primary-foreground" />
+ <div className="inline-flex items-center justify-center w-14 h-14 rounded-xl bg-white p-1 shadow-sm mb-1">
+ <Image src="/logo.png" alt="Ikonex Systems" width={56} height={56} className="h-full w-full object-contain" />
  </div>
  <div>
  <h1 className="text-2xl font-normal tracking-normal text-foreground">
- BEESMARTBEDAK HOTSPOT
+ IKONEX SYSTEMS HOTSPOT
  </h1>
  <p className="text-xs text-muted-foreground mt-1">
  Premium High-Speed Internet Access
@@ -36,7 +37,7 @@ export default function HotspotLoading() {
  </div>
 
  <p className="mt-6 text-center text-xs text-muted-foreground">
- Powered by <span className="font-medium text-foreground">BEESMARTBEDAK</span>
+ Powered by <span className="font-medium text-foreground">Ikonex Systems</span>
  </p>
  </div>
  );

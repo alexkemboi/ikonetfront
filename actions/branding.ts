@@ -9,7 +9,7 @@ import type { TenantBranding } from "@/lib/types/company";
  * Uses `auth: "public"` so the request carries NO `X-Company-Context` header:
  * branding belongs to the subdomain/company-of-the-page, not the session.
  * Unknown tenants 404 → we return `null` and the shell renders the default
- * Beesmart theme.
+ * Ikonex Systems theme.
  */
 export async function getPublicBranding(opts?: {
   host?: string;

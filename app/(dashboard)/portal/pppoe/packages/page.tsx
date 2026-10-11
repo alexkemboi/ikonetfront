@@ -3,7 +3,7 @@ import { getPppoePackagesAction } from "@/actions/pppoe";
 import { getPermissionForRoute } from "@/lib/data/nav";
 import { PppoePackagesClient } from "./_components/PppoePackagesClient";
 
-export const metadata = { title: "PPPoE Packages — Beesmart Billing" };
+export const metadata = { title: "PPPoE Packages — Ikonex Systems" };
 
 export default async function PppoePackagesPage() {
   // PPPoE packages are part of the PPPoE Clients area and share its permissions.

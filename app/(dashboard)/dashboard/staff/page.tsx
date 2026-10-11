@@ -5,7 +5,7 @@ import { getCustomers } from "@/actions/customer";
 import { StaffDashboardShell } from "./_components/StaffDashboardShell";
 import { addDaysToDateOnly, todayEatIso } from "@/lib/dates";
 
-export const metadata = { title: "Staff Dashboard — Beesmart Billing" };
+export const metadata = { title: "Staff Dashboard — Ikonex Systems" };
 
 export default async function StaffDashboardPage() {
  const session = await auth();

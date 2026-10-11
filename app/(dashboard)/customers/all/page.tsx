@@ -13,7 +13,7 @@ import type { SessionProtocol } from "@/lib/types/sessions";
 export const dynamic = "force-dynamic";
 
 export const metadata = {
- title: "Customer Directory — Beesmart Billing",
+ title: "Customer Directory — Ikonex Systems",
  description: "Every customer of the company: registered accounts, hotspot customers and TV customers.",
 };
 

@@ -9,7 +9,7 @@ export default function NotFound() {
  const router = useRouter();
 
  return (
- <div className="min-h-screen bg-[#F5F5F5] flex items-center justify-center p-6">
+ <div className="min-h-screen bg-background flex items-center justify-center p-6">
  <div className="w-full max-w-lg text-center space-y-8">
 
  {/* Animated icon group */}
@@ -23,17 +23,17 @@ export default function NotFound() {
  <motion.div
  animate={{ scale: [1, 1.15, 1], opacity: [0.3, 0.1, 0.3] }}
  transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
- className="absolute h-40 w-40 rounded-full bg-[#103766]/10"
+ className="absolute h-40 w-40 rounded-full bg-primary/10"
  />
  {/* Inner ring */}
  <motion.div
  animate={{ scale: [1, 1.1, 1], opacity: [0.4, 0.2, 0.4] }}
  transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut", delay: 0.3 }}
- className="absolute h-28 w-28 rounded-full bg-[#103766]/15"
+ className="absolute h-28 w-28 rounded-full bg-primary/15"
  />
  {/* Icon container */}
- <div className="relative flex h-20 w-20 items-center justify-center rounded-2xl bg-[#103766] shadow-lg">
- <Construction className="h-10 w-10 text-foreground" />
+ <div className="relative flex h-20 w-20 items-center justify-center rounded-2xl bg-primary shadow-lg">
+ <Construction className="h-10 w-10 text-primary-foreground" />
  </div>
  </motion.div>
 
@@ -43,7 +43,7 @@ export default function NotFound() {
  animate={{ opacity: 1, y: 0 }}
  transition={{ duration: 0.45, delay: 0.15, ease: "easeOut" }}
  >
- <p className="text-8xl font-black tracking-tighter text-[#103766]/10 select-none leading-none">
+ <p className="text-8xl font-black tracking-tighter text-primary/10 select-none leading-none">
  404
  </p>
  </motion.div>
@@ -59,7 +59,7 @@ export default function NotFound() {
  Page Under Development
  </h1>
  <p className="text-muted-foreground text-sm leading-relaxed max-w-sm mx-auto">
- This section of Beesmart Billing is still being built.
+ This section of Ikonex Systems is still being built.
  Our team is working on it — check back soon.
  </p>
  </motion.div>
@@ -71,7 +71,7 @@ export default function NotFound() {
  transition={{ duration: 0.4, delay: 0.35, ease: "easeOut" }}
  className="flex items-center justify-center"
  >
- <div className="flex items-center gap-2 rounded-full border bg-white px-4 py-2 shadow-sm">
+ <div className="flex items-center gap-2 rounded-full border bg-card px-4 py-2 shadow-sm">
  <motion.span
  animate={{ opacity: [1, 0.3, 1] }}
  transition={{ duration: 1.5, repeat: Infinity }}
@@ -100,7 +100,7 @@ export default function NotFound() {
  </Button>
  <Button
  onClick={() => router.push("/dashboard")}
- className="w-full sm:w-auto bg-[#103766] hover:bg-[#1a4f8a]"
+ className="w-full sm:w-auto"
  >
  <Wifi className="h-4 w-4 mr-2" />
  Back to Dashboard
@@ -114,7 +114,7 @@ export default function NotFound() {
  transition={{ duration: 0.4, delay: 0.55 }}
  className="text-xs text-muted-foreground"
  >
- Beesmart Billing · Internet Management Platform
+ Ikonex Systems · Internet Management Platform
  </motion.p>
  </div>
  </div>

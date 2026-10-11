@@ -9,7 +9,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { isPlatformAdminRole, normalizeRole, ROLE_NAME } from "@/lib/types/roles";
 
-export const metadata = { title: "User Administration — Beesmart Billing" };
+export const metadata = { title: "User Administration — Ikonex Systems" };
 
 async function StaffUsersPage() {
  const permissions = await getCurrentUserPermissions();

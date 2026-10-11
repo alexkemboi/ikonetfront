@@ -9,7 +9,7 @@ import { redirect } from "next/navigation";
 export const dynamic = "force-dynamic";
 
 export const metadata = {
- title: "Internet Packages — Beesmart Billing",
+ title: "Internet Packages — Ikonex Systems",
 };
 
 export default async function InternetPackagesPage() {

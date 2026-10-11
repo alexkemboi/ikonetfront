@@ -49,7 +49,7 @@ export default function AuthLayout({
             overflow-hidden
             border-r
             border-white/30
-            bg-primary
+            bg-sidebar
             text-primary-foreground
             lg:flex
             lg:w-[44%]
@@ -156,7 +156,7 @@ export default function AuthLayout({
             >
               <Image
                 src="/logo.png"
-                alt="Beesmart Bedak ISP"
+                alt="Ikonex Systems"
                 width={160}
                 height={160}
                 priority
@@ -173,7 +173,7 @@ export default function AuthLayout({
                   text-white
                 "
               >
-                BEESMARTBEDAK
+                Ikonex Systems
               </h2>
 
               <p
@@ -186,7 +186,7 @@ export default function AuthLayout({
                   text-white/60
                 "
               >
-                ISP Management
+                Billing & Network Operations
               </p>
             </div>
           </div>
@@ -239,8 +239,7 @@ export default function AuthLayout({
                 text-white/65
               "
             >
-              Unified billing, PPPoE management, and hotspot provisioning
-              designed to give your ISP complete control from one platform.
+              Billing, connectivity, and network operations in one platform.
             </p>
 
             {/* =================================================
@@ -303,7 +302,7 @@ export default function AuthLayout({
               text-white/40
             "
           >
-            © {new Date().getFullYear()} Beesmart Bedak. All rights reserved.
+            © {new Date().getFullYear()} Ikonex Systems. All rights reserved.
           </p>
         </aside>
 
@@ -354,7 +353,7 @@ export default function AuthLayout({
               >
                 <Image
                   src="/logo.png"
-                  alt="Beesmart Bedak ISP"
+                  alt="Ikonex Systems"
                   width={140}
                   height={140}
                   priority
@@ -370,7 +369,7 @@ export default function AuthLayout({
                   tracking-tight
                 "
               >
-                BEESMARTBEDAK
+                Ikonex Systems
               </h2>
 
               <p
@@ -383,7 +382,7 @@ export default function AuthLayout({
                   text-muted-foreground
                 "
               >
-                ISP Management
+                Billing & Network Operations
               </p>
             </div>
 

@@ -17,7 +17,7 @@ import { feeDate, kes, STANDING_CLASS, STANDING_LABEL } from "@/components/finan
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Investor Portal | Beesmart Billing",
+  title: "Investor Portal | Ikonex Systems",
   description: "Partner revenue summary, maintenance charges, net payout and router attribution.",
 };
 

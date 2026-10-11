@@ -1,7 +1,7 @@
 import AlertsClient from "./_components/AlertsClient";
 import { getProvidersAction } from "@/actions/alerts";
 
-export const metadata = { title: "Alert Channels — Beesmart" };
+export const metadata = { title: "Alert Channels — Ikonex Systems" };
 
 export default async function AlertsPage() {
  const result = await getProvidersAction();

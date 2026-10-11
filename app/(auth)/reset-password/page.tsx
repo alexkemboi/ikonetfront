@@ -3,7 +3,7 @@ import ResetPasswordForm from "./_components/ResetPasswordForm";
 import { ArrowLeft } from "lucide-react";
 
 export const metadata = {
- title: "Set New Password — Beesmart Billing",
+ title: "Set New Password — Ikonex Systems",
 };
 
 export default async function ResetPasswordPage({

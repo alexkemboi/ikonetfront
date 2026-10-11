@@ -3,7 +3,7 @@ import LoginForm from "./_components/LoginForm";
 import { getPublicBranding } from "@/actions/branding";
 
 export const metadata = {
-    title: "BEESMARTBEDAK ISP",
+    title: "Ikonex Systems",
 };
 
 // NextAuth appends ?error=<code> on failed sign-in — map codes to user-friendly copy

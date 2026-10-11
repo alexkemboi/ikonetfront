@@ -3,7 +3,7 @@ import ForgotPasswordForm from "./_components/ForgotPasswordForm";
 import { ArrowLeft } from "lucide-react";
 
 export const metadata = {
- title: "Reset Password — Beesmart Billing",
+ title: "Reset Password — Ikonex Systems",
 };
 
 export default function ForgotPasswordPage() {

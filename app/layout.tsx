@@ -18,8 +18,9 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
- title: "Beesmart Billing",
- description: "Internet Billing & Network Management",
+ title: "Ikonex Systems",
+ description: "ISP billing and network management by Ikonex Systems.",
+ icons: { icon: "/logo.png" },
 };
 
 export default function RootLayout({

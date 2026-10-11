@@ -1,7 +1,7 @@
 import { getCustomers } from "@/actions/customer";
 import { PPPoECustomerTable } from "./_components/PPPoECustomerTable";
 
-export const metadata = { title: "PPPoE Clients — Beesmart Billing" };
+export const metadata = { title: "PPPoE Clients — Ikonex Systems" };
 
 export default async function PppoeCustomersPage({
   searchParams,

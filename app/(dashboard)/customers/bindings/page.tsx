@@ -6,7 +6,7 @@ import type { IpMappingResponse, IpPool } from "@/lib/types/api";
 import type { Customer } from "@/lib/types/customer";
 import type { HotspotPackage } from "@/lib/types/hotspot";
 
-export const metadata = { title: "Customer IP Mapping — Beesmart" };
+export const metadata = { title: "Customer IP Mapping — Ikonex Systems" };
 
 export type CustomerOption = {
  id: string;
