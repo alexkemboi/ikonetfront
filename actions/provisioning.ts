@@ -91,9 +91,29 @@ function enrichWithLatestSnapshot(row: NasRouterItem, snapshot: RouterHealthSnap
     freeMemory: snapshot.freeMemory ?? row.freeMemory,
     totalMemory: snapshot.totalMemory ?? row.totalMemory,
     uptime: snapshot.uptime ?? row.uptime,
-    activeSessions:
-      snapshot.activePppoeSessions + snapshot.activeHotspotSessions || row.activeSessions,
+    // the router's own count only when it is higher than the sessions the system counts
+    activeSessions: Math.max(
+      (snapshot.activePppoeSessions ?? 0) + (snapshot.activeHotspotSessions ?? 0),
+      row.activeSessions ?? 0
+    ),
   };
+}
+
+/** `GET /provisioning/nas-routers`: sessions online now per network_device id. Empty when unavailable. */
+async function getOnlineSessionsByDevice(): Promise<Map<number, number>> {
+  const byDevice = new Map<number, number>();
+  try {
+    const res = await apiFetch<{ rows?: Array<{ deviceId?: number | null; activeSessions?: number | null }> }>(
+      "/provisioning/nas-routers",
+      { auth: "required", cache: "no-store" }
+    );
+    for (const row of res.success ? res.data?.rows ?? [] : []) {
+      if (row.deviceId != null) byDevice.set(row.deviceId, row.activeSessions ?? 0);
+    }
+  } catch (error: unknown) {
+    console.warn("Live session counts per router are unavailable.", error);
+  }
+  return byDevice;
 }
 
 function deriveNasKpis(routers: NasRouterItem[]): NasRouterKpis {
@@ -141,12 +161,20 @@ export async function getNasRoutersData(): Promise<{
     // Enrich each row with the live RouterHealthSnapshot (CPU %, memory bytes,
     // active PPPoE+Hotspot sessions) so the table shows operational telemetry
     // at a glance. Best-effort: a failed snapshot simply leaves placeholders.
+    // Sessions online per router come from the backend's router list, which counts them
+    // as the dashboard and the live sessions page do. Router telemetry alone left this
+    // column at 0: a router whose count cannot be read reports none.
+    const sessionsByDevice = await getOnlineSessionsByDevice();
+
     const routers = await Promise.all(
       res.data.map(async (device) => {
         const routerIdxno = device.ipAddress
           ? routerByIp.get(device.ipAddress.toLowerCase())
           : undefined;
-        const base = mapDeviceToNasRouter(device, routerIdxno);
+        const base = {
+          ...mapDeviceToNasRouter(device, routerIdxno),
+          activeSessions: sessionsByDevice.get(device.id) ?? 0,
+        };
         // Telemetry snapshots store routerId = network_routers.idxno; without a
         // matching router row there is no telemetry for this device.
         if (!routerIdxno) return base;

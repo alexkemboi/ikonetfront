@@ -91,6 +91,9 @@ export function RouterOperationsView({
                   <span className={`h-1.5 w-1.5 rounded-full ${r.online ? "bg-emerald-500" : "bg-red-500"}`} />
                   {r.online ? "Online" : "Offline"}
                 </span>
+                {r.online && r.statusSource === "HEALTH_CHECK" && (
+                  <span className="text-xs text-muted-foreground">by the device health check</span>
+                )}
               </div>
               <div className="flex flex-wrap gap-x-5 gap-y-1 text-sm text-muted-foreground">
                 {r.vpnIp && <span className="inline-flex items-center gap-1.5"><Hash className="h-3.5 w-3.5" />{r.vpnIp}</span>}
@@ -101,6 +104,11 @@ export function RouterOperationsView({
               </div>
               {!r.online && r.lastSeenAt && (
                 <p className="text-xs text-muted-foreground">Last reading {new Date(r.lastSeenAt).toLocaleString()}</p>
+              )}
+              {r.telemetryNote && (
+                <p role="status" className="max-w-2xl rounded-md border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-xs text-muted-foreground">
+                  {r.telemetryNote} CPU, memory, uptime and the health score need these readings.
+                </p>
               )}
             </div>
             {!readOnly && canEdit && actionsRow && <RouterActionsDropdown router={actionsRow} variant="page" />}

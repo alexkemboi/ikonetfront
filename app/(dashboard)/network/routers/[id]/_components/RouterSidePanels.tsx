@@ -62,7 +62,7 @@ export function HealthCard({ health }: { health: RouterHealthScore }) {
     <Card className="border shadow-sm">
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle className="flex items-center gap-2 text-base"><Gauge className="h-4 w-4 text-primary" /> Health</CardTitle>
-        <span className="text-sm tabular-nums text-muted-foreground">{health.score} / 100</span>
+        <span className="text-sm tabular-nums text-muted-foreground">{health.score == null ? "No readings" : `${health.score} / 100`}</span>
       </CardHeader>
       <CardContent className="space-y-4">
         {meters.map(([label, pct]) => (

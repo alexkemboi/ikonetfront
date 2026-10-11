@@ -274,8 +274,12 @@ export interface RouterOverview {
     ipAddress?: string | null;
     vpnIp?: string | null;
     uptime: string | null;
-    /** Answered within the last 3 minutes. */
+    /** A telemetry reading in the last 3 minutes decides; with none, the device health check the routers list shows. */
     online: boolean;
+    /** Which check `online` comes from. Absent on backends older than this field. */
+    statusSource?: "TELEMETRY" | "HEALTH_CHECK" | "NONE";
+    /** Why there is no recent telemetry reading; null when there is one. */
+    telemetryNote?: string | null;
     lastSeenAt: string | null;
     companyId: string | null;
     stationName: string | null;
@@ -299,8 +303,9 @@ export interface RouterOverview {
 }
 
 export interface RouterHealthScore {
-  score: number;
-  band: "GOOD" | "FAIR" | "POOR";
+  /** null with band UNKNOWN: the router is online but has no recent readings to score. */
+  score: number | null;
+  band: "GOOD" | "FAIR" | "POOR" | "UNKNOWN";
   cpuPct: number | null;
   memoryPct: number | null;
   diskPct: number | null;

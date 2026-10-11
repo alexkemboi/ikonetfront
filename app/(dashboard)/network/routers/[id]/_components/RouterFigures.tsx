@@ -34,8 +34,8 @@ export function RouterFigures({ overview }: { overview: RouterOverview }) {
         label="Active users"
         note={
           figures.activeUsers == null
-            ? "no reading yet"
-            : `${figures.activePppoe ?? 0} PPPoE · ${figures.activeHotspot ?? 0} hotspot`
+            ? "not linked to a NAS device"
+            : `online now · ${figures.activePppoe ?? 0} PPPoE · ${figures.activeHotspot ?? 0} hotspot`
         }
       >
         {figures.activeUsers ?? "—"}
@@ -85,9 +85,14 @@ export function RouterFigures({ overview }: { overview: RouterOverview }) {
           "—"
         )}
       </Tile>
-      <Tile label="Health" note={<span className={BAND_TEXT[health.band]}>{health.band.toLowerCase()}</span>}>
-        {health.score}
-        <span className="text-sm font-normal text-muted-foreground"> / 100</span>
+      <Tile
+        label="Health"
+        note={
+          health.score == null ? "no readings to score" : <span className={BAND_TEXT[health.band]}>{health.band.toLowerCase()}</span>
+        }
+      >
+        {health.score ?? "—"}
+        {health.score != null && <span className="text-sm font-normal text-muted-foreground"> / 100</span>}
       </Tile>
     </div>
   );
