@@ -28,6 +28,31 @@ export type InternetPackage = {
   createdBy:       string;
   approvedBy:      string | null;
   isApproved:      boolean;
+  /** Owning company (code). Shown when a SYSADMIN views all companies. */
+  companyId?:      string | null;
+  /** ALL = sold on every router of the company; SELECTED = only on chosen routers. */
+  routerScope?:    "ALL" | "SELECTED";
+};
+
+// ── Where each package is sold (per router) ───────────────────────────────────
+export type PackageRouter = { id: number; name: string; location: string | null; online: boolean };
+
+export type PackageAvailability = {
+  idxno:           number;
+  packageName:     string;
+  packageCategory: string;
+  price:           number;
+  active:          boolean;
+  approved:        boolean;
+  routerScope:     "ALL" | "SELECTED";
+  /** Routers the package is switched on for; empty when the scope is ALL. */
+  routerIds:       number[];
+};
+
+export type CompanyPackageAvailability = {
+  companyCode: string;
+  routers:     PackageRouter[];
+  packages:    PackageAvailability[];
 };
 
 export type PackagePayload = {
@@ -195,4 +220,47 @@ export async function deactivatePackageAction(
   } catch {
     return { status: 500, success: false, message: "Network error. Please try again.", data: {} as InternetPackage, timestamp: "" };
   }
+}
+
+// ── Where each package is sold ────────────────────────────────────────────────
+/**
+ * Routers and packages of the selected company. Null when no company is selected
+ * (a SYSADMIN viewing all companies): availability is set per company.
+ */
+export async function getPackageAvailabilityAction(): Promise<CompanyPackageAvailability | null> {
+  const res = await apiFetch<CompanyPackageAvailability>("/system/packages/availability", {
+    auth: "required",
+    cache: "no-store",
+  });
+  return res.success && res.data ? res.data : null;
+}
+
+/** One switch of the grid: this package on this router, on or off. */
+export async function togglePackageRouterAction(
+  packageId: number,
+  routerId: number,
+  offered: boolean
+): Promise<{ success: boolean; message: string; data?: PackageAvailability }> {
+  const res = await apiFetch<PackageAvailability>(`/system/packages/${packageId}/routers/${routerId}`, {
+    method: "PUT",
+    auth: "required",
+    body: { offered },
+  });
+  if (!res.success) return { success: false, message: res.message || "The change was refused." };
+  REVALIDATE();
+  return { success: true, message: res.message || "Saved", data: res.data ?? undefined };
+}
+
+/** Sold on every router again (also routers added later). */
+export async function offerPackageOnAllRoutersAction(
+  packageId: number
+): Promise<{ success: boolean; message: string; data?: PackageAvailability }> {
+  const res = await apiFetch<PackageAvailability>(`/system/packages/${packageId}/routers`, {
+    method: "PUT",
+    auth: "required",
+    body: { scope: "ALL" },
+  });
+  if (!res.success) return { success: false, message: res.message || "The change was refused." };
+  REVALIDATE();
+  return { success: true, message: res.message || "Saved", data: res.data ?? undefined };
 }
