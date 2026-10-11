@@ -23,7 +23,11 @@ import {
  Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription,
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
-import type { InternetPackage, PackagePayload, PackageUpdatePayload } from "@/actions/packages";
+import type {
+ CompanyPackageAvailability, InternetPackage, PackageAvailability, PackagePayload, PackageUpdatePayload,
+} from "@/actions/packages";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import PackageRouterGrid, { soldOnLabel } from "./PackageRouterGrid";
 import {
  createPackageAction,
  updatePackageAction,
@@ -361,10 +365,21 @@ function PackageSheet({
 // ── Main client component ──────────────────────────────────────────────────────
 export default function PackagesClient({
  packages: initialPackages,
+ availability,
+ allCompanies = false,
 }: {
  packages: InternetPackage[];
+ /** Routers of the selected company and where each package is sold; null when no company is selected. */
+ availability?: CompanyPackageAvailability | null;
+ /** A SYSADMIN viewing every company: show which company each package belongs to. */
+ allCompanies?: boolean;
 }) {
  const [packages, setPackages] = useState<InternetPackage[]>(initialPackages);
+ // Where each package is sold, kept in step with the grid without a reload.
+ const [soldOn, setSoldOn] = useState<Record<number, PackageAvailability>>(
+ () => Object.fromEntries((availability?.packages ?? []).map((p) => [p.idxno, p]))
+ );
+ const routerCount = availability?.routers.length ?? 0;
  const [activeCategory, setActiveCategory] = useState("All");
  const [sheetOpen, setSheetOpen] = useState(false);
  const [editing, setEditing] = useState<InternetPackage | null>(null);
@@ -489,11 +504,42 @@ export default function PackagesClient({
  </span>
  ),
  },
+ ...(allCompanies
+ ? [{
+ accessorKey: "companyId",
+ header: "Company",
+ cell: ({ row }) => <span className="text-xs text-muted-foreground">{row.original.companyId ?? "—"}</span>,
+ }] as ColumnDef<InternetPackage>[]
+ : []),
  {
  accessorKey: "price",
  header: "Price",
  cell: ({ row }) => <p className="font-bold text-primary">KES {row.original.price}</p>,
  },
+ ...(availability
+ ? [{
+ id: "soldOn",
+ header: "Sold on",
+ cell: ({ row }) => {
+ const where = soldOn[row.original.idxno];
+ if (!where) return <span className="text-xs text-muted-foreground">All routers</span>;
+ return (
+ <span
+ className={cn(
+ "text-xs font-medium px-2 py-0.5 rounded-full",
+ where.routerScope === "ALL"
+ ? "bg-emerald-500/15 text-emerald-600"
+ : where.routerIds.length === 0
+ ? "bg-rose-500/15 text-rose-500"
+ : "bg-amber-500/15 text-amber-600"
+ )}
+ >
+ {soldOnLabel(where, routerCount)}
+ </span>
+ );
+ },
+ }] as ColumnDef<InternetPackage>[]
+ : []),
  {
  id: "validity",
  header: "Validity",
@@ -639,6 +685,13 @@ export default function PackagesClient({
  )}
  </div>
 
+ <Tabs defaultValue="packages" className="space-y-4">
+ <TabsList>
+ <TabsTrigger value="packages">Packages</TabsTrigger>
+ <TabsTrigger value="routers">Where they are sold</TabsTrigger>
+ </TabsList>
+
+ <TabsContent value="packages" className="space-y-6">
  {/* ── Grid / Empty state ── */}
  {filtered.length === 0 ? (
  <div className="flex flex-col items-center justify-center py-20 text-center gap-4">
@@ -680,6 +733,24 @@ export default function PackagesClient({
  }
  />
  )}
+
+ </TabsContent>
+
+ <TabsContent value="routers">
+ {availability ? (
+ <PackageRouterGrid
+ availability={{ ...availability, packages: availability.packages.map((p) => soldOn[p.idxno] ?? p) }}
+ canEdit={perms.canEdit}
+ onChanged={(pkg) => setSoldOn((prev) => ({ ...prev, [pkg.idxno]: pkg }))}
+ />
+ ) : (
+ <div className="rounded-2xl border border-border bg-card p-8 text-center text-sm text-muted-foreground">
+ Where a package is sold is set per company, router by router. Select a company in the top bar to choose
+ which packages each of its routers offers.
+ </div>
+ )}
+ </TabsContent>
+ </Tabs>
 
  {/* ── Sheet ── */}
  <PackageSheet
