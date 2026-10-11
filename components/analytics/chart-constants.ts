@@ -1,1 +1,0 @@
-export const CHART_MAX_VAL = 15000;
