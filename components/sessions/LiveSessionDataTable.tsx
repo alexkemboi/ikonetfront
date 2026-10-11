@@ -16,6 +16,7 @@ const TABS = [
  { key: "ALL", label: "All" },
  { key: "ONLINE", label: "Online" },
  { key: "LOST", label: "Lost contact" },
+ { key: "OFFLINE", label: "Offline" },
  { key: "NOT_CONNECTED", label: "Paid, not connected" },
  { key: "HOTSPOT", label: "Hotspot" },
  { key: "PPPOE", label: "PPPoE" },
@@ -29,6 +30,8 @@ function matchesTab(session: LiveSessionItem, tab: TabKey): boolean {
  return sessionState(session) === "ONLINE";
  case "LOST":
  return sessionState(session) === "LOST";
+ case "OFFLINE":
+ return sessionState(session) === "OFFLINE";
  case "NOT_CONNECTED":
  return sessionState(session) === "WAITING";
  case "HOTSPOT":
@@ -67,6 +70,7 @@ function agoText(iso?: string): string {
 const STATE_STYLE = {
  ONLINE: { label: "Online", badge: "bg-emerald-500/10 text-emerald-400", dot: "bg-emerald-400" },
  LOST: { label: "Lost contact", badge: "bg-rose-500/10 text-rose-400", dot: "bg-rose-400" },
+ OFFLINE: { label: "Offline", badge: "bg-slate-500/10 text-slate-400", dot: "bg-slate-400" },
  WAITING: { label: "Paid, not connected", badge: "bg-amber-500/10 text-amber-400", dot: "bg-amber-400" },
 } as const;
 
@@ -78,6 +82,8 @@ function StatusBadge({ session }: { session: LiveSessionItem }) {
  title={
  state === "LOST"
  ? `The router stopped reporting this session ${agoText(session.lastSeenAt)} — the router or the customer's device/CPE likely lost power or link.`
+ : state === "OFFLINE"
+ ? `This customer was connected and went offline ${agoText(session.offlineSince)}. The package is still valid: they are let back in when the device is used again.`
  : undefined
  }
  className={cn(
@@ -270,6 +276,8 @@ export function LiveSessionDataTable({
  ? `Online ${session.onlineDurationFormatted}`
  : sessionState(session) === "LOST"
  ? `Last heard ${agoText(session.lastSeenAt)}`
+ : sessionState(session) === "OFFLINE"
+ ? `Offline since ${agoText(session.offlineSince)}`
  : "Never connected"}
  </p>
  <p className="whitespace-nowrap text-[11px] text-muted-foreground">

@@ -11,12 +11,12 @@ export function LiveSessionHeaderCards({ kpis }: { kpis: LiveSessionKpis }) {
  color: "text-emerald-400",
  },
  {
- label: "PAID, NOT CONNECTED",
- value: kpis.paidNotConnected,
+ label: "PAID, NOT ONLINE",
+ value: kpis.offline + kpis.paidNotConnected,
  footer:
- kpis.paidNotConnected > 0
- ? "paid hotspot time with no device online"
- : "every paid customer is online",
+ kpis.offline + kpis.paidNotConnected === 0
+ ? "every paid customer is online"
+ : `${kpis.offline} went offline · ${kpis.paidNotConnected} never connected`,
  color: kpis.paidNotConnected > 0 ? "text-amber-400" : "text-foreground",
  },
  {

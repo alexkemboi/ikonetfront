@@ -38,22 +38,30 @@ export interface LiveSessionItem {
   minutesRemaining?: number | null;
   /** Last time the router reported the session; absent = never connected. */
   lastSeenAt?: string;
+  /** When the router reported a stop for a paid, unexpired purchase that is not connected now. */
+  offlineSince?: string;
 }
 
-/** online: router reporting now · lost: router stopped reporting (no Stop) · waiting: paid, never connected. */
-export type SessionState = "ONLINE" | "LOST" | "WAITING";
+/**
+ * online: router reporting now · lost: router stopped reporting (no Stop) · offline: was
+ * connected, the router reported a stop, the package is still valid · waiting: paid, never connected.
+ */
+export type SessionState = "ONLINE" | "LOST" | "OFFLINE" | "WAITING";
 
-export function sessionState(s: Pick<LiveSessionItem, "online" | "lastSeenAt">): SessionState {
+export function sessionState(s: Pick<LiveSessionItem, "online" | "lastSeenAt" | "offlineSince">): SessionState {
   if (s.online) return "ONLINE";
-  return s.lastSeenAt ? "LOST" : "WAITING";
+  if (s.lastSeenAt) return "LOST";
+  return s.offlineSince ? "OFFLINE" : "WAITING";
 }
 
 export interface LiveSessionKpis {
   currentlyConnected: number;
   pppoeCount: number;
   hotspotCount: number;
-  /** Hotspot customers with a paid, unexpired session who are not online now. */
+  /** Hotspot customers who paid and whom the router has never reported: they need help or compensation. */
   paidNotConnected: number;
+  /** Hotspot customers with a valid package who were connected and went offline; they can come back. */
+  offline: number;
   /** Sessions the router stopped reporting without a Stop (router/CPE lost power or link). */
   lostContact: number;
   downloadTrafficGb: number;
