@@ -299,3 +299,40 @@
     text-transform: uppercase;
   }
 }
+
+/* Analytics charts. One validated palette, stepped separately for each theme (both sets
+   pass colour-vision and contrast checks against their surface). Series colours follow
+   the thing they name, never its rank: slot 1 is always the current period / Hotspot /
+   mobile money. "Other" and the comparison period are neutral, never a fifth hue. */
+.analytics-viz {
+  --viz-1: #2a78d6;
+  --viz-2: #eb6834;
+  --viz-3: #1baf7a;
+  --viz-4: #eda100;
+  --viz-other: #a3a29b;
+  --viz-previous: #6f6e69;
+  --viz-grid: rgba(120, 120, 120, 0.16);
+  /* one hue, light to dark: more is darker */
+  --viz-heat-0: var(--muted);
+  --viz-heat-1: #cde2fb;
+  --viz-heat-2: #86b6ef;
+  --viz-heat-3: #3987e5;
+  --viz-heat-4: #1c5cab;
+  --viz-heat-5: #0d366b;
+}
+
+.dark .analytics-viz {
+  --viz-1: #3987e5;
+  --viz-2: #d95926;
+  --viz-3: #199e70;
+  --viz-4: #c98500;
+  --viz-other: #7d7c76;
+  --viz-previous: #a9a8a1;
+  --viz-grid: rgba(200, 200, 200, 0.12);
+  /* on a dark surface more is lighter */
+  --viz-heat-1: #104281;
+  --viz-heat-2: #1c5cab;
+  --viz-heat-3: #3987e5;
+  --viz-heat-4: #86b6ef;
+  --viz-heat-5: #cde2fb;
+}

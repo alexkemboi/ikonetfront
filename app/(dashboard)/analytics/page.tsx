@@ -1,66 +1,116 @@
-import { getPermissionForRoute } from "@/lib/data/nav";
-import { redirect } from "next/navigation";
-import React from "react";
+import { Suspense } from "react";
 import type { Metadata } from "next";
-import { getNetworkAnalyticsData } from "@/actions/analytics";
-import { AnalyticsKpiCards } from "@/components/analytics/AnalyticsKpiCards";
-import { PaymentsTrendChart } from "@/components/analytics/PaymentsTrendChart";
-import { PaymentsVsExpensesChart } from "@/components/analytics/PaymentsVsExpensesChart";
-import { RevenueMixDonuts } from "@/components/analytics/RevenueMixDonuts";
-import { TopRankingsList } from "@/components/analytics/TopRankingsList";
-import { RouterPerformanceTable } from "@/components/analytics/RouterPerformanceTable";
-import { AnalyticsExportButton } from "@/components/analytics/AnalyticsExportButton";
+import { redirect } from "next/navigation";
+import { Download } from "lucide-react";
+import { getAnalyticsRouterOptions } from "@/actions/analytics";
+import { AmountsVisibilityProvider } from "@/components/analytics/AmountsVisibility";
+import { AnalyticsFilterBar } from "@/components/analytics/AnalyticsFilterBar";
+import {
+  NetworkSection,
+  RevenueSection,
+  RoutersSection,
+  SubscribersSection,
+  SummarySection,
+  TargetsSection,
+} from "@/components/analytics/AnalyticsSections";
+import { BackToTop } from "@/components/analytics/BackToTop";
+import { SectionHeading, SectionSkeleton } from "@/components/analytics/PanelCard";
+import { analyticsApiQuery, analyticsHref, parseAnalyticsFilters } from "@/lib/analytics/filters";
+import { getPermissionForRoute } from "@/lib/data/nav";
+import { LiveDataRefresh } from "@/providers/MonitoringHeartbeat";
 
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
- title: "Network Analytics & Revenue Attribution | IBS Platform",
- description: "Comprehensive multi-router telemetry and financial attribution",
+  title: "Analytics | IBS Platform",
+  description: "Revenue, subscribers and network analytics by period and router",
 };
 
-export default async function AnalyticsDashboardPage() {
+/** Online-now and session figures move by the minute; the rest by the hour. Five minutes keeps the page honest without re-running every panel constantly. */
+const REFRESH_MS = 5 * 60_000;
+
+export default async function AnalyticsPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const pagePerms = await getPermissionForRoute("/analytics");
   if (!pagePerms.canView) redirect("/dashboard");
 
- const result = await getNetworkAnalyticsData();
+  const filters = parseAnalyticsFilters(await searchParams);
+  const routers = await getAnalyticsRouterOptions();
+  // the last day a report can end on; the backend re-checks against the company's own time zone
+  const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Africa/Nairobi" }).format(new Date());
 
- if (!result.success) {
-  return <main className="min-h-screen p-4 sm:p-6 lg:p-8"><div role="alert" className="rounded-lg border border-destructive/30 bg-destructive/5 p-5"><h1 className="text-lg font-medium">Analytics unavailable</h1><p className="mt-1 text-sm text-muted-foreground">{result.message}{result.requestId ? ` · Ref: ${result.requestId}` : ""}</p></div></main>;
- }
- const data = result.data;
+  // a section re-suspends only when a filter it depends on changes
+  const scope = analyticsApiQuery(filters);
+  const charted = analyticsApiQuery(filters, { interval: true });
+  const summaryKey = analyticsApiQuery(filters, { service: true, interval: true });
 
- return (
- <div className="min-h-screen p-4 text-foreground sm:p-6 lg:p-8">
- <div className="mx-auto max-w-7xl space-y-6">
- <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
- <div>
- <span className="text-[11px] font-sans tabular-nums tracking-wider text-muted-foreground uppercase">
- INSIGHTS — ANALYTICS
- </span>
- <h1 className="text-3xl font-sans font-normal text-foreground">
- Your network.
- </h1>
- <p className="mt-1 text-xs text-muted-foreground">{data.period.from} to {data.period.to} · {data.period.timezone} · Updated {new Date(data.generatedAt).toLocaleString()}</p>
- </div>
+  return (
+    <AmountsVisibilityProvider>
+      <div id="analytics-top" className="analytics-viz min-h-screen p-4 text-foreground sm:p-6 lg:p-8">
+        <LiveDataRefresh intervalMs={REFRESH_MS} />
+        <div className="mx-auto max-w-7xl space-y-6">
+          <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+            <div>
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Insights — Analytics</span>
+              <h1 className="text-3xl font-normal text-foreground">Your network.</h1>
+            </div>
+            {/* a plain link: the browser downloads the file, and a failed export shows the backend's reason */}
+            <a
+              href={`/api/analytics/export?${analyticsHref(filters).split("?")[1]}`}
+              download
+              className="inline-flex items-center gap-2 self-start rounded-lg border border-border bg-card px-4 py-2 text-xs font-semibold text-foreground transition hover:bg-accent sm:self-auto"
+            >
+              <Download className="size-3.5" aria-hidden="true" />
+              Export CSV
+            </a>
+          </div>
 
- <AnalyticsExportButton data={data} />
- </div>
+          <AnalyticsFilterBar filters={filters} routers={routers.success ? routers.data : null} today={today} />
 
- {data.dataStatus === "PARTIAL" && <div role="status" className="rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-950"><p>Some analytics could not be loaded. A dash marks a value that is unavailable.</p>{data.unavailableMetrics.length > 0 && <ul className="mt-2 space-y-1">{data.unavailableMetrics.map(({ metric, reason }) => <li key={`${metric}-${reason}`}><span className="font-medium">{metric}</span>: {reason}</li>)}</ul>}</div>}
- <AnalyticsKpiCards kpis={data.kpis} />
+          <Suspense key={`summary-${summaryKey}`} fallback={<SectionSkeleton label="summary" panels={["wide", "wide"]} />}>
+            <SummarySection filters={filters} />
+          </Suspense>
 
- <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
- <PaymentsTrendChart trend={data.paymentsTrend} />
+          <section aria-labelledby="analytics-targets" className="space-y-3">
+            <SectionHeading id="analytics-targets">This month&apos;s targets</SectionHeading>
+            <Suspense key={`targets-${filters.routerId ?? "all"}`} fallback={<SectionSkeleton label="targets" panels={["half", "half"]} />}>
+              <TargetsSection filters={filters} />
+            </Suspense>
+          </section>
 
- <PaymentsVsExpensesChart points={data.paymentsVsExpenses.points} />
- </div>
+          <section aria-labelledby="analytics-revenue" className="space-y-3">
+            <SectionHeading id="analytics-revenue">Revenue &amp; billing</SectionHeading>
+            <Suspense key={`revenue-${scope}`} fallback={<SectionSkeleton label="revenue and billing" panels={["half", "half", "half", "half", "half", "half"]} />}>
+              <RevenueSection filters={filters} />
+            </Suspense>
+          </section>
 
- <RevenueMixDonuts data={data} />
+          <section aria-labelledby="analytics-subscribers" className="space-y-3">
+            <SectionHeading id="analytics-subscribers">Subscribers</SectionHeading>
+            <Suspense key={`subscribers-${charted}`} fallback={<SectionSkeleton label="subscribers" panels={["wide", "half", "half", "wide", "wide", "wide"]} />}>
+              <SubscribersSection filters={filters} />
+            </Suspense>
+          </section>
 
- <TopRankingsList data={data} />
+          <section aria-labelledby="analytics-network" className="space-y-3">
+            <SectionHeading id="analytics-network">Network</SectionHeading>
+            <Suspense key={`network-${charted}`} fallback={<SectionSkeleton label="network" panels={["wide", "wide", "half", "half", "wide", "wide", "wide"]} />}>
+              <NetworkSection filters={filters} />
+            </Suspense>
+          </section>
 
- <RouterPerformanceTable data={data} />
- </div>
- </div>
- );
+          <section aria-labelledby="analytics-mikrotik" className="space-y-3">
+            <SectionHeading id="analytics-mikrotik">MikroTik</SectionHeading>
+            <Suspense key={`routers-${scope}`} fallback={<SectionSkeleton label="router performance" panels={["wide"]} />}>
+              <RoutersSection filters={filters} />
+            </Suspense>
+          </section>
+        </div>
+        <BackToTop />
+      </div>
+    </AmountsVisibilityProvider>
+  );
 }
