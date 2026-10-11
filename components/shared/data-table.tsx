@@ -40,6 +40,8 @@ interface DataTableProps<TData, TValue> {
  toolbar?: React.ReactNode
  /** Slot for custom filter UI (status pills, date range, etc.), rendered as its own row below the search bar */
  filters?: React.ReactNode
+ /** Hides lower-priority columns below the `lg` breakpoint while keeping them available on wider screens. */
+ columnsHiddenUntilLg?: string[]
  /** Server-side pagination props (when manualPagination = true): */
  manualPagination?: boolean
  pageCount?: number
@@ -66,6 +68,7 @@ export function DataTable<TData, TValue>({
  hideSearch,
  toolbar,
  filters,
+ columnsHiddenUntilLg = [],
  manualPagination,
  pageCount: externalPageCount,
  pageIndex: externalPageIndex,
@@ -190,7 +193,10 @@ export function DataTable<TData, TValue>({
  {headerGroup.headers.map((header) => (
  <TableHead
  key={header.id}
- className="h-9 px-4 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"
+ className={cn(
+   "h-9 px-4 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground",
+   columnsHiddenUntilLg.includes(header.column.id) && "hidden lg:table-cell"
+ )}
  >
  {header.isPlaceholder
  ? null
@@ -212,7 +218,13 @@ export function DataTable<TData, TValue>({
  )}
  >
  {row.getVisibleCells().map((cell) => (
- <TableCell key={cell.id} className="px-4 py-3 text-sm">
+ <TableCell
+   key={cell.id}
+   className={cn(
+     "px-4 py-3 text-sm",
+     columnsHiddenUntilLg.includes(cell.column.id) && "hidden lg:table-cell"
+   )}
+ >
  {flexRender(cell.column.columnDef.cell, cell.getContext())}
  </TableCell>
  ))}

@@ -717,6 +717,7 @@ export default function PackagesClient({
  columns={columns}
  data={filtered}
  searchPlaceholder="Search packages…"
+ columnsHiddenUntilLg={["packageCategory", "companyId", "soldOn", "validity", "speedDownload", "speedUpload"]}
  filters={
  <div className="flex items-center gap-2 flex-wrap">
  {categories.map((cat) => (
