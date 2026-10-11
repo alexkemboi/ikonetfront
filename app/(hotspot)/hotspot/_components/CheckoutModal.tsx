@@ -8,6 +8,7 @@ import { getPublicVoucherStatus, initiatePublicHotspotPayment, PENDING_HOTSPOT_P
 import type { HotspotPackage, HotspotPaymentOutcome, HotspotVoucherStatusResponse, PendingHotspotPurchase } from "@/lib/types/hotspot";
 import { sanitizeErrorMessage } from "@/lib/brand";
 import { useHotspotBrand } from "@/lib/hotspot/brand-context";
+import { INVALID_PHONE_MESSAGE, toKenyanMobile } from "@/lib/hotspot/phone";
 
 const POLL_INTERVAL_MS = 5_000;
 const POLL_LIMIT_MS = 120_000;
@@ -69,6 +70,7 @@ function readableExpiry(status?: HotspotVoucherStatusResponse | null): string | 
 export default function CheckoutModal({ package: pkg, pendingPurchase: initialPendingPurchase, companyCode, onCompanyResolved, onClose, onPendingPurchase, clientMac, redirectClientMac, clientIp, routerIdentity }: CheckoutModalProps) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [phoneNumber, setPhoneNumber] = useState("");
+  const [phoneError, setPhoneError] = useState<string | null>(null);
   const [view, setView] = useState<PaymentView>(initialPendingPurchase ? "pending" : "checkout");
   const [purchase, setPurchase] = useState<PendingHotspotPurchase | null>(initialPendingPurchase ?? null);
   const [status, setStatus] = useState<HotspotVoucherStatusResponse | null>(null);
@@ -154,9 +156,16 @@ export default function CheckoutModal({ package: pkg, pendingPurchase: initialPe
 
   const handleConfirm = async () => {
     if (!pkg || !hasUsableMac || !phoneNumber.trim()) return;
+    // A number M-Pesa cannot use is caught here, before a prompt is asked for.
+    const msisdn = toKenyanMobile(phoneNumber);
+    if (!msisdn) {
+      setPhoneError(INVALID_PHONE_MESSAGE);
+      return;
+    }
+    setPhoneError(null);
     setIsProcessing(true);
 try {
-        const result = await initiatePublicHotspotPayment({ packageId: pkg.idxno, phone: phoneNumber.trim(), paymentMode: "mpesa", macAddress, clientMac: requestClientMac, clientIp: clientIp?.trim() || "", routerIdentity: routerIdentity?.trim() || undefined, companyId: companyCode ?? undefined });
+        const result = await initiatePublicHotspotPayment({ packageId: pkg.idxno, phone: msisdn, paymentMode: "mpesa", macAddress, clientMac: requestClientMac, clientIp: clientIp?.trim() || "", routerIdentity: routerIdentity?.trim() || undefined, companyId: companyCode ?? undefined });
       if (!result.success || !result.data?.voucherCode) throw new Error(result.message || "Failed to start payment tracking. Please try again.");
       if (result.data.companyId) onCompanyResolved?.(result.data.companyId);
       const nextPurchase: PendingHotspotPurchase = { sessionId: result.data.sessionId, voucherCode: result.data.voucherCode, startedAt: Date.now() };
@@ -192,7 +201,7 @@ try {
         {view === "checkout" && pkg && <>
           <div className="bg-secondary/50 rounded-lg p-3 space-y-2 text-sm"><p><span className="font-medium">Package:</span> {pkg.packageName}</p><p><span className="font-medium">Validity:</span> {pkg.validityValue} {pkg.validityType}</p><p className="text-xl font-bold text-primary">KES {pkg.price.toLocaleString()}</p></div>
           {!hasUsableMac && <p role="alert" className="text-sm text-destructive">We can’t identify this Wi-Fi device. Reconnect to the hotspot and open the portal again.</p>}
-          <div className="space-y-2"><label htmlFor="phone" className="text-sm font-medium text-foreground block">M-Pesa Phone Number</label><input id="phone" type="tel" placeholder="+254 700 000 000" value={phoneNumber} onChange={(event) => setPhoneNumber(event.target.value)} disabled={isProcessing} className="w-full px-3 py-2 border border-border rounded-lg bg-background text-sm disabled:opacity-50" /></div>
+          <div className="space-y-2"><label htmlFor="phone" className="text-sm font-medium text-foreground block">M-Pesa Phone Number</label><input id="phone" type="tel" inputMode="tel" autoComplete="tel" placeholder="0712 345 678" value={phoneNumber} onChange={(event) => { setPhoneNumber(event.target.value); if (phoneError) setPhoneError(null); }} disabled={isProcessing} aria-invalid={phoneError ? true : undefined} aria-describedby={phoneError ? "phone-error" : undefined} className="w-full px-3 py-2 border border-border rounded-lg bg-background text-sm disabled:opacity-50" />{phoneError && <p id="phone-error" role="alert" className="text-sm text-destructive">{phoneError}</p>}</div>
         </>}
         {view === "pending" && <div className="space-y-3 text-center"><Loader2 className="w-8 h-8 animate-spin text-primary mx-auto" /><p className="font-medium">Enter your M-Pesa PIN when prompted.</p><p className="text-sm text-muted-foreground">We’ll connect this device as soon as payment is confirmed.</p></div>}
         {view === "active" && <div className="space-y-3 text-center"><CheckCircle2 className="w-10 h-10 text-green-600 mx-auto" /><p className="font-medium">Your hotspot session is active.</p>{status?.voucherCode && <p className="text-sm">Voucher: <span className="font-mono">{status.voucherCode}</span></p>}{readableExpiry(status) && <p className="text-sm text-muted-foreground">Expires: {readableExpiry(status)}</p>}{status?.minutesRemaining !== undefined && <p className="text-sm text-muted-foreground">{status.minutesRemaining} minutes remaining</p>}</div>}
