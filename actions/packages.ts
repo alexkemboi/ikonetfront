@@ -78,7 +78,7 @@ export type PackageUpdatePayload = PackagePayload & {
   isApproved?: boolean;
 };
 
-export type VoucherPackageOption = Pick<InternetPackage, "idxno" | "packageName" | "packageCategory" | "validityType" | "validityValue" | "speedDownload" | "speedUpload" | "rateLimit" | "activeStatus" | "price">;
+export type VoucherPackageOption = Pick<InternetPackage, "idxno" | "packageName" | "packageCategory" | "validityType" | "validityValue" | "speedDownload" | "speedUpload" | "rateLimit" | "activeStatus" | "price" | "routerScope">;
 
 /**
  * The packages a voucher batch can be minted for: the company's active and
@@ -86,8 +86,10 @@ export type VoucherPackageOption = Pick<InternetPackage, "idxno" | "packageName"
  * `/system/packages/category/HOTSPOT` — a package's category is its duration
  * bucket (Hourly, Daily, Weekly, Monthly), so that filter matches none of them.
  */
-export async function getActiveHotspotPackagesAction() {
-  return apiFetch<VoucherPackageOption[]>("/finance/voucher-batches/packages", {
+export async function getActiveHotspotPackagesAction(deviceId?: number) {
+  // with a router named, only the packages sold on that router (the ones the mint accepts for it)
+  const query = deviceId ? `?deviceId=${deviceId}` : "";
+  return apiFetch<VoucherPackageOption[]>(`/finance/voucher-batches/packages${query}`, {
     auth: "required",
     cache: "no-store",
   });

@@ -41,7 +41,8 @@ function fmtValidity(p: VoucherPackageOption): string {
 function mapPackages(rows: VoucherPackageOption[]): PackageOption[] {
  return rows.map((p) => ({
  value: String(p.idxno),
- label: `${p.packageName} · ${fmtSpeed(p)} · Ksh ${p.price} · ${fmtValidity(p)}`,
+ // a site-specific package can only be minted for a router it is sold on
+ label: `${p.packageName} · ${fmtSpeed(p)} · Ksh ${p.price} · ${fmtValidity(p)}${p.routerScope === "SELECTED" ? " · selected routers only" : ""}`,
  unitPrice: String(p.price),
  }));
 }
@@ -70,7 +71,8 @@ export function GenerateVouchersModal({ isOpen, onClose, routerOptions = [] }: P
  useEffect(() => {
  if (!isOpen) return;
  let cancelled = false;
- getActiveHotspotPackagesAction()
+ // narrowed to the chosen router: packages switched off for it are not offered
+ getActiveHotspotPackagesAction(deviceId ? Number(deviceId) : undefined)
  .then((res) => {
  if (cancelled) return;
  setPackagesLoaded(true);
@@ -101,7 +103,7 @@ export function GenerateVouchersModal({ isOpen, onClose, routerOptions = [] }: P
  return () => {
  cancelled = true;
  };
- }, [isOpen]);
+ }, [isOpen, deviceId]);
 
  function selectPackage(id: number) {
  setPackageId(id);
