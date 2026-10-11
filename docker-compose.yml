@@ -1,6 +1,6 @@
 services:
   beesnet-app:
-    image: ghcr.io/alexkemboi/internet-billing-systemf:${IMAGE_TAG:-latest}
+    image: ghcr.io/alexkemboi/ikonetfront:${IMAGE_TAG:-latest}
     restart: unless-stopped
     ports:
       - "127.0.0.1:${FRONTEND_PORT:-3456}:3456"
@@ -12,7 +12,7 @@ services:
       - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
       - AUTH_SECRET=${AUTH_SECRET}
       - AUTH_JWT_SECRET=${AUTH_JWT_SECRET}
-      - AUTH_URL=https://beesmartbedak.com
+      - AUTH_URL=${AUTH_URL}
       - NEXT_PUBLIC_IBS_API_URL=${NEXT_PUBLIC_IBS_API_URL}
       - IBS_API_URL=${IBS_API_URL}
     networks:

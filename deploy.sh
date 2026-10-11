@@ -14,11 +14,11 @@ set -euo pipefail
 
 IMAGE_TAG="${1:-${IMAGE_TAG:-latest}}"
 GHCR_REGISTRY="ghcr.io"
-REPO_NAME="${REPO_NAME:-nicanornicolas/internet-billing-systemf}"
+REPO_NAME="${REPO_NAME:-alexkemboi/ikonetfront}"
 FULL_IMAGE="${GHCR_REGISTRY}/${REPO_NAME}:${IMAGE_TAG}"
 
 echo "==> Deploying image: ${FULL_IMAGE}"
-cd ~/internet-billing-systemf/
+cd ~/Desktop/ikonexsystems/ibsui/
 
 # ── 1. Authenticate with GHCR ────────────────────────────────
 if [[ -n "${GHCR_TOKEN:-}" && -n "${GHCR_ACTOR:-}" ]]; then

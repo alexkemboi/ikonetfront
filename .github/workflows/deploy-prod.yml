@@ -66,7 +66,7 @@ jobs:
           envs: IMAGE_TAG,REPO_NAME,GHCR_TOKEN,GHCR_ACTOR
           script: |
             set -euo pipefail
-            cd ~/internet-billing-systemf/
+            cd ~/Desktop/ikonexsystems/ibsui/
             git fetch origin main
             git reset --hard origin/main
             chmod +x deploy.sh
