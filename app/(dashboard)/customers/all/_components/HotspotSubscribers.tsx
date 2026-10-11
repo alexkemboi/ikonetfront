@@ -70,7 +70,9 @@ function fromLive(session: LiveSessionItem): Row {
         ? `for ${trimZeroDays(session.onlineDurationFormatted)}`
         : live === "LOST"
           ? `last seen ${ago(session.lastSeenAt)}`
-          : "has not connected yet",
+          : live === "OFFLINE"
+            ? `went offline ${ago(session.offlineSince)}`
+            : "has not connected yet",
     timeLeft: session.minutesRemaining == null ? "—" : formatTimeLeft(session.minutesRemaining * 60),
     data: session.countersAvailable === false ? "—" : `${formatBytes(session.downloadBytes)} down · ${formatBytes(session.uploadBytes)} up`,
     device: session.deviceMac || "—",
