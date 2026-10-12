@@ -9,7 +9,7 @@ import { redirect } from "next/navigation";
 export const dynamic = "force-dynamic";
 
 export const metadata = {
- title: "Internet Packages — Ikonex Systems",
+ title: "Internet Packages — SpeedLink",
 };
 
 export default async function InternetPackagesPage() {

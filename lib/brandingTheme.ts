@@ -1,9 +1,9 @@
 import type { TenantBranding } from "@/lib/types/company";
 
-/** Default brand tokens when no tenant branding resolves (Ikonex green and charcoal). */
+/** Default brand tokens when no tenant branding resolves. */
 export const DEFAULT_BRAND_COLORS = {
-  primary: "#0FAC5B",
-  secondary: "#222222",
+  primary: "#064A96",
+  secondary: "#07396F",
 } as const;
 
 /**

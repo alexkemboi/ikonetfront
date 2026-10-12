@@ -1,7 +1,7 @@
 import LoginForm from "./_components/LoginForm";
 
 export const metadata = {
-    title: "Ikonex Systems",
+    title: "SpeedLink",
 };
 
 // NextAuth appends ?error=<code> on failed sign-in — map codes to user-friendly copy

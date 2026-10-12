@@ -59,7 +59,7 @@ export default function NotFound() {
  Page Under Development
  </h1>
  <p className="text-muted-foreground text-sm leading-relaxed max-w-sm mx-auto">
- This section of Ikonex Systems is still being built.
+ This section of SpeedLink is still being built.
  Our team is working on it — check back soon.
  </p>
  </motion.div>
@@ -114,7 +114,7 @@ export default function NotFound() {
  transition={{ duration: 0.4, delay: 0.55 }}
  className="text-xs text-muted-foreground"
  >
- Ikonex Systems · Internet Management Platform
+ SpeedLink · Internet Management Platform
  </motion.p>
  </div>
  </div>

@@ -6,7 +6,7 @@ import { getPackagesAction } from "@/actions/packages";
 import { ManagementDashboardShell } from "./_components/ManagementDashboardShell";
 import { addDaysToDateOnly, todayEatIso } from "@/lib/dates";
 
-export const metadata = { title: "Management Dashboard — Ikonex Systems" };
+export const metadata = { title: "Management Dashboard — SpeedLink" };
 
 export default async function ManagementDashboardPage() {
  const session = await auth();

@@ -9,8 +9,7 @@ export default function SignoutLoading() {
 
  {/* Logo */}
  <div className="flex items-center gap-3 mb-10">
- <Image src="/logo.png" alt="Ikonex Systems" width={40} height={40} className="rounded-md bg-white p-0.5" />
- <span className="text-xl font-semibold text-primary-foreground tracking-tight">Ikonex Systems</span>
+ <Image src="/speedlink-logo.jpg" alt="SpeedLink" width={112} height={72} className="rounded-md bg-white p-1" />
  </div>
 
  {/* Spinner */}

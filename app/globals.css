@@ -4,33 +4,33 @@
 @custom-variant dark (&:is(.dark *));
 
 /* ============================================================
-  Ikonex Systems — Green and charcoal design system
+  SpeedLink — blue brand design system
    Primary Font : DM Sans (UI) — weight 800/300 contrast voice
    Technical Font: JetBrains Mono (router logs, MAC/IP, scripts only)
    ============================================================ */
 
 :root {
   /* ── Canvas & Surfaces ── */
-  --background: oklch(0.965 0 0);          /* #F5F5F5 – app canvas */
+  --background: #FFFFFF;
   --foreground: oklch(0.2 0 0);            /* #333333 – primary text */
   --card: oklch(1 0 0);                    /* #FFFFFF – card surface */
   --card-foreground: oklch(0.2 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.2 0 0);
 
-  /* ── Ikonex brand palette: sampled from Brand/logo_brand.jpg ── */
-  --brand-green: #0FAC5B;
-  --brand-charcoal: #222222;
-  --primary: var(--brand-green);
-  --primary-foreground: var(--brand-charcoal);
+  /* ── SpeedLink brand palette ── */
+  --brand-deep-blue: #064A96;
+  --brand-bright-blue: #087BEE;
+  --primary: var(--brand-deep-blue);
+  --primary-foreground: #FFFFFF;
 
   /* ── Secondary & Muted ── */
   --secondary: oklch(0.965 0 0);
-  --secondary-foreground: #087A42;
+  --secondary-foreground: var(--brand-deep-blue);
   --muted: oklch(0.95 0 0);
   --muted-foreground: oklch(0.45 0 0);     /* ~#555 secondary text */
-  --accent: oklch(0.95 0 0);
-  --accent-foreground: #087A42;
+  --accent: #EAF3FF;
+  --accent-foreground: var(--brand-deep-blue);
 
   /* ── Semantic: Danger (Overdue / Suspended) ── */
   --destructive: oklch(0.63 0.26 29);      /* #FF0000 Alert Red */
@@ -38,8 +38,8 @@
 
   /* ── Borders & Inputs ── */
   --border: oklch(0.935 0 0);              /* #EEEEEE subtle borders */
-  --input: oklch(0.78 0.025 155);
-  --ring: var(--brand-green);
+  --input: #CBD9E8;
+  --ring: var(--brand-bright-blue);
 
   /* ── Brand Semantics ── */
   --success: oklch(0.52 0.1 155);          /* #2E865F Growth Green */
@@ -53,62 +53,62 @@
   --radius: 0.375rem;                      /* 6px – canonical content radius */
 
   /* ── Charts ── */
-  --chart-1: var(--brand-green);
-  --chart-2: var(--brand-charcoal);
+  --chart-1: var(--brand-deep-blue);
+  --chart-2: var(--brand-bright-blue);
   --chart-3: oklch(0.75 0.14 75);
   --chart-4: oklch(0.63 0.2 29);
   --chart-5: oklch(0.68 0.09 155);
 
   /* ── Sidebar ── */
-  --sidebar: var(--brand-charcoal);
+  --sidebar: #07396F;
   --sidebar-foreground: oklch(1 0 0);
-  --sidebar-primary: var(--brand-green);
-  --sidebar-primary-foreground: var(--brand-charcoal);
-  --sidebar-accent: #303733;
+  --sidebar-primary: var(--brand-bright-blue);
+  --sidebar-primary-foreground: #06172B;
+  --sidebar-accent: #0B5DAF;
   --sidebar-accent-foreground: oklch(1 0 0);
-  --sidebar-border: #343B37;
-  --sidebar-ring: var(--brand-green);
+  --sidebar-border: #1D5A96;
+  --sidebar-ring: var(--brand-bright-blue);
 }
 
 .dark {
-  --background: oklch(0.17 0 0);
-  --foreground: oklch(0.94 0 0);
-  --card: oklch(0.21 0 0);
-  --card-foreground: oklch(0.94 0 0);
-  --popover: oklch(0.22 0 0);
-  --popover-foreground: oklch(0.94 0 0);
-  --primary: var(--brand-green);
-  --primary-foreground: #17221B;
+  --background: #101923;
+  --foreground: #E8EEF5;
+  --card: #172331;
+  --card-foreground: #E8EEF5;
+  --popover: #1B2A3B;
+  --popover-foreground: #E8EEF5;
+  --primary: #60A5FA;
+  --primary-foreground: #102033;
   --secondary: oklch(0.25 0 0);
-  --secondary-foreground: #C5EBD2;
+  --secondary-foreground: #B9D7FA;
   --muted: oklch(0.25 0 0);
-  --muted-foreground: oklch(0.7 0 0);
-  --accent: #1B2A21;
-  --accent-foreground: #C5EBD2;
+  --muted-foreground: #A9B8C8;
+  --accent: #1E3A5F;
+  --accent-foreground: #D8EBFF;
   --destructive: oklch(0.63 0.26 29);
   --destructive-foreground: oklch(1 0 0);
   --border: oklch(0.31 0 0);
-  --input: #3B4840;
-  --ring: var(--brand-green);
+  --input: #33465D;
+  --ring: #60A5FA;
   --success: oklch(0.68 0.14 153);
   --success-foreground: oklch(1 0 0);
   --warning: oklch(0.75 0.17 55);
   --warning-foreground: oklch(0.2 0 0);
   --danger: oklch(0.63 0.26 29);
   --danger-foreground: oklch(1 0 0);
-  --chart-1: var(--brand-green);
-  --chart-2: #A7B0AA;
+  --chart-1: #60A5FA;
+  --chart-2: #087BEE;
   --chart-3: oklch(0.78 0.14 75);
   --chart-4: oklch(0.68 0.18 29);
   --chart-5: #74C79A;
-  --sidebar: #171B18;
-  --sidebar-foreground: oklch(0.94 0 0);
-  --sidebar-primary: var(--brand-green);
-  --sidebar-primary-foreground: #17221B;
-  --sidebar-accent: #242B27;
-  --sidebar-accent-foreground: oklch(0.94 0 0);
-  --sidebar-border: #303833;
-  --sidebar-ring: var(--brand-green);
+  --sidebar: #0A1726;
+  --sidebar-foreground: #E8EEF5;
+  --sidebar-primary: #60A5FA;
+  --sidebar-primary-foreground: #102033;
+  --sidebar-accent: #112A45;
+  --sidebar-accent-foreground: #E8EEF5;
+  --sidebar-border: #243B54;
+  --sidebar-ring: #60A5FA;
 }
 
 @theme inline {
@@ -162,14 +162,14 @@
 }
 
 .dark .sidebar-panel {
-  --sidebar: #171B18;
-  --sidebar-foreground: oklch(0.94 0 0);
-  --sidebar-primary: var(--brand-green);
-  --sidebar-primary-foreground: #17221B;
-  --sidebar-accent: #242B27;
-  --sidebar-accent-foreground: oklch(0.94 0 0);
-  --sidebar-border: #303833;
-  --sidebar-ring: var(--brand-green);
+  --sidebar: #0A1726;
+  --sidebar-foreground: #E8EEF5;
+  --sidebar-primary: #60A5FA;
+  --sidebar-primary-foreground: #102033;
+  --sidebar-accent: #112A45;
+  --sidebar-accent-foreground: #E8EEF5;
+  --sidebar-border: #243B54;
+  --sidebar-ring: #60A5FA;
   color-scheme: dark;
 }
 

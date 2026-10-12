@@ -101,7 +101,7 @@ export default async function HotspotPage({ searchParams }: HotspotPageProps) {
               "
             >
               <Image
-                src={portalContext?.logoUrl || "/logo.png"}
+                src={portalContext?.logoUrl || "/speedlink-logo.jpg"}
                 alt={brand}
                 unoptimized={Boolean(portalContext?.logoUrl)}
                 width={160}

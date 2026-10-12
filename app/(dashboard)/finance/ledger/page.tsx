@@ -11,7 +11,7 @@ import { redirect } from "next/navigation";
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-  title: "Chart of Accounts & Ledger — Ikonex Systems",
+  title: "Chart of Accounts & Ledger — SpeedLink",
   description: "Browse the GAAP chart of accounts, trial balance, and per-account ledger postings.",
 };
 

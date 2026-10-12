@@ -28,7 +28,7 @@ import RecentTransactionsTable from "./_components/RecentTransactionsTable";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Financial Dashboard — Ikonex Systems",
+  title: "Financial Dashboard — SpeedLink",
   description:
     "Live profit & loss, M-Pesa clearing balance, trial balance invariant, and recent ledger transactions.",
 };

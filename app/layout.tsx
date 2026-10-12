@@ -18,9 +18,9 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
- title: "Ikonex Systems",
- description: "ISP billing and network management by Ikonex Systems.",
- icons: { icon: "/logo.png" },
+ title: "SpeedLink",
+ description: "ISP billing and network management by SpeedLink.",
+ icons: { icon: "/speedlink-logo.jpg" },
 };
 
 export default function RootLayout({

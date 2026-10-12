@@ -5,7 +5,7 @@ import { getEmailTemplates } from "@/actions/communications";
 import { getCustomers } from "@/actions/customer";
 import { getSystemUsers } from "@/actions/system";
 
-export const metadata = { title: "Bulk Email — Ikonex Systems" };
+export const metadata = { title: "Bulk Email — SpeedLink" };
 
 export type EmailTemplate = {
  id: string;

@@ -9,7 +9,7 @@ import { SystemFeesPanel } from "@/components/finance/SystemFeesPanel";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Expense Management — Ikonex Systems",
+  title: "Expense Management — SpeedLink",
 };
 
 export default async function ExpensesPage() {

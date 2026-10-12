@@ -246,7 +246,7 @@ function EmailPreview({
               I
             </div>
             <div>
-              <p className="text-xs font-medium text-foreground">Ikonex Systems</p>
+              <p className="text-xs font-medium text-foreground">SpeedLink</p>
               <p className="text-[11px] text-muted-foreground">noreply@beesmart.co.ke</p>
             </div>
           </div>

@@ -142,8 +142,8 @@ export default function AuthLayout({
             <div
               className="
                 flex
-                h-24
-                w-24
+                h-28
+                w-60
                 items-center
                 justify-center
                 rounded-2xl
@@ -155,8 +155,8 @@ export default function AuthLayout({
               "
             >
               <Image
-                src="/logo.png"
-                alt="Ikonex Systems"
+                src="/speedlink-logo.jpg"
+                alt="SpeedLink"
                 width={160}
                 height={160}
                 priority
@@ -173,7 +173,7 @@ export default function AuthLayout({
                   text-white
                 "
               >
-                Ikonex Systems
+                SpeedLink
               </h2>
 
               <p
@@ -302,7 +302,7 @@ export default function AuthLayout({
               text-white/40
             "
           >
-            © {new Date().getFullYear()} Ikonex Systems. All rights reserved.
+            © {new Date().getFullYear()} SpeedLink. All rights reserved.
           </p>
         </aside>
 
@@ -339,8 +339,8 @@ export default function AuthLayout({
               <div
                 className="
                   flex
-                  h-20
-                  w-20
+                  h-24
+                  w-48
                   items-center
                   justify-center
                   rounded-2xl
@@ -352,8 +352,8 @@ export default function AuthLayout({
                 "
               >
                 <Image
-                  src="/logo.png"
-                  alt="Ikonex Systems"
+                  src="/speedlink-logo.jpg"
+                  alt="SpeedLink"
                   width={140}
                   height={140}
                   priority
@@ -369,7 +369,7 @@ export default function AuthLayout({
                   tracking-tight
                 "
               >
-                Ikonex Systems
+                SpeedLink
               </h2>
 
               <p

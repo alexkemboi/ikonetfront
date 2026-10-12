@@ -366,7 +366,7 @@ export type SidebarProps = {
 // ── Sidebar inner content (shared between desktop aside + mobile Sheet) ──
 export function SidebarInner({
   navGroups,
-  brandName = "Ikonex Systems",
+  brandName = "SpeedLink",
   user,
   isCollapsed = false,
   onToggleCollapse,
@@ -387,11 +387,11 @@ export function SidebarInner({
         )}>
           <div className={cn("flex min-w-0 items-center gap-2", isCollapsed && "justify-center")}>
             <Image
-              src="/logo.png"
+              src="/speedlink-logo.jpg"
               alt={isCollapsed ? brandName : ""}
               width={32}
               height={32}
-              className="h-8 w-8 shrink-0 rounded-md bg-white p-0.5 object-contain"
+              className={cn("h-8 shrink-0 rounded-md bg-white p-0.5 object-contain", isCollapsed ? "w-8" : "w-14")}
             />
             {!isCollapsed && (
               <span className="block truncate text-sm font-semibold tracking-tight text-sidebar-foreground">

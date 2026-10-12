@@ -14,8 +14,8 @@ describe("pickForeground", () => {
     expect(pickForeground("#000000")).toBe("#fff");
   });
 
-  it("uses charcoal text on the Ikonex logo green", () => {
-    expect(pickForeground("#0FAC5B")).toBe("#0b0d12");
+  it("uses white text on the SpeedLink deep blue", () => {
+    expect(pickForeground("#064A96")).toBe("#fff");
   });
 
   it("normalizes 3-digit hex", () => {
@@ -65,7 +65,7 @@ describe("brandCssVars", () => {
       alias: "X",
       subdomain: "x",
     }) as Record<string, string>;
-    expect(vars["--primary"]).toBe("#0FAC5B");
-    expect(vars["--primary-foreground"]).toBe("#0b0d12");
+    expect(vars["--primary"]).toBe("#064A96");
+    expect(vars["--primary-foreground"]).toBe("#fff");
   });
 });

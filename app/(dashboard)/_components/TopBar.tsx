@@ -50,7 +50,7 @@ export default function TopBar({
  notificationCount = 0,
  user,
  navGroups = [],
- brandName = "Ikonex Systems",
+ brandName = "SpeedLink",
  sidebarUser,
 }: TopBarProps) {
 const breadcrumbs = useBreadcrumb();
