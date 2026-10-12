@@ -2,13 +2,12 @@ import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 
 export default async function Home() {
+ let shouldOpenDashboard = false;
  try {
  const session = await auth();
- if (session?.user && session.error !== "RefreshAccessTokenError") {
- redirect("/dashboard");
- }
+ shouldOpenDashboard = !!session?.user && session.error !== "RefreshAccessTokenError";
  } catch {
  // Auth evaluation failed — proceed to /login
  }
- redirect("/login");
+ redirect(shouldOpenDashboard ? "/dashboard" : "/login");
 }
