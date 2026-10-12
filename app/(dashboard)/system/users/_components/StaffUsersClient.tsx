@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { usePermissions } from "@/providers/PermissionsProvider";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import {
  Sheet,
@@ -266,21 +267,27 @@ function CreateUserSheet({
  </Field>
 
  <Field label="Role" error={touched.role ? errors.role : undefined} required>
- <select
- {...formik.getFieldProps("role")}
- className={cn(
- "flex h-9 w-full rounded-md border bg-transparent px-3 py-1 text-sm shadow-xs transition-colors",
- "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
- touched.role && errors.role ? "border-destructive" : "border-input"
- )}
+ <Select
+ value={formik.values.role}
+ onValueChange={(value) => {
+ formik.setFieldValue("role", value);
+ formik.setFieldTouched("role", true, false);
+ }}
  >
- <option value="">Select a role…</option>
+ <SelectTrigger
+ aria-invalid={Boolean(touched.role && errors.role)}
+ className={cn("w-full", touched.role && errors.role && "border-destructive")}
+ >
+ <SelectValue placeholder="Select a role…" />
+ </SelectTrigger>
+ <SelectContent>
  {assignableRoles.map((r) => (
- <option key={r.roleCode} value={r.roleCode}>
+ <SelectItem key={r.roleCode} value={r.roleCode}>
  {r.name}
- </option>
+ </SelectItem>
  ))}
- </select>
+ </SelectContent>
+ </Select>
  </Field>
 
  {isInvestorRole(formik.values.role) && (
