@@ -357,9 +357,12 @@ function ProviderSheet({
 export default function AlertsClient({
  providers: initialProviders,
  activeChannels: initialActiveChannels,
+ canManage,
 }: {
  providers: AlertProvider[];
  activeChannels: string[];
+ /** SYSADMIN only: providers are shared by every company. */
+ canManage: boolean;
 }) {
  const [providers, setProviders] = useState(initialProviders);
  const [activeChannels, setActiveChannels] = useState<string[]>(initialActiveChannels);
@@ -367,7 +370,10 @@ export default function AlertsClient({
  const [editing, setEditing] = useState<AlertProvider | null>(null);
  const [deletingId, setDeletingId] = useState<number | null>(null);
  const [togglingId, setTogglingId] = useState<number | null>(null);
- const perms = usePermissions("/settings/alerts");
+ const screenPerms = usePermissions("/settings/alerts");
+ const perms = canManage
+ ? screenPerms
+ : { ...screenPerms, canCreate: false, canEdit: false, canDelete: false };
  const [enabledCategories, setEnabledCategories] = useState<string[]>(
  NOTIF_CATEGORIES.map((c) => c.id)
  );
@@ -454,6 +460,11 @@ export default function AlertsClient({
  <p className="text-sm text-muted-foreground mt-0.5">
  Configure notification providers and select which channels to use for alerts.
  </p>
+ {!canManage && (
+ <p className="text-xs text-muted-foreground mt-1">
+ Providers are shared by every company. Only a system administrator can add or change them.
+ </p>
+ )}
  </div>
  {perms.canCreate && (
  <Button className="gap-2 h-9" onClick={handleAdd}>
