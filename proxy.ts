@@ -50,7 +50,14 @@ export const proxy = authMiddleware((req) => {
     if (!isAuthenticated || hasTokenError) {
         const loginUrl = new URL("/login", req.url);
         const response = NextResponse.redirect(loginUrl);
-        response.cookies.delete("next-auth.session-token");
+        for (const cookieName of [
+            "authjs.session-token",
+            "__Secure-authjs.session-token",
+            "next-auth.session-token",
+            "__Secure-next-auth.session-token",
+        ]) {
+            response.cookies.delete(cookieName);
+        }
         return response;
     }
 

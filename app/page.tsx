@@ -2,13 +2,11 @@ import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 
 export default async function Home() {
- try {
- const session = await auth();
+ const session = await auth().catch(() => null);
+
  if (session?.user && session.error !== "RefreshAccessTokenError") {
- redirect("/dashboard");
+  redirect("/dashboard");
  }
- } catch {
- // Auth evaluation failed — proceed to /login
- }
+
  redirect("/login");
 }
