@@ -8,15 +8,17 @@ import type { RouterOverview } from "@/lib/types/network";
 import { RouterActionsDropdown, type RouterActionsRow } from "@/components/network/RouterActionsDropdown";
 import { RouterHealthHistory } from "../monitoring/_components/RouterHealthHistory";
 import { RouterFigures } from "./RouterFigures";
+import { RouterAccessPoints } from "@/components/network/RouterAccessPoints";
 import { ConnectionPanel, HealthCard, HotspotPanel, ProvisioningPanel } from "./RouterSidePanels";
 import {
   BackupsTab, EventsTab, InterfacesTab, LogsTab, PaymentsTab, SchedulerTab, ScriptsTab, UsersTab,
 } from "./RouterTabs";
 
-type TabKey = "system" | "users" | "payments" | "interfaces" | "events" | "logs" | "backups" | "scheduler" | "scripts";
+type TabKey = "system" | "customer-network" | "users" | "payments" | "interfaces" | "events" | "logs" | "backups" | "scheduler" | "scripts";
 
 const STAFF_TABS: { key: TabKey; label: string }[] = [
   { key: "system", label: "System" },
+  { key: "customer-network", label: "Customer network" },
   { key: "users", label: "Users" },
   { key: "payments", label: "Payments" },
   { key: "interfaces", label: "Interfaces" },
@@ -149,6 +151,7 @@ export function RouterOperationsView({
             </aside>
           </div>
         )}
+        {tab === "customer-network" && <RouterAccessPoints routerId={routerId} canEdit={canEdit} />}
         {tab === "users" && <UsersTab routerId={routerId} />}
         {tab === "payments" && <PaymentsTab routerId={routerId} investorDeviceId={investorDeviceId} />}
         {tab === "interfaces" && <InterfacesTab routerId={routerId} deviceId={deviceId} />}

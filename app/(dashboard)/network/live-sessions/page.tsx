@@ -1,6 +1,8 @@
 import { getLiveSessionsData } from "@/actions/sessions";
 import { getRouterOutages } from "@/actions/network";
 import { RouterOutageBanner } from "@/components/sessions/RouterOutageBanner";
+import { CustomerNetworkAlarm } from "@/components/sessions/CustomerNetworkAlarm";
+import { getLanHealth } from "@/actions/lanHealth";
 import { getPermissionForRoute } from "@/lib/data/nav";
 import { redirect } from "next/navigation";
 import { LiveSessionHeaderCards } from "@/components/sessions/LiveSessionHeaderCards";
@@ -17,9 +19,10 @@ export default async function LiveSessionsPage() {
   const pagePerms = await getPermissionForRoute("/network/live-sessions");
   if (!pagePerms.canView) redirect("/dashboard");
 
-  const [result, outages] = await Promise.all([
+  const [result, outages, lanHealth] = await Promise.all([
     getLiveSessionsData(),
     getRouterOutages({ openOnly: true }),
+    getLanHealth(),
   ]);
 
   return (
@@ -40,6 +43,11 @@ export default async function LiveSessionsPage() {
 
   <RouterOutageBanner
     initialOutages={outages.data ?? []}
+    refreshIntervalSeconds={REFRESH_INTERVAL_SECONDS}
+  />
+
+  <CustomerNetworkAlarm
+    initial={lanHealth.data ?? []}
     refreshIntervalSeconds={REFRESH_INTERVAL_SECONDS}
   />
 
