@@ -10,22 +10,29 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { getFeeEntries, recordFeePayment } from "@/actions/platformFees";
-import type { FeeAgreementBalance, FeeEntry } from "@/lib/types/platformFee";
+import { chooseFeeReceivingAccount, getFeeEntries, recordFeePayment } from "@/actions/platformFees";
+import type { FeeAgreementBalance, FeeEntry, FeeReceivingCandidate } from "@/lib/types/platformFee";
 import { feeDate, kes, STANDING_CLASS, STANDING_LABEL } from "@/components/finance/systemFeeFormat";
 
 type Props = {
   balances: FeeAgreementBalance[];
   /** Only a system administrator records payments. */
   canRecordPayment: boolean;
+  /** Accounts the fee could be paid into; given to a system administrator only. */
+  receivingCandidates?: FeeReceivingCandidate[];
 };
+
+function accountLabel(c: FeeReceivingCandidate): string {
+  const kind = c.accountType === "PAYBILL" ? "Paybill" : c.accountType === "TILL" ? "Till" : "Bank account";
+  return `${kind} ${c.accountType === "TILL" && c.accountReference ? c.accountReference : c.shortCode} · ${c.companyName}`;
+}
 
 /**
  * System fees: who owes what, by company, investor and agreement. The platform's
  * register is the source of truth; a payment recorded here settles the oldest
  * charge first and can lift a suspension at once.
  */
-export default function SystemFeesLedger({ balances, canRecordPayment }: Props) {
+export default function SystemFeesLedger({ balances, canRecordPayment, receivingCandidates = [] }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [open, setOpen] = useState<string | null>(null);
@@ -34,6 +41,21 @@ export default function SystemFeesLedger({ balances, canRecordPayment }: Props) 
   const [amount, setAmount] = useState("");
   const [reference, setReference] = useState("");
   const [method, setMethod] = useState("M-Pesa");
+  const currentAccount = receivingCandidates.find((c) => c.current) ?? null;
+  const [chosenAccount, setChosenAccount] = useState(currentAccount?.paymentAccountId ?? "");
+
+  const saveAccount = () => {
+    if (!chosenAccount) return;
+    startTransition(async () => {
+      const res = await chooseFeeReceivingAccount(chosenAccount);
+      if (!res.success) {
+        toast.error(res.message);
+        return;
+      }
+      toast.success("Receiving account set. The next prompt goes to it.");
+      router.refresh();
+    });
+  };
 
   const totalOwed = balances.reduce((sum, b) => sum + Math.max(b.balance, 0), 0);
   const behind = balances.filter((b) => b.feeStatus === "OVERDUE" || b.feeStatus === "SUSPENDED").length;
@@ -101,8 +123,8 @@ export default function SystemFeesLedger({ balances, canRecordPayment }: Props) 
               <div>
                 <h2 className="text-lg font-normal text-foreground">System fees</h2>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  What each investor owes the platform under each agreement. Due on the 10th; service on their routers is
-                  suspended from the 15th while unpaid.
+                  What each investor, and each company for the routers no investor holds, owes the platform. Due on the
+                  10th; service on the routers concerned is suspended from the 15th while unpaid.
                 </p>
               </div>
               <div className="text-right">
@@ -111,6 +133,50 @@ export default function SystemFeesLedger({ balances, canRecordPayment }: Props) 
                 {behind > 0 && <p className="text-xs text-rose-500">{behind} agreement(s) overdue or suspended</p>}
               </div>
             </div>
+
+            {canRecordPayment && (
+              <div className="rounded-xl border border-border bg-muted p-4">
+                <Label htmlFor="fee-receiving-account" className="text-sm">
+                  Account the system fee is paid into
+                </Label>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  &quot;Pay now&quot; prompts go to this paybill or till, and the payment records itself. A bank account takes no
+                  prompt: payers are shown its details and you record the payment here. To use an account of the
+                  platform&apos;s own, add it as a payment account of the Platform company first.
+                </p>
+                {receivingCandidates.length === 0 ? (
+                  <p className="mt-2 text-sm text-foreground">No active payment account exists yet.</p>
+                ) : (
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    <select
+                      id="fee-receiving-account"
+                      value={chosenAccount}
+                      onChange={(e) => setChosenAccount(e.target.value)}
+                      className="h-9 min-w-64 rounded-md border border-border bg-background px-2 text-sm text-foreground"
+                    >
+                      {!currentAccount && <option value="">Not chosen yet</option>}
+                      {receivingCandidates.map((c) => (
+                        <option key={c.paymentAccountId} value={c.paymentAccountId}>
+                          {accountLabel(c)}
+                        </option>
+                      ))}
+                    </select>
+                    <Button
+                      size="sm"
+                      onClick={saveAccount}
+                      disabled={pending || !chosenAccount || chosenAccount === currentAccount?.paymentAccountId}
+                    >
+                      Save
+                    </Button>
+                    {!currentAccount && (
+                      <span role="alert" className="text-xs text-rose-500">
+                        Until an account is chosen nobody can pay by prompt.
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
 
             {balances.length === 0 ? (
               <p className="text-sm text-muted-foreground">No agreements yet, so no fees have been charged.</p>
@@ -121,7 +187,7 @@ export default function SystemFeesLedger({ balances, canRecordPayment }: Props) 
                     <TableRow>
                       <TableHead className="w-8" />
                       <TableHead>Company</TableHead>
-                      <TableHead>Investor</TableHead>
+                      <TableHead>Paid by</TableHead>
                       <TableHead>Agreement</TableHead>
                       <TableHead className="text-right">Charged</TableHead>
                       <TableHead className="text-right">Paid</TableHead>
@@ -147,7 +213,8 @@ export default function SystemFeesLedger({ balances, canRecordPayment }: Props) 
                           </TableCell>
                           <TableCell>{b.companyName}</TableCell>
                           <TableCell>
-                            {b.investorName} <span className="text-xs text-muted-foreground">{b.investorCode}</span>
+                            {b.kind === "COMPANY" ? "The company itself" : b.investorName}{" "}
+                            <span className="text-xs text-muted-foreground">{b.investorCode}</span>
                           </TableCell>
                           <TableCell className="text-muted-foreground">{b.agreementCode}</TableCell>
                           <TableCell className="text-right font-sans tabular-nums">{kes(b.charged)}</TableCell>

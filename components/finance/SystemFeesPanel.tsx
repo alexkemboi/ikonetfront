@@ -1,5 +1,14 @@
-import type { CompanyFeeStatus } from "@/lib/types/platformFee";
+import type { CompanyFeeStatus, FeeReceivingAccount } from "@/lib/types/platformFee";
+import { FeePayNow } from "./FeePayNow";
 import { feeDate, kes, STANDING_CLASS, STANDING_LABEL } from "./systemFeeFormat";
+
+type Props = {
+  status: CompanyFeeStatus;
+  /** Where the fee is paid; null until the platform has chosen an account. */
+  account?: FeeReceivingAccount | null;
+  /** "COMPANY": the company admin, who pays the company's own agreement. "ANY": a system administrator. */
+  canPay?: "COMPANY" | "ANY" | null;
+};
 
 /** What the standing means for the company, in one sentence. */
 export function feeHeadline(status: CompanyFeeStatus): string {
@@ -20,9 +29,10 @@ export function feeHeadline(status: CompanyFeeStatus): string {
 
 /**
  * System (maintenance) fees of the company: the terms, what is outstanding and by when,
- * and each investor agreement's share. Read-only; payments are recorded by the platform.
+ * and each agreement's share. The company admin pays the company's own agreement here by
+ * M-Pesa prompt; an investor pays theirs from the investor portal.
  */
-export function SystemFeesPanel({ status }: { status: CompanyFeeStatus }) {
+export function SystemFeesPanel({ status, account = null, canPay = null }: Props) {
   const owing = status.totalOutstanding > 0;
   return (
     <section aria-label="System fees" className="rounded-2xl border border-border bg-card p-5 shadow-lg">
@@ -60,36 +70,48 @@ export function SystemFeesPanel({ status }: { status: CompanyFeeStatus }) {
 
       {status.agreements.length === 0 ? (
         <p className="mt-3 text-xs text-muted-foreground">
-          No investor agreement yet, so no system fee is charged. Fees start with the first agreement.
+          No agreement yet, so no system fee has been charged. The company&apos;s own agreement is set up overnight.
         </p>
       ) : (
         <div className="mt-4 overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead className="text-xs uppercase text-muted-foreground">
               <tr>
-                <th className="py-2 pr-4 font-medium">Investor</th>
+                <th className="py-2 pr-4 font-medium">Paid by</th>
                 <th className="py-2 pr-4 font-medium">Agreement</th>
                 <th className="py-2 pr-4 text-right font-medium">Charged</th>
                 <th className="py-2 pr-4 text-right font-medium">Paid</th>
                 <th className="py-2 pr-4 text-right font-medium">Balance</th>
                 <th className="py-2 pr-4 font-medium">Due</th>
-                <th className="py-2 font-medium">Standing</th>
+                <th className="py-2 pr-4 font-medium">Standing</th>
+                {canPay && <th className="py-2 text-right font-medium">Pay</th>}
               </tr>
             </thead>
             <tbody>
               {status.agreements.map((a) => (
                 <tr key={a.agreementId} className="border-t border-border">
-                  <td className="py-2 pr-4">{a.investorName}</td>
+                  <td className="py-2 pr-4">{a.kind === "COMPANY" ? "The company (routers no investor holds)" : a.investorName}</td>
                   <td className="py-2 pr-4 text-muted-foreground">{a.agreementCode}</td>
                   <td className="py-2 pr-4 text-right font-sans tabular-nums">{kes(a.charged)}</td>
                   <td className="py-2 pr-4 text-right font-sans tabular-nums">{kes(a.paid)}</td>
                   <td className="py-2 pr-4 text-right font-sans tabular-nums">{kes(a.balance)}</td>
                   <td className="py-2 pr-4">{a.balance > 0 ? feeDate(a.oldestDueDate) : "—"}</td>
-                  <td className="py-2">
+                  <td className="py-2 pr-4">
                     <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${STANDING_CLASS[a.feeStatus]}`}>
                       {STANDING_LABEL[a.feeStatus]}
                     </span>
                   </td>
+                  {canPay && (
+                    <td className="py-2 text-right">
+                      {a.balance <= 0 ? (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      ) : canPay === "ANY" || a.kind === "COMPANY" ? (
+                        <FeePayNow agreementId={a.agreementId} agreementCode={a.agreementCode} balance={a.balance} account={account} />
+                      ) : (
+                        <span className="text-xs text-muted-foreground">Paid by the investor</span>
+                      )}
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>

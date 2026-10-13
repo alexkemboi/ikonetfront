@@ -8,6 +8,11 @@
  *   GET  /platform-fees/agreements/{id}/entries   charges and payments of one agreement
  *   GET  /platform-fees/mine                      the signed-in investor's own agreements
  *   POST /platform-fees/payments                  SYSADMIN records a payment
+ *   GET  /platform-fees/receiving-account         where the fee is paid (paybill, till or bank account)
+ *   GET  /platform-fees/receiving-account/candidates   SYSADMIN: accounts it could be paid into
+ *   PUT  /platform-fees/receiving-account         SYSADMIN chooses the account
+ *   POST /platform-fees/pay                       M-Pesa prompt: investor (own agreement) or company admin (company's own)
+ *   GET  /platform-fees/pay/{id}                  how that prompt ended
  */
 import { revalidatePath } from "next/cache";
 import { apiFetch } from "@/lib/apiClient";
@@ -15,6 +20,9 @@ import type {
   CompanyFeeStatus,
   FeeAgreementBalance,
   FeeEntry,
+  FeePromptStatus,
+  FeeReceivingAccount,
+  FeeReceivingCandidate,
   MyFeeAgreement,
   RecordFeePaymentInput,
 } from "@/lib/types/platformFee";
@@ -56,4 +64,62 @@ export async function recordFeePayment(
   }
   revalidatePath("/finance/investors");
   return { success: true, message: res.message || "Payment recorded", balance: res.data ?? undefined };
+}
+
+export async function getFeeReceivingAccount(): Promise<FeeReceivingAccount | null> {
+  const res = await apiFetch<FeeReceivingAccount | null>("/platform-fees/receiving-account", {
+    auth: "required",
+    cache: "no-store",
+  });
+  return res.success && res.data ? res.data : null;
+}
+
+export async function getFeeReceivingCandidates(): Promise<FeeReceivingCandidate[]> {
+  const res = await apiFetch<FeeReceivingCandidate[]>("/platform-fees/receiving-account/candidates", {
+    auth: "required",
+    cache: "no-store",
+  });
+  return res.success && Array.isArray(res.data) ? res.data : [];
+}
+
+export async function chooseFeeReceivingAccount(
+  paymentAccountId: string
+): Promise<{ success: boolean; message: string }> {
+  const res = await apiFetch<FeeReceivingCandidate>("/platform-fees/receiving-account", {
+    method: "PUT",
+    auth: "required",
+    body: { paymentAccountId },
+  });
+  if (!res.success) {
+    return { success: false, message: res.message || "The receiving account could not be changed." };
+  }
+  revalidatePath("/finance/investors");
+  return { success: true, message: res.message || "Receiving account set" };
+}
+
+/** Sends the prompt. The payment records itself when M-Pesa confirms it; poll {@link getFeePromptStatus}. */
+export async function payFeeNow(input: {
+  agreementId: string;
+  phone: string;
+  amount?: number;
+}): Promise<{ success: boolean; message: string; prompt?: FeePromptStatus }> {
+  // the server waits up to half a minute for M-Pesa before it answers
+  const res = await apiFetch<FeePromptStatus>("/platform-fees/pay", {
+    method: "POST",
+    auth: "required",
+    body: input,
+    timeoutMs: 70_000,
+  });
+  if (!res.success || !res.data) {
+    return { success: false, message: res.message || "The prompt could not be sent." };
+  }
+  return { success: true, message: res.data.message, prompt: res.data };
+}
+
+export async function getFeePromptStatus(id: string): Promise<FeePromptStatus | null> {
+  const res = await apiFetch<FeePromptStatus>(`/platform-fees/pay/${encodeURIComponent(id)}`, {
+    auth: "required",
+    cache: "no-store",
+  });
+  return res.success && res.data ? res.data : null;
 }
