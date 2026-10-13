@@ -3,7 +3,9 @@ import { redirect } from "next/navigation";
 import { getExpenses, getExpenseSummary } from "@/actions/finance";
 import { getPermissionForRoute } from "@/lib/data/nav";
 import ExpenseTable from "../_components/ExpenseTable";
-import { getCompanyFeeStatus } from "@/actions/platformFees";
+import { getCompanyFeeStatus, getFeeReceivingAccount } from "@/actions/platformFees";
+import { auth } from "@/lib/auth";
+import { isPlatformAdminRole, normalizeRole, ROLE_NAME } from "@/lib/types/roles";
 import { SystemFeesPanel } from "@/components/finance/SystemFeesPanel";
 
 export const dynamic = "force-dynamic";
@@ -16,11 +18,17 @@ export default async function ExpensesPage() {
   const pagePerms = await getPermissionForRoute("/finance/expenses");
   if (!pagePerms.canView) redirect("/dashboard");
 
-  const [initialExpenses, initialSummary, feeStatus] = await Promise.all([
+  const session = await auth();
+  const role = session?.user?.role ?? "";
+  // the company admin pays the company's own agreement; a system administrator may pay any
+  const canPay = isPlatformAdminRole(role) ? "ANY" : normalizeRole(role) === ROLE_NAME.ADMIN ? "COMPANY" : null;
+
+  const [initialExpenses, initialSummary, feeStatus, feeAccount] = await Promise.all([
     getExpenses({ page: 0, size: 20 }),
     getExpenseSummary(),
     // null for a SYSADMIN viewing all companies: fees are shown per company
     getCompanyFeeStatus(),
+    canPay ? getFeeReceivingAccount() : Promise.resolve(null),
   ]);
 
   return (
@@ -28,7 +36,7 @@ export default async function ExpensesPage() {
       {feeStatus && (
         <div className="px-4 pt-4 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-7xl">
-            <SystemFeesPanel status={feeStatus} />
+            <SystemFeesPanel status={feeStatus} account={feeAccount} canPay={canPay} />
           </div>
         </div>
       )}

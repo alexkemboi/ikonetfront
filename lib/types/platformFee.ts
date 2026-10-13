@@ -25,6 +25,8 @@ export interface FeeAgreementBalance {
   oldestDueDate: string | null;
   suspendDate: string | null;
   feeStatus: FeeStanding;
+  /** Who pays: the investor, or the company itself for the routers no investor holds. */
+  kind?: "INVESTOR" | "COMPANY";
 }
 
 export interface FeeEntry {
@@ -64,4 +66,37 @@ export interface RecordFeePaymentInput {
   reference: string;
   method?: string;
   notes?: string;
+}
+
+/** Where the fee is paid, as the paying side sees it. Null until the platform has chosen an account. */
+export interface FeeReceivingAccount {
+  accountType: "PAYBILL" | "TILL" | "BANK";
+  shortCode: string;
+  accountReference: string | null;
+  /** False for a bank account: no M-Pesa prompt can be sent to it. */
+  promptAvailable: boolean;
+}
+
+/** A payment account the platform could choose to be paid into (system administrator only). */
+export interface FeeReceivingCandidate {
+  paymentAccountId: string;
+  accountType: "PAYBILL" | "TILL" | "BANK";
+  shortCode: string;
+  accountReference: string | null;
+  companyCode: string;
+  companyName: string;
+  current: boolean;
+}
+
+/** One "Pay now" prompt. UNCONFIRMED: M-Pesa has not said either way; it is still being checked. */
+export interface FeePromptStatus {
+  id: string;
+  agreementId: string;
+  agreementCode: string;
+  amount: number;
+  phone: string;
+  status: "PENDING" | "PAID" | "FAILED" | "UNCONFIRMED";
+  message: string;
+  receipt: string | null;
+  createdAt: string;
 }

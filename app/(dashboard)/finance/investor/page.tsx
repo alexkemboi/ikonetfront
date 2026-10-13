@@ -11,7 +11,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { AgreementsTable, BillingSnapshotsTable, RouterAttributionTable } from "./_components/InvestorTables";
-import { getMyFees } from "@/actions/platformFees";
+import { getFeeReceivingAccount, getMyFees } from "@/actions/platformFees";
+import { FeePayNow } from "@/components/finance/FeePayNow";
 import { feeDate, kes, STANDING_CLASS, STANDING_LABEL } from "@/components/finance/systemFeeFormat";
 
 export const dynamic = "force-dynamic";
@@ -58,6 +59,7 @@ export default async function InvestorPortalPage({
   const revenue = data.revenue;
   // what the signed-in investor owes the platform; empty for every other role
   const myFees = role === ROLE_NAME.INVESTOR ? await getMyFees() : [];
+  const feeAccount = myFees.some((f) => f.balance.balance > 0) ? await getFeeReceivingAccount() : null;
   const routerRows: RouterAttributionItem[] = revenue?.routerBreakdown ?? [];
 
   // Owner decision 2026-10-05 (choice 7): an investor sees payout and maintenance
@@ -183,7 +185,15 @@ export default async function InvestorPortalPage({
                       {STANDING_LABEL[balance.feeStatus]}
                     </span>
                   </div>
-                  <p className="mt-2 text-xl font-sans tabular-nums">{kes(Math.max(balance.balance, 0))}</p>
+                  <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
+                    <p className="text-xl font-sans tabular-nums">{kes(Math.max(balance.balance, 0))}</p>
+                    <FeePayNow
+                      agreementId={balance.agreementId}
+                      agreementCode={balance.agreementCode}
+                      balance={balance.balance}
+                      account={feeAccount}
+                    />
+                  </div>
                   <p className="text-xs text-muted-foreground">
                     {balance.balance > 0
                       ? `Due ${feeDate(balance.oldestDueDate)} · suspension from ${feeDate(balance.suspendDate)}`
