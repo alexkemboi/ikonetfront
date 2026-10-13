@@ -28,7 +28,23 @@ export default function RootLayout({
  children: React.ReactNode;
 }>) {
  return (
- <html lang="en">
+ <html lang="en" suppressHydrationWarning>
+ <head>
+    <script
+     dangerouslySetInnerHTML={{
+        __html: `(() => {
+    try {
+     const savedTheme = window.localStorage.getItem("beesmart-theme");
+     const theme = savedTheme === "dark" || savedTheme === "light"
+      ? savedTheme
+      : window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+     document.documentElement.classList.toggle("dark", theme === "dark");
+     document.documentElement.style.colorScheme = theme;
+    } catch {}
+    })();`,
+    }}
+  />
+ </head>
  <body
  className={`${dmSans.variable} ${jetbrainsMono.variable} font-sans antialiased`}
  >

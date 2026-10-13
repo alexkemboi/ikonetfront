@@ -60,7 +60,7 @@ export function AppThemeProvider({ children }: { children: ReactNode }) {
   );
 
   useEffect(() => {
-    applyTheme(theme);
+    applyTheme(getThemeSnapshot());
   }, [theme]);
 
   const toggleTheme = useCallback(() => {
