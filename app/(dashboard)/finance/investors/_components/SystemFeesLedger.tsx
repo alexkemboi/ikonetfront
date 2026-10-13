@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { chooseFeeReceivingAccount, getFeeEntries, recordFeePayment } from "@/actions/platformFees";
+import { chooseFeeReceivingAccount, getFeeEntries, recordFeePayment, runFeeReminders } from "@/actions/platformFees";
 import type { FeeAgreementBalance, FeeEntry, FeeReceivingCandidate } from "@/lib/types/platformFee";
 import { feeDate, kes, STANDING_CLASS, STANDING_LABEL } from "@/components/finance/systemFeeFormat";
 
@@ -54,6 +54,14 @@ export default function SystemFeesLedger({ balances, canRecordPayment, receiving
       }
       toast.success("Receiving account set. The next prompt goes to it.");
       router.refresh();
+    });
+  };
+
+  const sendReminders = () => {
+    startTransition(async () => {
+      const res = await runFeeReminders();
+      if (res.success) toast.success(res.message);
+      else toast.error(res.message);
     });
   };
 
@@ -131,6 +139,18 @@ export default function SystemFeesLedger({ balances, canRecordPayment, receiving
                 <p className="text-xs text-muted-foreground">Total outstanding</p>
                 <p className="text-xl font-sans tabular-nums text-foreground">{kes(totalOwed)}</p>
                 {behind > 0 && <p className="text-xs text-rose-500">{behind} agreement(s) overdue or suspended</p>}
+                {canRecordPayment && (
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    className="mt-2"
+                    onClick={sendReminders}
+                    disabled={pending}
+                    title="SMS reminders go out by themselves each morning: on the statement, three days before the due day, on the due day and the day before suspension. This sends today's now; nobody is reminded twice."
+                  >
+                    Send today&apos;s reminders
+                  </Button>
+                )}
               </div>
             </div>
 

@@ -13,6 +13,7 @@
  *   PUT  /platform-fees/receiving-account         SYSADMIN chooses the account
  *   POST /platform-fees/pay                       M-Pesa prompt: investor (own agreement) or company admin (company's own)
  *   GET  /platform-fees/pay/{id}                  how that prompt ended
+ *   POST /platform-fees/reminders/run             SYSADMIN: queue today's SMS reminders now
  */
 import { revalidatePath } from "next/cache";
 import { apiFetch } from "@/lib/apiClient";
@@ -122,4 +123,24 @@ export async function getFeePromptStatus(id: string): Promise<FeePromptStatus | 
     cache: "no-store",
   });
   return res.success && res.data ? res.data : null;
+}
+
+/** The same run as each morning's; a reminder already queued is not queued again. */
+export async function runFeeReminders(): Promise<{ success: boolean; message: string }> {
+  const res = await apiFetch<{ agreementsOwing: number; remindersQueued: number; withoutPhone: number }>(
+    "/platform-fees/reminders/run",
+    { method: "POST", auth: "required", timeoutMs: 60_000 }
+  );
+  if (!res.success || !res.data) {
+    return { success: false, message: res.message || "The reminders could not be sent." };
+  }
+  const { agreementsOwing, remindersQueued, withoutPhone } = res.data;
+  const missing = withoutPhone > 0 ? ` ${withoutPhone} payer(s) have no phone number on record.` : "";
+  return {
+    success: true,
+    message:
+      agreementsOwing === 0
+        ? "No reminder is due today."
+        : `${remindersQueued} new reminder(s) queued for ${agreementsOwing} agreement(s) with a reminder due today.${missing}`,
+  };
 }
