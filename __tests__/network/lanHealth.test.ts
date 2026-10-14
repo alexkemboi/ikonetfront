@@ -1,11 +1,14 @@
 import { describe, expect, it } from "vitest";
 import type { RouterLanHealth } from "@/lib/types/lanHealth";
-import { lanProblemSentence, routersWithDhcpAlarm, routersWithWrongAddresses, timeAgo } from "@/lib/utils/lanHealth";
+import {
+  lanProblemSentence, routersThatCannotSignIn, routersWithDhcpAlarm, routersWithWrongAddresses, signInLabel, timeAgo,
+} from "@/lib/utils/lanHealth";
 
 const base: RouterLanHealth = {
   routerId: 90, routerName: "ADRINOLD-WESTLANDS", companyId: "CMP-ADR-001", status: "OK", checkedAt: "2026-10-13T09:00:00Z",
   error: null, devicesOnHotspot: 40, devicesOnWrongAddress: 0, unauthorisedDhcpServers: 0,
   accessPointsSeen: 16, accessPointsNotSeen: 0, notSeenAfterMinutes: 15,
+  signInStatus: "WORKING", signInAnswered: 12, signInUnanswered: 0, signInNote: null, signInWindowMinutes: 10,
 };
 
 describe("customer network health helpers", () => {
@@ -41,5 +44,21 @@ describe("customer network health helpers", () => {
     expect(timeAgo("2026-10-13T09:00:00Z", now)).toBe("4 min ago");
     expect(timeAgo("2026-10-13T06:00:00Z", now)).toBe("3h ago");
     expect(timeAgo(null, now)).toBe("never");
+  });
+
+  it("flags a router whose sign-in requests all go unanswered, even when it looks healthy otherwise", () => {
+    const deaf = { ...base, status: "ATTENTION" as const, signInStatus: "NOT_WORKING" as const, signInAnswered: 0, signInUnanswered: 5 };
+    expect(routersThatCannotSignIn([base, deaf])).toEqual([deaf]);
+    expect(signInLabel(deaf)).toBe("Not working");
+    expect(lanProblemSentence(deaf)).toBe(
+      "5 sign-in requests in the last 10 minutes got no answer and none was answered. Customers who pay here are not connected."
+    );
+  });
+
+  it("does not flag quiet routers or routers that could not be read", () => {
+    const quiet = { ...base, signInStatus: "NO_ATTEMPTS" as const };
+    const blind = { ...base, status: "UNKNOWN" as const, signInStatus: "NOT_WORKING" as const };
+    expect(routersThatCannotSignIn([quiet, blind])).toEqual([]);
+    expect(signInLabel(quiet)).toBe("No one tried lately");
   });
 });

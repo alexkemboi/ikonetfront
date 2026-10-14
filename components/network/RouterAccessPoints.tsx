@@ -6,7 +6,7 @@ import { Check, Pencil, Radio, ShieldAlert, X } from "lucide-react";
 import { toast } from "sonner";
 import { getRouterLanDetail, updateAccessPoint } from "@/actions/lanHealth";
 import type { LanAccessPoint, RouterLanDetail } from "@/lib/types/lanHealth";
-import { timeAgo } from "@/lib/utils/lanHealth";
+import { signInLabel, signInProblemSentence, timeAgo } from "@/lib/utils/lanHealth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
@@ -102,6 +102,20 @@ export function RouterAccessPoints({ routerId, canEdit }: { routerId: number; ca
         </p>
       )}
 
+      {!stale && signInProblemSentence(health) && (
+        <div role="alert" className="rounded-lg border border-red-500/40 bg-red-500/5 p-4 text-sm">
+          <p className="flex items-center gap-2 font-medium text-red-700 dark:text-red-400">
+            <ShieldAlert className="h-4 w-4" /> This router cannot sign customers in
+          </p>
+          <p className="mt-1 text-muted-foreground">
+            {(() => { const s = signInProblemSentence(health) ?? ""; return s.charAt(0).toUpperCase() + s.slice(1); })()}
+            {health.signInNote ? ` The router reports: ${health.signInNote}.` : ""} The usual cause is a sign-in
+            password on the router that no longer matches the server. Run Reprovision Router from the actions menu
+            above; if it stays like this, the server is not reachable from the router.
+          </p>
+        </div>
+      )}
+
       {!stale && servers.length > 0 && (
         <div role="alert" className="rounded-lg border border-red-500/40 bg-red-500/5 p-4 text-sm">
           <p className="flex items-center gap-2 font-medium text-red-700 dark:text-red-400">
@@ -116,7 +130,12 @@ export function RouterAccessPoints({ routerId, canEdit }: { routerId: number; ca
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
+        <Tile label="Customer sign-in" value={signInLabel(health)}
+          hint={health.signInStatus === "NOT_SET_UP"
+            ? "no sign-in server is set on the router"
+            : `last ${health.signInWindowMinutes} min: ${health.signInAnswered} answered, ${health.signInUnanswered} unanswered`}
+          bad={health.signInStatus === "NOT_WORKING" || health.signInStatus === "NOT_SET_UP"} />
         <Tile label="Devices on hotspot" value={String(health.devicesOnHotspot ?? "—")} hint="seen by the router now, signed in or not" />
         <Tile label="Devices on a wrong address" value={String(health.devicesOnWrongAddress ?? "—")}
           hint="hold an address this router did not give out; should be 0" bad={(health.devicesOnWrongAddress ?? 0) > 0} />

@@ -5,7 +5,10 @@ import Link from "next/link";
 import { ShieldAlert, Wifi } from "lucide-react";
 import { getLanHealth } from "@/actions/lanHealth";
 import type { RouterLanHealth } from "@/lib/types/lanHealth";
-import { lanProblemSentence, routersWithDhcpAlarm, timeAgo } from "@/lib/utils/lanHealth";
+import {
+  lanProblemSentence, routersThatCannotSignIn, routersWithDhcpAlarm, signInLabel, signInProblemSentence, timeAgo,
+} from "@/lib/utils/lanHealth";
+import { KeyRound } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const REFRESH_MS = 60_000;
@@ -43,6 +46,7 @@ export function CustomerNetworkHealth({ initial }: { initial: RouterLanHealth[] 
   }, [initial]);
 
   const alarms = routersWithDhcpAlarm(routers ?? []);
+  const cannotSignIn = routersThatCannotSignIn(routers ?? []);
 
   return (
     <section aria-labelledby="customer-network-health" className="rounded-2xl border border-border bg-card shadow-xl">
@@ -51,10 +55,32 @@ export function CustomerNetworkHealth({ initial }: { initial: RouterLanHealth[] 
           <Wifi className="h-4 w-4 text-primary" /> Customer network health
         </h2>
         <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
-          What each router sees between itself and its customers, checked every 2 minutes. On a healthy site the
-          two middle columns are zero.
+          What each router sees between itself and its customers, and whether it can sign them in, checked every
+          2 minutes. On a healthy site sign-in is working and the wrong-address and DHCP columns are zero.
         </p>
       </div>
+
+      {cannotSignIn.length > 0 && (
+        <div role="alert" className="border-b border-red-500/30 bg-red-500/5 p-4 text-sm">
+          <p className="flex items-center gap-2 font-medium text-red-700 dark:text-red-400">
+            <KeyRound className="h-4 w-4" />
+            {cannotSignIn.length === 1 ? "A router cannot sign customers in" : `${cannotSignIn.length} routers cannot sign customers in`}
+          </p>
+          <ul className="mt-2 space-y-1">
+            {cannotSignIn.map((r) => (
+              <li key={r.routerId}>
+                <Link href={`/network/routers/${r.routerId}`} className="font-medium underline-offset-2 hover:underline">{r.routerName}</Link>
+                {": "}{signInProblemSentence(r)}
+                {r.signInNote ? ` The router reports: ${r.signInNote}.` : ""}
+              </li>
+            ))}
+          </ul>
+          <p className="mt-2 text-muted-foreground">
+            The router looks online, but the sign-in server is not answering it. The usual cause is a sign-in password
+            on the router that no longer matches the server: open the router and run Reprovision Router.
+          </p>
+        </div>
+      )}
 
       {alarms.length > 0 && (
         <div role="alert" className="border-b border-red-500/30 bg-red-500/5 p-4 text-sm">
@@ -88,10 +114,11 @@ export function CustomerNetworkHealth({ initial }: { initial: RouterLanHealth[] 
         </p>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[820px] text-left text-sm">
+          <table className="w-full min-w-[960px] text-left text-sm">
             <thead>
               <tr className="border-b border-border">
                 <th className={TH}>Router</th>
+                <th className={TH} title="Whether the sign-in (RADIUS) server answers this router. If not, customers who pay are not connected.">Customer sign-in</th>
                 <th className={TH} title="Devices the router currently sees on the hotspot, signed in or not.">Devices on hotspot</th>
                 <th className={TH} title="Devices holding an address the router did not give out. They cannot reach the payment page or the internet properly.">Devices on a wrong address</th>
                 <th className={TH} title="Devices answering customers' address requests besides the router. Usually an access point left in router mode.">Unauthorised DHCP servers</th>
@@ -109,6 +136,18 @@ export function CustomerNetworkHealth({ initial }: { initial: RouterLanHealth[] 
                     <p className={cn("text-xs", r.status === "ATTENTION" ? "text-red-600 dark:text-red-400" : "text-muted-foreground")}>
                       {r.status === "OK" ? "Healthy" : r.status === "ATTENTION" ? "Needs attention" : "Could not be read"}
                     </p>
+                  </td>
+                  <td className="px-4 py-3">
+                    <span
+                      title={`Last ${r.signInWindowMinutes} minutes: ${r.signInAnswered} answered, ${r.signInUnanswered} unanswered`}
+                      className={cn(
+                        r.signInStatus === "NOT_WORKING" || r.signInStatus === "NOT_SET_UP"
+                          ? "font-semibold text-red-600 dark:text-red-400"
+                          : r.signInStatus === "WORKING" ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"
+                      )}
+                    >
+                      {signInLabel(r)}
+                    </span>
                   </td>
                   <td className="px-4 py-3"><Figure value={r.devicesOnHotspot} bad={false} /></td>
                   <td className="px-4 py-3"><Figure value={r.devicesOnWrongAddress} bad={(r.devicesOnWrongAddress ?? 0) > 0} /></td>
