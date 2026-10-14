@@ -5,6 +5,9 @@ import LoginForm from "@/app/(auth)/login/_components/LoginForm";
 
 const determineAccountTypeAction = vi.fn();
 const sysAdminLoginAction = vi.fn();
+const staffLoginAction = vi.fn();
+const staffSignInCodeAction = vi.fn();
+const sysAdminSignInCodeAction = vi.fn();
 const resolveOrganisationAction = vi.fn();
 
 const signIn = vi.fn();
@@ -12,6 +15,9 @@ vi.mock("next-auth/react", () => ({ signIn: (...a: unknown[]) => signIn(...a) })
 vi.mock("@/actions/auth", () => ({
   determineAccountTypeAction: (...a: unknown[]) => determineAccountTypeAction(...a),
   sysAdminLoginAction: (...a: unknown[]) => sysAdminLoginAction(...a),
+  staffLoginAction: (...a: unknown[]) => staffLoginAction(...a),
+  staffSignInCodeAction: (...a: unknown[]) => staffSignInCodeAction(...a),
+  sysAdminSignInCodeAction: (...a: unknown[]) => sysAdminSignInCodeAction(...a),
 }));
 vi.mock("@/actions/branding", () => ({
   resolveOrganisationAction: (...a: unknown[]) => resolveOrganisationAction(...a),
@@ -29,6 +35,7 @@ beforeEach(() => {
   window.localStorage.clear();
   determineAccountTypeAction.mockResolvedValue({ success: true, data: { accountType: "CUSTOMER" } });
   signIn.mockResolvedValue(undefined);
+  staffLoginAction.mockResolvedValue({ success: true, data: { token: "staff-jwt", username: "jane.doe", role: "02" } });
 });
 
 describe("LoginForm", () => {
@@ -41,9 +48,10 @@ describe("LoginForm", () => {
     await userEvent.click(screen.getByRole("button", { name: /^sign in$/i }));
 
     await waitFor(() => expect(signIn).toHaveBeenCalled());
+    expect(staffLoginAction).toHaveBeenCalledWith("jane.doe", "secret-password", "CMP-BDK-001");
     expect(signIn).toHaveBeenCalledWith(
       "credentials",
-      expect.objectContaining({ username: "jane.doe", organisation: "CMP-BDK-001" })
+      expect.objectContaining({ username: "jane.doe", verifiedToken: "staff-jwt", organisation: "CMP-BDK-001" })
     );
     expect(window.localStorage.getItem("ibs_login_organisation")).toBe("bedak");
   });
@@ -85,5 +93,45 @@ describe("LoginForm", () => {
     await waitFor(() => expect(signIn).toHaveBeenCalled());
     expect(signIn).toHaveBeenCalledWith("credentials", expect.objectContaining({ sysadminToken: "jwt" }));
     expect(resolveOrganisationAction).not.toHaveBeenCalled();
+  });
+
+  it("asks for the emailed code when the server wants one, then signs in", async () => {
+    resolveOrganisationAction.mockResolvedValue(bedak);
+    staffLoginAction.mockResolvedValue({ success: true, data: { username: "jane.doe", role: "02", codeRequired: true } });
+    staffSignInCodeAction.mockResolvedValue({ success: true, data: { token: "after-code", username: "jane.doe", role: "02" } });
+    render(<LoginForm />);
+
+    await userEvent.type(screen.getByLabelText("Organisation"), "bedak");
+    await fill("jane.doe", "secret-password");
+    await userEvent.click(screen.getByRole("button", { name: /^sign in$/i }));
+
+    await userEvent.type(await screen.findByLabelText("Sign-in code"), "123456");
+    expect(signIn).not.toHaveBeenCalled();
+    await userEvent.click(screen.getByRole("button", { name: /^sign in$/i }));
+
+    await waitFor(() => expect(signIn).toHaveBeenCalled());
+    expect(staffSignInCodeAction).toHaveBeenCalledWith("jane.doe", "123456");
+    expect(signIn).toHaveBeenCalledWith("credentials", expect.objectContaining({ verifiedToken: "after-code" }));
+  });
+
+  it("lets an investor with no company in without an organisation", async () => {
+    determineAccountTypeAction.mockResolvedValue({ success: true, data: { accountType: "INVESTOR" } });
+    render(<LoginForm />);
+
+    await fill("partner", "secret-password");
+    await userEvent.click(screen.getByRole("button", { name: /^sign in$/i }));
+
+    await waitFor(() => expect(signIn).toHaveBeenCalled());
+    expect(staffLoginAction).toHaveBeenCalledWith("partner", "secret-password", undefined);
+  });
+
+  it("still asks staff for their organisation", async () => {
+    render(<LoginForm />);
+
+    await fill("jane.doe", "secret-password");
+    await userEvent.click(screen.getByRole("button", { name: /^sign in$/i }));
+
+    expect(await screen.findByText(/enter your organisation/i)).toBeInTheDocument();
+    expect(staffLoginAction).not.toHaveBeenCalled();
   });
 });

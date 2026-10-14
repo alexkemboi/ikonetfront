@@ -44,7 +44,8 @@ export type LoginResponse = ApiResponse<{
 }>;
 
 export type AccountTypeResponse = {
-  accountType: "CUSTOMER" | "SYSADMIN" | "INVALID";
+  /** INVESTOR: an investor's login that belongs to no company; it signs in without an organisation. */
+  accountType: "CUSTOMER" | "INVESTOR" | "SYSADMIN" | "INVALID";
 };
 
 /**

@@ -207,25 +207,35 @@ const { handlers, auth: nextAuth, signIn, signOut } = NextAuth({
         }
 
         try {
-          const res = await fetch(buildApiUrl("/auth/userlogin"), {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              username: credentials.username,
-              password: credentials.password,
-            }),
-            cache: "no-store",
-          });
+          // The sign-in page already signed in with the server (password, then a code when
+          // one is asked for) and hands over the token it got. Its signature is checked below.
+          const verifiedToken = (credentials as Record<string, unknown>).verifiedToken;
+          let loginRes: LoginResponse;
+          if (credentials.password === "token-verified" && typeof verifiedToken === "string" && verifiedToken) {
+            loginRes = { success: true, data: { token: verifiedToken, username: String(credentials.username), role: "" } } as LoginResponse;
+          } else {
+            const organisation = (credentials as Record<string, unknown>).organisation;
+            const res = await fetch(buildApiUrl("/auth/userlogin"), {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                username: credentials.username,
+                password: credentials.password,
+                ...(typeof organisation === "string" && organisation.trim() ? { organisation } : {}),
+              }),
+              cache: "no-store",
+            });
 
-          if (!res.ok) {
-            console.warn(`[Auth] Backend login rejected with status ${res.status}`);
-            return null;
+            if (!res.ok) {
+              console.warn(`[Auth] Backend login rejected with status ${res.status}`);
+              return null;
+            }
+            loginRes = await res.json();
           }
-
-          const loginRes: LoginResponse = await res.json();
           if (!loginRes.success || !loginRes.data?.token) return null;
 
           const token = loginRes.data.token;
+          if (!(await parseBackendJwt(token, getJwtSecret()))) return null;
           const decoded = await parseBackendJwt(token, getJwtSecret());
           const rawRole = loginRes.data.role || decoded?.role;
           if (!rawRole) return null;
