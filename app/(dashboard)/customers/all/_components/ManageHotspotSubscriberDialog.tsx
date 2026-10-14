@@ -12,6 +12,7 @@ import {
   resumeHotspotSession,
 } from "@/actions/subscriberTime";
 import { disconnectLiveSession } from "@/actions/sessions";
+import HotspotPurchaseHistory from "./HotspotPurchaseHistory";
 import type { HotspotSessionTime } from "@/lib/types/subscriberTime";
 import { formatTimeLeft, toMinutes } from "@/lib/utils/subscriberTime";
 
@@ -283,6 +284,7 @@ export function ManageHotspotSubscriberDialog({
             )}
           </div>
         )}
+        {subscriber?.phone && <HotspotPurchaseHistory phone={subscriber.phone} />}
       </DialogContent>
     </Dialog>
   );
