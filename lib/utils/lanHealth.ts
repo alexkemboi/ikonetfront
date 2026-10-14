@@ -15,6 +15,41 @@ export function routersWithDhcpAlarm(routers: RouterLanHealth[]): RouterLanHealt
   return routers.filter((r) => r.status !== "UNKNOWN" && (r.unauthorisedDhcpServers ?? 0) > 0);
 }
 
+/** Routers that cannot sign any customer in: paid customers there stay offline. */
+export function routersThatCannotSignIn(routers: RouterLanHealth[]): RouterLanHealth[] {
+  return routers.filter(
+    (r) => r.status !== "UNKNOWN" && (r.signInStatus === "NOT_WORKING" || r.signInStatus === "NOT_SET_UP")
+  );
+}
+
+/** Short label for the sign-in column. */
+export function signInLabel(r: Pick<RouterLanHealth, "signInStatus">): string {
+  switch (r.signInStatus) {
+    case "WORKING":
+      return "Working";
+    case "NOT_WORKING":
+      return "Not working";
+    case "NOT_SET_UP":
+      return "Not set up";
+    case "NO_ATTEMPTS":
+      return "No one tried lately";
+    default:
+      return "Not known yet";
+  }
+}
+
+/** One plain sentence for a router that cannot sign customers in, or null when it can. */
+export function signInProblemSentence(r: RouterLanHealth): string | null {
+  if (r.signInStatus === "NOT_SET_UP") {
+    return "the hotspot has no sign-in (RADIUS) server set on the router, so no customer can be signed in.";
+  }
+  if (r.signInStatus === "NOT_WORKING") {
+    return `${r.signInUnanswered} sign-in ${r.signInUnanswered === 1 ? "request" : "requests"} in the last ` +
+      `${r.signInWindowMinutes} minutes got no answer and none was answered. Customers who pay here are not connected.`;
+  }
+  return null;
+}
+
 /** Routers where devices hold a wrong address although no DHCP server was caught. */
 export function routersWithWrongAddresses(routers: RouterLanHealth[]): RouterLanHealth[] {
   return routers.filter(
@@ -27,6 +62,8 @@ export function lanProblemSentence(r: RouterLanHealth): string | null {
   const servers = r.unauthorisedDhcpServers ?? 0;
   const wrong = r.devicesOnWrongAddress ?? 0;
   if (r.status === "UNKNOWN") return null;
+  const signIn = signInProblemSentence(r);
+  if (signIn) return signIn.charAt(0).toUpperCase() + signIn.slice(1);
   if (servers > 0) {
     return `${servers} ${servers === 1 ? "device is" : "devices are"} handing out addresses that only the router should give` +
       (wrong > 0 ? `, and ${wrong} customer ${wrong === 1 ? "device has" : "devices have"} a wrong address` : "") + ".";

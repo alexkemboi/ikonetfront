@@ -21,6 +21,16 @@ export interface RouterLanHealth {
   accessPointsSeen: number;
   accessPointsNotSeen: number;
   notSeenAfterMinutes: number;
+  /**
+   * Can the router sign customers in? Judged from the router's own RADIUS counters over the
+   * last `signInWindowMinutes`. NOT_WORKING = requests went unanswered and none was answered.
+   */
+  signInStatus: "WORKING" | "NOT_WORKING" | "NO_ATTEMPTS" | "NOT_SET_UP" | "UNKNOWN";
+  signInAnswered: number;
+  signInUnanswered: number;
+  /** What the router says is wrong with its RADIUS entry; null when nothing. */
+  signInNote: string | null;
+  signInWindowMinutes: number;
 }
 
 export interface LanAccessPoint {
