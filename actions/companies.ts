@@ -26,6 +26,11 @@ export type PaymentAccountPayload = {
    */
   nominatedNumber?: string;
   isDefault: boolean;
+  /**
+   * The paybill or till is used by other companies too (system administrator only). Leave
+   * key, secret and passkey blank to use the ones already saved for it.
+   */
+  shared?: boolean;
 };
 
 export type PaymentAccountSummary = {
@@ -57,6 +62,10 @@ export type CompanyPaymentAccountView = {
   /** What Safaricom said when the registration failed. */
   pullRegistrationError?: string | null;
   pullNominatedNumber?: string | null;
+  /** Deliberately shared with other companies. */
+  shared?: boolean | null;
+  /** The other companies using it, by name (shown to system administrators only). */
+  sharedWith?: string[] | null;
 };
 
 /** Safaricom's answer to registering a paybill / till for its transaction statement. */
@@ -90,6 +99,8 @@ export type PaymentAccountUpdatePayload = {
   nominatedNumber?: string;
   isDefault?: boolean;
   isActive?: boolean;
+  /** Cannot be switched off while another company still uses the short code. */
+  shared?: boolean;
 };
 
 export type UpdateCompanyBrandingRequest = {

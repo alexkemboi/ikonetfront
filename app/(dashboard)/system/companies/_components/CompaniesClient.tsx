@@ -74,6 +74,7 @@ type CredentialsForm = {
   nominatedNumber: string;
   isDefault: boolean;
   isActive: boolean;
+  shared: boolean;
 };
 
 /** How the Safaricom statement registration of one account reads to an operator. */
@@ -138,6 +139,7 @@ export default function CompaniesClient({ companies, readiness, canMutate }: Pro
   const [passkey, setPasskey] = useState("");
   const [nominatedNumber, setNominatedNumber] = useState("");
   const [isDefault, setIsDefault] = useState(false);
+  const [shared, setShared] = useState(false);
 
   const [branding, setBranding] = useState<BrandingForm>(EMPTY_BRANDING);
   const [paymentAccounts, setPaymentAccounts] = useState<CompanyPaymentAccountView[]>([]);
@@ -185,6 +187,7 @@ export default function CompaniesClient({ companies, readiness, canMutate }: Pro
     setPasskey("");
     setNominatedNumber("");
     setIsDefault(false);
+    setShared(false);
   }
 
   function resetBrandingForm() {
@@ -223,8 +226,14 @@ export default function CompaniesClient({ companies, readiness, canMutate }: Pro
       toast.error("Till number is required for TILL accounts.");
       return;
     }
-    if (accountType !== "BANK" && (!clientKey.trim() || !clientSecret.trim() || !passkey.trim())) {
-      toast.error("Consumer key, consumer secret and passkey are all required to collect payments.");
+    const typed = [clientKey, clientSecret, passkey].filter((v) => v.trim()).length;
+    // a shared paybill may take the credentials already saved for it: all three blank
+    if (accountType !== "BANK" && typed < 3 && !(shared && typed === 0)) {
+      toast.error(
+        shared
+          ? "Fill in all three credentials, or leave all three blank to use the ones already saved for this paybill."
+          : "Consumer key, consumer secret and passkey are all required to collect payments."
+      );
       return;
     }
     const payload: PaymentAccountPayload = {
@@ -236,6 +245,7 @@ export default function CompaniesClient({ companies, readiness, canMutate }: Pro
       passkey: passkey.trim() || undefined,
       nominatedNumber: accountType !== "BANK" ? nominatedNumber.trim() || undefined : undefined,
       isDefault,
+      shared: accountType !== "BANK" && shared,
     };
     startTransition(async () => {
       const res = await withStepUp(
@@ -321,6 +331,7 @@ export default function CompaniesClient({ companies, readiness, canMutate }: Pro
         : {}),
       ...(f.isDefault !== Boolean(f.account.isDefault) ? { isDefault: f.isDefault } : {}),
       ...(f.isActive !== Boolean(f.account.isActive) ? { isActive: f.isActive } : {}),
+      ...(f.shared !== Boolean(f.account.shared) ? { shared: f.shared } : {}),
     };
     if (Object.keys(payload).length === 0) {
       toast.error("Nothing to change: fill in the credential or number to replace, or change a switch.");
@@ -734,6 +745,23 @@ export default function CompaniesClient({ companies, readiness, canMutate }: Pro
                 Set as default account
               </Label>
             </div>
+            {canMutate && accountType !== "BANK" && (
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <Checkbox id="pa-shared" checked={shared} onCheckedChange={(checked) => setShared(checked === true)} />
+                  <Label htmlFor="pa-shared" className="text-sm font-normal cursor-pointer">
+                    Shared {accountType === "TILL" ? "till" : "paybill"}: other companies collect through it too
+                  </Label>
+                </div>
+                {shared && (
+                  <p className="text-xs text-muted-foreground">
+                    The other companies&apos; accounts with this short code are marked shared as well. Leave the consumer key,
+                    secret and passkey blank to use the ones already saved for it. Each payment still goes to the company
+                    whose customer paid.
+                  </p>
+                )}
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setAccountFor(null)}>
@@ -856,6 +884,18 @@ export default function CompaniesClient({ companies, readiness, canMutate }: Pro
                 />
                 <Label htmlFor="cred-default">Default account (the one customers pay into)</Label>
               </div>
+              {credentialsFor.account.accountType !== "BANK" && (
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="cred-shared"
+                    checked={credentialsFor.shared}
+                    onCheckedChange={(v) => setCredentialsFor({ ...credentialsFor, shared: v === true })}
+                  />
+                  <Label htmlFor="cred-shared">
+                    Shared with other companies (cannot be unshared while another company still uses it)
+                  </Label>
+                </div>
+              )}
               <div className="flex items-center gap-2">
                 <Checkbox
                   id="cred-active"
@@ -915,7 +955,17 @@ export default function CompaniesClient({ companies, readiness, canMutate }: Pro
                   {paymentAccounts.map((acct) => (
                     <TableRow key={`${acct.accountType}-${acct.shortCode}`}>
                       <TableCell className="font-mono text-xs">{acct.accountType}</TableCell>
-                      <TableCell className="font-mono text-xs">{acct.shortCode}</TableCell>
+                      <TableCell className="font-mono text-xs">
+                        {acct.shortCode}
+                        {acct.shared && (
+                          <span
+                            className="ml-2 rounded-full bg-sky-500/15 px-2 py-0.5 font-sans text-[10px] font-semibold text-sky-500"
+                            title={acct.sharedWith && acct.sharedWith.length > 0 ? `Also used by ${acct.sharedWith.join(", ")}` : "Shared with other companies"}
+                          >
+                            Shared{acct.sharedWith && acct.sharedWith.length > 0 ? ` · ${acct.sharedWith.length + 1} companies` : ""}
+                          </span>
+                        )}
+                      </TableCell>
                       <TableCell className="text-xs">{acct.accountReference ?? "\u2014"}</TableCell>
                       <TableCell className="text-xs">{acct.provider}</TableCell>
                       <TableCell className="font-mono text-xs">{acct.maskedConsumerKey ?? "\u2014"}</TableCell>
@@ -968,6 +1018,7 @@ export default function CompaniesClient({ companies, readiness, canMutate }: Pro
                                 nominatedNumber: acct.pullNominatedNumber ?? "",
                                 isDefault: Boolean(acct.isDefault),
                                 isActive: Boolean(acct.isActive),
+                                shared: Boolean(acct.shared),
                               })
                             }
                           >
