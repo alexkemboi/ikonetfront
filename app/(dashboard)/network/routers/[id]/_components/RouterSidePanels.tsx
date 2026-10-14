@@ -20,6 +20,8 @@ import type { LoginPageStatus, RouterHealthScore, RouterSecrets } from "@/lib/ty
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { formatDateTime, useOnDemand } from "./format";
+import { useSession } from "next-auth/react";
+import { canOpenRouters } from "@/lib/types/roles";
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -101,6 +103,8 @@ export function HealthCard({ health }: { health: RouterHealthScore }) {
  * The router password and RADIUS secret are revealed to SYSADMIN only, after step-up.
  */
 export function ConnectionPanel({ routerId, canEdit }: { routerId: number; canEdit: boolean }) {
+  // WinBox on/off is for the company admin and SYSADMIN only
+  const canOpenRouter = canOpenRouters(useSession().data?.user?.role);
   const loadConnection = useCallback(() => getRouterConnection(routerId), [routerId]);
   const loadServices = useCallback(() => getRouterServices(routerId), [routerId]);
   const connection = useOnDemand(loadConnection, true);
@@ -184,7 +188,7 @@ export function ConnectionPanel({ routerId, canEdit }: { routerId: number; canEd
                     <span className={winbox.disabled ? "text-muted-foreground" : "text-emerald-600 dark:text-emerald-400"}>
                       {winbox.disabled ? "off" : "on"}
                     </span>
-                    {canEdit && (
+                    {canEdit && canOpenRouter && (
                       <Button size="sm" variant="outline" className="h-7" disabled={busy} onClick={() => void toggleWinbox()}>
                         {winbox.disabled ? "Turn on" : "Turn off"}
                       </Button>

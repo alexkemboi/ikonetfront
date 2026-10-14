@@ -36,6 +36,10 @@ const mockDelete = vi.fn();
 const mockAllocate = vi.fn();
 const mockDeallocate = vi.fn();
 
+// the menu reads the signed-in role: remote access (WinBox, web console) is for 01 and SYSADMIN
+const sessionRole = { current: "01" };
+vi.mock("next-auth/react", () => ({ useSession: () => ({ data: { user: { role: sessionRole.current } } }) }));
+
 vi.mock("@/actions/network", () => ({
   executeRouterAction: (...args: unknown[]) => mockExecute(...args),
   getRouterMonitoringLatest: (...args: unknown[]) => mockLatest(...args),
@@ -434,5 +438,18 @@ describe("RouterActionsDropdown", () => {
     expect(screen.getByText("Sync Hotspot Files")).toBeInTheDocument();
     expect(screen.queryByText("Live Hardware Vitals")).not.toBeInTheDocument();
     expect(screen.queryByText("Reprovision Router")).not.toBeInTheDocument();
+  });
+
+  it("hides WinBox and the web console from management", async () => {
+    sessionRole.current = "02";
+    try {
+      const user = userEvent.setup();
+      render(<RouterActionsDropdown router={router} />);
+      await user.click(screen.getByRole("button", { name: /router actions/i }));
+      expect(screen.queryByText("Copy WinBox host:port")).not.toBeInTheDocument();
+      expect(screen.queryByText("Regenerate WinBox Port")).not.toBeInTheDocument();
+    } finally {
+      sessionRole.current = "01";
+    }
   });
 });

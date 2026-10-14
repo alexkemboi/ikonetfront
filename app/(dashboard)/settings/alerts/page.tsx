@@ -15,6 +15,11 @@ export default async function AlertsPage() {
 
  return (
  <div className="p-6">
+ <p className="mb-4 max-w-3xl text-sm text-muted-foreground">
+ These are the SMS and email accounts the system sends through. Who receives what is set by the system:
+ customers get renewal reminders, outage notices, payment confirmations and ticket updates; company admins
+ get an SMS when a router has been down for 10 minutes.
+ </p>
  <AlertsClient providers={providers} activeChannels={[]} canManage={canManage} />
  </div>
  );
