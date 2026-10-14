@@ -32,11 +32,10 @@ docker pull "${FULL_IMAGE}"
 # ── 3. Export image tag for docker compose ───────────────────
 export IMAGE_TAG
 
-# ── 4. Stop old container (bounded grace period) ─────────────
-docker compose down --timeout 20 --remove-orphans || true
-
-# ── 5. Start fresh container ─────────────────────────────────
-docker compose up -d --force-recreate
+# ── 4/5. Replace the container in one step ───────────────────
+# No separate `down`: the old container keeps serving until compose swaps it
+# for the new image, keeping the window where nginx has no upstream short.
+docker compose up -d --force-recreate --remove-orphans --timeout 20
 
 # ── 6. Verify the app is accepting connections ───────────────
 PORT="${FRONTEND_PORT:-3456}"

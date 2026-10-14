@@ -256,7 +256,7 @@ export default function LoginForm({
       <div className="space-y-1.5">
         <Label htmlFor="organisation">Organisation</Label>
         {hostOrganisation ? (
-          <div className="flex h-10 items-center gap-2 rounded-md border border-input bg-muted/40 px-3 text-sm">
+          <div className="flex h-11 items-center gap-2 rounded-md border border-input bg-muted/40 px-3 text-sm">
             <Building2 className="h-4 w-4 shrink-0 text-muted-foreground" />
             <span className="truncate font-medium">{hostOrganisation.name}</span>
           </div>
@@ -281,7 +281,7 @@ export default function LoginForm({
                 disabled={organisationDisabled}
                 aria-describedby="organisation-help"
                 aria-invalid={organisation.status === "unknown"}
-                className={cn("pl-9 pr-9", organisation.status === "unknown" && mode === "company" && "border-destructive")}
+                className={cn("h-11 pl-9 pr-9", organisation.status === "unknown" && mode === "company" && "border-destructive")}
               />
               {mode === "company" && organisation.status === "checking" && (
                 <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" />
@@ -353,7 +353,7 @@ export default function LoginForm({
                 placeholder={mode === "platform" ? "e.g. sysadmin" : "e.g. jane.doe or BSM-00124"}
                 {...formik.getFieldProps("username")}
                 aria-invalid={!!usernameError}
-                className={cn("pl-9", usernameError && "border-destructive focus-visible:ring-destructive/30")}
+                className={cn("h-11 pl-9", usernameError && "border-destructive focus-visible:ring-destructive/30")}
                 disabled={busy}
               />
             </div>
@@ -380,7 +380,7 @@ export default function LoginForm({
                 placeholder="••••••••"
                 {...formik.getFieldProps("password")}
                 aria-invalid={!!passwordError}
-                className={cn("pl-9 pr-10", passwordError && "border-destructive focus-visible:ring-destructive/30")}
+                className={cn("h-11 pl-9 pr-10", passwordError && "border-destructive focus-visible:ring-destructive/30")}
                 disabled={busy}
               />
               <button
@@ -409,7 +409,7 @@ export default function LoginForm({
             </label>
           )}
 
-          <Button type="submit" className="w-full h-10 gap-2" disabled={busy}>
+          <Button type="submit" className="h-12 w-full gap-2 rounded-full text-base" disabled={busy}>
             {busy ? (
               <Loader2 className="w-4 h-4 animate-spin" />
             ) : (
