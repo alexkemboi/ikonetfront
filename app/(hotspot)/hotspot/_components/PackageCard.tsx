@@ -1,7 +1,5 @@
 "use client";
 
-import { useState } from "react";
-import { ArrowDown, ArrowUp, ChevronDown, ChevronUp } from "lucide-react";
 import { HotspotPackage } from "@/lib/types/hotspot";
 
 interface PackageCardProps {
@@ -9,11 +7,11 @@ interface PackageCardProps {
  onSelect: (pkg: HotspotPackage) => void;
 }
 
+/** One package, in plain words: name, how long it lasts, how many devices, price. */
 export default function PackageCard({ pkg, onSelect }: PackageCardProps) {
-	const [isExpanded, setIsExpanded] = useState(false);
-
-	const speedLabel =
-		(pkg.speedDownload ?? 0) >= 1000 ? "Unlimited" : `${pkg.speedDownload ?? 0} Mbps`;
+	const validity = pkg.validityValue && pkg.validityType ? `${pkg.validityValue} ${pkg.validityType}` : null;
+	const devices = pkg.maxDevices && pkg.maxDevices > 1 ? `${pkg.maxDevices} devices` : null;
+	const details = [validity, devices].filter(Boolean).join(" · ");
 
 	return (
 		<div
@@ -21,83 +19,25 @@ export default function PackageCard({ pkg, onSelect }: PackageCardProps) {
 			role="button"
 			tabIndex={0}
 			onKeyDown={(e) => {
-				if (e.key === "Enter") onSelect(pkg);
-				if (e.key === " ") setIsExpanded(!isExpanded);
+				if (e.key === "Enter" || e.key === " ") onSelect(pkg);
 			}}
-			aria-label={`${pkg.packageName} package`}
+			aria-label={`${pkg.packageName} package, KES ${pkg.price}`}
 		>
-			{/* Main row - always visible */}
 			<div className="px-4 py-3 flex items-center justify-between gap-4">
-				{/* Left: Package info (compact) */}
 				<div className="flex-1 min-w-0">
-					<h3 className="text-sm font-normal text-foreground truncate">
-						{pkg.packageName}
-					</h3>
-					<div className="text-xs text-muted-foreground mt-4.5 md:mt-0.5 flex items-center gap-2">
-						<div className="flex items-center gap-1">
-							<ArrowUp className="w-4 h-4 text-primary" />
-							{pkg.speedUpload ?? 0} Mbps
-						</div>
-						<div className="flex items-center gap-1">
-							<ArrowDown className="w-4 h-4 text-green-700" />
-							{pkg.speedDownload ?? 0} Mbps
-						</div>
-					</div>
+					<h3 className="text-sm font-normal text-foreground truncate">{pkg.packageName}</h3>
+					{details && <p className="text-xs text-muted-foreground mt-0.5">{details}</p>}
 				</div>
 
-				{/* Center: Price */}
-				<div className="text-right shrink-0 flex items-center justify-between sm:justify-end">
-					<span className="text-lg font-bold text-primary">
-						 KES {pkg.price}
-					</span>
-				</div>
+				<span className="text-lg font-bold text-primary shrink-0">KES {pkg.price}</span>
 
-				{/* Right: Expand/Collapse + Select */}
-				<div className="shrink-0 flex items-center gap-2">
-					<button
-						onClick={() => setIsExpanded(!isExpanded)}
-						className="p-1 hover:bg-secondary rounded transition-colors"
-						aria-label="Toggle details"
-					>
-						{isExpanded ? (
-							<ChevronUp className="w-4 h-4 text-muted-foreground" />
-						) : (
-							<ChevronDown className="w-4 h-4 text-muted-foreground" />
-						)}
-					</button>
-
-					<button
-						onClick={() => onSelect(pkg)}
-						className="px-3 py-1.5 bg-primary text-primary-foreground text-xs font-semibold rounded transition-opacity hover:opacity-90 whitespace-nowrap"
-					>
-						Select
-					</button>
-				</div>
+				<button
+					onClick={() => onSelect(pkg)}
+					className="shrink-0 px-3 py-1.5 bg-primary text-primary-foreground text-xs font-semibold rounded transition-opacity hover:opacity-90 whitespace-nowrap"
+				>
+					Select
+				</button>
 			</div>
-
-			{/* Expanded details */}
-			{isExpanded && (
-				<div className="border-t border-border px-4 py-3 bg-secondary/30 space-y-2 text-sm">
-					<div className="flex justify-between items-start">
-						<span className="text-muted-foreground">Download Speed:</span>
-						<span className="font-medium text-foreground">{speedLabel}</span>
-					</div>
-					<div className="flex justify-between items-start">
-						<span className="text-muted-foreground">Data Amount:</span>
-						<span className="font-medium text-foreground">{pkg.speedDownload ?? 0} GB</span>
-					</div>
-					<div className="flex justify-between items-start">
-						<span className="text-muted-foreground">Upload Speed:</span>
-						<span className="font-medium text-foreground">{pkg.speedUpload ?? 0} Mbps</span>
-					</div>
-					<div className="flex justify-between items-start">
-						<span className="text-muted-foreground">Validity:</span>
-						<span className="font-medium text-foreground">
-							{pkg.validityValue} {pkg.validityType}
-						</span>
-					</div>
-				</div>
-			)}
 		</div>
 	);
 }

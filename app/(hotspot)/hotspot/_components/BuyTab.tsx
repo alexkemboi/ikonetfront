@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, useSyncExternalStore } from "react";
-import { Search, SortAsc, Filter } from "lucide-react";
+import { Search, SortAsc } from "lucide-react";
 import { HotspotPackage } from "@/lib/types/hotspot";
 import PackageCard from "./PackageCard";
 import CheckoutModal from "./CheckoutModal";
@@ -21,7 +21,7 @@ interface BuyTabProps {
   routerIdentity?: string;
 }
 
-type SortBy = "price-asc" | "price-desc" | "data-asc" | "data-desc";
+type SortBy = "price-asc" | "price-desc";
 
 /** Reads the parked purchase, discarding anything incomplete or corrupt. */
 function readPendingPurchase(): PendingHotspotPurchase | null {
@@ -120,10 +120,6 @@ const [showCheckout, setShowCheckout] = useState(false);
                   return compareMoneyStrings(a.price, b.price);
                 case "price-desc":
                   return compareMoneyStrings(b.price, a.price);
-                case "data-asc":
-                    return (a.speedDownload ?? 0) - (b.speedDownload ?? 0);
-                case "data-desc":
-                    return (b.speedDownload ?? 0) - (a.speedDownload ?? 0);
                 default:
                     return 0;
             }
@@ -184,16 +180,6 @@ const [showCheckout, setShowCheckout] = useState(false);
  Price {sortBy === "price-asc" ? "↑" : "↓"}
  </button>
 
- <button
- onClick={() => setSortBy(sortBy === "data-asc" ? "data-desc" : "data-asc")}
- className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${sortBy.startsWith("data")
- ? "bg-primary text-primary-foreground"
- : "bg-secondary text-foreground border border-border hover:bg-secondary/80"
- }`}
- >
- <Filter className="w-3.5 h-3.5" />
- Data {sortBy === "data-asc" ? "↑" : "↓"}
- </button>
  </div>
  </div>
 
