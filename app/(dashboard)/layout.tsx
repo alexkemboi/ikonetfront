@@ -85,14 +85,14 @@ return (
 <SessionHeartbeat />
 <StepUpProvider>
   <TenantTheme branding={tenantBranding}>
-  <div className="flex h-screen overflow-hidden bg-background">
+  <div className="fixed inset-0 flex overflow-hidden bg-background">
   <Sidebar
   navGroups={navGroups}
   brandName="SpeedLink"
   user={sidebarUser}
   />
 
-  <div className="dashboard-main-scroll flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden overflow-y-auto">
+  <div className="dashboard-main-scroll flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden overflow-y-auto overscroll-y-contain">
 <TopBar
    notificationCount={0}
    user={sidebarUser

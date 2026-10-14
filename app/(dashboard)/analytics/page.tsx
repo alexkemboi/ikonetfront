@@ -49,7 +49,7 @@ export default async function AnalyticsPage({
 
   return (
     <AmountsVisibilityProvider>
-      <div id="analytics-top" className="analytics-viz min-h-screen p-4 text-foreground sm:p-6 lg:p-8">
+      <div id="analytics-top" className="analytics-viz p-4 text-foreground sm:p-6 lg:p-8">
         <LiveDataRefresh intervalMs={REFRESH_MS} />
         <div className="mx-auto max-w-7xl space-y-6">
           <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
