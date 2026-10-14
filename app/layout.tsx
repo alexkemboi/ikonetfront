@@ -44,6 +44,28 @@ export default function RootLayout({
     })();`,
     }}
   />
+    {/* A chunk that fails to load (deploy restart, or a page from the previous
+        build) crashes the app; reload once so the browser fetches the current
+        build. Inline because the bundled code is what failed to load. */}
+    <script
+     dangerouslySetInnerHTML={{
+        __html: `(() => {
+    const KEY = "beesmart-chunk-reload";
+    const isChunkError = (e) => !!e && (e.name === "ChunkLoadError" || /Loading (CSS )?chunk|Failed to load chunk/i.test(String(e.message || e)));
+    const reloadOnce = (e) => {
+     if (!isChunkError(e)) return;
+     try {
+      const last = Number(window.sessionStorage.getItem(KEY) || 0);
+      if (Date.now() - last < 30000) return;
+      window.sessionStorage.setItem(KEY, String(Date.now()));
+     } catch { return; }
+     setTimeout(() => window.location.reload(), 1500);
+    };
+    window.addEventListener("error", (event) => reloadOnce(event.error));
+    window.addEventListener("unhandledrejection", (event) => reloadOnce(event.reason));
+    })();`,
+    }}
+  />
  </head>
  <body
  className={`${dmSans.variable} ${jetbrainsMono.variable} font-sans antialiased`}

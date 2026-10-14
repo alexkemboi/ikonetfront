@@ -36,6 +36,7 @@ export default function AuthLayout({
           border
           border-primary/20
           bg-background
+          dark:border-border
           shadow-[0_25px_80px_rgba(0,0,0,0.10)]
         "
       >
@@ -51,6 +52,9 @@ export default function AuthLayout({
             border-white/30
             bg-primary
             text-primary-foreground
+            dark:border-border
+            dark:bg-sidebar
+            dark:text-sidebar-foreground
             lg:flex
             lg:w-[44%]
             flex-col
@@ -142,13 +146,14 @@ export default function AuthLayout({
             <div
               className="
                 flex
-                h-24
-                w-24
+                h-28
+                w-60
                 items-center
                 justify-center
                 rounded-2xl
                 bg-white
-                p-3
+                px-6
+                py-3
                 shadow-xl
                 ring-1
                 ring-white/20
