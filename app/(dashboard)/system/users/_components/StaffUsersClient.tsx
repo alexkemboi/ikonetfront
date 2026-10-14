@@ -20,6 +20,8 @@ import {
  SheetDescription,
 } from "@/components/ui/sheet";
 import { DataTable } from "@/components/shared/data-table";
+import { withStepUp } from "@/lib/stepUp";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useStaffUserColumns } from "./columns";
 import { INVESTOR_ID_PATTERN, InvestorPicker } from "./InvestorPicker";
 import type { InvestorOption } from "@/lib/types/investor";
@@ -27,6 +29,9 @@ import {
  addSystemUser,
  deleteSystemUser,
  getSystemUsersPage,
+ resetSystemUserPassword,
+ unlockSysAdminAction,
+ unlockSystemUser,
  type SystemUsersPage,
  type UserData,
 } from "@/actions/system";
@@ -438,11 +443,76 @@ export default function StaffUsersClient({ initialPage, roles, isPlatformAdmin, 
     router.refresh();
   };
 
+  const [resetTarget, setResetTarget] = useState<ApiRoleUser | null>(null);
+  const [newPassword, setNewPassword] = useState("");
+  const [sysAdminUnlockOpen, setSysAdminUnlockOpen] = useState(false);
+  const [sysAdminUsername, setSysAdminUsername] = useState("");
+  const [recoveryBusy, setRecoveryBusy] = useState(false);
+
+  const handleUnlock = async (user: ApiRoleUser) => {
+    const result = await unlockSystemUser(user.idxno);
+    if (!result.success) {
+      toast.error("Could not unlock the account", { description: result.message });
+      return;
+    }
+    toast.success(`${user.fullName || user.username} can sign in again`);
+    reloadPage();
+  };
+
+  const handleResetPassword = async () => {
+    if (!resetTarget) return;
+    if (newPassword.length < 12) {
+      toast.error("The new password must be at least 12 characters.");
+      return;
+    }
+    setRecoveryBusy(true);
+    try {
+      const result = await withStepUp(
+        (token) => resetSystemUserPassword(resetTarget.idxno, newPassword, token),
+        "Setting someone else's password requires re-authentication."
+      );
+      if (!result.success) {
+        toast.error("Could not reset the password", { description: result.message });
+        return;
+      }
+      toast.success("Password reset", {
+        description: `Give the new password to ${resetTarget.fullName || resetTarget.username} in person or by phone; the account is unlocked.`,
+      });
+      setResetTarget(null);
+      setNewPassword("");
+      reloadPage();
+    } finally {
+      setRecoveryBusy(false);
+    }
+  };
+
+  const handleSysAdminUnlock = async () => {
+    if (!sysAdminUsername.trim()) return;
+    setRecoveryBusy(true);
+    try {
+      const result = await unlockSysAdminAction(sysAdminUsername);
+      if (!result.success) {
+        toast.error("Could not unlock the administrator", { description: result.message });
+        return;
+      }
+      toast.success(`${sysAdminUsername.trim()} can sign in again`);
+      setSysAdminUnlockOpen(false);
+      setSysAdminUsername("");
+    } finally {
+      setRecoveryBusy(false);
+    }
+  };
+
   const columns = useStaffUserColumns({
     canEdit: canManageUsers && perms.canEdit,
     canDelete: canManageUsers && perms.canDelete,
     onEdit: setSelectedUser,
     onDelete: setDeleteTarget,
+    onUnlock: handleUnlock,
+    onResetPassword: (user) => {
+      setNewPassword("");
+      setResetTarget(user);
+    },
   });
 
   return (
@@ -460,6 +530,11 @@ export default function StaffUsersClient({ initialPage, roles, isPlatformAdmin, 
  {page.totalElements} {page.totalElements === 1 ? "user" : "users"} in this scope
  </p>
  </div>
+ {isPlatformAdmin && (
+ <Button variant="outline" onClick={() => setSysAdminUnlockOpen(true)} className="shrink-0">
+ Unlock an administrator
+ </Button>
+ )}
  {perms.canCreate && canManageUsers && (
  <Button onClick={() => requireCompany(() => setSheetOpen(true))} className="gap-2 shrink-0">
  <UserPlus className="w-4 h-4" />
@@ -534,6 +609,46 @@ export default function StaffUsersClient({ initialPage, roles, isPlatformAdmin, 
  investors={investors}
  roles={roles}
  />
+
+ <Dialog open={Boolean(resetTarget)} onOpenChange={(open) => !open && setResetTarget(null)}>
+   <DialogContent>
+     <DialogHeader>
+       <DialogTitle>Reset password</DialogTitle>
+       <DialogDescription>
+         Set a new password for {resetTarget?.fullName || resetTarget?.username}. This also unlocks the account. You will be asked for your own password first.
+       </DialogDescription>
+     </DialogHeader>
+     <div className="space-y-1.5">
+       <Label htmlFor="reset-password">New password</Label>
+       <Input id="reset-password" type="password" autoComplete="new-password" value={newPassword}
+         onChange={(e) => setNewPassword(e.target.value)} disabled={recoveryBusy} />
+       <p className="text-xs text-muted-foreground">At least 12 characters.</p>
+     </div>
+     <DialogFooter>
+       <Button variant="outline" onClick={() => setResetTarget(null)} disabled={recoveryBusy}>Cancel</Button>
+       <Button onClick={handleResetPassword} disabled={recoveryBusy || newPassword.length < 12}>
+         {recoveryBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : "Set password"}
+       </Button>
+     </DialogFooter>
+   </DialogContent>
+ </Dialog>
+
+ <Dialog open={sysAdminUnlockOpen} onOpenChange={setSysAdminUnlockOpen}>
+   <DialogContent>
+     <DialogHeader>
+       <DialogTitle>Unlock a system administrator</DialogTitle>
+       <DialogDescription>For a system administrator locked out after five wrong passwords.</DialogDescription>
+     </DialogHeader>
+     <div className="space-y-1.5">
+       <Label htmlFor="sysadmin-username">Username</Label>
+       <Input id="sysadmin-username" value={sysAdminUsername} onChange={(e) => setSysAdminUsername(e.target.value)} disabled={recoveryBusy} />
+     </div>
+     <DialogFooter>
+       <Button variant="outline" onClick={() => setSysAdminUnlockOpen(false)} disabled={recoveryBusy}>Cancel</Button>
+       <Button onClick={handleSysAdminUnlock} disabled={recoveryBusy || !sysAdminUsername.trim()}>Unlock</Button>
+     </DialogFooter>
+   </DialogContent>
+ </Dialog>
 
  <AlertDialog open={Boolean(deleteTarget)} onOpenChange={(open) => !open && setDeleteTarget(null)}>
    <AlertDialogContent>

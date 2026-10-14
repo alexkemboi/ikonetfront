@@ -14,11 +14,15 @@ export function useStaffUserColumns({
   canDelete,
   onEdit,
   onDelete,
+  onUnlock,
+  onResetPassword,
 }: {
   canEdit: boolean;
   canDelete: boolean;
   onEdit: (user: ApiRoleUser) => void;
   onDelete: (user: ApiRoleUser) => void;
+  onUnlock: (user: ApiRoleUser) => void;
+  onResetPassword: (user: ApiRoleUser) => void;
 }): ColumnDef<ApiRoleUser>[] {
   return [
   {
@@ -115,6 +119,13 @@ export function useStaffUserColumns({
  ),
  cell: ({ row }) => {
  const canLogin: boolean = row.getValue("canLogin");
+ if (row.original.accountLocked) {
+ return (
+ <Badge variant="outline" className="text-[11px] bg-destructive/10 text-destructive border-destructive/30">
+ Locked
+ </Badge>
+ );
+ }
  return (
  <Badge
  variant="outline"
@@ -164,6 +175,8 @@ cell: ({ row }) => {
  <DropdownMenuContent align="end">
  <DropdownMenuLabel>Actions</DropdownMenuLabel>
  {canEdit && <DropdownMenuItem onClick={() => onEdit(user)}>Edit user</DropdownMenuItem>}
+ {canEdit && user.accountLocked && <DropdownMenuItem onClick={() => onUnlock(user)}>Unlock account</DropdownMenuItem>}
+ {canEdit && <DropdownMenuItem onClick={() => onResetPassword(user)}>Reset password</DropdownMenuItem>}
  {canDelete && <DropdownMenuItem className="text-destructive" onClick={() => onDelete(user)}>Delete user</DropdownMenuItem>}
  
  </DropdownMenuContent>

@@ -28,6 +28,7 @@ function normalizeUserRecord(raw: unknown): ApiRoleUser {
     email: String(r.email ?? ""),
     phoneNumber: String(r.phoneNumber ?? r.phone_number ?? ""),
     canLogin: Boolean(r.canLogin ?? r.can_login ?? true),
+    accountLocked: Boolean(r.accountLocked ?? r.account_locked ?? false),
     companyId: typeof (r.companyId ?? r.company_id) === "string"
       ? String(r.companyId ?? r.company_id)
       : null,
@@ -171,6 +172,53 @@ export async function deleteSystemUser(id: number): Promise<ApiResponse<null>> {
   });
   if (res.success) revalidatePath("/system/users");
   return res;
+}
+
+/** Clears the lock set after five wrong passwords. The password is not changed. */
+export async function unlockSystemUser(id: number): Promise<ApiResponse<ApiRoleUser | null>> {
+  const res = await apiFetch<ApiRoleUser>(`${SYSTEM_USERS_URL}/${id}/unlock`, {
+    method: "POST",
+    auth: "required",
+    cache: "no-store",
+  });
+  if (res.success) revalidatePath("/system/users");
+  return res as ApiResponse<ApiRoleUser | null>;
+}
+
+/** Sets a new password for another account (re-authentication required); also clears a lock. */
+export async function resetSystemUserPassword(
+  id: number,
+  newPassword: string,
+  stepUpToken?: string
+): Promise<ApiResponse<ApiRoleUser | null>> {
+  const res = await apiFetch<ApiRoleUser>(`${SYSTEM_USERS_URL}/${id}/reset-password`, {
+    method: "POST",
+    body: { newPassword },
+    auth: "required",
+    cache: "no-store",
+    stepUpToken,
+  });
+  if (res.success) revalidatePath("/system/users");
+  return res as ApiResponse<ApiRoleUser | null>;
+}
+
+/** System administrators only: unlock another system administrator by username. */
+export async function unlockSysAdminAction(username: string): Promise<ApiResponse<null>> {
+  return apiFetch<null>(`/auth/sysadmins/${encodeURIComponent(username.trim())}/unlock`, {
+    method: "POST",
+    auth: "required",
+    cache: "no-store",
+  });
+}
+
+/** Any signed-in account: change its own password; the current one is checked by the server. */
+export async function changeOwnPasswordAction(currentPassword: string, newPassword: string): Promise<ApiResponse<null>> {
+  return apiFetch<null>("/auth/change-password", {
+    method: "POST",
+    body: { currentPassword, newPassword },
+    auth: "required",
+    cache: "no-store",
+  });
 }
 
 export async function getSystemUsersPage(

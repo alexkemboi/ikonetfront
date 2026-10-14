@@ -170,6 +170,8 @@ export type ApiRoleUser = {
   email: string;
   phoneNumber: string;
   canLogin: boolean;
+  /** Locked after five wrong passwords; an administrator unlocks it. */
+  accountLocked?: boolean;
   companyId?: string | null;
   stationId?: string | null;
   /** Investor party a Network Partner account is linked to; null until linked. */
