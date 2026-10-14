@@ -5,7 +5,7 @@ import Link from "next/link";
 import { ShieldAlert } from "lucide-react";
 import { getLanHealth } from "@/actions/lanHealth";
 import type { RouterLanHealth } from "@/lib/types/lanHealth";
-import { lanProblemSentence, routersThatCannotSignIn, routersWithDhcpAlarm, signInProblemSentence } from "@/lib/utils/lanHealth";
+import { lanProblemSentence, routersThatCannotSignIn, routersWithCustomersOnWrongAddress, signInProblemSentence } from "@/lib/utils/lanHealth";
 
 /**
  * Shown above Live Sessions while a site's own equipment is giving customers wrong
@@ -33,7 +33,8 @@ export function CustomerNetworkAlarm({
     };
   }, [refreshIntervalSeconds]);
 
-  const alarms = routersWithDhcpAlarm(routers);
+  // only what affects customers now; equipment that merely could is shown on Router Monitoring
+  const alarms = routersWithCustomersOnWrongAddress(routers);
   const cannotSignIn = routersThatCannotSignIn(routers);
   if (alarms.length === 0 && cannotSignIn.length === 0) return null;
 
@@ -47,7 +48,7 @@ export function CustomerNetworkAlarm({
     <div role="alert" className="rounded-lg border border-red-500/40 bg-red-500/5 p-4 text-sm">
       <p className="flex items-center gap-2 font-medium text-red-700 dark:text-red-400">
         <ShieldAlert className="h-4 w-4" />
-        Customers are being given wrong addresses
+        Customers hold wrong addresses
       </p>
       <ul className="mt-2 space-y-1">
         {alarms.map((r) => (

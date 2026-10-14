@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import type { RouterLanHealth } from "@/lib/types/lanHealth";
 import {
-  lanProblemSentence, routersThatCannotSignIn, routersWithDhcpAlarm, routersWithWrongAddresses, signInLabel, timeAgo,
+  lanProblemSentence, routersThatCannotSignIn, routersWithCustomersOnWrongAddress, routersWithDhcpServersOnly,
+  signInLabel, timeAgo,
 } from "@/lib/utils/lanHealth";
 
 const base: RouterLanHealth = {
@@ -12,23 +13,38 @@ const base: RouterLanHealth = {
 };
 
 describe("customer network health helpers", () => {
-  it("raises the alarm only for routers with another DHCP server", () => {
-    const sick = { ...base, status: "ATTENTION" as const, unauthorisedDhcpServers: 23, devicesOnWrongAddress: 34 };
-    expect(routersWithDhcpAlarm([base, sick])).toEqual([sick]);
+  it("raises the alarm only when customers actually hold wrong addresses", () => {
+    const sick = { ...base, status: "ATTENTION" as const, unauthorisedDhcpServers: 23, devicesOnWrongAddress: 3 };
+    expect(routersWithCustomersOnWrongAddress([base, sick])).toEqual([sick]);
+    expect(routersWithDhcpServersOnly([sick])).toEqual([]);
     expect(lanProblemSentence(sick)).toBe(
-      "23 devices are handing out addresses that only the router should give, and 34 customer devices have a wrong address."
+      "3 customer devices have an address the router did not give out and cannot reach the payment page or the internet; " +
+      "23 devices on the network are handing out addresses."
     );
   });
 
-  it("reports wrong addresses separately when no DHCP server was caught", () => {
+  it("treats DHCP servers with no customer affected as a risk, not an alarm", () => {
+    // ADRINOLD-WESTLANDS on 14 Oct 2026: 23 Tendas handing out addresses, customers connecting normally
+    const risky = { ...base, status: "ATTENTION" as const, unauthorisedDhcpServers: 23, devicesOnWrongAddress: 0 };
+    expect(routersWithCustomersOnWrongAddress([risky])).toEqual([]);
+    expect(routersWithDhcpServersOnly([base, risky])).toEqual([risky]);
+    expect(lanProblemSentence(risky)).toBe(
+      "23 devices are set up to hand out addresses, which only the router should do. No customer holds one of their addresses right now."
+    );
+  });
+
+  it("reports wrong addresses even when no DHCP server was caught", () => {
     const odd = { ...base, status: "ATTENTION" as const, devicesOnWrongAddress: 1 };
-    expect(routersWithWrongAddresses([base, odd])).toEqual([odd]);
-    expect(lanProblemSentence(odd)).toBe("1 customer device has an address the router did not give out.");
+    expect(routersWithCustomersOnWrongAddress([base, odd])).toEqual([odd]);
+    expect(lanProblemSentence(odd)).toBe(
+      "1 customer device has an address the router did not give out and cannot reach the payment page or the internet."
+    );
   });
 
   it("never alarms on a router that could not be read", () => {
     const blind = { ...base, status: "UNKNOWN" as const, unauthorisedDhcpServers: 5, devicesOnWrongAddress: 9 };
-    expect(routersWithDhcpAlarm([blind])).toEqual([]);
+    expect(routersWithCustomersOnWrongAddress([blind])).toEqual([]);
+    expect(routersWithDhcpServersOnly([blind])).toEqual([]);
     expect(lanProblemSentence(blind)).toBeNull();
   });
 

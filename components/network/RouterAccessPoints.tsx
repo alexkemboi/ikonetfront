@@ -117,10 +117,13 @@ export function RouterAccessPoints({ routerId, canEdit }: { routerId: number; ca
       )}
 
       {!stale && servers.length > 0 && (
-        <div role="alert" className="rounded-lg border border-red-500/40 bg-red-500/5 p-4 text-sm">
-          <p className="flex items-center gap-2 font-medium text-red-700 dark:text-red-400">
+        <div role={(health.devicesOnWrongAddress ?? 0) > 0 ? "alert" : "status"} className={cn("rounded-lg border p-4 text-sm",
+          (health.devicesOnWrongAddress ?? 0) > 0 ? "border-red-500/40 bg-red-500/5" : "border-amber-500/40 bg-amber-500/5")}>
+          <p className={cn("flex items-center gap-2 font-medium",
+            (health.devicesOnWrongAddress ?? 0) > 0 ? "text-red-700 dark:text-red-400" : "text-amber-700 dark:text-amber-400")}>
             <ShieldAlert className="h-4 w-4" />
             {servers.length} {servers.length === 1 ? "device is" : "devices are"} handing out addresses on this network
+            {(health.devicesOnWrongAddress ?? 0) === 0 ? " (no customer affected right now)" : ""}
           </p>
           <p className="mt-1 text-muted-foreground">
             Only the router may do that. A customer who gets an address from one of these devices cannot reach the
@@ -136,8 +139,8 @@ export function RouterAccessPoints({ routerId, canEdit }: { routerId: number; ca
             ? "no sign-in server is set on the router"
             : `last ${health.signInWindowMinutes} min: ${health.signInAnswered} answered, ${health.signInUnanswered} unanswered`}
           bad={health.signInStatus === "NOT_WORKING" || health.signInStatus === "NOT_SET_UP"} />
-        <Tile label="Devices on hotspot" value={String(health.devicesOnHotspot ?? "—")} hint="seen by the router now, signed in or not" />
-        <Tile label="Devices on a wrong address" value={String(health.devicesOnWrongAddress ?? "—")}
+        <Tile label="Customer devices" value={String(health.devicesOnHotspot ?? "—")} hint="on the hotspot now, signed in or not; access points not counted" />
+        <Tile label="Customers on a wrong address" value={String(health.devicesOnWrongAddress ?? "—")}
           hint="hold an address this router did not give out; should be 0" bad={(health.devicesOnWrongAddress ?? 0) > 0} />
         <Tile label="Unauthorised DHCP servers" value={String(health.unauthorisedDhcpServers ?? "—")}
           hint="devices giving out addresses besides the router; must be 0" bad={(health.unauthorisedDhcpServers ?? 0) > 0} />
@@ -164,7 +167,7 @@ export function RouterAccessPoints({ routerId, canEdit }: { routerId: number; ca
                 <YAxis allowDecimals={false} className="text-xs" />
                 <Tooltip labelFormatter={(v) => new Date(String(v)).toLocaleString()} />
                 <Legend />
-                <Line type="monotone" dataKey="devicesOnHotspot" name="Devices on hotspot" stroke="#6b7280" strokeWidth={2} dot={false} />
+                <Line type="monotone" dataKey="devicesOnHotspot" name="Customer devices" stroke="#6b7280" strokeWidth={2} dot={false} />
                 <Line type="monotone" dataKey="devicesOnWrongAddress" name="On a wrong address" stroke="#ef4444" strokeWidth={2} dot={false} />
                 <Line type="monotone" dataKey="unauthorisedDhcpServers" name="Unauthorised DHCP servers" stroke="#f59e0b" strokeWidth={2} dot={false} />
               </LineChart>
@@ -223,7 +226,14 @@ export function RouterAccessPoints({ routerId, canEdit }: { routerId: number; ca
                         )}
                         <p className="text-xs text-muted-foreground">{ap.vendor ?? "Unknown maker"}</p>
                       </td>
-                      <td className="px-3 py-2 font-mono text-xs">{ap.macAddress}</td>
+                      <td className="px-3 py-2 font-mono text-xs">
+                        {ap.macAddress}
+                        {(ap.otherMacAddresses?.length ?? 0) > 0 && (
+                          <p className="font-sans text-muted-foreground" title={ap.otherMacAddresses!.join(", ")}>
+                            +{ap.otherMacAddresses!.length} more {ap.otherMacAddresses!.length === 1 ? "address" : "addresses"} of the same device
+                          </p>
+                        )}
+                      </td>
                       <td className="px-3 py-2">
                         <span className={cn("inline-flex rounded-full px-2 py-0.5 text-xs font-medium", STATUS[ap.status].className)}>{STATUS[ap.status].label}</span>
                         {ap.actingAsDhcpServer && (

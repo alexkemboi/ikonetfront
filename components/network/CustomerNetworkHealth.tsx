@@ -6,7 +6,8 @@ import { ShieldAlert, Wifi } from "lucide-react";
 import { getLanHealth } from "@/actions/lanHealth";
 import type { RouterLanHealth } from "@/lib/types/lanHealth";
 import {
-  lanProblemSentence, routersThatCannotSignIn, routersWithDhcpAlarm, signInLabel, signInProblemSentence, timeAgo,
+  lanProblemSentence, routersThatCannotSignIn, routersWithCustomersOnWrongAddress, routersWithDhcpServersOnly,
+  signInLabel, signInProblemSentence, timeAgo,
 } from "@/lib/utils/lanHealth";
 import { KeyRound } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -45,7 +46,8 @@ export function CustomerNetworkHealth({ initial }: { initial: RouterLanHealth[] 
     };
   }, [initial]);
 
-  const alarms = routersWithDhcpAlarm(routers ?? []);
+  const alarms = routersWithCustomersOnWrongAddress(routers ?? []);
+  const warnings = routersWithDhcpServersOnly(routers ?? []);
   const cannotSignIn = routersThatCannotSignIn(routers ?? []);
 
   return (
@@ -56,7 +58,8 @@ export function CustomerNetworkHealth({ initial }: { initial: RouterLanHealth[] 
         </h2>
         <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
           What each router sees between itself and its customers, and whether it can sign them in, checked every
-          2 minutes. On a healthy site sign-in is working and the wrong-address and DHCP columns are zero.
+          2 minutes. On a healthy site sign-in is working and the wrong-address and DHCP columns are zero. Access
+          points and other equipment are not counted as customers.
         </p>
       </div>
 
@@ -86,7 +89,7 @@ export function CustomerNetworkHealth({ initial }: { initial: RouterLanHealth[] 
         <div role="alert" className="border-b border-red-500/30 bg-red-500/5 p-4 text-sm">
           <p className="flex items-center gap-2 font-medium text-red-700 dark:text-red-400">
             <ShieldAlert className="h-4 w-4" />
-            {alarms.length === 1 ? "A site is handing customers wrong addresses" : `${alarms.length} sites are handing customers wrong addresses`}
+            {alarms.length === 1 ? "Customers at a site hold wrong addresses" : `Customers at ${alarms.length} sites hold wrong addresses`}
           </p>
           <ul className="mt-2 space-y-1">
             {alarms.map((r) => (
@@ -97,8 +100,29 @@ export function CustomerNetworkHealth({ initial }: { initial: RouterLanHealth[] 
             ))}
           </ul>
           <p className="mt-2 text-muted-foreground">
-            Customers who get one of those addresses cannot reach the payment page or the internet. Open the router
-            to see which devices to fix: each must have its DHCP server switched off, or be set to access point mode.
+            Those customers cannot reach the payment page or the internet. Open the router to see which devices are
+            handing out addresses: each must have its DHCP server switched off, or be set to access point mode.
+          </p>
+        </div>
+      )}
+
+      {warnings.length > 0 && (
+        <div role="status" className="border-b border-amber-500/30 bg-amber-500/5 p-4 text-sm">
+          <p className="flex items-center gap-2 font-medium text-amber-700 dark:text-amber-400">
+            <ShieldAlert className="h-4 w-4" />
+            Equipment set up to hand out addresses (no customer affected right now)
+          </p>
+          <ul className="mt-2 space-y-1">
+            {warnings.map((r) => (
+              <li key={r.routerId}>
+                <Link href={`/network/routers/${r.routerId}`} className="font-medium underline-offset-2 hover:underline">{r.routerName}</Link>
+                {": "}{lanProblemSentence(r)}
+              </li>
+            ))}
+          </ul>
+          <p className="mt-2 text-muted-foreground">
+            Not urgent, but a risk: if customers start taking those addresses they lose their connection. Fix the
+            listed devices when convenient: DHCP server off, or access point mode.
           </p>
         </div>
       )}
@@ -119,10 +143,10 @@ export function CustomerNetworkHealth({ initial }: { initial: RouterLanHealth[] 
               <tr className="border-b border-border">
                 <th className={TH}>Router</th>
                 <th className={TH} title="Whether the sign-in (RADIUS) server answers this router. If not, customers who pay are not connected.">Customer sign-in</th>
-                <th className={TH} title="Devices the router currently sees on the hotspot, signed in or not.">Devices on hotspot</th>
-                <th className={TH} title="Devices holding an address the router did not give out. They cannot reach the payment page or the internet properly.">Devices on a wrong address</th>
+                <th className={TH} title="Customer devices the router currently sees on the hotspot, signed in or not. Access points are not counted.">Customer devices</th>
+                <th className={TH} title="Customer devices holding an address the router did not give out. They cannot reach the payment page or the internet.">Customers on a wrong address</th>
                 <th className={TH} title="Devices answering customers' address requests besides the router. Usually an access point left in router mode.">Unauthorised DHCP servers</th>
-                <th className={TH} title="Access points the router has heard from recently, and those it has not.">Access points</th>
+                <th className={TH} title="Access points the router has heard from recently, and those it has not. A device's several addresses count once.">Access points</th>
                 <th className={TH}>Last checked</th>
               </tr>
             </thead>
@@ -151,7 +175,11 @@ export function CustomerNetworkHealth({ initial }: { initial: RouterLanHealth[] 
                   </td>
                   <td className="px-4 py-3"><Figure value={r.devicesOnHotspot} bad={false} /></td>
                   <td className="px-4 py-3"><Figure value={r.devicesOnWrongAddress} bad={(r.devicesOnWrongAddress ?? 0) > 0} /></td>
-                  <td className="px-4 py-3"><Figure value={r.unauthorisedDhcpServers} bad={(r.unauthorisedDhcpServers ?? 0) > 0} /></td>
+                  <td className="px-4 py-3">
+                    {(r.unauthorisedDhcpServers ?? 0) > 0 && (r.devicesOnWrongAddress ?? 0) === 0
+                      ? <span className="tabular-nums font-semibold text-amber-600">{r.unauthorisedDhcpServers}</span>
+                      : <Figure value={r.unauthorisedDhcpServers} bad={(r.unauthorisedDhcpServers ?? 0) > 0} />}
+                  </td>
                   <td className="px-4 py-3">
                     <span className="tabular-nums">{r.accessPointsSeen} seen</span>
                     {r.accessPointsNotSeen > 0 && (

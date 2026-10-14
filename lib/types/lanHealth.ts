@@ -13,8 +13,9 @@ export interface RouterLanHealth {
   checkedAt: string | null;
   /** Why the latest check failed; null when it succeeded. */
   error: string | null;
+  /** Customer devices on the hotspot; access points and other equipment are not counted. */
   devicesOnHotspot: number | null;
-  /** Devices holding an address the router did not give out. Should be 0. */
+  /** Customer devices holding an address the router did not give out. Should be 0. */
   devicesOnWrongAddress: number | null;
   /** Devices answering as a DHCP server besides the router. Must be 0. */
   unauthorisedDhcpServers: number | null;
@@ -47,6 +48,8 @@ export interface LanAccessPoint {
   onInterface: string | null;
   firstSeenAt: string;
   lastSeenAt: string;
+  /** The device's other addresses (other ports and radios): one device, counted once. */
+  otherMacAddresses?: string[];
 }
 
 export interface LanHistoryPoint {
