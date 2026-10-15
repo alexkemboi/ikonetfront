@@ -32,6 +32,19 @@ export interface RouterLanHealth {
   /** What the router says is wrong with its RADIUS entry; null when nothing. */
   signInNote: string | null;
   signInWindowMinutes: number;
+  /** Was the router given the RADIUS password the server uses now? OUT_OF_DATE = every sign-in refused. */
+  radiusPasswordStatus?: "CURRENT" | "OUT_OF_DATE" | "UNKNOWN";
+  radiusPasswordSetAt?: string | null;
+  /** ZTP, REPROVISION, DIRECT_LINK or MANUAL_PUSH. */
+  radiusPasswordSetBy?: string | null;
+}
+
+/** `POST /network/radius-password/reprovision`: one line per router tried. */
+export interface RadiusRolloutResult {
+  routerId: number;
+  routerName: string;
+  done: boolean;
+  message: string;
 }
 
 export interface LanAccessPoint {

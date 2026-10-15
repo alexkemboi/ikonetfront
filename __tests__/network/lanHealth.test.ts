@@ -2,14 +2,16 @@ import { describe, expect, it } from "vitest";
 import type { RouterLanHealth } from "@/lib/types/lanHealth";
 import {
   lanProblemSentence, routersThatCannotSignIn, routersWithCustomersOnWrongAddress, routersWithDhcpServersOnly,
-  signInLabel, timeAgo,
+  passwordLabel, routersWithOldPassword, signInLabel, signInProblemSentence, timeAgo,
 } from "@/lib/utils/lanHealth";
+import { COLOUR_LEGEND, NETWORK_HEALTH_HELP } from "@/lib/help/networkHealthHelp";
 
 const base: RouterLanHealth = {
   routerId: 90, routerName: "ADRINOLD-WESTLANDS", companyId: "CMP-ADR-001", status: "OK", checkedAt: "2026-10-13T09:00:00Z",
   error: null, devicesOnHotspot: 40, devicesOnWrongAddress: 0, unauthorisedDhcpServers: 0,
   accessPointsSeen: 16, accessPointsNotSeen: 0, notSeenAfterMinutes: 15,
   signInStatus: "WORKING", signInAnswered: 12, signInUnanswered: 0, signInNote: null, signInWindowMinutes: 10,
+  radiusPasswordStatus: "CURRENT", radiusPasswordSetAt: "2026-10-15T01:00:00Z", radiusPasswordSetBy: "REPROVISION",
 };
 
 describe("customer network health helpers", () => {
@@ -76,5 +78,26 @@ describe("customer network health helpers", () => {
     const blind = { ...base, status: "UNKNOWN" as const, signInStatus: "NOT_WORKING" as const };
     expect(routersThatCannotSignIn([quiet, blind])).toEqual([]);
     expect(signInLabel(quiet)).toBe("No one tried lately");
+  });
+
+  it("treats a router with an old RADIUS password as unable to sign anyone in, before anyone tries", () => {
+    // BEESMART C - WESTLANDS on 14 Oct 2026: linked before the rotation, refused on every sign-in
+    const stale = { ...base, status: "ATTENTION" as const, signInStatus: "NO_ATTEMPTS" as const, radiusPasswordStatus: "OUT_OF_DATE" as const };
+    expect(routersWithOldPassword([base, stale])).toEqual([stale]);
+    expect(routersThatCannotSignIn([base, stale])).toEqual([stale]);
+    expect(signInProblemSentence(stale)).toBe(
+      "the router holds an old RADIUS password, so the sign-in server refuses every customer from it."
+    );
+    expect(passwordLabel(stale)).toBe("Out of date");
+    expect(passwordLabel({ radiusPasswordStatus: "UNKNOWN" })).toBe("Not recorded");
+  });
+
+  it("explains every term in plain words and gives every colour a meaning", () => {
+    for (const entry of Object.values(NETWORK_HEALTH_HELP)) {
+      expect(entry.title.length).toBeGreaterThan(3);
+      expect(entry.means.length).toBeGreaterThan(20);
+    }
+    expect(NETWORK_HEALTH_HELP.rogueDhcp.todo).toContain("access point (AP) mode");
+    expect(COLOUR_LEGEND.map((c) => c.colour)).toEqual(["green", "red", "amber", "grey"]);
   });
 });

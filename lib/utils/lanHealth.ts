@@ -26,11 +26,32 @@ export function routersWithDhcpServersOnly(routers: RouterLanHealth[]): RouterLa
   );
 }
 
-/** Routers that cannot sign any customer in: paid customers there stay offline. */
+/**
+ * Routers that cannot sign any customer in: paid customers there stay offline. Includes a
+ * router holding an old RADIUS password even before anyone has tried (the server will refuse it).
+ */
 export function routersThatCannotSignIn(routers: RouterLanHealth[]): RouterLanHealth[] {
   return routers.filter(
-    (r) => r.status !== "UNKNOWN" && (r.signInStatus === "NOT_WORKING" || r.signInStatus === "NOT_SET_UP")
+    (r) => r.radiusPasswordStatus === "OUT_OF_DATE"
+      || (r.status !== "UNKNOWN" && (r.signInStatus === "NOT_WORKING" || r.signInStatus === "NOT_SET_UP"))
   );
+}
+
+/** Routers that hold an old RADIUS password: the server refuses every sign-in from them. */
+export function routersWithOldPassword(routers: RouterLanHealth[]): RouterLanHealth[] {
+  return routers.filter((r) => r.radiusPasswordStatus === "OUT_OF_DATE");
+}
+
+/** Short label for the RADIUS password column. */
+export function passwordLabel(r: Pick<RouterLanHealth, "radiusPasswordStatus">): string {
+  switch (r.radiusPasswordStatus) {
+    case "CURRENT":
+      return "Current";
+    case "OUT_OF_DATE":
+      return "Out of date";
+    default:
+      return "Not recorded";
+  }
 }
 
 /** Short label for the sign-in column. */
@@ -51,6 +72,9 @@ export function signInLabel(r: Pick<RouterLanHealth, "signInStatus">): string {
 
 /** One plain sentence for a router that cannot sign customers in, or null when it can. */
 export function signInProblemSentence(r: RouterLanHealth): string | null {
+  if (r.radiusPasswordStatus === "OUT_OF_DATE") {
+    return "the router holds an old RADIUS password, so the sign-in server refuses every customer from it.";
+  }
   if (r.signInStatus === "NOT_SET_UP") {
     return "the hotspot has no sign-in (RADIUS) server set on the router, so no customer can be signed in.";
   }
