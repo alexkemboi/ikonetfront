@@ -3,13 +3,14 @@
 import { useState } from "react";
 import { useCompanyScope } from "@/providers/CompanyScopeProvider";
 import { useRouter } from "next/navigation";
-import { Plus, RotateCcw } from "lucide-react";
+import { Plus, RotateCcw, Tv } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { VoucherKpiCards } from "./VoucherKpiCards";
 import { VoucherDataTable } from "./VoucherDataTable";
 import { GenerateVouchersModal } from "./GenerateVouchersModal";
 import { VoucherBatchLedger } from "./VoucherBatchLedger";
 import { CompensatePaymentModal } from "./CompensatePaymentModal";
+import { RedeemTvVoucherModal } from "./RedeemTvVoucherModal";
 import { VoucherItem, VoucherKpis, VoucherStatus } from "@/lib/types/vouchers";
 import type { VoucherBatchItem, VoucherBatchKpis } from "@/lib/types/payments";
 
@@ -53,6 +54,7 @@ export function VouchersClient({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const { requireCompany } = useCompanyScope();
   const [isCompensateOpen, setIsCompensateOpen] = useState(false);
+  const [isTvRedeemOpen, setIsTvRedeemOpen] = useState(false);
 
   return (
   <div className="min-h-screen p-4 sm:p-6">
@@ -66,7 +68,7 @@ export function VouchersClient({
   Vouchers &amp; Prepaid Codes
   </h1>
   <p className="text-sm text-muted-foreground">
-  Mint, export and print hotspot vouchers.
+  Mint, export and print hotspot and TV vouchers.
   </p>
   </div>
   <div className="flex flex-wrap gap-2">
@@ -75,6 +77,12 @@ export function VouchersClient({
   onClick={() => setIsCompensateOpen(true)}
   >
   <RotateCcw className="h-4 w-4" /> Compensate Payment
+  </Button>
+  <Button
+  variant="secondary"
+  onClick={() => requireCompany(() => setIsTvRedeemOpen(true))}
+  >
+  <Tv className="h-4 w-4" /> Redeem TV Voucher
   </Button>
   <Button
   onClick={() => requireCompany(() => setIsModalOpen(true))}
@@ -109,6 +117,14 @@ export function VouchersClient({
   isOpen={isCompensateOpen}
   onClose={() => {
   setIsCompensateOpen(false);
+  router.refresh();
+  }}
+  />
+
+  <RedeemTvVoucherModal
+  isOpen={isTvRedeemOpen}
+  onClose={() => {
+  setIsTvRedeemOpen(false);
   router.refresh();
   }}
   />

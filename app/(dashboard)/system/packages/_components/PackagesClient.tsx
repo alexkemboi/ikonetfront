@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import type {
- CompanyPackageAvailability, InternetPackage, PackageAvailability, PackagePayload, PackageUpdatePayload,
+ CompanyPackageAvailability, InternetPackage, PackageAvailability, PackagePayload, PackageService, PackageUpdatePayload,
 } from "@/actions/packages";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import PackageRouterGrid, { soldOnLabel } from "./PackageRouterGrid";
@@ -69,7 +69,11 @@ const validationSchema = Yup.object({
  burstTime: Yup.string().when("enableBurst", { is: true, then: (s) => s.required("Burst time is required") }),
 });
 
+const SERVICE_LABEL: Record<PackageService, string> = { HOTSPOT: "Hotspot", TV: "TV & streaming" };
+const serviceOf = (pkg: InternetPackage): PackageService => (pkg.serviceType === "TV" ? "TV" : "HOTSPOT");
+
 const EMPTY_FORM = {
+ serviceType: "HOTSPOT" as PackageService,
  packageName: "",
  price: "",
  packageCategory: "",
@@ -108,19 +112,22 @@ function FormField({
 
 // ── Package Sheet form ─────────────────────────────────────────────────────────
 function PackageSheet({
- open, onClose, editing, username,
+ open, onClose, editing, username, defaultService,
  onSaved,
 }: {
  open: boolean;
  onClose: () => void;
  editing: InternetPackage | null;
  username: string;
+ /** The list being viewed when "Add Package" was pressed. */
+ defaultService: PackageService;
  onSaved: (pkg: InternetPackage, isEdit: boolean) => void;
 }) {
  const formik = useFormik({
  enableReinitialize: true,
  initialValues: editing
  ? {
+ serviceType: serviceOf(editing),
  packageName: editing.packageName,
  price: editing.price,
  packageCategory: editing.packageCategory,
@@ -136,7 +143,7 @@ function PackageSheet({
  burstThreshold: editing.burstThreshold ?? "",
  burstTime: editing.burstTime ?? "",
  }
- : EMPTY_FORM,
+ : { ...EMPTY_FORM, serviceType: defaultService },
  validationSchema,
  onSubmit: async (values, { setFieldError }) => {
  const payload: PackagePayload = {
@@ -190,6 +197,35 @@ function PackageSheet({
  <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Basic Info</span>
  <div className="h-px flex-1 bg-border" />
  </div>
+
+ <FormField label="Sold as" required>
+ <div role="radiogroup" aria-label="Sold as" className="grid grid-cols-2 gap-2">
+ {(["HOTSPOT", "TV"] as PackageService[]).map((service) => (
+ <button
+ key={service}
+ type="button"
+ role="radio"
+ aria-checked={formik.values.serviceType === service}
+ disabled={!!editing}
+ onClick={() => formik.setFieldValue("serviceType", service)}
+ className={cn(
+ "rounded-md border px-3 py-2 text-sm text-left disabled:cursor-not-allowed",
+ formik.values.serviceType === service ? "border-primary bg-primary/5 font-medium" : "border-input",
+ editing && formik.values.serviceType !== service ? "opacity-50" : ""
+ )}
+ >
+ {SERVICE_LABEL[service]}
+ </button>
+ ))}
+ </div>
+ <p className="text-xs text-muted-foreground">
+ {editing
+ ? "Fixed once the package exists. To sell this as the other product, create a new package."
+ : formik.values.serviceType === "TV"
+ ? "Shown only on the TV setup page of the portal, and paid for by the TV's MAC address."
+ : "Shown on the hotspot page of the portal."}
+ </p>
+ </FormField>
 
  <FormField label="Package Name" error={touched.packageName ? errors.packageName : undefined} required>
  <Input
@@ -381,6 +417,7 @@ export default function PackagesClient({
  );
  const routerCount = availability?.routers.length ?? 0;
  const [activeCategory, setActiveCategory] = useState("All");
+ const [activeService, setActiveService] = useState<PackageService>("HOTSPOT");
  const [sheetOpen, setSheetOpen] = useState(false);
  const [editing, setEditing] = useState<InternetPackage | null>(null);
  const [deletingId, setDeletingId] = useState<number | null>(null);
@@ -396,8 +433,9 @@ export default function PackagesClient({
  }, [packages]);
 
  const filtered = useMemo(
- () => activeCategory === "All" ? packages : packages.filter((p) => p.packageCategory === activeCategory),
- [packages, activeCategory]
+ () => packages.filter((p) => serviceOf(p) === activeService
+ && (activeCategory === "All" || p.packageCategory === activeCategory)),
+ [packages, activeCategory, activeService]
  );
 
  const activeCount = packages.filter((p) => p.activeStatus).length;
@@ -449,6 +487,7 @@ export default function PackagesClient({
  result = await deactivatePackageAction(pkg.idxno);
  } else {
  result = await updatePackageAction(pkg.idxno, {
+ serviceType: serviceOf(pkg),
  packageName: pkg.packageName,
  price: pkg.price,
  packageCategory: pkg.packageCategory,
@@ -692,6 +731,24 @@ export default function PackagesClient({
  </TabsList>
 
  <TabsContent value="packages" className="space-y-6">
+ <div role="tablist" aria-label="Product" className="inline-flex rounded-lg border border-border p-1">
+ {(["HOTSPOT", "TV"] as PackageService[]).map((service) => (
+ <button
+ key={service}
+ type="button"
+ role="tab"
+ aria-selected={activeService === service}
+ onClick={() => { setActiveService(service); setActiveCategory("All"); }}
+ className={cn(
+ "px-4 py-1.5 text-sm rounded-md",
+ activeService === service ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+ )}
+ >
+ {SERVICE_LABEL[service]} packages
+ <span className="ml-1.5 text-xs opacity-70">{packages.filter((p) => serviceOf(p) === service).length}</span>
+ </button>
+ ))}
+ </div>
  {/* ── Grid / Empty state ── */}
  {filtered.length === 0 ? (
  <div className="flex flex-col items-center justify-center py-20 text-center gap-4">
@@ -702,7 +759,9 @@ export default function PackagesClient({
  <p className="font-semibold text-foreground">No packages found</p>
  <p className="text-sm text-muted-foreground">
  {activeCategory === "All"
- ? "Get started by creating your first internet package."
+ ? activeService === "TV"
+ ? "No TV packages yet. Add one to sell internet access for TVs on the TV setup page."
+ : "Get started by creating your first internet package."
  : `No packages in the "${activeCategory}" category.`}
  </p>
  </div>
@@ -725,7 +784,7 @@ export default function PackagesClient({
  {cat}
  {cat !== "All" && (
  <span className="ml-1.5 text-xs opacity-70">
- {packages.filter((p) => p.packageCategory === cat).length}
+ {packages.filter((p) => serviceOf(p) === activeService && p.packageCategory === cat).length}
  </span>
  )}
  </DataTableFilterPill>
@@ -758,6 +817,7 @@ export default function PackagesClient({
  open={sheetOpen}
  onClose={() => setSheetOpen(false)}
  editing={editing}
+ defaultService={activeService}
  username="admin"
  onSaved={handleSaved}
  />

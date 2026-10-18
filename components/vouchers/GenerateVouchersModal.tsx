@@ -42,7 +42,7 @@ function mapPackages(rows: VoucherPackageOption[]): PackageOption[] {
  return rows.map((p) => ({
  value: String(p.idxno),
  // a site-specific package can only be minted for a router it is sold on
- label: `${p.packageName} · ${fmtSpeed(p)} · Ksh ${p.price} · ${fmtValidity(p)}${p.routerScope === "SELECTED" ? " · selected routers only" : ""}`,
+ label: `${p.serviceType === "TV" ? "TV · " : ""}${p.packageName} · ${fmtSpeed(p)} · Ksh ${p.price} · ${fmtValidity(p)}${p.routerScope === "SELECTED" ? " · selected routers only" : ""}`,
  unitPrice: String(p.price),
  }));
 }
