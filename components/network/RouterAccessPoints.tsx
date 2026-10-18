@@ -6,9 +6,12 @@ import { Check, Pencil, Radio, ShieldAlert, X } from "lucide-react";
 import { toast } from "sonner";
 import { getRouterLanDetail, updateAccessPoint } from "@/actions/lanHealth";
 import type { LanAccessPoint, RouterLanDetail } from "@/lib/types/lanHealth";
-import { signInLabel, signInProblemSentence, timeAgo } from "@/lib/utils/lanHealth";
+import { passwordLabel, signInLabel, signInProblemSentence, timeAgo } from "@/lib/utils/lanHealth";
+import { HelpTip, HowToReadPanel } from "@/components/network/HealthHelp";
+import type { HelpKey } from "@/lib/help/networkHealthHelp";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { visibleInterval } from "@/lib/hooks/useVisibleInterval";
 
 const REFRESH_MS = 60_000;
 const TH = "px-3 py-2 text-[11px] uppercase tracking-wider text-muted-foreground";
@@ -19,11 +22,22 @@ const STATUS: Record<LanAccessPoint["status"], { label: string; className: strin
   IGNORED: { label: "Not watched", className: "bg-muted text-muted-foreground" },
 };
 
-function Tile({ label, value, hint, bad }: { label: string; value: string; hint: string; bad?: boolean }) {
+type Tone = "red" | "amber" | "green" | "plain";
+
+const TONE: Record<Tone, string> = {
+  red: "text-red-600 dark:text-red-400",
+  amber: "text-amber-600",
+  green: "text-emerald-600 dark:text-emerald-400",
+  plain: "text-foreground",
+};
+
+function Tile({ label, value, hint, bad, tone, help }: {
+  label: string; value: string; hint: string; bad?: boolean; tone?: Tone; help?: HelpKey;
+}) {
   return (
     <div className="rounded-xl border border-border bg-card p-4">
-      <p className="text-[11px] uppercase tracking-wider text-muted-foreground">{label}</p>
-      <p className={cn("mt-1 text-2xl font-semibold tabular-nums", bad ? "text-red-600 dark:text-red-400" : "text-foreground")}>{value}</p>
+      <p className="text-[11px] uppercase tracking-wider text-muted-foreground">{label} {help && <HelpTip term={help} />}</p>
+      <p className={cn("mt-1 text-2xl font-semibold tabular-nums", TONE[tone ?? (bad ? "red" : "plain")])}>{value}</p>
       <p className="mt-1 text-xs text-muted-foreground">{hint}</p>
     </div>
   );
@@ -52,10 +66,10 @@ export function RouterAccessPoints({ routerId, canEdit }: { routerId: number; ca
       if (res.data) setDetail(res.data);
     };
     void load();
-    const timer = setInterval(load, REFRESH_MS);
+    const stopPolling = visibleInterval(load, REFRESH_MS);
     return () => {
       cancelled = true;
-      clearInterval(timer);
+      stopPolling();
     };
   }, [routerId, reloadKey]);
 
@@ -117,10 +131,13 @@ export function RouterAccessPoints({ routerId, canEdit }: { routerId: number; ca
       )}
 
       {!stale && servers.length > 0 && (
-        <div role="alert" className="rounded-lg border border-red-500/40 bg-red-500/5 p-4 text-sm">
-          <p className="flex items-center gap-2 font-medium text-red-700 dark:text-red-400">
+        <div role={(health.devicesOnWrongAddress ?? 0) > 0 ? "alert" : "status"} className={cn("rounded-lg border p-4 text-sm",
+          (health.devicesOnWrongAddress ?? 0) > 0 ? "border-red-500/40 bg-red-500/5" : "border-amber-500/40 bg-amber-500/5")}>
+          <p className={cn("flex items-center gap-2 font-medium",
+            (health.devicesOnWrongAddress ?? 0) > 0 ? "text-red-700 dark:text-red-400" : "text-amber-700 dark:text-amber-400")}>
             <ShieldAlert className="h-4 w-4" />
             {servers.length} {servers.length === 1 ? "device is" : "devices are"} handing out addresses on this network
+            {(health.devicesOnWrongAddress ?? 0) === 0 ? " (no customer affected right now)" : ""}
           </p>
           <p className="mt-1 text-muted-foreground">
             Only the router may do that. A customer who gets an address from one of these devices cannot reach the
@@ -130,20 +147,34 @@ export function RouterAccessPoints({ routerId, canEdit }: { routerId: number; ca
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
-        <Tile label="Customer sign-in" value={signInLabel(health)}
+      <HowToReadPanel />
+
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-6">
+        <Tile label="Customer sign-in" value={signInLabel(health)} help="customerSignIn"
+          tone={health.signInStatus === "NOT_WORKING" || health.signInStatus === "NOT_SET_UP" ? "red"
+            : health.signInStatus === "WORKING" ? "green" : "plain"}
           hint={health.signInStatus === "NOT_SET_UP"
             ? "no sign-in server is set on the router"
             : `last ${health.signInWindowMinutes} min: ${health.signInAnswered} answered, ${health.signInUnanswered} unanswered`}
-          bad={health.signInStatus === "NOT_WORKING" || health.signInStatus === "NOT_SET_UP"} />
-        <Tile label="Devices on hotspot" value={String(health.devicesOnHotspot ?? "—")} hint="seen by the router now, signed in or not" />
-        <Tile label="Devices on a wrong address" value={String(health.devicesOnWrongAddress ?? "—")}
+          />
+        <Tile label="RADIUS password" value={passwordLabel(health)} help="radiusPassword"
+          tone={health.radiusPasswordStatus === "OUT_OF_DATE" ? "red" : health.radiusPasswordStatus === "CURRENT" ? "green" : "plain"}
+          hint={health.radiusPasswordStatus === "OUT_OF_DATE"
+            ? "every sign-in from this router is refused: run Reprovision Router"
+            : health.radiusPasswordSetAt
+              ? `given ${timeAgo(health.radiusPasswordSetAt)} (${(health.radiusPasswordSetBy ?? "").toLowerCase().replace("_", " ")})`
+              : "not recorded: run Reprovision Router once to record it"} />
+        <Tile label="Customer devices" help="customerDevices" value={String(health.devicesOnHotspot ?? "—")} hint="on the hotspot now, signed in or not; access points not counted" />
+        <Tile label="Customers on a wrong address" help="wrongAddress" value={String(health.devicesOnWrongAddress ?? "—")}
           hint="hold an address this router did not give out; should be 0" bad={(health.devicesOnWrongAddress ?? 0) > 0} />
-        <Tile label="Unauthorised DHCP servers" value={String(health.unauthorisedDhcpServers ?? "—")}
-          hint="devices giving out addresses besides the router; must be 0" bad={(health.unauthorisedDhcpServers ?? 0) > 0} />
-        <Tile label="Access points" value={`${health.accessPointsSeen} seen`}
+        <Tile label="Unauthorised DHCP servers" help="rogueDhcp" value={String(health.unauthorisedDhcpServers ?? "—")}
+          hint={(health.unauthorisedDhcpServers ?? 0) > 0 && (health.devicesOnWrongAddress ?? 0) === 0
+            ? "devices set up to hand out addresses; no customer affected right now"
+            : "devices giving out addresses besides the router; must be 0"}
+          tone={(health.unauthorisedDhcpServers ?? 0) === 0 ? "plain" : (health.devicesOnWrongAddress ?? 0) > 0 ? "red" : "amber"} />
+        <Tile label="Access points" help="accessPoints" value={`${health.accessPointsSeen} seen`}
           hint={health.accessPointsNotSeen > 0 ? `${health.accessPointsNotSeen} not seen for over ${health.notSeenAfterMinutes} minutes` : "all watched access points were seen recently"}
-          bad={health.accessPointsNotSeen > 0} />
+          tone={health.accessPointsNotSeen > 0 ? "amber" : "plain"} />
       </div>
       <p className="text-xs text-muted-foreground">Last checked {timeAgo(health.checkedAt)}.</p>
 
@@ -164,7 +195,7 @@ export function RouterAccessPoints({ routerId, canEdit }: { routerId: number; ca
                 <YAxis allowDecimals={false} className="text-xs" />
                 <Tooltip labelFormatter={(v) => new Date(String(v)).toLocaleString()} />
                 <Legend />
-                <Line type="monotone" dataKey="devicesOnHotspot" name="Devices on hotspot" stroke="#6b7280" strokeWidth={2} dot={false} />
+                <Line type="monotone" dataKey="devicesOnHotspot" name="Customer devices" stroke="#6b7280" strokeWidth={2} dot={false} />
                 <Line type="monotone" dataKey="devicesOnWrongAddress" name="On a wrong address" stroke="#ef4444" strokeWidth={2} dot={false} />
                 <Line type="monotone" dataKey="unauthorisedDhcpServers" name="Unauthorised DHCP servers" stroke="#f59e0b" strokeWidth={2} dot={false} />
               </LineChart>
@@ -199,7 +230,7 @@ export function RouterAccessPoints({ routerId, canEdit }: { routerId: number; ca
                   <tr className="border-b border-border">
                     <th className={TH}>Name or place</th>
                     <th className={TH}>MAC address</th>
-                    <th className={TH}>Status</th>
+                    <th className={TH}>Status <HelpTip term="apNotSeen" /></th>
                     <th className={TH}>Last seen</th>
                     <th className={TH}>Router port</th>
                     {canEdit && <th className={cn(TH, "text-right")}>Actions</th>}
@@ -223,11 +254,20 @@ export function RouterAccessPoints({ routerId, canEdit }: { routerId: number; ca
                         )}
                         <p className="text-xs text-muted-foreground">{ap.vendor ?? "Unknown maker"}</p>
                       </td>
-                      <td className="px-3 py-2 font-mono text-xs">{ap.macAddress}</td>
+                      <td className="px-3 py-2 font-mono text-xs">
+                        {ap.macAddress}
+                        {(ap.otherMacAddresses?.length ?? 0) > 0 && (
+                          <p className="font-sans text-muted-foreground" title={ap.otherMacAddresses!.join(", ")}>
+                            +{ap.otherMacAddresses!.length} more {ap.otherMacAddresses!.length === 1 ? "address" : "addresses"} of the same device
+                          </p>
+                        )}
+                      </td>
                       <td className="px-3 py-2">
                         <span className={cn("inline-flex rounded-full px-2 py-0.5 text-xs font-medium", STATUS[ap.status].className)}>{STATUS[ap.status].label}</span>
                         {ap.actingAsDhcpServer && (
-                          <p className="mt-1 text-xs font-medium text-red-600 dark:text-red-400">Handing out addresses: switch its DHCP off</p>
+                          <p className="mt-1 text-xs font-medium text-red-600 dark:text-red-400">
+                            Handing out addresses: switch its DHCP off <HelpTip term="rogueDhcp" />
+                          </p>
                         )}
                       </td>
                       <td className="px-3 py-2 text-muted-foreground">{timeAgo(ap.lastSeenAt)}</td>

@@ -135,7 +135,12 @@ return (
                 />
               ) : (
                 // Keyed by view so a switch starts from that view's own rows.
-                <LiveSessionDataTable key={view} sessions={sessions} refreshIntervalSeconds={REFRESH_INTERVAL_SECONDS} />
+                <LiveSessionDataTable
+                  key={view}
+                  sessions={sessions}
+                  protocol={sessionView?.protocol}
+                  refreshIntervalSeconds={REFRESH_INTERVAL_SECONDS}
+                />
               )
             )}
           </div>

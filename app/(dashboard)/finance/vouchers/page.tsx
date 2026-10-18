@@ -47,17 +47,20 @@ export default async function VouchersPage({
     | "MINTED"
     | "PURCHASED";
 
-  // Row filters go to the list endpoint only; statistics stays unfiltered by state.
-  const data = await getVouchersData({
-    page,
-    size,
-    search: params.search,
-    voucherState: voucherState === "ALL" ? undefined : voucherState,
-    source: source === "ALL" ? undefined : source,
-  });
-  const batches = await getVoucherBatches(batchPage, batchSize);
-  const packages = await getPackagesAction();
-  const devices = await getMikrotikDevices();
+  // Four independent calls, loaded together. Row filters go to the list endpoint only;
+  // statistics stays unfiltered by state.
+  const [data, batches, packages, devices] = await Promise.all([
+    getVouchersData({
+      page,
+      size,
+      search: params.search,
+      voucherState: voucherState === "ALL" ? undefined : voucherState,
+      source: source === "ALL" ? undefined : source,
+    }),
+    getVoucherBatches(batchPage, batchSize),
+    getPackagesAction(),
+    getMikrotikDevices(),
+  ]);
   // Vouchers are minted per router and are redeemable only on it.
   const routerOptions = devices.success && Array.isArray(devices.data)
     ? devices.data

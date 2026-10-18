@@ -1,34 +1,52 @@
 import { describe, expect, it } from "vitest";
 import type { RouterLanHealth } from "@/lib/types/lanHealth";
 import {
-  lanProblemSentence, routersThatCannotSignIn, routersWithDhcpAlarm, routersWithWrongAddresses, signInLabel, timeAgo,
+  lanProblemSentence, routersThatCannotSignIn, routersWithCustomersOnWrongAddress, routersWithDhcpServersOnly,
+  passwordLabel, routersWithOldPassword, signInLabel, signInProblemSentence, timeAgo,
 } from "@/lib/utils/lanHealth";
+import { COLOUR_LEGEND, NETWORK_HEALTH_HELP } from "@/lib/help/networkHealthHelp";
 
 const base: RouterLanHealth = {
   routerId: 90, routerName: "ADRINOLD-WESTLANDS", companyId: "CMP-ADR-001", status: "OK", checkedAt: "2026-10-13T09:00:00Z",
   error: null, devicesOnHotspot: 40, devicesOnWrongAddress: 0, unauthorisedDhcpServers: 0,
   accessPointsSeen: 16, accessPointsNotSeen: 0, notSeenAfterMinutes: 15,
   signInStatus: "WORKING", signInAnswered: 12, signInUnanswered: 0, signInNote: null, signInWindowMinutes: 10,
+  radiusPasswordStatus: "CURRENT", radiusPasswordSetAt: "2026-10-15T01:00:00Z", radiusPasswordSetBy: "REPROVISION",
 };
 
 describe("customer network health helpers", () => {
-  it("raises the alarm only for routers with another DHCP server", () => {
-    const sick = { ...base, status: "ATTENTION" as const, unauthorisedDhcpServers: 23, devicesOnWrongAddress: 34 };
-    expect(routersWithDhcpAlarm([base, sick])).toEqual([sick]);
+  it("raises the alarm only when customers actually hold wrong addresses", () => {
+    const sick = { ...base, status: "ATTENTION" as const, unauthorisedDhcpServers: 23, devicesOnWrongAddress: 3 };
+    expect(routersWithCustomersOnWrongAddress([base, sick])).toEqual([sick]);
+    expect(routersWithDhcpServersOnly([sick])).toEqual([]);
     expect(lanProblemSentence(sick)).toBe(
-      "23 devices are handing out addresses that only the router should give, and 34 customer devices have a wrong address."
+      "3 customer devices have an address the router did not give out and cannot reach the payment page or the internet; " +
+      "23 devices on the network are handing out addresses."
     );
   });
 
-  it("reports wrong addresses separately when no DHCP server was caught", () => {
+  it("treats DHCP servers with no customer affected as a risk, not an alarm", () => {
+    // ADRINOLD-WESTLANDS on 14 Oct 2026: 23 Tendas handing out addresses, customers connecting normally
+    const risky = { ...base, status: "ATTENTION" as const, unauthorisedDhcpServers: 23, devicesOnWrongAddress: 0 };
+    expect(routersWithCustomersOnWrongAddress([risky])).toEqual([]);
+    expect(routersWithDhcpServersOnly([base, risky])).toEqual([risky]);
+    expect(lanProblemSentence(risky)).toBe(
+      "23 devices are set up to hand out addresses, which only the router should do. No customer holds one of their addresses right now."
+    );
+  });
+
+  it("reports wrong addresses even when no DHCP server was caught", () => {
     const odd = { ...base, status: "ATTENTION" as const, devicesOnWrongAddress: 1 };
-    expect(routersWithWrongAddresses([base, odd])).toEqual([odd]);
-    expect(lanProblemSentence(odd)).toBe("1 customer device has an address the router did not give out.");
+    expect(routersWithCustomersOnWrongAddress([base, odd])).toEqual([odd]);
+    expect(lanProblemSentence(odd)).toBe(
+      "1 customer device has an address the router did not give out and cannot reach the payment page or the internet."
+    );
   });
 
   it("never alarms on a router that could not be read", () => {
     const blind = { ...base, status: "UNKNOWN" as const, unauthorisedDhcpServers: 5, devicesOnWrongAddress: 9 };
-    expect(routersWithDhcpAlarm([blind])).toEqual([]);
+    expect(routersWithCustomersOnWrongAddress([blind])).toEqual([]);
+    expect(routersWithDhcpServersOnly([blind])).toEqual([]);
     expect(lanProblemSentence(blind)).toBeNull();
   });
 
@@ -60,5 +78,26 @@ describe("customer network health helpers", () => {
     const blind = { ...base, status: "UNKNOWN" as const, signInStatus: "NOT_WORKING" as const };
     expect(routersThatCannotSignIn([quiet, blind])).toEqual([]);
     expect(signInLabel(quiet)).toBe("No one tried lately");
+  });
+
+  it("treats a router with an old RADIUS password as unable to sign anyone in, before anyone tries", () => {
+    // BEESMART C - WESTLANDS on 14 Oct 2026: linked before the rotation, refused on every sign-in
+    const stale = { ...base, status: "ATTENTION" as const, signInStatus: "NO_ATTEMPTS" as const, radiusPasswordStatus: "OUT_OF_DATE" as const };
+    expect(routersWithOldPassword([base, stale])).toEqual([stale]);
+    expect(routersThatCannotSignIn([base, stale])).toEqual([stale]);
+    expect(signInProblemSentence(stale)).toBe(
+      "the router holds an old RADIUS password, so the sign-in server refuses every customer from it."
+    );
+    expect(passwordLabel(stale)).toBe("Out of date");
+    expect(passwordLabel({ radiusPasswordStatus: "UNKNOWN" })).toBe("Not recorded");
+  });
+
+  it("explains every term in plain words and gives every colour a meaning", () => {
+    for (const entry of Object.values(NETWORK_HEALTH_HELP)) {
+      expect(entry.title.length).toBeGreaterThan(3);
+      expect(entry.means.length).toBeGreaterThan(20);
+    }
+    expect(NETWORK_HEALTH_HELP.rogueDhcp.todo).toContain("access point (AP) mode");
+    expect(COLOUR_LEGEND.map((c) => c.colour)).toEqual(["green", "red", "amber", "grey"]);
   });
 });

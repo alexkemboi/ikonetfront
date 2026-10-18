@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { NasRoutersTable } from "./_components/NasRoutersTable";
 import { CustomerNetworkHealth } from "@/components/network/CustomerNetworkHealth";
 import { getLanHealth } from "@/actions/lanHealth";
+import { auth } from "@/lib/auth";
 
 export const metadata = {
  title: "NAS & Routers — IBS",
@@ -19,7 +20,10 @@ export default async function NasRoutersPage() {
  const pagePerms = await getPermissionForRoute("/network/routers");
  if (!pagePerms.canView) redirect("/dashboard");
 
-const [result, lanHealth] = await Promise.all([getNasRoutersData(), getLanHealth()]);
+const [result, lanHealth, session] = await Promise.all([getNasRoutersData(), getLanHealth(), auth()]);
+  // the bulk Reprovision is for system and platform administrators (the backend checks it too)
+  const role = (session?.user?.role ?? "").replace(/^ROLE_/i, "").toUpperCase();
+  const canReprovisionAll = role === "SYSADMIN" || role === "ADMIN";
   if (result.error) {
    return <div className="min-h-screen p-4 sm:p-6 lg:p-8"><div role="alert" className="mx-auto max-w-7xl rounded-lg border border-destructive/30 bg-destructive/5 p-5 text-sm"><h1 className="font-medium">Router data unavailable</h1><p className="mt-1 text-muted-foreground">{result.error}</p></div></div>;
   }
@@ -84,7 +88,7 @@ const [result, lanHealth] = await Promise.all([getNasRoutersData(), getLanHealth
  </div>
  </div>
 
- <CustomerNetworkHealth initial={lanHealth.data} />
+ <CustomerNetworkHealth initial={lanHealth.data} canReprovisionAll={canReprovisionAll} />
 
  {/* Routers Table */}
  <div className="rounded-2xl border border-border bg-card p-6 shadow-xl">

@@ -129,7 +129,7 @@ export async function getLiveSessionsData(): Promise<{
   sessions: LiveSessionItem[];
   error?: string;
 }> {
-  const res = await apiFetch<LiveSessionListDto>("/sessions/live?page=0&size=500", {
+  const res = await apiFetch<LiveSessionListDto>("/sessions/live?page=0&size=200", {
     auth: "required",
   });
   if (!res.success || !res.data) {

@@ -10,16 +10,48 @@ export function timeAgo(iso: string | null | undefined, now: number = Date.now()
   return hours < 48 ? `${hours}h ago` : `${Math.floor(hours / 24)} days ago`;
 }
 
-/** Routers where another DHCP server is answering customers: the alarm. */
-export function routersWithDhcpAlarm(routers: RouterLanHealth[]): RouterLanHealth[] {
-  return routers.filter((r) => r.status !== "UNKNOWN" && (r.unauthorisedDhcpServers ?? 0) > 0);
+/** Routers where customer devices hold an address the router did not give out: the alarm. */
+export function routersWithCustomersOnWrongAddress(routers: RouterLanHealth[]): RouterLanHealth[] {
+  return routers.filter((r) => r.status !== "UNKNOWN" && (r.devicesOnWrongAddress ?? 0) > 0);
 }
 
-/** Routers that cannot sign any customer in: paid customers there stay offline. */
+/**
+ * Routers with equipment set up to hand out addresses while no customer holds one: a risk to
+ * fix, not an outage. (On ADRINOLD-WESTLANDS on 13-14 Oct 2026 23 such access points were present
+ * while customers connected normally.)
+ */
+export function routersWithDhcpServersOnly(routers: RouterLanHealth[]): RouterLanHealth[] {
+  return routers.filter(
+    (r) => r.status !== "UNKNOWN" && (r.unauthorisedDhcpServers ?? 0) > 0 && (r.devicesOnWrongAddress ?? 0) === 0
+  );
+}
+
+/**
+ * Routers that cannot sign any customer in: paid customers there stay offline. Includes a
+ * router holding an old RADIUS password even before anyone has tried (the server will refuse it).
+ */
 export function routersThatCannotSignIn(routers: RouterLanHealth[]): RouterLanHealth[] {
   return routers.filter(
-    (r) => r.status !== "UNKNOWN" && (r.signInStatus === "NOT_WORKING" || r.signInStatus === "NOT_SET_UP")
+    (r) => r.radiusPasswordStatus === "OUT_OF_DATE"
+      || (r.status !== "UNKNOWN" && (r.signInStatus === "NOT_WORKING" || r.signInStatus === "NOT_SET_UP"))
   );
+}
+
+/** Routers that hold an old RADIUS password: the server refuses every sign-in from them. */
+export function routersWithOldPassword(routers: RouterLanHealth[]): RouterLanHealth[] {
+  return routers.filter((r) => r.radiusPasswordStatus === "OUT_OF_DATE");
+}
+
+/** Short label for the RADIUS password column. */
+export function passwordLabel(r: Pick<RouterLanHealth, "radiusPasswordStatus">): string {
+  switch (r.radiusPasswordStatus) {
+    case "CURRENT":
+      return "Current";
+    case "OUT_OF_DATE":
+      return "Out of date";
+    default:
+      return "Not recorded";
+  }
 }
 
 /** Short label for the sign-in column. */
@@ -40,6 +72,9 @@ export function signInLabel(r: Pick<RouterLanHealth, "signInStatus">): string {
 
 /** One plain sentence for a router that cannot sign customers in, or null when it can. */
 export function signInProblemSentence(r: RouterLanHealth): string | null {
+  if (r.radiusPasswordStatus === "OUT_OF_DATE") {
+    return "the router holds an old RADIUS password, so the sign-in server refuses every customer from it.";
+  }
   if (r.signInStatus === "NOT_SET_UP") {
     return "the hotspot has no sign-in (RADIUS) server set on the router, so no customer can be signed in.";
   }
@@ -50,13 +85,6 @@ export function signInProblemSentence(r: RouterLanHealth): string | null {
   return null;
 }
 
-/** Routers where devices hold a wrong address although no DHCP server was caught. */
-export function routersWithWrongAddresses(routers: RouterLanHealth[]): RouterLanHealth[] {
-  return routers.filter(
-    (r) => r.status !== "UNKNOWN" && (r.unauthorisedDhcpServers ?? 0) === 0 && (r.devicesOnWrongAddress ?? 0) > 0
-  );
-}
-
 /** One plain sentence for what is wrong on a router, or null when nothing is. */
 export function lanProblemSentence(r: RouterLanHealth): string | null {
   const servers = r.unauthorisedDhcpServers ?? 0;
@@ -64,12 +92,14 @@ export function lanProblemSentence(r: RouterLanHealth): string | null {
   if (r.status === "UNKNOWN") return null;
   const signIn = signInProblemSentence(r);
   if (signIn) return signIn.charAt(0).toUpperCase() + signIn.slice(1);
-  if (servers > 0) {
-    return `${servers} ${servers === 1 ? "device is" : "devices are"} handing out addresses that only the router should give` +
-      (wrong > 0 ? `, and ${wrong} customer ${wrong === 1 ? "device has" : "devices have"} a wrong address` : "") + ".";
-  }
   if (wrong > 0) {
-    return `${wrong} customer ${wrong === 1 ? "device has" : "devices have"} an address the router did not give out.`;
+    return `${wrong} customer ${wrong === 1 ? "device has" : "devices have"} an address the router did not give out ` +
+      `and cannot reach the payment page or the internet` +
+      (servers > 0 ? `; ${servers} ${servers === 1 ? "device on the network is" : "devices on the network are"} handing out addresses.` : ".");
+  }
+  if (servers > 0) {
+    return `${servers} ${servers === 1 ? "device is" : "devices are"} set up to hand out addresses, which only the router ` +
+      `should do. No customer holds one of their addresses right now.`;
   }
   if (r.accessPointsNotSeen > 0) {
     return `${r.accessPointsNotSeen} access ${r.accessPointsNotSeen === 1 ? "point has" : "points have"} not been seen for over ${r.notSeenAfterMinutes} minutes.`;

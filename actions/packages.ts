@@ -32,7 +32,11 @@ export type InternetPackage = {
   companyId?:      string | null;
   /** ALL = sold on every router of the company; SELECTED = only on chosen routers. */
   routerScope?:    "ALL" | "SELECTED";
+  /** HOTSPOT packages are sold on the hotspot portal, TV packages only on the TV portal. */
+  serviceType?:    PackageService;
 };
+
+export type PackageService = "HOTSPOT" | "TV";
 
 // ── Where each package is sold (per router) ───────────────────────────────────
 export type PackageRouter = { id: number; name: string; location: string | null; online: boolean };
@@ -71,6 +75,8 @@ export type PackagePayload = {
   burstThreshold:  string;
   burstTime:       string;
   createdBy:       string;
+  /** Chosen at creation and fixed afterwards. */
+  serviceType:     PackageService;
 };
 
 export type PackageUpdatePayload = PackagePayload & {
@@ -78,11 +84,12 @@ export type PackageUpdatePayload = PackagePayload & {
   isApproved?: boolean;
 };
 
-export type VoucherPackageOption = Pick<InternetPackage, "idxno" | "packageName" | "packageCategory" | "validityType" | "validityValue" | "speedDownload" | "speedUpload" | "rateLimit" | "activeStatus" | "price" | "routerScope">;
+export type VoucherPackageOption = Pick<InternetPackage, "idxno" | "packageName" | "packageCategory" | "validityType" | "validityValue" | "speedDownload" | "speedUpload" | "rateLimit" | "activeStatus" | "price" | "routerScope" | "serviceType">;
 
 /**
  * The packages a voucher batch can be minted for: the company's active and
- * approved hotspot packages, as the mint endpoint itself judges them. Not
+ * approved hotspot and TV packages (`serviceType` tells them apart), as the mint
+ * endpoint itself judges them. Not
  * `/system/packages/category/HOTSPOT` — a package's category is its duration
  * bucket (Hourly, Daily, Weekly, Monthly), so that filter matches none of them.
  */

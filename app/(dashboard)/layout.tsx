@@ -54,9 +54,29 @@ export default async function DashboardLayout({ children }: { children: ReactNod
  }
  : undefined;
 
+ // Tenancy F1 — only SYSADMIN carries a company selection; everyone else is
+ // fixed to the company in their token.
+ const isPlatformAdmin = isPlatformAdminRole(rawRole);
+
+ // The calls below do not depend on each other, so they run together; they used to run
+ // one after another on every page load.
+ const [rawMenus, companies, { contextCompany, tenantBranding }] = await Promise.all([
   // Permissions are API-driven only. Empty (unknown role / unseeded / fetch error)
   // ⇒ empty permissions ⇒ empty nav — fail closed.
-  const rawMenus = await fetchRoleMenusRaw(rawRole, apiToken);
+  fetchRoleMenusRaw(rawRole, apiToken),
+  isPlatformAdmin ? listCompanies() : Promise.resolve([]),
+  // Track 2 — tenant theming: resolve the brand for the requesting subdomain
+  // (custom domain / company-context cookie wins on the dashboard shell).
+  (async () => {
+   const headerStore = await headers();
+   const siteHost = headerStore.get("host") ?? undefined;
+   const contextCompany = await resolveCompanyContextCode();
+   const tenantBranding = siteHost
+    ? await getPublicBranding({ host: siteHost, company: contextCompany ?? undefined })
+    : null;
+   return { contextCompany, tenantBranding };
+  })(),
+ ]);
 
   const permissionMap: PermissionMap = rawMenus.length > 0 ? extractPermissions(rawMenus) : {};
 
@@ -64,20 +84,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
   // whether this role sees it.
   const navGroups: NavGroup[] = filterNavByPermissions(getNavLayoutForRole(rawRole), permissionMap);
 
- // Track 2 — tenant theming: resolve the brand for the requesting subdomain
- // (custom domain / company-context cookie wins on the dashboard shell).
- const headerStore = await headers();
- const siteHost = headerStore.get("host") ?? undefined;
- const contextCompany = await resolveCompanyContextCode();
-
- // Tenancy F1 — only SYSADMIN carries a company selection; everyone else is
- // fixed to the company in their token.
- const isPlatformAdmin = isPlatformAdminRole(rawRole);
- const companies = isPlatformAdmin ? await listCompanies() : [];
  const scopedCompany = isPlatformAdmin ? contextCompany : (session.user.companyScope ?? null);
- const tenantBranding = siteHost
- ? await getPublicBranding({ host: siteHost, company: contextCompany ?? undefined })
- : null;
 
 return (
 <PermissionsProvider permissions={permissionMap}>

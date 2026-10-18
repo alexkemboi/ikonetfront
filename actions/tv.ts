@@ -185,3 +185,57 @@ interface TvPaymentStatusResponse {
   currency: "KES";
   tvEntitlementExpiresAt: string | null;
 }
+
+export interface TvVoucherRedemption {
+  voucherCode: string;
+  macAddress: string;
+  packageName: string;
+  /** The TV already had time; the voucher's time was added on top. */
+  extended: boolean;
+  /** Already redeemed for this same TV earlier; nothing was added. */
+  alreadyRedeemed: boolean;
+  tvAccessExpiresAt: string | null;
+}
+
+/** Customer-facing sentence for a refused redemption (the backend sends it in `data.detail`). */
+function redeemError(res: { message?: string; data?: unknown }): string {
+  const detail = (res.data as { detail?: string } | null | undefined)?.detail;
+  return detail || res.message || "The voucher could not be used. Check the code and try again.";
+}
+
+/** TV portal: redeem a TV voucher for the TV the portal token was issued for. */
+export async function redeemTvVoucherAction(
+  voucherCode: string,
+  portalToken: string,
+  portalRouter?: PortalRouter | null
+): Promise<{ success: true; data: TvVoucherRedemption } | { success: false; error: string }> {
+  const code = voucherCode.trim().toUpperCase();
+  if (!code) return { success: false, error: "Enter the voucher code." };
+  const res = await apiFetch<TvVoucherRedemption>(withPortalRouter("/tv/vouchers/redeem", portalRouter), {
+    method: "POST",
+    body: { voucherCode: code },
+    auth: "public",
+    headers: { "X-TV-Portal-Token": portalToken },
+    cache: "no-store",
+  });
+  return res.success && res.data ? { success: true, data: res.data } : { success: false, error: redeemError(res) };
+}
+
+/** Staff (dashboard): redeem a TV voucher for a TV by its typed MAC address. */
+export async function redeemTvVoucherForDeviceAction(values: {
+  voucherCode: string;
+  macAddress: string;
+  customerPhone: string;
+}): Promise<{ success: true; data: TvVoucherRedemption } | { success: false; error: string }> {
+  const res = await apiFetch<TvVoucherRedemption>("/tv/vouchers/redeem", {
+    method: "POST",
+    body: {
+      voucherCode: values.voucherCode.trim().toUpperCase(),
+      macAddress: values.macAddress.trim(),
+      customerPhone: values.customerPhone.trim(),
+    },
+    auth: "required",
+    cache: "no-store",
+  });
+  return res.success && res.data ? { success: true, data: res.data } : { success: false, error: redeemError(res) };
+}

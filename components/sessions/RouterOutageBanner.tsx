@@ -5,6 +5,7 @@ import { ZapOff } from "lucide-react";
 import { getRouterOutages } from "@/actions/network";
 import type { RouterOutage } from "@/lib/types/network";
 import { formatOutageDuration } from "@/lib/utils/outages";
+import { visibleInterval } from "@/lib/hooks/useVisibleInterval";
 
 interface RouterOutageBannerProps {
   initialOutages: RouterOutage[];
@@ -28,10 +29,10 @@ export function RouterOutageBanner({ initialOutages, refreshIntervalSeconds }: R
       if (res.data) setOutages(res.data);
       setNow(Date.now());
     };
-    const timer = setInterval(load, refreshIntervalSeconds * 1000);
+    const stopPolling = visibleInterval(load, refreshIntervalSeconds * 1000);
     return () => {
       cancelled = true;
-      clearInterval(timer);
+      stopPolling();
     };
   }, [refreshIntervalSeconds]);
 

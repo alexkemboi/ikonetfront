@@ -1,7 +1,7 @@
 "use server";
 
 import { apiFetch } from "@/lib/apiClient";
-import type { LanAccessPoint, RouterLanDetail, RouterLanHealth } from "@/lib/types/lanHealth";
+import type { LanAccessPoint, RadiusRolloutResult, RouterLanDetail, RouterLanHealth } from "@/lib/types/lanHealth";
 
 type Result<T> = { data: T | null; error: string | null };
 
@@ -37,4 +37,21 @@ export async function updateAccessPoint(
   return res.success && res.data
     ? { success: true, message: "Saved.", data: res.data }
     : { success: false, message: res.message || "Could not save the change." };
+}
+
+/**
+ * System administrators: reprovision every router whose RADIUS password is not the current one.
+ * Needs step-up (status 428 without it); use with `withStepUp`.
+ */
+export async function reprovisionRoutersWithOldPassword(
+  stepUpToken?: string
+): Promise<{ success: boolean; status?: number; message: string; data?: RadiusRolloutResult[] }> {
+  const res = await apiFetch<RadiusRolloutResult[]>("/network/radius-password/reprovision", {
+    method: "POST",
+    auth: "required",
+    stepUpToken,
+  });
+  return res.success && res.data
+    ? { success: true, status: res.status, message: res.message || "Done.", data: res.data }
+    : { success: false, status: res.status, message: res.message || "Could not reprovision the routers." };
 }

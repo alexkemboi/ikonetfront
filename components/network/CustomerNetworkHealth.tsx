@@ -6,10 +6,18 @@ import { ShieldAlert, Wifi } from "lucide-react";
 import { getLanHealth } from "@/actions/lanHealth";
 import type { RouterLanHealth } from "@/lib/types/lanHealth";
 import {
-  lanProblemSentence, routersThatCannotSignIn, routersWithDhcpAlarm, signInLabel, signInProblemSentence, timeAgo,
+  lanProblemSentence, routersThatCannotSignIn, routersWithCustomersOnWrongAddress, routersWithDhcpServersOnly,
+  signInLabel, signInProblemSentence, timeAgo,
 } from "@/lib/utils/lanHealth";
-import { KeyRound } from "lucide-react";
+import { KeyRound, RefreshCcw } from "lucide-react";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { HelpTip, HowToReadPanel } from "@/components/network/HealthHelp";
+import { passwordLabel, routersWithOldPassword } from "@/lib/utils/lanHealth";
+import { reprovisionRoutersWithOldPassword } from "@/actions/lanHealth";
+import { withStepUp } from "@/lib/stepUp";
+import type { RadiusRolloutResult } from "@/lib/types/lanHealth";
+import { visibleInterval } from "@/lib/hooks/useVisibleInterval";
 
 const REFRESH_MS = 60_000;
 const TH = "px-4 py-3 text-[11px] uppercase tracking-wider text-muted-foreground";
@@ -24,9 +32,36 @@ function Figure({ value, bad }: { value: number | null; bad: boolean }) {
  * handing out addresses they should not, and access points. Read from the router every
  * couple of minutes; a router with no hotspot has nothing to check and is not listed.
  */
-export function CustomerNetworkHealth({ initial }: { initial: RouterLanHealth[] | null }) {
+export function CustomerNetworkHealth({
+  initial,
+  canReprovisionAll = false,
+}: {
+  initial: RouterLanHealth[] | null;
+  /** System administrators: show "Reprovision every out-of-date router". */
+  canReprovisionAll?: boolean;
+}) {
   const [routers, setRouters] = useState<RouterLanHealth[] | null>(initial);
   const [error, setError] = useState("");
+  const [rolling, setRolling] = useState(false);
+  const [rollout, setRollout] = useState<RadiusRolloutResult[] | null>(null);
+
+  async function reprovisionAll() {
+    setRolling(true);
+    try {
+      const res = await withStepUp(reprovisionRoutersWithOldPassword,
+        "Reprovisioning routers changes their RADIUS settings. Re-authenticate to continue.");
+      if (res.success) {
+        setRollout(res.data ?? []);
+        toast.success(res.message);
+        const fresh = await getLanHealth();
+        if (fresh.data) setRouters(fresh.data);
+      } else {
+        toast.error(res.message);
+      }
+    } finally {
+      setRolling(false);
+    }
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -38,15 +73,18 @@ export function CustomerNetworkHealth({ initial }: { initial: RouterLanHealth[] 
       if (res.data) setRouters(res.data);
     };
     if (initial == null) void load();
-    const timer = setInterval(load, REFRESH_MS);
+    const stopPolling = visibleInterval(load, REFRESH_MS);
     return () => {
       cancelled = true;
-      clearInterval(timer);
+      stopPolling();
     };
   }, [initial]);
 
-  const alarms = routersWithDhcpAlarm(routers ?? []);
+  const alarms = routersWithCustomersOnWrongAddress(routers ?? []);
+  const warnings = routersWithDhcpServersOnly(routers ?? []);
   const cannotSignIn = routersThatCannotSignIn(routers ?? []);
+  const oldPassword = routersWithOldPassword(routers ?? []);
+  const unrecorded = (routers ?? []).filter((r) => r.radiusPasswordStatus === "UNKNOWN");
 
   return (
     <section aria-labelledby="customer-network-health" className="rounded-2xl border border-border bg-card shadow-xl">
@@ -56,9 +94,46 @@ export function CustomerNetworkHealth({ initial }: { initial: RouterLanHealth[] 
         </h2>
         <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
           What each router sees between itself and its customers, and whether it can sign them in, checked every
-          2 minutes. On a healthy site sign-in is working and the wrong-address and DHCP columns are zero.
+          2 minutes. On a healthy site sign-in is working and the wrong-address and DHCP columns are zero. Access
+          points and other equipment are not counted as customers. Press any <HelpTip term="customerSignIn" /> for
+          what a heading means and what to do.
         </p>
+        <div className="mt-4"><HowToReadPanel /></div>
       </div>
+
+      {canReprovisionAll && (oldPassword.length > 0 || unrecorded.length > 0 || rollout) && (
+        <div className="border-b border-border p-4 text-sm">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="max-w-2xl text-muted-foreground">
+              {oldPassword.length > 0
+                ? `${oldPassword.length} out of date`
+                : "None out of date"}
+              {unrecorded.length > 0 ? `, ${unrecorded.length} not recorded (set up before this was tracked)` : ""}.
+              {" "}Reprovisioning gives each the current RADIUS password and records it. Run it after every password
+              rotation. <HelpTip term="radiusPassword" />
+            </p>
+            <button
+              type="button"
+              disabled={rolling || (oldPassword.length === 0 && unrecorded.length === 0)}
+              onClick={() => void reprovisionAll()}
+              className="inline-flex items-center gap-2 rounded-md border border-border px-3 py-1.5 text-sm font-medium hover:bg-accent disabled:opacity-50"
+            >
+              <RefreshCcw className={cn("h-4 w-4", rolling && "animate-spin")} />
+              {rolling ? "Reprovisioning…" : "Reprovision every out-of-date router"}
+            </button>
+          </div>
+          {rollout && (
+            <ul className="mt-3 space-y-1">
+              {rollout.length === 0 && <li className="text-muted-foreground">Nothing to do: every router holds the current password.</li>}
+              {rollout.map((r) => (
+                <li key={r.routerId} className={r.done ? "text-emerald-700 dark:text-emerald-400" : "text-red-700 dark:text-red-400"}>
+                  {r.routerName}: {r.message}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
 
       {cannotSignIn.length > 0 && (
         <div role="alert" className="border-b border-red-500/30 bg-red-500/5 p-4 text-sm">
@@ -86,7 +161,7 @@ export function CustomerNetworkHealth({ initial }: { initial: RouterLanHealth[] 
         <div role="alert" className="border-b border-red-500/30 bg-red-500/5 p-4 text-sm">
           <p className="flex items-center gap-2 font-medium text-red-700 dark:text-red-400">
             <ShieldAlert className="h-4 w-4" />
-            {alarms.length === 1 ? "A site is handing customers wrong addresses" : `${alarms.length} sites are handing customers wrong addresses`}
+            {alarms.length === 1 ? "Customers at a site hold wrong addresses" : `Customers at ${alarms.length} sites hold wrong addresses`}
           </p>
           <ul className="mt-2 space-y-1">
             {alarms.map((r) => (
@@ -97,8 +172,29 @@ export function CustomerNetworkHealth({ initial }: { initial: RouterLanHealth[] 
             ))}
           </ul>
           <p className="mt-2 text-muted-foreground">
-            Customers who get one of those addresses cannot reach the payment page or the internet. Open the router
-            to see which devices to fix: each must have its DHCP server switched off, or be set to access point mode.
+            Those customers cannot reach the payment page or the internet. Open the router to see which devices are
+            handing out addresses: each must have its DHCP server switched off, or be set to access point mode.
+          </p>
+        </div>
+      )}
+
+      {warnings.length > 0 && (
+        <div role="status" className="border-b border-amber-500/30 bg-amber-500/5 p-4 text-sm">
+          <p className="flex items-center gap-2 font-medium text-amber-700 dark:text-amber-400">
+            <ShieldAlert className="h-4 w-4" />
+            Equipment set up to hand out addresses (no customer affected right now)
+          </p>
+          <ul className="mt-2 space-y-1">
+            {warnings.map((r) => (
+              <li key={r.routerId}>
+                <Link href={`/network/routers/${r.routerId}`} className="font-medium underline-offset-2 hover:underline">{r.routerName}</Link>
+                {": "}{lanProblemSentence(r)}
+              </li>
+            ))}
+          </ul>
+          <p className="mt-2 text-muted-foreground">
+            Not urgent, but a risk: if customers start taking those addresses they lose their connection. Fix the
+            listed devices when convenient: DHCP server off, or access point mode.
           </p>
         </div>
       )}
@@ -114,15 +210,16 @@ export function CustomerNetworkHealth({ initial }: { initial: RouterLanHealth[] 
         </p>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[960px] text-left text-sm">
+          <table className="w-full min-w-[1080px] text-left text-sm">
             <thead>
               <tr className="border-b border-border">
                 <th className={TH}>Router</th>
-                <th className={TH} title="Whether the sign-in (RADIUS) server answers this router. If not, customers who pay are not connected.">Customer sign-in</th>
-                <th className={TH} title="Devices the router currently sees on the hotspot, signed in or not.">Devices on hotspot</th>
-                <th className={TH} title="Devices holding an address the router did not give out. They cannot reach the payment page or the internet properly.">Devices on a wrong address</th>
-                <th className={TH} title="Devices answering customers' address requests besides the router. Usually an access point left in router mode.">Unauthorised DHCP servers</th>
-                <th className={TH} title="Access points the router has heard from recently, and those it has not.">Access points</th>
+                <th className={TH}>Customer sign-in <HelpTip term="customerSignIn" /></th>
+                <th className={TH}>RADIUS password <HelpTip term="radiusPassword" /></th>
+                <th className={TH}>Customer devices <HelpTip term="customerDevices" /></th>
+                <th className={TH}>Customers on a wrong address <HelpTip term="wrongAddress" /></th>
+                <th className={TH}>Unauthorised DHCP servers <HelpTip term="rogueDhcp" /></th>
+                <th className={TH}>Access points <HelpTip term="accessPoints" /></th>
                 <th className={TH}>Last checked</th>
               </tr>
             </thead>
@@ -135,6 +232,7 @@ export function CustomerNetworkHealth({ initial }: { initial: RouterLanHealth[] 
                     </Link>
                     <p className={cn("text-xs", r.status === "ATTENTION" ? "text-red-600 dark:text-red-400" : "text-muted-foreground")}>
                       {r.status === "OK" ? "Healthy" : r.status === "ATTENTION" ? "Needs attention" : "Could not be read"}
+                      {" "}<HelpTip term={r.status === "OK" ? "statusHealthy" : r.status === "ATTENTION" ? "statusAttention" : "statusUnknown"} />
                     </p>
                   </td>
                   <td className="px-4 py-3">
@@ -148,10 +246,32 @@ export function CustomerNetworkHealth({ initial }: { initial: RouterLanHealth[] 
                     >
                       {signInLabel(r)}
                     </span>
+                    {" "}<HelpTip term={
+                      r.signInStatus === "WORKING" ? "signInWorking"
+                        : r.signInStatus === "NOT_WORKING" ? "signInNotWorking"
+                        : r.signInStatus === "NO_ATTEMPTS" ? "signInNoAttempts"
+                        : r.signInStatus === "NOT_SET_UP" ? "signInNotSetUp" : "signInUnknown"} />
+                  </td>
+                  <td className="px-4 py-3">
+                    <span
+                      title={r.radiusPasswordSetAt ? `Given ${timeAgo(r.radiusPasswordSetAt)} by ${r.radiusPasswordSetBy ?? "?"}` : undefined}
+                      className={cn(
+                        r.radiusPasswordStatus === "OUT_OF_DATE" ? "font-semibold text-red-600 dark:text-red-400"
+                          : r.radiusPasswordStatus === "CURRENT" ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"
+                      )}
+                    >
+                      {passwordLabel(r)}
+                    </span>
+                    {" "}<HelpTip term={r.radiusPasswordStatus === "CURRENT" ? "passwordCurrent"
+                      : r.radiusPasswordStatus === "OUT_OF_DATE" ? "passwordOutOfDate" : "passwordUnknown"} />
                   </td>
                   <td className="px-4 py-3"><Figure value={r.devicesOnHotspot} bad={false} /></td>
                   <td className="px-4 py-3"><Figure value={r.devicesOnWrongAddress} bad={(r.devicesOnWrongAddress ?? 0) > 0} /></td>
-                  <td className="px-4 py-3"><Figure value={r.unauthorisedDhcpServers} bad={(r.unauthorisedDhcpServers ?? 0) > 0} /></td>
+                  <td className="px-4 py-3">
+                    {(r.unauthorisedDhcpServers ?? 0) > 0 && (r.devicesOnWrongAddress ?? 0) === 0
+                      ? <span className="tabular-nums font-semibold text-amber-600">{r.unauthorisedDhcpServers}</span>
+                      : <Figure value={r.unauthorisedDhcpServers} bad={(r.unauthorisedDhcpServers ?? 0) > 0} />}
+                  </td>
                   <td className="px-4 py-3">
                     <span className="tabular-nums">{r.accessPointsSeen} seen</span>
                     {r.accessPointsNotSeen > 0 && (
