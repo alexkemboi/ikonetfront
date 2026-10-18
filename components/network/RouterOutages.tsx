@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import type { RouterOutage } from "@/lib/types/network";
 import { formatOutageDuration, outageCauseLabel, outageCreditLabel } from "@/lib/utils/outages";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { visibleInterval } from "@/lib/hooks/useVisibleInterval";
 
 const REFRESH_MS = 60_000;
 const DAYS = 30;
@@ -53,10 +54,10 @@ export function RouterOutages({ routerId }: { routerId: number }) {
       if (res.data) setOutages(res.data);
     };
     void load();
-    const timer = setInterval(load, REFRESH_MS);
+    const stopPolling = visibleInterval(load, REFRESH_MS);
     return () => {
       cancelled = true;
-      clearInterval(timer);
+      stopPolling();
     };
   }, [routerId, reloadKey]);
 

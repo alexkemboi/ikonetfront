@@ -92,7 +92,9 @@ export async function apiFetch<T = unknown>(
     authorization,
     cache,
     revalidate,
-    timeoutMs = 30_000,
+    // A page waits on its slowest call: 15 s is ample for every list and dashboard endpoint.
+    // Slower work (fee runs, router operations) passes its own timeoutMs.
+    timeoutMs = 15_000,
     retries = 0,
     stepUpToken,
     headers: extraHeaders,
@@ -203,8 +205,10 @@ export async function apiFetch<T = unknown>(
       };
     } catch (e) {
       lastError = e;
-      // Abort (timeout) or network error — retry idempotent methods only.
-      if (method !== "GET" || attempt === attempts - 1) break;
+      // Retry idempotent methods after a network error only. A timeout is not retried: the
+      // backend is busy, and a second full wait doubled the time a page hung (up to 60 s).
+      const timedOut = e instanceof Error && e.name === "AbortError";
+      if (method !== "GET" || timedOut || attempt === attempts - 1) break;
     } finally {
       clearTimeout(timer);
     }

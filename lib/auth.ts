@@ -1,3 +1,4 @@
+import { cache } from "react";
 import NextAuth from "next-auth";
 import type { Session, User } from "next-auth";
 import type { JWT } from "next-auth/jwt";
@@ -278,10 +279,17 @@ const { handlers, auth: nextAuth, signIn, signOut } = NextAuth({
 export { handlers, signIn, signOut };
 export const authMiddleware = nextAuth;
 
-/** Server-side session access with backend credentials read from the HttpOnly cookie. */
-export async function auth() {
+async function readSession() {
   const session = await nextAuth();
   if (!session?.user) return session;
   const apiToken = await getBackendAccessToken();
   return apiToken ? attachServerOnlyApiToken(session, apiToken) : session;
 }
+
+/**
+ * Server-side session access with backend credentials read from the HttpOnly cookie.
+ *
+ * Memoised for one server render: a page used to decode the session cookie once in the layout,
+ * once per permission check and once per backend call (each `apiFetch` calls `auth()`).
+ */
+export const auth = cache(readSession);

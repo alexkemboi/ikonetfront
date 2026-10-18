@@ -6,6 +6,7 @@ import { ShieldAlert } from "lucide-react";
 import { getLanHealth } from "@/actions/lanHealth";
 import type { RouterLanHealth } from "@/lib/types/lanHealth";
 import { lanProblemSentence, routersThatCannotSignIn, routersWithCustomersOnWrongAddress, signInProblemSentence } from "@/lib/utils/lanHealth";
+import { visibleInterval } from "@/lib/hooks/useVisibleInterval";
 
 /**
  * Shown above Live Sessions while a site's own equipment is giving customers wrong
@@ -22,14 +23,14 @@ export function CustomerNetworkAlarm({
 
   useEffect(() => {
     let cancelled = false;
-    const timer = setInterval(async () => {
+    const stopPolling = visibleInterval(async () => {
       const res = await getLanHealth();
       // keep the last known state when a refresh fails: an alarm must not vanish on an error
       if (!cancelled && res.data) setRouters(res.data);
     }, Math.max(60, refreshIntervalSeconds) * 1000);
     return () => {
       cancelled = true;
-      clearInterval(timer);
+      stopPolling();
     };
   }, [refreshIntervalSeconds]);
 

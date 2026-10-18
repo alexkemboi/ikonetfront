@@ -8,6 +8,7 @@
  * server components (layouts, pages). Server actions are for mutations only.
  */
 
+import { cache } from "react";
 import type { ApiMenuItem, PermissionFlags, PermissionMap } from "@/lib/types/roles";
 import { ROLE_NAME, normalizeRole } from "@/lib/types/roles";
 import type { NavGroup, NavItem, MenuNode } from "@/lib/nav";
@@ -35,7 +36,7 @@ export const NAV_MENUS_TAG = "nav-menus";
  * @param role  - raw session role from session.user.role
  * @param apiToken  - Bearer token from session.user.apiToken
  */
-export async function fetchRoleMenusRaw(
+export const fetchRoleMenusRaw = cache(async function fetchRoleMenusRaw(
   role: string,
   apiToken: string
 ): Promise<ApiMenuItem[]> {
@@ -50,8 +51,12 @@ export async function fetchRoleMenusRaw(
           "Content-Type": "application/json",
           Authorization: `Bearer ${apiToken}`,
         },
-        // Cache with a tag so revalidateTag(NAV_MENUS_TAG) invalidates this data
-        next: { tags: [NAV_MENUS_TAG, `${NAV_MENUS_TAG}-${roleLabel}`] },
+        // Kept for 5 minutes across requests; saving permissions here calls
+        // revalidateTag(NAV_MENUS_TAG), which marks it stale so the next load refreshes it.
+        // Permission changes made elsewhere show within 5 minutes. Without `revalidate` the
+        // tag alone cached nothing, so every page fetched the menus again (twice: layout and
+        // permission check). `cache()` above shares one fetch within a render.
+        next: { tags: [NAV_MENUS_TAG, `${NAV_MENUS_TAG}-${roleLabel}`], revalidate: 300 },
       }
     );
 
@@ -60,7 +65,7 @@ export async function fetchRoleMenusRaw(
   } catch {
     return [];
   }
-}
+});
 
 // ── Converters ─────────────────────────────────────────────────────────
 

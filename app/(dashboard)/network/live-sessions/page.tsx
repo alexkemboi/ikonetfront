@@ -5,8 +5,7 @@ import { CustomerNetworkAlarm } from "@/components/sessions/CustomerNetworkAlarm
 import { getLanHealth } from "@/actions/lanHealth";
 import { getPermissionForRoute } from "@/lib/data/nav";
 import { redirect } from "next/navigation";
-import { LiveSessionHeaderCards } from "@/components/sessions/LiveSessionHeaderCards";
-import { LiveSessionDataTable } from "@/components/sessions/LiveSessionDataTable";
+import { LiveSessionsPanel } from "@/components/sessions/LiveSessionsPanel";
 
 export const dynamic = "force-dynamic";
 
@@ -58,8 +57,8 @@ export default async function LiveSessionsPage() {
  	 </div>
   ) : (
  	 <>
- 		 <LiveSessionHeaderCards kpis={result.kpis} />
- 		 <LiveSessionDataTable
+ 		 <LiveSessionsPanel
+ 			 kpis={result.kpis}
  			 sessions={result.sessions}
  			 refreshIntervalSeconds={REFRESH_INTERVAL_SECONDS}
  		 />

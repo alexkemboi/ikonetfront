@@ -23,9 +23,11 @@ export default async function AuditLogsPage({
  // The platform log (company switches, events that belong to no company) is SYSADMIN-only.
  const showPlatform = isPlatformAdmin && (await searchParams).scope === "platform";
 
- const result = showPlatform ? await getPlatformAuditLogsAction() : await getAuditLogsAction();
+ const [result, selectedCompany] = await Promise.all([
+ showPlatform ? getPlatformAuditLogsAction() : getAuditLogsAction(),
+ isPlatformAdmin ? resolveCompanyContextCode() : Promise.resolve(null),
+ ]);
  const logs = result.success ? (result.data ?? []) : [];
- const selectedCompany = isPlatformAdmin ? await resolveCompanyContextCode() : null;
 
  // Sort newest-first once on the server — no need to re-sort on every client filter
  const sorted = [...logs].sort(
