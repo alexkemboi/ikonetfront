@@ -12,6 +12,7 @@ import { normalizeTvMacAddress, tvDeviceSchema, type TvDeviceDetails } from "@/l
 
 import TvPurchaseReview from "./TvPurchaseReview";
 import TvPackageSelection from "./TvPackageSelection";
+import TvVoucherRedeem from "./TvVoucherRedeem";
 import type { TvPackage } from "@/lib/types/tv";
 import type { TvPortalSession } from "@/lib/types/tv";
 
@@ -134,7 +135,7 @@ export default function TvDeviceSetup({ brand, initialDevice, packages: initialP
       {device && portal && isPaymentStep && selectedPackage ? (
         <TvPurchaseReview portal={portal} onPortalRefreshed={setPortal} customerPhone={device.customerPhone ?? ""} macAddress={device.macAddress} pkg={selectedPackage} phone={paymentPhone} onPhoneChange={setPaymentPhone} onEditDevice={editDevice} onEditPackage={() => setReviewPurchase(false)} />
       ) : device && confirmed ? (
-        <><TvPackageSelection macAddress={device.macAddress} packages={packages} error={packagesError} selectedPackageId={selectedPackageId} onSelect={(id) => { setSelectedPackageId(id); setReviewPurchase(true); }} onEditDevice={editDevice} />{warnings.map((code) => warningText(code, brand)).filter(Boolean).map((text) => <p key={text} className="text-sm text-amber-800">{text}</p>)}</>
+        <><TvPackageSelection macAddress={device.macAddress} packages={packages} error={packagesError} selectedPackageId={selectedPackageId} onSelect={(id) => { setSelectedPackageId(id); setReviewPurchase(true); }} onEditDevice={editDevice} />{portal && <TvVoucherRedeem portalToken={portal.portalToken} />}{warnings.map((code) => warningText(code, brand)).filter(Boolean).map((text) => <p key={text} className="text-sm text-amber-800">{text}</p>)}</>
       ) : device ? (
         <div className="rounded-lg border border-border bg-card p-6 space-y-5">
           <h3 ref={headingRef} tabIndex={-1} className="text-2xl outline-none">Is this the correct TV?</h3>
