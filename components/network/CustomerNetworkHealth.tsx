@@ -17,6 +17,7 @@ import { passwordLabel, routersWithOldPassword } from "@/lib/utils/lanHealth";
 import { reprovisionRoutersWithOldPassword } from "@/actions/lanHealth";
 import { withStepUp } from "@/lib/stepUp";
 import type { RadiusRolloutResult } from "@/lib/types/lanHealth";
+import { visibleInterval } from "@/lib/hooks/useVisibleInterval";
 
 const REFRESH_MS = 60_000;
 const TH = "px-4 py-3 text-[11px] uppercase tracking-wider text-muted-foreground";
@@ -72,10 +73,10 @@ export function CustomerNetworkHealth({
       if (res.data) setRouters(res.data);
     };
     if (initial == null) void load();
-    const timer = setInterval(load, REFRESH_MS);
+    const stopPolling = visibleInterval(load, REFRESH_MS);
     return () => {
       cancelled = true;
-      clearInterval(timer);
+      stopPolling();
     };
   }, [initial]);
 

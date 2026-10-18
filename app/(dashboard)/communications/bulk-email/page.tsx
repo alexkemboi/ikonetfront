@@ -1,4 +1,9 @@
+import Link from "next/link";
 import { getPermissionForRoute } from "@/lib/data/nav";
+import { auth } from "@/lib/auth";
+import { cn } from "@/lib/utils";
+import { getOptOuts, getPromotions } from "@/actions/promotions";
+import { PromotionsClient } from "@/components/communications/PromotionsClient";
 import { redirect } from "next/navigation";
 import BulkEmailWizard from "./_components/BulkEmailWizard";
 import { getEmailTemplates } from "@/actions/communications";
@@ -29,9 +34,49 @@ const BUILT_IN_TEMPLATES: EmailTemplate[] = [
  { id: "service-notice", name: "Service Notice", subject: "Scheduled maintenance notice", body: "Hi {{customer_name}},\n\nWe will be performing scheduled maintenance that may briefly affect your service.\n\nThank you for your patience." },
 ];
 
-export default async function BulkEmailPage() {
+export default async function BulkEmailPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tab?: string }>;
+}) {
   const pagePerms = await getPermissionForRoute("/communications/bulk-email");
   if (!pagePerms.canView) redirect("/dashboard");
+
+  const promotionsTab = (await searchParams).tab === "promotions";
+  const tabs = (
+    <nav className="mb-4 flex gap-1 border-b border-border" aria-label="Communication type">
+      {[
+        { href: "/communications/bulk-email", label: "Email", active: !promotionsTab },
+        { href: "/communications/bulk-email?tab=promotions", label: "Promotional SMS", active: promotionsTab },
+      ].map((tab) => (
+        <Link key={tab.href} href={tab.href} aria-current={tab.active ? "page" : undefined}
+          className={cn("-mb-px border-b-2 px-3 py-2 text-sm transition-colors",
+            tab.active ? "border-primary font-medium text-foreground" : "border-transparent text-muted-foreground hover:text-foreground")}>
+          {tab.label}
+        </Link>
+      ))}
+    </nav>
+  );
+
+  if (promotionsTab) {
+    // Only this tab's data is loaded; the email tab's customer and staff lists are not needed here.
+    const [session, promotions, optOuts] = await Promise.all([auth(), getPromotions(), getOptOuts()]);
+    const role = (session?.user?.role ?? "").replace(/^ROLE_/i, "").toUpperCase();
+    const isAdmin = role === "SYSADMIN" || role === "ADMIN" || role === "01";
+    return (
+      <div className="p-6 h-full">
+        {tabs}
+        <PromotionsClient
+          initialPromotions={promotions.data}
+          initialOptOuts={optOuts.data}
+          loadError={promotions.error ?? optOuts.error ?? undefined}
+          canDraft={isAdmin || role === "02"}
+          canSend={isAdmin}
+          canRemoveOptOut={isAdmin}
+        />
+      </div>
+    );
+  }
 
  const [templatesResult, customersResult, systemUsers] = await Promise.all([
    getEmailTemplates(),
@@ -71,6 +116,7 @@ export default async function BulkEmailPage() {
 
  return (
  <div className="p-6 h-full">
+ {tabs}
  <BulkEmailWizard
  customers={customers}
  systemUsers={staff}

@@ -11,6 +11,7 @@ import { HelpTip, HowToReadPanel } from "@/components/network/HealthHelp";
 import type { HelpKey } from "@/lib/help/networkHealthHelp";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { visibleInterval } from "@/lib/hooks/useVisibleInterval";
 
 const REFRESH_MS = 60_000;
 const TH = "px-3 py-2 text-[11px] uppercase tracking-wider text-muted-foreground";
@@ -65,10 +66,10 @@ export function RouterAccessPoints({ routerId, canEdit }: { routerId: number; ca
       if (res.data) setDetail(res.data);
     };
     void load();
-    const timer = setInterval(load, REFRESH_MS);
+    const stopPolling = visibleInterval(load, REFRESH_MS);
     return () => {
       cancelled = true;
-      clearInterval(timer);
+      stopPolling();
     };
   }, [routerId, reloadKey]);
 

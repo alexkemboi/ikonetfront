@@ -1,12 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useCallback, useMemo, useState } from "react";
 import { Search, SlidersHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatBytes } from "@/lib/utils/formatBytes";
 import { sessionState, type LiveSessionItem } from "@/lib/types/sessions";
 import type { HotspotSessionTime } from "@/lib/types/subscriberTime";
+import { getLiveSessionsData } from "@/actions/sessions";
+import { getPausedHotspotSessions } from "@/actions/subscriberTime";
+import { useVisibleInterval } from "@/lib/hooks/useVisibleInterval";
 import { formatLocalPhone, formatTimeLeft, mpesaReceiptOrNull, trimZeroDays } from "@/lib/utils/subscriberTime";
 import { ManageHotspotSubscriberDialog, type ManagedSubscriber } from "./ManageHotspotSubscriberDialog";
 
@@ -115,17 +117,26 @@ export function HotspotSubscribers({
   pausedError?: string;
   refreshIntervalSeconds: number;
 }) {
-  const router = useRouter();
+  const [current, setCurrent] = useState({ sessions, paused });
   const [tab, setTab] = useState<"ALL" | State>("ALL");
   const [search, setSearch] = useState("");
   const [managed, setManaged] = useState<ManagedSubscriber | null>(null);
 
-  useEffect(() => {
-    const timer = setInterval(() => router.refresh(), refreshIntervalSeconds * 1000);
-    return () => clearInterval(timer);
-  }, [refreshIntervalSeconds, router]);
+  // Reloads only this list (running and paused hotspot customers), not the whole page. A list
+  // that fails to load keeps what is on screen.
+  const reload = useCallback(async () => {
+    const [live, pausedNow] = await Promise.all([getLiveSessionsData(), getPausedHotspotSessions()]);
+    setCurrent((prev) => ({
+      sessions: live.error ? prev.sessions : live.sessions.filter((s) => s.protocol === "HOTSPOT"),
+      paused: pausedNow.success ? (pausedNow.data ?? []) : prev.paused,
+    }));
+  }, []);
+  useVisibleInterval(reload, refreshIntervalSeconds * 1000);
 
-  const rows = useMemo(() => [...sessions.map(fromLive), ...paused.map(fromPaused)], [sessions, paused]);
+  const rows = useMemo(
+    () => [...current.sessions.map(fromLive), ...current.paused.map(fromPaused)],
+    [current]
+  );
   const counts = useMemo(
     () => Object.fromEntries(TABS.map(({ key }) => [key, key === "ALL" ? rows.length : rows.filter((r) => r.state === key).length])),
     [rows]
@@ -249,7 +260,7 @@ export function HotspotSubscribers({
         Showing {filtered.length} of {rows.length} customers
       </div>
 
-      <ManageHotspotSubscriberDialog subscriber={managed} onClose={() => setManaged(null)} onChanged={() => router.refresh()} />
+      <ManageHotspotSubscriberDialog subscriber={managed} onClose={() => setManaged(null)} onChanged={() => void reload()} />
     </div>
   );
 }

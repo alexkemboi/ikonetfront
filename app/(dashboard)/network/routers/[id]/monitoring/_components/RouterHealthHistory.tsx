@@ -10,6 +10,7 @@ import { getInvestorRouterReachability, getInvestorRouterSeries } from "@/action
 import type { RouterReachability, RouterSeries, RouterSeriesRange } from "@/lib/types/network";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { RouterOutages } from "@/components/network/RouterOutages";
+import { visibleInterval } from "@/lib/hooks/useVisibleInterval";
 
 const RANGES: RouterSeriesRange[] = ["1h", "24h", "7d", "30d"];
 const REFRESH_MS = 60_000;
@@ -81,10 +82,10 @@ export function RouterHealthHistory({
       setLoadedAt(Date.now());
     };
     void load();
-    const timer = setInterval(load, REFRESH_MS);
+    const stopPolling = visibleInterval(load, REFRESH_MS);
     return () => {
       cancelled = true;
-      clearInterval(timer);
+      stopPolling();
     };
   }, [routerId, investorDeviceId, range]);
 

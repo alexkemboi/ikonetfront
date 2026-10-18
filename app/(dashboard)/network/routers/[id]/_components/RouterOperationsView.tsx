@@ -13,6 +13,7 @@ import { ConnectionPanel, HealthCard, HotspotPanel, ProvisioningPanel } from "./
 import {
   BackupsTab, EventsTab, InterfacesTab, LogsTab, PaymentsTab, SchedulerTab, ScriptsTab, UsersTab,
 } from "./RouterTabs";
+import { visibleInterval } from "@/lib/hooks/useVisibleInterval";
 
 type TabKey = "system" | "customer-network" | "users" | "payments" | "interfaces" | "events" | "logs" | "backups" | "scheduler" | "scripts";
 
@@ -62,13 +63,13 @@ export function RouterOperationsView({
   const [overview, setOverview] = useState(initialOverview);
 
   useEffect(() => {
-    const timer = setInterval(async () => {
+    const stopPolling = visibleInterval(async () => {
       const res = investorDeviceId != null
         ? await getInvestorRouterOverview(investorDeviceId)
         : await getRouterOverview(routerId);
       if (res.data) setOverview(res.data);
     }, REFRESH_MS);
-    return () => clearInterval(timer);
+    return () => stopPolling();
   }, [routerId, investorDeviceId]);
 
   const r = overview.router;

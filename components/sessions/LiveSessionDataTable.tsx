@@ -1,14 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useMemo, useState } from "react";
 import { Power } from "lucide-react";
 import { toast } from "sonner";
 import { ColumnDef } from "@tanstack/react-table";
 import { cn } from "@/lib/utils";
-import { disconnectLiveSession } from "@/actions/sessions";
+import { disconnectLiveSession, getLiveSessionsData } from "@/actions/sessions";
+import { useVisibleInterval } from "@/lib/hooks/useVisibleInterval";
 import { formatBytes } from "@/lib/utils/formatBytes";
-import { sessionState, type LiveSessionItem } from "@/lib/types/sessions";
+import { sessionState, type LiveSessionItem, type LiveSessionKpis, type SessionProtocol } from "@/lib/types/sessions";
 import { DataTable } from "@/components/shared/data-table";
 import { DataTableFilterPill } from "@/components/shared/data-table-filter-pill";
 
@@ -100,21 +100,30 @@ function StatusBadge({ session }: { session: LiveSessionItem }) {
 export function LiveSessionDataTable({
   sessions,
   refreshIntervalSeconds,
+  protocol,
+  onRefreshed,
 }: {
   sessions: LiveSessionItem[];
   refreshIntervalSeconds: number;
+  /** Keep only this service's sessions after a refresh (the page passed only those at first). */
+  protocol?: SessionProtocol;
+  /** Called with the KPIs of each refresh, so the page's summary cards move with the table. */
+  onRefreshed?: (kpis: LiveSessionKpis) => void;
 }) {
  const [items, setItems] = useState<LiveSessionItem[]>(sessions);
  const [tab, setTab] = useState<TabKey>("ALL");
  const [search, setSearch] = useState("");
  const [confirmId, setConfirmId] = useState<string | null>(null);
  const [busyId, setBusyId] = useState<string | null>(null);
-  const router = useRouter();
-
-    useEffect(() => {
-      const timer = setInterval(() => router.refresh(), refreshIntervalSeconds * 1000);
-      return () => clearInterval(timer);
-    }, [refreshIntervalSeconds, router]);
+  // Fetches only the sessions, while the tab is visible. It replaced router.refresh(), which
+  // re-rendered the whole page and layout every 30 s (about 9 backend calls) and still left this
+  // table on its first rows, because they are held in state.
+  useVisibleInterval(async () => {
+    const latest = await getLiveSessionsData();
+    if (latest.error) return;
+    setItems(protocol ? latest.sessions.filter((s) => s.protocol === protocol) : latest.sessions);
+    onRefreshed?.(latest.kpis);
+  }, refreshIntervalSeconds * 1000);
 
  const counts = useMemo(
  () =>
