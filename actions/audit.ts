@@ -57,3 +57,33 @@ export async function getPlatformAuditLogsAction() {
     cache: "no-store",
   });
 }
+
+/** One page of an audit log, newest first, filtered on the server (BE-24). */
+export type AuditLogPage = {
+  content: AuditLog[];
+  totalElements: number;
+  page: number;
+  size: number;
+  /** modules and actions present in the whole log, for the filter lists */
+  modules: string[];
+  actions: string[];
+};
+
+export async function getAuditLogPage(params: {
+  platform: boolean;
+  page: number;
+  size: number;
+  search?: string;
+  module?: string;
+  action?: string;
+}): Promise<{ data: AuditLogPage | null; error: string | null }> {
+  const query = new URLSearchParams({ page: String(params.page), size: String(params.size) });
+  if (params.search?.trim()) query.set("search", params.search.trim());
+  if (params.module) query.set("module", params.module);
+  if (params.action) query.set("action", params.action);
+  const path = `/systemsetup/audit-logs${params.platform ? "/platform" : ""}/page?${query.toString()}`;
+  const res = await apiFetch<AuditLogPage>(path, { auth: "required", cache: "no-store" });
+  return res.success && res.data
+    ? { data: res.data, error: null }
+    : { data: null, error: res.message || "Audit logs could not be loaded." };
+}

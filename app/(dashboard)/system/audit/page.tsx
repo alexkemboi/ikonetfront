@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getAuditLogsAction, getPlatformAuditLogsAction } from "@/actions/audit";
+import { getAuditLogPage } from "@/actions/audit";
 import { auth } from "@/lib/auth";
 import { resolveCompanyContextCode } from "@/lib/companyContext";
 import { getPermissionForRoute } from "@/lib/data/nav";
@@ -24,19 +24,10 @@ export default async function AuditLogsPage({
  const showPlatform = isPlatformAdmin && (await searchParams).scope === "platform";
 
  const [result, selectedCompany] = await Promise.all([
- showPlatform ? getPlatformAuditLogsAction() : getAuditLogsAction(),
+ getAuditLogPage({ platform: showPlatform, page: 0, size: 50 }),
  isPlatformAdmin ? resolveCompanyContextCode() : Promise.resolve(null),
  ]);
- const logs = result.success ? (result.data ?? []) : [];
-
- // Sort newest-first once on the server — no need to re-sort on every client filter
- const sorted = [...logs].sort(
- (a, b) => new Date(b.accessTime).getTime() - new Date(a.accessTime).getTime()
- );
-
- // Derive unique filter options server-side so the client doesn't need useMemo for these
- const methods = Array.from(new Set(logs.map((l) => l.action))).sort();
- const modules = Array.from(new Set(logs.map((l) => l.module))).sort();
+ const firstPage = result.data ?? { content: [], totalElements: 0, page: 0, size: 50, modules: [], actions: [] };
 
  const tabs = [
  { href: "/system/audit", label: "Company audit", active: !showPlatform },
@@ -64,17 +55,16 @@ export default async function AuditLogsPage({
  ))}
  </nav>
  )}
- {!result.success && (
+ {result.error && (
  <p role="alert" className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm">
- Audit logs could not be loaded: {result.message}
+ Audit logs could not be loaded: {result.error}
  </p>
  )}
  <AuditLogsClient
  // Remount on scope change so filters from one log do not carry into the other.
  key={showPlatform ? "platform" : "company"}
- logs={sorted}
- methods={methods}
- modules={modules}
+ initial={firstPage}
+ platform={showPlatform}
  title={showPlatform ? "Platform Audit Log" : "Audit Logs"}
  subtitle={
  showPlatform

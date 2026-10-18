@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Activity } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -9,34 +9,66 @@ import {
 } from "@/components/ui/select";
 import { DataTable } from "@/components/shared/data-table";
 import { auditColumns, METHOD_STYLES } from "./columns";
-import type { AuditLog } from "@/actions/audit";
+import { getAuditLogPage, type AuditLogPage } from "@/actions/audit";
 
 interface Props {
- logs: AuditLog[];
- /** Unique HTTP methods present in the data — derived server-side */
- methods: string[];
- /** Unique module names present in the data — derived server-side */
- modules: string[];
+ /** The first page, loaded on the server */
+ initial: AuditLogPage;
+ /** The platform log (SYSADMIN) instead of the company log */
+ platform: boolean;
  title?: string;
  /** Which log this is (company events or platform events). */
  subtitle?: string;
 }
 
-export default function AuditLogsClient({ logs, methods, modules, title = "Audit Logs", subtitle }: Props) {
+/**
+ * One page of the audit log at a time. Search, filters and paging are applied by the server, so
+ * the page no longer loads the whole log (the platform log had 48 818 rows on 17 Oct).
+ */
+export default function AuditLogsClient({ initial, platform, title = "Audit Logs", subtitle }: Props) {
+ const [data, setData] = useState<AuditLogPage>(initial);
  const [method, setMethod] = useState("ALL");
  const [module, setModule] = useState("ALL");
+ const [search, setSearch] = useState("");
+ const [pageIndex, setPageIndex] = useState(0);
+ const [pageSize, setPageSize] = useState(initial.size);
+ const [loading, setLoading] = useState(false);
+ const [error, setError] = useState("");
+ const first = useRef(true);
 
- // Pre-filter by method + module before handing data to DataTable.
- // DataTable's built-in global filter then handles the text search on top.
- const filtered = useMemo(
- () =>
- logs.filter(
- (l) =>
- (method === "ALL" || l.action === method) &&
- (module === "ALL" || l.module === module)
- ),
- [logs, method, module]
- );
+ useEffect(() => {
+ if (first.current) {
+ first.current = false;
+ return;
+ }
+ let cancelled = false;
+ // typing waits a moment before asking the server; other changes go at once
+ const timer = setTimeout(async () => {
+ setLoading(true);
+ const res = await getAuditLogPage({
+ platform, page: pageIndex, size: pageSize, search,
+ module: module === "ALL" ? undefined : module,
+ action: method === "ALL" ? undefined : method,
+ });
+ if (cancelled) return;
+ setLoading(false);
+ setError(res.error ?? "");
+ if (res.data) setData(res.data);
+ }, 300);
+ return () => {
+ cancelled = true;
+ clearTimeout(timer);
+ };
+ }, [platform, pageIndex, pageSize, search, module, method]);
+
+ const methods = data.actions;
+ const modules = data.modules;
+ const choose = (set: (v: string) => void) => (value: string) => {
+ set(value);
+ setPageIndex(0);
+ };
+ const chooseMethod = choose(setMethod);
+ const chooseModule = choose(setModule);
 
  // Filter controls passed into DataTable's toolbar slot.
  // They sit to the right of the built-in search bar.
@@ -45,7 +77,7 @@ export default function AuditLogsClient({ logs, methods, modules, title = "Audit
  {/* HTTP method chips */}
  <div className="flex items-center gap-1">
  <button
- onClick={() => setMethod("ALL")}
+ onClick={() => chooseMethod("ALL")}
  className={cn(
  "h-7 px-2.5 rounded-full text-[11px] font-semibold border transition-colors",
  method === "ALL"
@@ -58,7 +90,7 @@ export default function AuditLogsClient({ logs, methods, modules, title = "Audit
  {methods.map((m) => (
  <button
  key={m}
- onClick={() => setMethod(m)}
+ onClick={() => chooseMethod(m)}
  className={cn(
  "h-7 px-2.5 rounded-full text-[11px] font-semibold border transition-colors",
  method === m
@@ -72,7 +104,7 @@ export default function AuditLogsClient({ logs, methods, modules, title = "Audit
  </div>
 
  {/* Module dropdown */}
- <Select value={module} onValueChange={setModule}>
+ <Select value={module} onValueChange={chooseModule}>
  <SelectTrigger className="h-7 w-40 text-xs">
  <SelectValue placeholder="All modules" />
  </SelectTrigger>
@@ -99,10 +131,7 @@ export default function AuditLogsClient({ logs, methods, modules, title = "Audit
  </div>
  <p className="text-sm text-muted-foreground mt-1 ml-0.5">
  {subtitle && <>{subtitle} &middot; </>}
- {logs.length.toLocaleString()} total events
- {filtered.length !== logs.length && (
- <> &middot; <span className="text-foreground font-medium">{filtered.length.toLocaleString()} shown</span></>
- )}
+ {data.totalElements.toLocaleString()} {method !== "ALL" || module !== "ALL" || search.trim() ? "matching events" : "total events"}
  </p>
  </div>
 
@@ -112,7 +141,7 @@ export default function AuditLogsClient({ logs, methods, modules, title = "Audit
  <Badge
  variant="outline"
  className={cn("text-[10px] px-2 cursor-pointer", METHOD_STYLES[method])}
- onClick={() => setMethod("ALL")}
+ onClick={() => chooseMethod("ALL")}
  >
  {method} ×
  </Badge>
@@ -121,7 +150,7 @@ export default function AuditLogsClient({ logs, methods, modules, title = "Audit
  <Badge
  variant="outline"
  className="text-[10px] px-2 cursor-pointer"
- onClick={() => setModule("ALL")}
+ onClick={() => chooseModule("ALL")}
  >
  {module} ×
  </Badge>
@@ -130,11 +159,28 @@ export default function AuditLogsClient({ logs, methods, modules, title = "Audit
  </div>
 
  {/* Global DataTable — search + pagination built in, filters in toolbar */}
+ {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
  <DataTable
  columns={auditColumns}
- data={filtered}
- searchPlaceholder="Search user, description, endpoint…"
+ data={data.content}
+ searchPlaceholder="Search user, module, description, endpoint…"
  toolbar={toolbar}
+ manualPagination
+ manualFiltering
+ pageIndex={pageIndex}
+ pageSize={pageSize}
+ totalRows={data.totalElements}
+ pageCount={Math.max(1, Math.ceil(data.totalElements / pageSize))}
+ onPaginationChange={(index, size) => {
+ setPageIndex(size !== pageSize ? 0 : index);
+ setPageSize(size);
+ }}
+ searchValue={search}
+ onSearchChange={(value) => {
+ setSearch(value);
+ setPageIndex(0);
+ }}
+ loading={loading}
  />
  </div>
  );
