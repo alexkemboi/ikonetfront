@@ -1305,3 +1305,22 @@ export const compensateOutage = async (
     };
   }
 };
+
+/**
+ * Rename a region, location or station (`PUT /api/v1/network/{kind}/{id}`). Only the name is
+ * sent here; the server keeps the other fields it was given before. Region rename is SYSADMIN only.
+ */
+export async function renameSite(
+  kind: "regions" | "locations" | "stations",
+  id: number,
+  body: { name: string } & Record<string, unknown>
+): Promise<ApiResponse<{ name: string } | null>> {
+  const res = await apiFetch<{ name: string }>(`/network/${kind}/${id}`, {
+    method: "PUT",
+    body,
+    auth: "required",
+    cache: "no-store",
+  });
+  if (res.success) revalidateTag("network:regions", "max");
+  return res as ApiResponse<{ name: string } | null>;
+}

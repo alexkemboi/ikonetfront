@@ -7,6 +7,7 @@ import { DataTable } from "@/components/shared/data-table";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { LocationForm } from "./LocationForm";
+import { RenameSiteButton } from "@/components/network/RenameSiteButton";
 import { toast } from "sonner";
 import { useCompanyScope } from "@/providers/CompanyScopeProvider";
 import { MapPin, Plus, Trash2 } from "lucide-react";
@@ -68,7 +69,13 @@ export function LocationClient({ regionsTree }: LocationClientProps) {
  id: "actions",
  header: "Actions",
  cell: ({ row }) => (
- perms.canDelete ? (
+ <div className="flex gap-2">
+ {perms.canEdit && (
+ <RenameSiteButton kind="locations" id={row.original.idxno} name={row.original.name}
+ extra={{ latitude: row.original.latitude ?? null, longitude: row.original.longitude ?? null }}
+ onRenamed={(name) => setLocations((prev) => prev.map((l) => (l.idxno === row.original.idxno ? { ...l, name } : l)))} />
+ )}
+ {perms.canDelete && (
  <Button
  variant="destructive"
  size="icon"
@@ -76,7 +83,8 @@ export function LocationClient({ regionsTree }: LocationClientProps) {
  >
  <Trash2 className="h-4 w-4" />
  </Button>
- ) : null
+ )}
+ </div>
  ),
  },
  ];

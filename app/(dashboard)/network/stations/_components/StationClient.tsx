@@ -8,6 +8,7 @@ import { DataTable } from "@/components/shared/data-table";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { StationForm } from "./StationForm";
+import { RenameSiteButton } from "@/components/network/RenameSiteButton";
 import { toast } from "sonner";
 import { Database, Plus, Trash2 } from "lucide-react";
 import { ColumnDef } from "@tanstack/react-table";
@@ -96,7 +97,13 @@ export function StationClient({ regionsTree }: StationClientProps) {
  id: "actions",
  header: "Actions",
  cell: ({ row }) => (
- perms.canDelete ? (
+ <div className="flex gap-2">
+ {perms.canEdit && (
+ <RenameSiteButton kind="stations" id={row.original.idxno} name={row.original.name}
+ extra={{ powerType: row.original.powerType, backhaulType: row.original.backhaulType }}
+ onRenamed={(name) => setStations((prev) => prev.map((s) => (s.idxno === row.original.idxno ? { ...s, name } : s)))} />
+ )}
+ {perms.canDelete && (
  <Button
  variant="destructive"
  size="icon"
@@ -104,7 +111,8 @@ export function StationClient({ regionsTree }: StationClientProps) {
  >
  <Trash2 className="h-4 w-4" />
  </Button>
- ) : null
+ )}
+ </div>
  ),
  },
  ];

@@ -7,6 +7,9 @@ import { DataTable } from "@/components/shared/data-table";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { RegionForm } from "./RegionForm";
+import { RenameSiteButton } from "@/components/network/RenameSiteButton";
+import { useSession } from "next-auth/react";
+import { isPlatformAdminRole } from "@/lib/types/roles";
 import { toast } from "sonner";
 import { Globe, Plus, Trash2 } from "lucide-react";
 import { ColumnDef } from "@tanstack/react-table";
@@ -21,6 +24,9 @@ export function RegionClient({ initialRegions }: RegionClientProps) {
   const [regions, setRegions] = useState<RegionResponse[]>(initialRegions);
   const [isDialogOpen, setIsOpen] = useState(false);
   const perms = usePermissions("/network/regions");
+  // regions are shared by every company: only the platform renames one
+  const { data: session } = useSession();
+  const canRename = isPlatformAdminRole(session?.user?.role);
 
   const handleDelete = async (id: number) => {
     if (!confirm("Are you sure you want to delete this region?")) return;
@@ -71,15 +77,22 @@ export function RegionClient({ initialRegions }: RegionClientProps) {
       id: "actions",
       header: "Actions",
       cell: ({ row }) => (
-        perms.canDelete ? (
-          <Button
-            variant="destructive"
-            size="icon"
-            onClick={() => handleDelete(row.original.idxno)}
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
-        ) : null
+        <div className="flex gap-2">
+          {canRename && (
+            <RenameSiteButton kind="regions" id={row.original.idxno} name={row.original.name}
+              extra={{ description: row.original.description ?? null }}
+              onRenamed={(name) => setRegions((prev) => prev.map((r) => (r.idxno === row.original.idxno ? { ...r, name } : r)))} />
+          )}
+          {perms.canDelete && (
+            <Button
+              variant="destructive"
+              size="icon"
+              onClick={() => handleDelete(row.original.idxno)}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
       ),
     },
   ];
