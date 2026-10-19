@@ -16,6 +16,7 @@ export async function loginAction(credentials: {
   });
 }
 
+/** @deprecated The server now decides the account type inside sign-in. */
 export async function determineAccountTypeAction(username: string, password: string): Promise<ApiResponse<AccountTypeResponse>> {
   return apiFetch<AccountTypeResponse>("/auth/account-type", {
     method: "POST",
@@ -28,7 +29,31 @@ export async function determineAccountTypeAction(username: string, password: str
 /** Sign-in answer: a token, or `codeRequired` when an emailed sign-in code must be entered next. */
 export type SignInStep = LoginData & { refreshToken?: string; codeRequired?: boolean };
 
-/** Company accounts: password (and the organisation named on the page), checked by the server. */
+/**
+ * The one sign-in for every account. The server finds the account from the username, email
+ * or phone typed, works out whether it is a platform administrator, staff, an investor or a
+ * customer, and answers with a token (or `codeRequired` when an emailed code comes next).
+ */
+export async function signInAction(identifier: string, password: string): Promise<ApiResponse<SignInStep>> {
+  return apiFetch<SignInStep>("/auth/userlogin", {
+    method: "POST",
+    body: { username: identifier, password },
+    auth: "public",
+    cache: "no-store",
+  });
+}
+
+/** The one second step: the emailed code. `role` is what {@link signInAction} answered with. */
+export async function signInCodeAction(identifier: string, code: string, role?: string): Promise<ApiResponse<SignInStep>> {
+  return apiFetch<SignInStep>("/auth/userlogin/verify", {
+    method: "POST",
+    body: role ? { username: identifier, code, role } : { username: identifier, code },
+    auth: "public",
+    cache: "no-store",
+  });
+}
+
+/** @deprecated The sign-in page uses {@link signInAction}. Kept while the endpoints stay. */
 export async function staffLoginAction(username: string, password: string, organisation?: string): Promise<ApiResponse<SignInStep>> {
   return apiFetch<SignInStep>("/auth/userlogin", {
     method: "POST",

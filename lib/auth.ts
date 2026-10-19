@@ -171,59 +171,21 @@ const { handlers, auth: nextAuth, signIn, signOut } = NextAuth({
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        if (!credentials?.username || !credentials?.password) return null;
-
-        // Sysadmin direct-login bypass (OTP temporarily disabled).
-        // The client calls /auth/sysadminlogin directly, receives a JWT, and
-        // forwards it here as `sysadminToken`. We skip the normal userlogin
-        // call and build the session from the verified token.
-        if (credentials.password === "sysadmin-otp-verified") {
-          const sysadminToken = (credentials as Record<string, unknown>).sysadminToken as string | undefined;
-          if (!sysadminToken) return null;
-
-          const decoded = await parseBackendJwt(sysadminToken, getJwtSecret());
-          if (!decoded) return null;
-
-          const fname = typeof decoded?.fname === "string" ? decoded.fname : String(credentials.username);
-
-          return {
-            id: decoded?.userId || decoded?.sub || String(credentials.username),
-            userId: decoded?.userId,
-            username: String(credentials.username),
-            email: typeof decoded?.email === "string" ? decoded.email : "",
-            role: typeof decoded?.role === "string" ? decoded.role : "SYSADMIN",
-            fname,
-            middleName: typeof decoded?.middleName === "string" ? decoded.middleName : undefined,
-            otherName: typeof decoded?.otherName === "string" ? decoded.otherName : undefined,
-            phoneNumber: typeof decoded?.phoneNumber === "string" ? decoded.phoneNumber : undefined,
-            apiToken: sysadminToken,
-            refreshToken: undefined,
-            expiresAt: tokenExpiryMs(sysadminToken) ?? Date.now() + 2 * 60 * 60 * 1000,
-            regionId: typeof decoded?.regionId === "number" ? decoded.regionId : undefined,
-            stationId: typeof decoded?.stationId === "number" ? decoded.stationId : undefined,
-            locationId: typeof decoded?.locationId === "number" ? decoded.locationId : undefined,
-            investorScope: typeof decoded?.investorScope === "string" ? decoded.investorScope : undefined,
-            companyScope: typeof decoded?.companyScope === "string" ? decoded.companyScope : undefined,
-          };
-        }
+        const verifiedToken = (credentials as Record<string, unknown> | undefined)?.verifiedToken;
+        const hasToken = typeof verifiedToken === "string" && verifiedToken !== "";
+        if (!credentials?.username || (!credentials?.password && !hasToken)) return null;
 
         try {
-          // The sign-in page already signed in with the server (password, then a code when
-          // one is asked for) and hands over the token it got. Its signature is checked below.
-          const verifiedToken = (credentials as Record<string, unknown>).verifiedToken;
+          // The sign-in page already signed in with the server (password, then a code when one
+          // is asked for) and hands over the token it got. Its signature is checked below.
           let loginRes: LoginResponse;
-          if (credentials.password === "token-verified" && typeof verifiedToken === "string" && verifiedToken) {
+          if (hasToken) {
             loginRes = { success: true, data: { token: verifiedToken, username: String(credentials.username), role: "" } } as LoginResponse;
           } else {
-            const organisation = (credentials as Record<string, unknown>).organisation;
             const res = await fetch(buildApiUrl("/auth/userlogin"), {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                username: credentials.username,
-                password: credentials.password,
-                ...(typeof organisation === "string" && organisation.trim() ? { organisation } : {}),
-              }),
+              body: JSON.stringify({ username: credentials.username, password: credentials.password }),
               cache: "no-store",
             });
 
@@ -240,20 +202,6 @@ const { handlers, auth: nextAuth, signIn, signOut } = NextAuth({
           const decoded = await parseBackendJwt(token, getJwtSecret());
           const rawRole = loginRes.data.role || decoded?.role;
           if (!rawRole) return null;
-
-          // The sign-in page names an organisation; an account that belongs to a
-          // different company is refused exactly like a wrong password. Accounts
-          // with no company (an investor in several companies) are not tied to one.
-          const organisation = (credentials as Record<string, unknown>).organisation;
-          const accountCompany = decoded?.companyScope ?? decoded?.companyId;
-          if (
-            typeof organisation === "string" && organisation.trim() !== "" &&
-            typeof accountCompany === "string" && accountCompany.trim() !== "" &&
-            organisation.trim().toUpperCase() !== accountCompany.trim().toUpperCase()
-          ) {
-            console.warn("[Auth] Sign-in refused: account does not belong to the organisation entered.");
-            return null;
-          }
 
           return {
             id: decoded?.userId || decoded?.sub || loginRes.data.username,
