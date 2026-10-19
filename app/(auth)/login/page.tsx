@@ -8,8 +8,8 @@ export const metadata = {
 
 // NextAuth appends ?error=<code> on failed sign-in — map codes to user-friendly copy
 const AUTH_ERRORS: Record<string, string> = {
-    CredentialsSignin: "Invalid username or password, or the account does not belong to that organisation.",
-    Configuration: "Invalid username or password, or the account does not belong to that organisation.",
+    CredentialsSignin: "Invalid username or password.",
+    Configuration: "Invalid username or password.",
     AccessDenied: "You do not have permission to access this system.",
     SessionRequired: "Your session has expired. Please sign in again.",
     OAuthAccountNotLinked: "This account is linked to a different sign-in method.",
@@ -47,7 +47,7 @@ export default async function LoginPage({
                 </p>
             </div>
 
-            <LoginForm error={errorMessage} hostOrganisation={hostOrganisation} />
+            <LoginForm error={errorMessage} />
         </div>
     );
 }

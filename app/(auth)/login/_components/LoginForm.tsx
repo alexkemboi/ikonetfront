@@ -1,18 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useFormik } from "formik";
 import * as Yup from "yup";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   AlertCircle,
-  Building2,
-  CheckCircle2,
   Eye,
   EyeOff,
   Loader2,
   Lock,
-  ShieldCheck,
   User,
   X,
 } from "lucide-react";
@@ -23,14 +20,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import Link from "next/link";
 import { signIn } from "next-auth/react";
 import { clearCompanyContextCookie } from "@/lib/companyContextClient";
-import {
-  determineAccountTypeAction,
-  staffLoginAction,
-  staffSignInCodeAction,
-  sysAdminLoginAction,
-  sysAdminSignInCodeAction,
-} from "@/actions/auth";
-import { resolveOrganisationAction, type OrganisationMatch } from "@/actions/branding";
+import { signInAction, signInCodeAction } from "@/actions/auth";
 import { cn } from "@/lib/utils";
 
 const DISMISS_AFTER_MS = 6000;
@@ -83,120 +73,31 @@ function ErrorAlert({ message }: { message: string }) {
 
 // ── Validation ─────────────────────────────────────────────────────────
 const validationSchema = Yup.object({
-  username: Yup.string().trim().required("Username is required"),
+  username: Yup.string().trim().required("Enter your username, email or phone number"),
   password: Yup.string()
     .min(6, "Password must be at least 6 characters")
     .required("Password is required"),
 });
 
-/** Company accounts name their organisation; platform administrators belong to none. */
-type SignInMode = "company" | "platform";
-
-type OrganisationState =
-  | { status: "idle" | "checking" | "unknown" }
-  | { status: "found"; match: OrganisationMatch };
-
-const REMEMBERED_ORGANISATION_KEY = "ibs_login_organisation";
-
-function readRememberedOrganisation(): string {
-  try {
-    return window.localStorage.getItem(REMEMBERED_ORGANISATION_KEY) ?? "";
-  } catch {
-    return "";
-  }
-}
-
-function rememberOrganisation(value: string | null) {
-  try {
-    if (value) window.localStorage.setItem(REMEMBERED_ORGANISATION_KEY, value);
-    else window.localStorage.removeItem(REMEMBERED_ORGANISATION_KEY);
-  } catch {
-    // Storage unavailable (private window): the field simply starts empty next time.
-  }
-}
-
-const MODES: { id: SignInMode; label: string; icon: typeof Building2; hint: string }[] = [
-  {
-    id: "company",
-    label: "Company account",
-    icon: Building2,
-    hint: "Staff, customers and network partners of the organisation above.",
-  },
-  {
-    id: "platform",
-    label: "Platform admin",
-    icon: ShieldCheck,
-    hint: "System administrators work across all companies and need no organisation.",
-  },
-];
-
 // ── Form ───────────────────────────────────────────────────────────────
-export default function LoginForm({
-  error,
-  hostOrganisation,
-}: {
-  error?: string;
-  /** Set when the web address itself (subdomain or custom domain) names the company. */
-  hostOrganisation?: OrganisationMatch | null;
-}) {
-  const [mode, setMode] = useState<SignInMode>("company");
-  const [organisationInput, setOrganisationInput] = useState("");
-  const [organisation, setOrganisation] = useState<OrganisationState>(
-    hostOrganisation ? { status: "found", match: hostOrganisation } : { status: "idle" }
-  );
-  const [remember, setRemember] = useState(true);
+/**
+ * One sign-in for everyone. The server works out from the username and password whether the
+ * account is a platform administrator, company staff, an investor or a customer; the role in
+ * the token then decides where the dashboard sends them.
+ */
+export default function LoginForm({ error }: { error?: string }) {
   const [showPassword, setShowPassword] = useState(false);
   const [busy, setBusy] = useState(false);
   const [localError, setLocalError] = useState<string | undefined>(undefined);
   // set when the password was accepted and the server emailed a sign-in code
-  const [codeStep, setCodeStep] = useState<
-    { kind: "staff" | "sysadmin"; username: string; organisation?: string } | null
-  >(null);
+  const [codeStep, setCodeStep] = useState<{ username: string; role?: string } | null>(null);
   const [code, setCode] = useState("");
-  // Ignore the answer to a lookup the user has already typed past.
-  const lookup = useRef(0);
 
-  const resolveOrganisation = useCallback(async (value: string): Promise<OrganisationMatch | null> => {
-    const typed = value.trim();
-    if (!typed) {
-      setOrganisation({ status: "idle" });
-      return null;
-    }
-    const id = ++lookup.current;
-    setOrganisation({ status: "checking" });
-    const match = await resolveOrganisationAction(typed).catch(() => null);
-    if (id === lookup.current) {
-      setOrganisation(match ? { status: "found", match } : { status: "unknown" });
-    }
-    return match;
-  }, []);
-
-  useEffect(() => {
-    if (hostOrganisation) return;
-    const remembered = readRememberedOrganisation();
-    if (!remembered) return;
-    setOrganisationInput(remembered);
-    void resolveOrganisation(remembered);
-  }, [hostOrganisation, resolveOrganisation]);
-
-  const finishSysAdmin = async (username: string, token: string) => {
+  const finish = async (username: string, token: string) => {
     clearCompanyContextCookie();
     await signIn("credentials", {
       username,
-      password: "sysadmin-otp-verified",
-      sysadminToken: token,
-      redirect: true,
-      callbackUrl: "/dashboard",
-    });
-  };
-
-  const finishStaff = async (username: string, token: string, organisationCode?: string) => {
-    clearCompanyContextCookie();
-    await signIn("credentials", {
-      username,
-      password: "token-verified",
       verifiedToken: token,
-      organisation: organisationCode ?? "",
       redirect: true,
       callbackUrl: "/dashboard",
     });
@@ -213,18 +114,12 @@ export default function LoginForm({
     setLocalError(undefined);
     setBusy(true);
     try {
-      const res = codeStep.kind === "sysadmin"
-        ? await sysAdminSignInCodeAction(codeStep.username, typed)
-        : await staffSignInCodeAction(codeStep.username, typed);
+      const res = await signInCodeAction(codeStep.username, typed, codeStep.role);
       if (!res.success || !res.data?.token) {
         setLocalError(res.message || "The sign-in code is not correct.");
         return;
       }
-      if (codeStep.kind === "sysadmin") {
-        await finishSysAdmin(codeStep.username, res.data.token);
-      } else {
-        await finishStaff(codeStep.username, res.data.token, codeStep.organisation);
-      }
+      await finish(res.data.username || codeStep.username, res.data.token);
     } catch {
       setLocalError("Something went wrong. Please try again.");
     } finally {
@@ -239,64 +134,18 @@ export default function LoginForm({
       setLocalError(undefined);
       setBusy(true);
       try {
-        // A company account names a known organisation. An organisation typed (or given by the
-        // web address) is checked before any credential is sent; a blank one is allowed only for
-        // an investor's login that belongs to no company.
-        let company: OrganisationMatch | null = null;
-        if (mode === "company" && (hostOrganisation || organisationInput.trim())) {
-          company =
-            hostOrganisation ??
-            (organisation.status === "found" ? organisation.match : await resolveOrganisation(organisationInput));
-          if (!company) {
-            setLocalError("We could not find that organisation. Check the short name or code and try again.");
-            return;
-          }
-        }
-
-        const detectRes = await determineAccountTypeAction(values.username, values.password);
-        const type = detectRes.success ? detectRes.data?.accountType : undefined;
-        if (!type || type === "INVALID") {
-          setLocalError(detectRes.success ? "Invalid username or password." : detectRes.message || "Invalid username or password.");
-          return;
-        }
-
-        if (type === "SYSADMIN") {
-          // A system administrator is let in from either tab; the organisation does not apply.
-          const sysRes = await sysAdminLoginAction(values.username, values.password);
-          if (sysRes.success && sysRes.data?.codeRequired) {
-            setCode("");
-            setCodeStep({ kind: "sysadmin", username: values.username });
-            return;
-          }
-          if (!sysRes.success || !sysRes.data?.token) {
-            setLocalError(sysRes.message || "SysAdmin login failed. Please try again.");
-            return;
-          }
-          await finishSysAdmin(values.username, sysRes.data.token);
-          return;
-        }
-
-        if (mode === "platform") {
-          setLocalError("This account belongs to a company. Use the Company account tab and enter your organisation.");
-          return;
-        }
-        if (!company && type !== "INVESTOR") {
-          setLocalError("Enter your organisation to continue.");
-          return;
-        }
-
-        if (company && !hostOrganisation) rememberOrganisation(remember ? organisationInput.trim() : null);
-        const res = await staffLoginAction(values.username, values.password, company?.code);
+        const username = values.username.trim();
+        const res = await signInAction(username, values.password);
         if (res.success && res.data?.codeRequired) {
           setCode("");
-          setCodeStep({ kind: "staff", username: values.username, organisation: company?.code });
+          setCodeStep({ username: res.data.username || username, role: res.data.role });
           return;
         }
         if (!res.success || !res.data?.token) {
           setLocalError(res.message || "Invalid username or password.");
           return;
         }
-        await finishStaff(values.username, res.data.token, company?.code);
+        await finish(res.data.username || username, res.data.token);
       } catch {
         setLocalError("Something went wrong. Please try again.");
       } finally {
@@ -305,10 +154,8 @@ export default function LoginForm({
     },
   });
 
-  const organisationDisabled = busy || mode === "platform";
   const usernameError = formik.touched.username ? formik.errors.username : undefined;
   const passwordError = formik.touched.password ? formik.errors.password : undefined;
-  const activeMode = MODES.find((m) => m.id === mode) ?? MODES[0];
 
   if (codeStep) {
     return (
@@ -358,183 +205,68 @@ export default function LoginForm({
       {error && <ErrorAlert message={error} />}
       {localError && <ErrorAlert message={localError} />}
 
-      {/* Organisation */}
-      <div className="space-y-1.5">
-        <Label htmlFor="organisation">Organisation</Label>
-        {hostOrganisation ? (
-          <div className="flex h-11 items-center gap-2 rounded-md border border-input bg-muted/40 px-3 text-sm">
-            <Building2 className="h-4 w-4 shrink-0 text-muted-foreground" />
-            <span className="truncate font-medium">{hostOrganisation.name}</span>
-          </div>
-        ) : (
-          <>
-            <div className="relative">
-              <Building2 className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                id="organisation"
-                type="text"
-                autoComplete="organization"
-                autoCapitalize="none"
-                spellCheck={false}
-                placeholder="e.g. bedak"
-                value={mode === "platform" ? "" : organisationInput}
-                onChange={(e) => {
-                  lookup.current += 1;
-                  setOrganisationInput(e.target.value);
-                  setOrganisation({ status: "idle" });
-                }}
-                onBlur={() => void resolveOrganisation(organisationInput)}
-                disabled={organisationDisabled}
-                aria-describedby="organisation-help"
-                aria-invalid={organisation.status === "unknown"}
-                className={cn("h-11 pl-9 pr-9", organisation.status === "unknown" && mode === "company" && "border-destructive")}
-              />
-              {mode === "company" && organisation.status === "checking" && (
-                <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" />
-              )}
-              {mode === "company" && organisation.status === "found" && (
-                <CheckCircle2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-success" />
-              )}
-            </div>
-            <p id="organisation-help" className="text-xs text-muted-foreground" aria-live="polite">
-              {mode === "platform"
-                ? "Not needed for platform administrators."
-                : organisation.status === "found"
-                  ? <>Signing in to <span className="font-medium text-foreground">{organisation.match.name}</span>.</>
-                  : organisation.status === "unknown"
-                    ? <span className="text-destructive">No organisation with that short name or code.</span>
-                    : "The short name or code your company was set up under."}
-            </p>
-          </>
-        )}
-      </div>
-
-      {/* Sign-in card */}
       <div className="rounded-2xl border border-primary/30 bg-card p-5 shadow-xs space-y-4">
-        <div role="tablist" aria-label="Account type" className="grid grid-cols-2 border-b border-border">
-          {MODES.map((m) => {
-            const Icon = m.icon;
-            const selected = m.id === mode;
-            return (
-              <button
-                key={m.id}
-                type="button"
-                role="tab"
-                id={`signin-tab-${m.id}`}
-                aria-selected={selected}
-                aria-controls="signin-panel"
-                disabled={busy}
-                onClick={() => {
-                  setMode(m.id);
-                  setLocalError(undefined);
-                }}
-                className={cn(
-                  "-mb-px flex items-center justify-center gap-2 border-b-2 px-2 py-2.5 text-sm transition-colors",
-                  selected
-                    ? "border-primary font-medium text-foreground"
-                    : "border-transparent text-muted-foreground hover:text-foreground"
-                )}
-              >
-                <Icon className="h-4 w-4" />
-                {m.label}
-              </button>
-            );
-          })}
+        {/* Username */}
+        <div className="space-y-1.5">
+          <Label htmlFor="username">Username, email or account number</Label>
+          <div className="relative">
+            <User className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              id="username"
+              type="text"
+              autoComplete="username"
+              autoCapitalize="none"
+              spellCheck={false}
+              placeholder="e.g. jane.doe, name@company.com or BSM-00124"
+              {...formik.getFieldProps("username")}
+              aria-invalid={!!usernameError}
+              className={cn("h-11 pl-9", usernameError && "border-destructive focus-visible:ring-destructive/30")}
+              disabled={busy}
+            />
+          </div>
+          {usernameError && <p className="text-xs text-destructive">{usernameError}</p>}
         </div>
 
-        <div id="signin-panel" role="tabpanel" aria-labelledby={`signin-tab-${mode}`} className="space-y-4">
-          <p className="text-xs text-muted-foreground">{activeMode.hint}</p>
-
-          {/* Username */}
-          <div className="space-y-1.5">
-            <Label htmlFor="username">{mode === "platform" ? "Username" : "Username or account number"}</Label>
-            <div className="relative">
-              <User className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                id="username"
-                type="text"
-                autoComplete="username"
-                autoCapitalize="none"
-                spellCheck={false}
-                placeholder={mode === "platform" ? "e.g. sysadmin" : "e.g. jane.doe or BSM-00124"}
-                {...formik.getFieldProps("username")}
-                aria-invalid={!!usernameError}
-                className={cn("h-11 pl-9", usernameError && "border-destructive focus-visible:ring-destructive/30")}
-                disabled={busy}
-              />
-            </div>
-            {usernameError ? (
-              <p className="text-xs text-destructive">{usernameError}</p>
-            ) : (
-              mode === "company" && (
-                <p className="text-xs text-muted-foreground">
-                  Staff use their username; customers use their account number.
-                </p>
-              )
-            )}
-          </div>
-
-          {/* Password */}
-          <div className="space-y-1.5">
-            <Label htmlFor="password">Password</Label>
-            <div className="relative">
-              <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                id="password"
-                type={showPassword ? "text" : "password"}
-                autoComplete="current-password"
-                placeholder="••••••••"
-                {...formik.getFieldProps("password")}
-                aria-invalid={!!passwordError}
-                className={cn("h-11 pl-9 pr-10", passwordError && "border-destructive focus-visible:ring-destructive/30")}
-                disabled={busy}
-              />
-              <button
-                type="button"
-                aria-label={showPassword ? "Hide password" : "Show password"}
-                onClick={() => setShowPassword((v) => !v)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                disabled={busy}
-              >
-                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </button>
-            </div>
-            {passwordError && <p className="text-xs text-destructive">{passwordError}</p>}
-          </div>
-
-          {mode === "company" && !hostOrganisation && (
-            <label className="flex items-center gap-2 text-sm text-foreground">
-              <input
-                type="checkbox"
-                checked={remember}
-                onChange={(e) => setRemember(e.target.checked)}
-                disabled={busy}
-                className="h-4 w-4 rounded border-input accent-primary"
-              />
-              Remember my organisation on this device
-            </label>
-          )}
-
-          <Button type="submit" className="h-12 w-full gap-2 rounded-full text-base" disabled={busy}>
-            {busy ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <>
-                <activeMode.icon className="h-4 w-4" />
-                {mode === "platform" ? "Sign in as administrator" : "Sign in"}
-              </>
-            )}
-          </Button>
-
-          <p className="text-center">
-            <Link
-              href="/forgot-password"
-              className="text-xs text-muted-foreground underline-offset-4 hover:underline hover:text-primary"
+        {/* Password */}
+        <div className="space-y-1.5">
+          <Label htmlFor="password">Password</Label>
+          <div className="relative">
+            <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              id="password"
+              type={showPassword ? "text" : "password"}
+              autoComplete="current-password"
+              placeholder="••••••••"
+              {...formik.getFieldProps("password")}
+              aria-invalid={!!passwordError}
+              className={cn("h-11 pl-9 pr-10", passwordError && "border-destructive focus-visible:ring-destructive/30")}
+              disabled={busy}
+            />
+            <button
+              type="button"
+              aria-label={showPassword ? "Hide password" : "Show password"}
+              onClick={() => setShowPassword((v) => !v)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+              disabled={busy}
             >
-              Forgot your password?
-            </Link>
-          </p>
+              {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            </button>
+          </div>
+          {passwordError && <p className="text-xs text-destructive">{passwordError}</p>}
         </div>
+
+        <Button type="submit" className="h-12 w-full gap-2 rounded-full text-base" disabled={busy}>
+          {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : "Sign in"}
+        </Button>
+
+        <p className="text-center">
+          <Link
+            href="/forgot-password"
+            className="text-xs text-muted-foreground underline-offset-4 hover:underline hover:text-primary"
+          >
+            Forgot your password?
+          </Link>
+        </p>
       </div>
     </form>
   );
