@@ -63,7 +63,7 @@ const BasicInfoStep = ({
  {formik.touched.username && formik.errors.username ? (
  <p className="text-xs text-destructive">{formik.errors.username}</p>
  ) : (
- <p className="text-xs text-muted-foreground">The PPPoE login for this customer. No spaces.</p>
+ <p className="text-xs text-muted-foreground">The PPPoE login, exactly as the customer&apos;s router dials it. Spaces are allowed.</p>
  )}
  </div>
 

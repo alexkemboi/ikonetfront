@@ -25,8 +25,7 @@ interface ChangePasswordSheetProps {
 
 const changePasswordValidationSchema = Yup.object({
  newPassword: Yup.string()
- .required("New password is required")
- .min(6, "Password must be at least 6 characters"),
+ .required("New password is required"),
  confirmPassword: Yup.string()
  .required("Please confirm your password")
  .oneOf([Yup.ref("newPassword")], "Passwords must match"),
