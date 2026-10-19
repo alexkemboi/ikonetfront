@@ -6,8 +6,13 @@ import type { OptOutChannel, Promotion, PromotionOptOut, PromotionPreview } from
 type Result<T> = { data: T | null; error: string | null };
 const BASE = "/communications/promotions";
 
-function result<T>(res: { success: boolean; data: T | null; message?: string }, fallback: string): Result<T> {
-  return res.success && res.data != null ? { data: res.data, error: null } : { data: null, error: res.message || fallback };
+function result<T>(res: { success: boolean; status?: number; data: T | null; message?: string }, fallback: string): Result<T> {
+  if (res.success && res.data != null) return { data: res.data, error: null };
+  // 404 on every promotions call means the server does not have this feature yet
+  if (res.status === 404) {
+    return { data: null, error: "Promotional SMS is not switched on on the server yet: the backend update has not been deployed. Ask your system administrator; nothing is lost in the meantime." };
+  }
+  return { data: null, error: res.message || fallback };
 }
 
 export async function getPromotions(): Promise<Result<Promotion[]>> {

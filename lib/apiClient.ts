@@ -71,6 +71,31 @@ function envelopeError<T>(
 }
 
 /**
+ * Plain wording for the bare HTTP status names some backend errors carry as their message
+ * ("NOT_FOUND" showed on the Promotional SMS tab while its backend was not deployed). Only these
+ * standard names are reworded: app-specific codes such as POSSIBLE_DUPLICATE_BATCH are compared
+ * by screens and stay as they are. The original name stays available in the result's `code`.
+ */
+const STATUS_WORDS: Record<string, string> = {
+  NOT_FOUND: "This is not available on the server yet, or it no longer exists. If it is a new feature, the server may not have been updated; tell your system administrator.",
+  FORBIDDEN: "You do not have permission to do this.",
+  ACCESS_DENIED: "You do not have permission to do this.",
+  UNAUTHORIZED: "Your session has ended. Please sign in again.",
+  BAD_REQUEST: "The request could not be accepted. Check what you entered and try again.",
+  METHOD_NOT_ALLOWED: "This action is not available on the server yet. Tell your system administrator.",
+  INTERNAL_SERVER_ERROR: "The server ran into a problem. Please try again; if it keeps happening, tell your system administrator.",
+  BAD_GATEWAY: "The server is not answering right now. Please try again in a moment.",
+  SERVICE_UNAVAILABLE: "The server is busy or restarting. Please try again in a moment.",
+  GATEWAY_TIMEOUT: "The server took too long to answer. Please try again in a moment.",
+};
+
+export function readableMessage(message: string | undefined | null): { message: string | undefined; code?: string } {
+  if (!message) return { message: undefined };
+  const words = STATUS_WORDS[message.trim()];
+  return words ? { message: words, code: message.trim() } : { message };
+}
+
+/**
  * Machine-readable error code of a refused request. The backend sends it either at the top
  * level (`code`, written by its request filters) or inside `data.code` (coded exceptions
  * such as `COMPANY_REQUIRED`).
@@ -188,13 +213,15 @@ export async function apiFetch<T = unknown>(
 
       if (parsed && typeof parsed === "object") {
         const api = parsed as ApiResponse<T>;
+        const readable = readableMessage(api.message);
         return {
           status: (api.status as number) ?? res.status,
           success: false,
-          message: api.message ?? `Request failed (HTTP ${res.status})`,
+          message: readable.message ?? `Request failed (HTTP ${res.status})`,
           data: (api.data as T) ?? null,
           timestamp: api.timestamp ?? new Date().toISOString(),
           requestId: responseRequestId,
+          ...(readable.code ? { code: readable.code } : {}),
           ...errorCode(api),
         };
       }
