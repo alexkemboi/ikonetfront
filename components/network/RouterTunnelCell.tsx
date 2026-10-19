@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { Check, Copy, ExternalLink, Lock, LockOpen } from "lucide-react";
 import { toast } from "sonner";
 import { allocateTunnel, deallocateTunnel } from "@/actions/network";
+import { useSession } from "next-auth/react";
+import { canOpenRouters } from "@/lib/types/roles";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
@@ -32,8 +34,11 @@ export function RouterTunnelCell({
   winboxTunnelPort,
   webConsoleUrl,
   tunnelExpiresAt,
-  canEdit,
+  canEdit: canEditPage,
 }: TunnelCellProps) {
+  // remote access is for the company admin and SYSADMIN only, whatever the page permission says
+  const role = useSession().data?.user?.role;
+  const canEdit = Boolean(canEditPage) && canOpenRouters(role);
   const router = useRouter();
   const [copied, setCopied] = useState(false);
   const [busy, setBusy] = useState<"enable" | "disable" | null>(null);

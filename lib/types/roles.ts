@@ -112,6 +112,14 @@ export function isPlatformAdminRole(role?: string | null): boolean {
 }
 
 /**
+ * True for the company admin (01) and SYSADMIN: the only roles that open a router remotely
+ * (temporary tunnel, WinBox, web console). Owner decision 2026-10-13; the API refuses the rest.
+ */
+export function canOpenRouters(role?: string | null): boolean {
+  return normalizeRole(role) === ROLE_NAME.ADMIN;
+}
+
+/**
  * Convert a role name (as it appears in the JWT / session.user.role)
  * to the corresponding backend role code. Used when constructing
  * API URLs that include the role code in the path.

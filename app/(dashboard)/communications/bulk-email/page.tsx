@@ -117,6 +117,14 @@ export default async function BulkEmailPage({
  return (
  <div className="p-6 h-full">
  {tabs}
+ {/* No bulk email service exists on the server yet (gap register #10): say so before anyone composes a campaign. */}
+ <div role="status" className="mb-4 rounded-lg border border-warning/40 bg-warning/10 px-4 py-3 text-sm">
+ <p className="font-medium text-foreground">Bulk email is not available yet</p>
+ <p className="mt-1 text-muted-foreground">
+ You can prepare a message here, but the server cannot send campaigns yet, so nothing will be delivered.
+ Customers already receive renewal reminders, outage notices, payment confirmations and ticket updates automatically.
+ </p>
+ </div>
  <BulkEmailWizard
  customers={customers}
  systemUsers={staff}

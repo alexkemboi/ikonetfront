@@ -32,6 +32,8 @@ import {
   updateRouter,
 } from "@/actions/network";
 import { withStepUp } from "@/lib/stepUp";
+import { useSession } from "next-auth/react";
+import { canOpenRouters } from "@/lib/types/roles";
 import { RouterTelemetryDrawer } from "./RouterTelemetryDrawer";
 import { DiagnoseHealthModal } from "./DiagnoseHealthModal";
 import CompensateOutageModal from "./CompensateOutageModal";
@@ -113,6 +115,8 @@ export function RouterActionsDropdown({
 }) {
   const isRow = variant === "row";
   const isPage = variant === "page";
+  // remote access (tunnel, WinBox, web console) is for the company admin and SYSADMIN only
+  const canOpen = canOpenRouters(useSession().data?.user?.role);
   const routerNav = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
   const [coords, setCoords] = useState<{
@@ -543,7 +547,7 @@ export function RouterActionsDropdown({
       <div className="h-px bg-border my-1" />
       </>)}
 
-      {!isRow && router.winboxTunnelAddress && (
+      {canOpen && !isRow && router.winboxTunnelAddress && (
         <button
           type="button"
           role="menuitem"
@@ -560,7 +564,7 @@ export function RouterActionsDropdown({
         </button>
       )}
 
-      {winboxUri && (
+      {canOpen && winboxUri && (
         <a
           href={winboxUri}
           role="menuitem"
@@ -584,7 +588,7 @@ export function RouterActionsDropdown({
         </a>
       )}
 
-      {router.webConsoleUrl && (
+      {canOpen && router.webConsoleUrl && (
         <a
           href={router.webConsoleUrl}
           target="_blank"
@@ -612,7 +616,7 @@ export function RouterActionsDropdown({
         </button>
       )}
 
-      {!isRow && hasNumericDevice && (
+      {canOpen && !isRow && hasNumericDevice && (
         <button
           type="button"
           role="menuitem"
