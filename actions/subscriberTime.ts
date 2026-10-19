@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { apiFetch } from "@/lib/apiClient";
-import type { ActionResult, HotspotSessionTime, PppoeSubscriptionTime } from "@/lib/types/subscriberTime";
+import type { ActionResult, HotspotSessionTime, PppoeSubscriptionTime, TvCustomerTime } from "@/lib/types/subscriberTime";
 
 /**
  * Customer care actions on one subscriber: add time, pause, resume.
@@ -86,4 +86,26 @@ export async function getHotspotPurchaseHistory(phone: string): Promise<ActionRe
   return res.success
     ? { success: true, data: res.data?.content ?? [], message: res.message }
     : { success: false, message: res.message };
+}
+
+// ── TV customers ────────────────────────────────────────────────────────────
+
+export async function getTvCustomers(): Promise<ActionResult<TvCustomerTime[]>> {
+  return get<TvCustomerTime[]>("/tv-customers", "Could not load TV customers.");
+}
+
+export async function getTvCustomer(entitlementId: string): Promise<ActionResult<TvCustomerTime>> {
+  return get<TvCustomerTime>(`/tv-customers/${entitlementId}`, "Could not load this TV.");
+}
+
+export async function addTvTime(entitlementId: string, minutes: number, reason: string) {
+  return post<TvCustomerTime>(`/tv-customers/${entitlementId}/add-time`, { minutes, reason }, "Could not add the time.");
+}
+
+export async function pauseTvCustomer(entitlementId: string, reason: string) {
+  return post<TvCustomerTime>(`/tv-customers/${entitlementId}/pause`, { reason }, "Could not pause the TV.");
+}
+
+export async function resumeTvCustomer(entitlementId: string) {
+  return post<TvCustomerTime>(`/tv-customers/${entitlementId}/resume`, {}, "Could not resume the TV.");
 }

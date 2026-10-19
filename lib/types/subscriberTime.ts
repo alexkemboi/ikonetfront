@@ -28,3 +28,29 @@ export interface PppoeSubscriptionTime {
 }
 
 export type ActionResult<T> = { success: true; data: T; message: string } | { success: false; message: string };
+
+/** One TV with running or paused access (`GET /subscriber-time/tv-customers`). */
+export interface TvCustomerTime {
+  entitlementId: string;
+  phone: string | null;
+  macAddress: string;
+  packageName: string | null;
+  routerId: number | null;
+  routerName: string | null;
+  status: "ACTIVE" | "PAUSED" | string;
+  /** When the access ends, UTC; null while paused. */
+  expiresAt: string | null;
+  /** Time left that is given back on resume; null unless paused. */
+  pausedRemainingSeconds: number | null;
+  pausedAt: string | null;
+  pausesUsed: number;
+  /** 0 = this package cannot be paused (one day or shorter). */
+  pausesAllowed: number;
+  /** An open RADIUS session now. */
+  online: boolean;
+  ipAddress: string | null;
+  connectedSince: string | null;
+  lastSeenAt: string | null;
+  bytesDown: number | null;
+  bytesUp: number | null;
+}
