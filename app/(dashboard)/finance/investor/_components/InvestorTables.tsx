@@ -24,8 +24,10 @@ export function RouterAttributionTable({ rows }: { rows: RouterAttributionItem[]
       {
         id: "router",
         header: "Router",
-        accessorFn: (r) => r.routerName || r.routerId,
-        cell: ({ row }) => row.original.routerName || row.original.routerId,
+        // the server's routerId here is a throw-away row key, never a router: show the name only
+        accessorFn: (r) => r.routerName || "Router not recorded",
+        cell: ({ row }) =>
+          row.original.routerName || <span className="text-muted-foreground">Router not recorded</span>,
       },
       { accessorKey: "stationName", header: "Station", cell: ({ row }) => row.original.stationName || "—" },
       {
