@@ -25,12 +25,45 @@ export async function determineAccountTypeAction(username: string, password: str
   });
 }
 
+/** Sign-in answer: a token, or `codeRequired` when an emailed sign-in code must be entered next. */
+export type SignInStep = LoginData & { refreshToken?: string; codeRequired?: boolean };
+
+/** Company accounts: password (and the organisation named on the page), checked by the server. */
+export async function staffLoginAction(username: string, password: string, organisation?: string): Promise<ApiResponse<SignInStep>> {
+  return apiFetch<SignInStep>("/auth/userlogin", {
+    method: "POST",
+    body: organisation ? { username, password, organisation } : { username, password },
+    auth: "public",
+    cache: "no-store",
+  });
+}
+
+/** Company accounts, second step: the emailed sign-in code. */
+export async function staffSignInCodeAction(username: string, code: string): Promise<ApiResponse<SignInStep>> {
+  return apiFetch<SignInStep>("/auth/userlogin/verify", {
+    method: "POST",
+    body: { username, code },
+    auth: "public",
+    cache: "no-store",
+  });
+}
+
+/** System administrators, second step: the emailed sign-in code. */
+export async function sysAdminSignInCodeAction(username: string, code: string): Promise<ApiResponse<SignInStep>> {
+  return apiFetch<SignInStep>("/auth/sysadminlogin/verify", {
+    method: "POST",
+    body: { username, otp: code },
+    auth: "public",
+    cache: "no-store",
+  });
+}
+
 /**
- * Temporary sysadmin direct-login bypass (OTP paused).
- * Calls /auth/sysadminlogin which now returns the JWT directly.
+ * System administrator sign-in. Returns the token, or `codeRequired` when the
+ * server's auth.signin-code setting asks for an emailed code.
  */
-export async function sysAdminLoginAction(username: string, password: string): Promise<ApiResponse<LoginData & { refreshToken?: string }>> {
-  return apiFetch<LoginData & { refreshToken?: string }>("/auth/sysadminlogin", {
+export async function sysAdminLoginAction(username: string, password: string): Promise<ApiResponse<SignInStep>> {
+  return apiFetch<SignInStep>("/auth/sysadminlogin", {
     method: "POST",
     body: { username, password },
     auth: "public",

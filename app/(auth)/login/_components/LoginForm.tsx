@@ -25,7 +25,10 @@ import { signIn } from "next-auth/react";
 import { clearCompanyContextCookie } from "@/lib/companyContextClient";
 import {
   determineAccountTypeAction,
+  staffLoginAction,
+  staffSignInCodeAction,
   sysAdminLoginAction,
+  sysAdminSignInCodeAction,
 } from "@/actions/auth";
 import { resolveOrganisationAction, type OrganisationMatch } from "@/actions/branding";
 import { cn } from "@/lib/utils";
@@ -145,6 +148,11 @@ export default function LoginForm({
   const [showPassword, setShowPassword] = useState(false);
   const [busy, setBusy] = useState(false);
   const [localError, setLocalError] = useState<string | undefined>(undefined);
+  // set when the password was accepted and the server emailed a sign-in code
+  const [codeStep, setCodeStep] = useState<
+    { kind: "staff" | "sysadmin"; username: string; organisation?: string } | null
+  >(null);
+  const [code, setCode] = useState("");
   // Ignore the answer to a lookup the user has already typed past.
   const lookup = useRef(0);
 
@@ -171,6 +179,59 @@ export default function LoginForm({
     void resolveOrganisation(remembered);
   }, [hostOrganisation, resolveOrganisation]);
 
+  const finishSysAdmin = async (username: string, token: string) => {
+    clearCompanyContextCookie();
+    await signIn("credentials", {
+      username,
+      password: "sysadmin-otp-verified",
+      sysadminToken: token,
+      redirect: true,
+      callbackUrl: "/dashboard",
+    });
+  };
+
+  const finishStaff = async (username: string, token: string, organisationCode?: string) => {
+    clearCompanyContextCookie();
+    await signIn("credentials", {
+      username,
+      password: "token-verified",
+      verifiedToken: token,
+      organisation: organisationCode ?? "",
+      redirect: true,
+      callbackUrl: "/dashboard",
+    });
+  };
+
+  const submitCode = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!codeStep) return;
+    const typed = code.replace(/\s/g, "");
+    if (!/^\d{6}$/.test(typed)) {
+      setLocalError("Enter the 6-digit code from the email.");
+      return;
+    }
+    setLocalError(undefined);
+    setBusy(true);
+    try {
+      const res = codeStep.kind === "sysadmin"
+        ? await sysAdminSignInCodeAction(codeStep.username, typed)
+        : await staffSignInCodeAction(codeStep.username, typed);
+      if (!res.success || !res.data?.token) {
+        setLocalError(res.message || "The sign-in code is not correct.");
+        return;
+      }
+      if (codeStep.kind === "sysadmin") {
+        await finishSysAdmin(codeStep.username, res.data.token);
+      } else {
+        await finishStaff(codeStep.username, res.data.token, codeStep.organisation);
+      }
+    } catch {
+      setLocalError("Something went wrong. Please try again.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const formik = useFormik({
     initialValues: { username: "", password: "" },
     validationSchema,
@@ -178,18 +239,16 @@ export default function LoginForm({
       setLocalError(undefined);
       setBusy(true);
       try {
-        // Company accounts must name a known organisation before any credential is sent.
+        // A company account names a known organisation. An organisation typed (or given by the
+        // web address) is checked before any credential is sent; a blank one is allowed only for
+        // an investor's login that belongs to no company.
         let company: OrganisationMatch | null = null;
-        if (mode === "company") {
+        if (mode === "company" && (hostOrganisation || organisationInput.trim())) {
           company =
             hostOrganisation ??
             (organisation.status === "found" ? organisation.match : await resolveOrganisation(organisationInput));
           if (!company) {
-            setLocalError(
-              organisationInput.trim()
-                ? "We could not find that organisation. Check the short name or code and try again."
-                : "Enter your organisation to continue."
-            );
+            setLocalError("We could not find that organisation. Check the short name or code and try again.");
             return;
           }
         }
@@ -204,35 +263,40 @@ export default function LoginForm({
         if (type === "SYSADMIN") {
           // A system administrator is let in from either tab; the organisation does not apply.
           const sysRes = await sysAdminLoginAction(values.username, values.password);
+          if (sysRes.success && sysRes.data?.codeRequired) {
+            setCode("");
+            setCodeStep({ kind: "sysadmin", username: values.username });
+            return;
+          }
           if (!sysRes.success || !sysRes.data?.token) {
             setLocalError(sysRes.message || "SysAdmin login failed. Please try again.");
             return;
           }
-          clearCompanyContextCookie();
-          await signIn("credentials", {
-            username: values.username,
-            password: "sysadmin-otp-verified",
-            sysadminToken: sysRes.data.token,
-            redirect: true,
-            callbackUrl: "/dashboard",
-          });
+          await finishSysAdmin(values.username, sysRes.data.token);
           return;
         }
 
-        if (mode === "platform" || !company) {
+        if (mode === "platform") {
           setLocalError("This account belongs to a company. Use the Company account tab and enter your organisation.");
           return;
         }
+        if (!company && type !== "INVESTOR") {
+          setLocalError("Enter your organisation to continue.");
+          return;
+        }
 
-        if (!hostOrganisation) rememberOrganisation(remember ? organisationInput.trim() : null);
-        clearCompanyContextCookie();
-        await signIn("credentials", {
-          username: values.username,
-          password: values.password,
-          organisation: company.code,
-          redirect: true,
-          callbackUrl: "/dashboard",
-        });
+        if (company && !hostOrganisation) rememberOrganisation(remember ? organisationInput.trim() : null);
+        const res = await staffLoginAction(values.username, values.password, company?.code);
+        if (res.success && res.data?.codeRequired) {
+          setCode("");
+          setCodeStep({ kind: "staff", username: values.username, organisation: company?.code });
+          return;
+        }
+        if (!res.success || !res.data?.token) {
+          setLocalError(res.message || "Invalid username or password.");
+          return;
+        }
+        await finishStaff(values.username, res.data.token, company?.code);
       } catch {
         setLocalError("Something went wrong. Please try again.");
       } finally {
@@ -245,6 +309,48 @@ export default function LoginForm({
   const usernameError = formik.touched.username ? formik.errors.username : undefined;
   const passwordError = formik.touched.password ? formik.errors.password : undefined;
   const activeMode = MODES.find((m) => m.id === mode) ?? MODES[0];
+
+  if (codeStep) {
+    return (
+      <form onSubmit={submitCode} className="space-y-4" noValidate>
+        {localError && <ErrorAlert message={localError} />}
+        <div className="space-y-1">
+          <p className="text-sm font-medium">Check your email</p>
+          <p className="text-sm text-muted-foreground">
+            We sent a 6-digit sign-in code to the email address on this account. It expires in 10 minutes.
+          </p>
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="signin-code">Sign-in code</Label>
+          <Input
+            id="signin-code"
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            maxLength={6}
+            placeholder="123456"
+            value={code}
+            onChange={(e) => setCode(e.target.value)}
+            disabled={busy}
+            autoFocus
+            className="h-11 tracking-widest"
+          />
+        </div>
+        <Button type="submit" className="h-11 w-full" disabled={busy}>
+          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Sign in"}
+        </Button>
+        <button
+          type="button"
+          className="w-full text-sm text-muted-foreground hover:underline"
+          onClick={() => {
+            setCodeStep(null);
+            setLocalError(undefined);
+          }}
+        >
+          Back: sign in again to get a new code
+        </button>
+      </form>
+    );
+  }
 
   return (
     <form onSubmit={formik.handleSubmit} className="space-y-4" noValidate>
