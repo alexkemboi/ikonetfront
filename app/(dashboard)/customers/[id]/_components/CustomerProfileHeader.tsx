@@ -84,6 +84,8 @@ export function CustomerProfileHeader({ customer }: CustomerProfileHeaderProps) 
  <CustomerActionButtons
  customerId={customer.userIdxno}
  isActive={customer.isActive}
+ username={customer.username}
+ hasPppoeAccount={!!customer.pppoeAccountStatus}
  />
  </div>
  </CardContent>

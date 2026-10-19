@@ -22,13 +22,12 @@ const STEP_LABELS = ["Basic Info", "Account"];
 const validationSchema = Yup.object({
  username: Yup.string()
  .trim()
- .min(3, "Minimum 3 characters")
- .max(50, "Maximum 50 characters")
- .matches(/^[A-Za-z0-9._@-]+$/, "Letters, numbers and . _ @ - only (no spaces)")
+ .max(64, "Maximum 64 characters")
+ // as the customer's router dials it: spaces allowed (what FreeRADIUS matches)
+ .matches(/^[A-Za-z0-9 @._:/-]+$/, "Letters, numbers, spaces and @ . _ - : / only")
  .required("Username is required"),
- password: Yup.string()
- .min(6, "Password must be at least 6 characters")
- .required("Password is required"),
+ // the password the customer's router already uses, however short
+ password: Yup.string().required("Password is required"),
  firstname: Yup.string().trim().required("First name is required"),
  lname: Yup.string().trim().required("Last name is required"),
  email: Yup.string().trim().email("Invalid email address").optional(),

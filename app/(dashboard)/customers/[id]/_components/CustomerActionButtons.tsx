@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { toggleCustomerActiveStatus, deleteCustomer } from "@/actions/customer";
 import { Button } from "@/components/ui/button";
 import { usePermissions } from "@/providers/PermissionsProvider";
+import { ChangePppoeUsernameDialog } from "./ChangePppoeUsernameDialog";
 import {
  AlertDialog,
  AlertDialogAction,
@@ -20,11 +21,16 @@ import {
 interface CustomerActionButtonsProps {
  customerId: number;
  isActive: boolean;
+ /** Login name; with a PPPoE account it can be changed here. */
+ username: string;
+ hasPppoeAccount: boolean;
 }
 
 export function CustomerActionButtons({
  customerId,
  isActive,
+ username,
+ hasPppoeAccount,
 }: CustomerActionButtonsProps) {
  const router = useRouter();
  const perms = usePermissions("/customers");
@@ -59,6 +65,9 @@ export function CustomerActionButtons({
 
  return (
  <div className="flex gap-2">
+ {perms.canEdit && hasPppoeAccount && (
+ <ChangePppoeUsernameDialog customerId={customerId} username={username} />
+ )}
  {perms.canEdit && (
  <AlertDialog>
  <AlertDialogTrigger asChild>
@@ -102,7 +111,9 @@ export function CustomerActionButtons({
  <AlertDialogTitle>Delete Customer?</AlertDialogTitle>
  <AlertDialogDescription>
  This action cannot be undone. The customer and all associated
- data will be permanently removed.
+ data will be permanently removed, including their PPPoE login. A
+ customer whose PPPoE subscription is still running cannot be
+ deleted: deactivate them instead, or change their username.
  </AlertDialogDescription>
  </AlertDialogHeader>
  <AlertDialogFooter>

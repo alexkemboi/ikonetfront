@@ -343,7 +343,7 @@ export async function changeCustomerPassword(
 ) {
   try {
     const response = await fetch(
-      `${BASE_URL}customers/${id}/change-password?newPassword=${newPassword}`,
+      `${BASE_URL}customers/${id}/change-password?newPassword=${encodeURIComponent(newPassword)}`,
       {
         method: "PATCH",
         headers: await getAuthHeaders(),
@@ -360,6 +360,35 @@ export async function changeCustomerPassword(
     return data;
   } catch (error: unknown) {
     console.error(`Error changing password for customer ${id}:`, error);
+    return {
+      status: 500,
+      success: false,
+      message: (error instanceof Error ? error.message : String(error)) || "An unexpected error occurred",
+      data: null,
+      timestamp: new Date().toISOString(),
+    };
+  }
+}
+
+/** Renames a PPPoE customer's login (customer, account and RADIUS together). */
+export async function changePppoeUsername(id: number, username: string) {
+  try {
+    const response = await fetch(`${BASE_URL}customers/${id}/pppoe-username`, {
+      method: "PATCH",
+      headers: await getAuthHeaders(),
+      body: JSON.stringify({ username }),
+    });
+
+    if (!response.ok) {
+      return handleApiResponse(response, "Failed to change the PPPoE username");
+    }
+
+    const data: CustomerApiResponse<Customer> = await response.json();
+    revalidatePath("/customers/all");
+    revalidatePath(`/customers/${id}`);
+    return data;
+  } catch (error: unknown) {
+    console.error(`Error changing PPPoE username for customer ${id}:`, error);
     return {
       status: 500,
       success: false,
