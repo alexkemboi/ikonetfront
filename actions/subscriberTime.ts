@@ -63,3 +63,27 @@ export async function pausePppoeSubscription(subscriptionId: string, reason: str
 export async function resumePppoeSubscription(subscriptionId: string) {
   return post<PppoeSubscriptionTime>(`/pppoe-subscriptions/${subscriptionId}/resume`, {}, "Could not resume the subscription.");
 }
+
+/** One past hotspot purchase or voucher, as the session history lists it. */
+export type HotspotPurchase = {
+  sessionId: number;
+  packageName?: string | null;
+  amountPaid?: number | null;
+  sessionStatus?: string | null;
+  mpesaReference?: string | null;
+  voucherCode?: string | null;
+  createdAt?: string | null;
+  expiresAt?: string | null;
+};
+
+/** The latest purchases of a hotspot customer, by phone number, newest first. */
+export async function getHotspotPurchaseHistory(phone: string): Promise<ActionResult<HotspotPurchase[]>> {
+  const params = new URLSearchParams({ clientPhone: phone, page: "0", size: "20", sort: "createdAt,desc" });
+  const res = await apiFetch<{ content?: HotspotPurchase[] }>(`/hotspot/sessions/history?${params.toString()}`, {
+    auth: "required",
+    cache: "no-store",
+  });
+  return res.success
+    ? { success: true, data: res.data?.content ?? [], message: res.message }
+    : { success: false, message: res.message };
+}
