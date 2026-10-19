@@ -23,7 +23,11 @@ const tv: TvCustomerTime = {
   bytesDown: 1_500_000_000, bytesUp: 20_000_000,
 };
 
-beforeEach(() => { vi.clearAllMocks(); });
+beforeEach(() => {
+  vi.clearAllMocks();
+  // a change in the Manage dialog reloads the list
+  vi.mocked(actions.getTvCustomers).mockResolvedValue({ success: true, data: [tv], message: "" });
+});
 
 describe("TV customers tab", () => {
   it("lists the TV with time left and adds a day from the Manage dialog", async () => {
