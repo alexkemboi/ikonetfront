@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { Bell, LogOut, Menu, Moon, Search, Shield, Sun } from "lucide-react";
+import { Bell, KeyRound, LogOut, Menu, Moon, Search, Shield, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -19,6 +19,7 @@ import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { SidebarInner, type SidebarUser } from "./Sidebar";
 import CompanyContextSwitcher from "./CompanyContextSwitcher";
 import StepUpIndicator from "@/components/chrome/StepUpIndicator";
+import ChangePasswordDialog from "@/components/chrome/ChangePasswordDialog";
 import { openOmniSearch } from "@/lib/omniSearchEvents";
 import type { NavGroup } from "@/lib/nav";
 import { useAppTheme } from "@/providers/AppThemeProvider";
@@ -55,6 +56,7 @@ export default function TopBar({
 }: TopBarProps) {
 const breadcrumbs = useBreadcrumb();
 	const [mobileOpen, setMobileOpen] = useState(false);
+	const [passwordOpen, setPasswordOpen] = useState(false);
 	const { theme, toggleTheme } = useAppTheme();
 
 
@@ -187,6 +189,10 @@ const breadcrumbs = useBreadcrumb();
  </div>
  </DropdownMenuLabel>
  <DropdownMenuSeparator />
+ <DropdownMenuItem className="cursor-pointer" onSelect={() => setPasswordOpen(true)}>
+ <KeyRound className="mr-2 h-4 w-4" />
+ Change my password
+ </DropdownMenuItem>
  <DropdownMenuItem asChild className="cursor-pointer text-destructive focus:bg-destructive/10 focus:text-destructive">
  <Link href="/signout">
  <LogOut className="mr-2 h-4 w-4" />
@@ -196,6 +202,7 @@ const breadcrumbs = useBreadcrumb();
  </DropdownMenuContent>
  </DropdownMenu>
  )}
+ <ChangePasswordDialog open={passwordOpen} onOpenChange={setPasswordOpen} />
  </div>
  </header>
  </>
