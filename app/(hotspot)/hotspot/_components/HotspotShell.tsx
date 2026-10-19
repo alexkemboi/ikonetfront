@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Wifi, Tv } from "lucide-react";
 import HotspotFlow from "./HotspotFlow";
 import HotspotHelpline from "./HotspotHelpline";
+import HotspotHowTo from "./HotspotHowTo";
 import TvDeviceSetup from "./TvDeviceSetup";
 import type { TvPackage } from "@/lib/types/tv";
 import type { TvDeviceDetails } from "@/lib/validation/tv-device";
@@ -101,6 +102,7 @@ export default function HotspotShell({ packages, initialCompanyCode, clientMac, 
             </button>
           ))}
         </div>
+        <HotspotHowTo service={service} />
         <div id="tv-service-panel" hidden={service !== "tv"}>
           <TvDeviceSetup brand={brand} initialDevice={initialTvDevice} packages={tvPackages} packagesError={tvPackagesError} routerIdentity={routerIdentity} clientIp={clientIp} />
         </div>
