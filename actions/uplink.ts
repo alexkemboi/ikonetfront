@@ -1,7 +1,7 @@
 "use server";
 
 import { apiFetch } from "@/lib/apiClient";
-import type { UplinkCheck } from "@/lib/types/uplink";
+import type { RouterContact, UplinkCheck } from "@/lib/types/uplink";
 
 type Result<T> = { data: T | null; error: string | null };
 
@@ -34,4 +34,15 @@ export async function checkUplinkNow(routerId: number): Promise<Result<UplinkChe
   return res.success && res.data
     ? { data: res.data, error: null }
     : { data: null, error: res.message || "The check could not be run." };
+}
+
+/** When the system last heard from one router, by each channel, and what to do about a silence. */
+export async function getRouterContact(routerId: number): Promise<Result<RouterContact>> {
+  const res = await apiFetch<RouterContact>(`/network/uplink/router/${routerId}/contact`, {
+    auth: "required",
+    cache: "no-store",
+  });
+  return res.success && res.data
+    ? { data: res.data, error: null }
+    : { data: null, error: res.message || "Could not load this router's contact." };
 }
