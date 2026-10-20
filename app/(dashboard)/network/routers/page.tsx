@@ -11,6 +11,7 @@ import { getLanHealth } from "@/actions/lanHealth";
 import { getUplink } from "@/actions/uplink";
 import { RouterUplinkPanel } from "@/components/network/RouterUplinkPanel";
 import { auth } from "@/lib/auth";
+import { isPlatformAdminRole } from "@/lib/types/roles";
 
 export const metadata = {
  title: "NAS & Routers — IBS",
@@ -49,12 +50,15 @@ const [result, lanHealth, uplink, session] = await Promise.all([getNasRoutersDat
  </div>
 
 <div className="flex flex-wrap items-center gap-3">
-  {/* Option A: Direct API Link — pre-assigned IP / LAN reached router */}
+  {/* Old direct-IP linking: it cannot reach a router behind NAT (every site we run), so
+      only a system administrator sees it. Routers are linked with ZTP. */}
+  {isPlatformAdminRole(role) && (
   <Button variant="secondary" size="sm" asChild>
     <Link href="/network/routers/onboard">
-      <ExternalLink className="h-4 w-4" /> Direct API Link
+      <ExternalLink className="h-4 w-4" /> Direct API Link (legacy)
     </Link>
   </Button>
+  )}
 
   {/* Option B: Zero-Touch Provisioning (ZTP one-liner) */}
   <Button size="sm" asChild>
