@@ -9,6 +9,8 @@ import { RouterActionsDropdown, type RouterActionsRow } from "@/components/netwo
 import { RouterHealthHistory } from "../monitoring/_components/RouterHealthHistory";
 import { RouterFigures } from "./RouterFigures";
 import { RouterAccessPoints } from "@/components/network/RouterAccessPoints";
+import { RouterContactPanel } from "@/components/network/RouterContactPanel";
+import { useSession } from "next-auth/react";
 import { ConnectionPanel, HealthCard, HotspotPanel, ProvisioningPanel } from "./RouterSidePanels";
 import {
   BackupsTab, EventsTab, InterfacesTab, LogsTab, PaymentsTab, SchedulerTab, ScriptsTab, UsersTab,
@@ -74,6 +76,9 @@ export function RouterOperationsView({
 
   const r = overview.router;
   const deviceId = r.deviceId;
+  // "Check now": system administrators, company admins (01) and managers (02), as on the routers page
+  const role = (useSession().data?.user?.role ?? "").replace(/^ROLE_/i, "").toUpperCase();
+  const canCheckContact = ["SYSADMIN", "ADMIN", "01", "02"].includes(role);
 
   return (
     <div className="min-h-screen p-4 text-foreground sm:p-6 lg:p-8">
@@ -142,6 +147,7 @@ export function RouterOperationsView({
               <RouterHealthHistory routerId={routerId} investorDeviceId={investorDeviceId} title="Performance" />
             </div>
             <aside className="space-y-6">
+              {!readOnly && <RouterContactPanel routerId={routerId} canCheck={canCheckContact} />}
               <HealthCard health={overview.health} />
               {!readOnly && <ConnectionPanel routerId={routerId} canEdit={canEdit} />}
               {/* always shown: the device's hotspot flag is not reliable, and the panel says when there is no hotspot */}
