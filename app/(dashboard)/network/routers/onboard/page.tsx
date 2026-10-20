@@ -2,6 +2,7 @@ import { getRegions } from "@/actions/network";
 import { getPermissionForRoute } from "@/lib/data/nav";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
+import { isPlatformAdminRole } from "@/lib/types/roles";
 import { OnboardingWizard } from "./_components/OnboardingWizard";
 
 export const metadata = {
@@ -15,11 +16,14 @@ export default async function OnboardRouterPage() {
   // Strict RBAC: the backend gates validate-connectivity + onboard behind
   // SYSADMIN/ADMIN/01/02. Reflect that on the UI so staff/investor/customer
   // never sees a wizard that would 403.
-  const pagePerms = await getPermissionForRoute("/network/routers/onboard");
-  if (!pagePerms.canView) redirect("/dashboard");
-
+  // This is the old direct-IP wizard: it connects to the router's own address, which no router
+  // behind NAT (every site we run) can be reached on. Routers are linked with ZTP at
+  // /network/routers/setup; only a system administrator may still open this one.
   const session = await auth();
   const role = session?.user?.role;
+  if (!isPlatformAdminRole(role)) redirect("/network/routers/setup");
+  const pagePerms = await getPermissionForRoute("/network/routers/setup");
+  if (!pagePerms.canView) redirect("/dashboard");
   const isPlatformAdmin = role === "SYSADMIN" || role === "ADMIN";
   const companyScope = session?.user?.companyScope;
 
