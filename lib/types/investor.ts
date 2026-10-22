@@ -246,6 +246,8 @@ export interface AgreementInput {
   effectiveStartDate: string;
   effectiveEndDate?: string;
   rules: InvestorRule[];
+  /** Routers owned under the agreement from its start date; all are refused together with it. */
+  routerIds?: number[];
 }
 
 export interface BillingRunResult {

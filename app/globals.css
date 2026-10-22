@@ -70,6 +70,8 @@
 
 .dark {
   /* Navy night — deep navy canvas, slate-navy cards, sky-blue brand accent */
+  /* native controls (select lists, date pickers, scrollbars) are drawn dark too */
+  color-scheme: dark;
   --background: oklch(0.21 0.025 258);     /* #111a28 canvas */
   --foreground: oklch(0.95 0.005 258);
   --card: oklch(0.26 0.03 258);            /* #1a2536 card surface */
@@ -208,6 +210,22 @@
     font-size: 16px;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* A native dropdown's open list follows the theme: without this the browser draws it light
+     while the text inherits the dark theme's light colour, and the choices cannot be read. */
+  select {
+    color: var(--foreground);
+  }
+
+  select option,
+  select optgroup {
+    background-color: var(--popover);
+    color: var(--popover-foreground);
+  }
+
+  select option:disabled {
+    color: var(--muted-foreground);
   }
 
 @layer base {

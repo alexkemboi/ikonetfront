@@ -32,8 +32,7 @@ import type {
   InvestorSummary,
   RuleBasis,
 } from "@/lib/types/investor";
-
-type RouterOption = { id: number; name: string };
+import { RouterPicker, routerOptionText, type RouterOption } from "./RouterPicker";
 
 type Props = {
   investors: InvestorSummary[];
@@ -50,7 +49,7 @@ const BASIS_LABEL: Record<RuleBasis, string> = {
 };
 
 const selectClass =
-  "flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring";
+  "flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm text-foreground shadow-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring";
 
 function ruleText(rule: InvestorRule): string {
   const service = rule.serviceType === "HOTSPOT" ? "Hotspot" : "PPPoE";
@@ -91,6 +90,7 @@ export default function InvestorsClient({ investors, routers, isPlatformAdmin }:
     hotspotRate: string;
     pppoeBasis: RuleBasis | "";
     pppoeRate: string;
+    routerIds: number[];
   } | null>(null);
   const [assignForm, setAssignForm] = useState<{ agreementId: string; routerId: string; start: string } | null>(null);
   const [billingPeriod, setBillingPeriod] = useState<string | null>(null);
@@ -165,8 +165,11 @@ export default function InvestorsClient({ investors, routers, isPlatformAdmin }:
             effectiveStartDate: f.start,
             ...(f.end ? { effectiveEndDate: f.end } : {}),
             rules,
+            routerIds: f.routerIds,
           }),
-        "Agreement created",
+        f.routerIds.length > 0
+          ? `Agreement created with ${f.routerIds.length} router${f.routerIds.length === 1 ? "" : "s"}`
+          : "Agreement created",
         () => setAgreementForm(null)
       )
     );
@@ -359,6 +362,7 @@ export default function InvestorsClient({ investors, routers, isPlatformAdmin }:
                             hotspotRate: "",
                             pppoeBasis: "FIXED_PER_ACTIVE_SUBSCRIBER",
                             pppoeRate: "",
+                            routerIds: [],
                           })
                         }
                       >
@@ -599,6 +603,19 @@ export default function InvestorsClient({ investors, routers, isPlatformAdmin }:
                   />
                 </div>
               </div>
+              <div className="space-y-1">
+                <Label htmlFor="agr-routers">Routers (optional)</Label>
+                <RouterPicker
+                  id="agr-routers"
+                  routers={routers}
+                  selected={agreementForm.routerIds}
+                  onChange={(routerIds) => setAgreementForm({ ...agreementForm, routerIds })}
+                />
+                <p className="text-xs text-muted-foreground">
+                  The investor owns the chosen routers from the start date. If one of them cannot be assigned, the agreement
+                  is not made. You can also assign routers later.
+                </p>
+              </div>
               <p className="text-xs text-muted-foreground">
                 Maintenance charge the company keeps each month. Leave a rate empty to charge nothing for that service.
               </p>
@@ -683,8 +700,8 @@ export default function InvestorsClient({ investors, routers, isPlatformAdmin }:
                 >
                   <option value="">Select a router…</option>
                   {routers.map((r) => (
-                    <option key={r.id} value={r.id}>
-                      {r.name}
+                    <option key={r.id} value={r.id} disabled={r.owner !== null}>
+                      {routerOptionText(r)}
                     </option>
                   ))}
                 </select>

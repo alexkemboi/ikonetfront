@@ -27,7 +27,7 @@ type DirectoryView = "accounts" | "hotspot" | "tv";
 const SESSION_VIEWS: Record<Exclude<DirectoryView, "accounts">, { protocol: SessionProtocol; blurb: string }> = {
  hotspot: {
  protocol: "HOTSPOT",
- blurb: "Everyone with a hotspot package that is running or paused, shown by the phone number that paid. Use Manage to add time, pause or disconnect a customer.",
+ blurb: "Everyone with a hotspot package that is running or paused, shown by the phone number that paid. Manage opens the customer's page, with their details, purchases and the actions to add time, pause or disconnect.",
  },
  tv: {
  protocol: "TV",

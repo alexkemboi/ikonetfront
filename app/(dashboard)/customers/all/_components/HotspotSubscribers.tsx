@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
+import Link from "next/link";
 import { Search, SlidersHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatBytes } from "@/lib/utils/formatBytes";
@@ -10,7 +11,6 @@ import { getLiveSessionsData } from "@/actions/sessions";
 import { getPausedHotspotSessions } from "@/actions/subscriberTime";
 import { useVisibleInterval } from "@/lib/hooks/useVisibleInterval";
 import { formatLocalPhone, formatTimeLeft, mpesaReceiptOrNull, trimZeroDays } from "@/lib/utils/subscriberTime";
-import { ManageHotspotSubscriberDialog, type ManagedSubscriber } from "./ManageHotspotSubscriberDialog";
 
 type State = "ONLINE" | "OFFLINE" | "PAUSED";
 
@@ -103,8 +103,8 @@ function fromPaused(session: HotspotSessionTime): Row {
 }
 
 /**
- * Hotspot customers with a package that is running or paused, and the place customer care
- * manages them from: each row opens the add time / pause / disconnect dialog.
+ * Hotspot customers with a package that is running or paused. Manage opens the customer's own
+ * page, where customer care adds time, pauses, resumes or disconnects.
  */
 export function HotspotSubscribers({
   sessions,
@@ -120,7 +120,6 @@ export function HotspotSubscribers({
   const [current, setCurrent] = useState({ sessions, paused });
   const [tab, setTab] = useState<"ALL" | State>("ALL");
   const [search, setSearch] = useState("");
-  const [managed, setManaged] = useState<ManagedSubscriber | null>(null);
 
   // Reloads only this list (running and paused hotspot customers), not the whole page. A list
   // that fails to load keeps what is on screen.
@@ -234,14 +233,13 @@ export function HotspotSubscribers({
                     </td>
                     <td className="px-4 py-3 text-right">
                       {row.sessionId ? (
-                        <button
-                          type="button"
-                          onClick={() => setManaged({ sessionId: row.sessionId!, phone: row.phone, packageName: row.packageName })}
+                        <Link
+                          href={`/customers/hotspot/${row.sessionId}`}
                           className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border px-2.5 text-xs font-medium text-foreground transition-colors hover:bg-accent"
                         >
                           <SlidersHorizontal className="h-3.5 w-3.5" />
                           Manage
-                        </button>
+                        </Link>
                       ) : (
                         <span className="text-[11px] text-muted-foreground" title="This connection is not linked to a purchase, so there is nothing to manage.">
                           Not linked to a purchase
@@ -259,8 +257,6 @@ export function HotspotSubscribers({
       <div className="border-t border-border px-4 py-2.5 text-xs text-muted-foreground">
         Showing {filtered.length} of {rows.length} customers
       </div>
-
-      <ManageHotspotSubscriberDialog subscriber={managed} onClose={() => setManaged(null)} onChanged={() => void reload()} />
     </div>
   );
 }

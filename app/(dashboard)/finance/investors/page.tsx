@@ -1,10 +1,11 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
-import { listInvestors } from "@/actions/investorRegistry";
+import { listInvestors, listRouterAssignments } from "@/actions/investorRegistry";
 import { getMikrotikDevices } from "@/actions/mikrotik";
 import { isPlatformAdminRole, normalizeRole, ROLE_NAME } from "@/lib/types/roles";
 import InvestorsClient from "./_components/InvestorsClient";
 import SystemFeesLedger from "./_components/SystemFeesLedger";
+import type { RouterOption } from "./_components/RouterPicker";
 import { getFeeBalances, getFeeReceivingCandidates } from "@/actions/platformFees";
 
 export const metadata = { title: "Investors" };
@@ -23,13 +24,23 @@ export default async function InvestorsPage() {
   const isCompanyAdmin = normalizeRole(role) === ROLE_NAME.ADMIN && !isPlatformAdmin;
   if (!isPlatformAdmin && !isCompanyAdmin) redirect("/dashboard");
 
-  const [investors, devices, feeBalances, receivingCandidates] = await Promise.all([
+  const [investors, devices, owned, feeBalances, receivingCandidates] = await Promise.all([
     listInvestors(),
     getMikrotikDevices(),
+    listRouterAssignments({ currentOnly: true }),
     getFeeBalances(),
     isPlatformAdmin ? getFeeReceivingCandidates() : Promise.resolve([]),
   ]);
-  const routers = (devices.data ?? []).map((d) => ({ id: d.id, name: d.name }));
+  const ownerOf = new Map(owned.map((a) => [a.routerId, `${a.investorName} (${a.investorCode})`]));
+  const routers: RouterOption[] = (devices.data ?? [])
+    .map((d) => ({
+      id: d.id,
+      name: d.name,
+      detail: [d.site || d.location, d.ipAddress].filter(Boolean).join(" · "),
+      online: d.online,
+      owner: ownerOf.get(d.id) ?? null,
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name));
 
   return (
     <>

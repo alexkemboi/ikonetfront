@@ -152,6 +152,18 @@ export async function getLiveSessionsData(): Promise<{
 }
 
 /**
+ * The live connection of one hotspot purchase, from the same list Live Sessions shows; null when
+ * the router reports nothing for it (paused, or paid and never connected and not listed).
+ */
+export async function getHotspotLiveSession(
+  sessionId: number
+): Promise<{ session: LiveSessionItem | null; error?: string }> {
+  const live = await getLiveSessionsData();
+  if (live.error) return { session: null, error: live.error };
+  return { session: live.sessions.find((s) => s.protocol === "HOTSPOT" && s.sessionId === sessionId) ?? null };
+}
+
+/**
  * Disconnect a hotspot session — `POST /api/v1/hotspot/sessions/{id}/disconnect`.
  * Ends the paid session, removes its RADIUS rows and kicks the device off the
  * router (audit-logged). PPPoE disconnect needs the RADIUS CoA HTTP adapter,
