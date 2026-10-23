@@ -64,6 +64,12 @@ export async function resumePppoeSubscription(subscriptionId: string) {
   return post<PppoeSubscriptionTime>(`/pppoe-subscriptions/${subscriptionId}/resume`, {}, "Could not resume the subscription.");
 }
 
+/** Administrators: set both dates of an active subscription (can shorten; records no payment). */
+export async function correctPppoeDates(subscriptionId: string, startDate: string, expiryDate: string, reason: string) {
+  return post<PppoeSubscriptionTime>(`/pppoe-subscriptions/${subscriptionId}/correct-dates`, { startDate, expiryDate, reason },
+    "Could not correct the dates.");
+}
+
 /** One past hotspot purchase or voucher, as the session history lists it. */
 export type HotspotPurchase = {
   sessionId: number;
