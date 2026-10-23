@@ -66,8 +66,14 @@ export interface ZtpBootstrapInput {
   pppoeEnabled: boolean;
   /** network station (POP) the router serves; the backend derives nothing from the name. */
   stationIdxno?: number;
-  /** RouterOS interface carrying the internet uplink. Omitted means ether1. */
+  /**
+   * Optional check. Omitted: the router keeps whatever it fetched the command over (Ethernet, SFP,
+   * VLAN, PPPoE or LTE) as its internet. Given: the router stops without changing anything unless
+   * its internet uses this interface.
+   */
   wanInterface?: string;
+  /** Ports that hand the internet on to another router (routed, outside the customer bridge). */
+  downlinkInterfaces?: string[];
 }
 
 /** One selectable station in the ZTP wizard. */
@@ -85,6 +91,8 @@ export interface BootstrapTokenResponse {
   identity?: string | null;
   allocatedVpnIp?: string | null;
   fetchCommand?: string | null;
+  /** Read-only check to paste first: prints the internet, downstream and customer ports. */
+  preflightCommand?: string | null;
   /** Zoneless — backend business time (Africa/Nairobi). */
   expiresAt?: string | null;
   status?: string | null;
@@ -112,6 +120,8 @@ export interface ProvisioningScriptResponse {
   routerIdxno: number | null;
   identity: string;
   fetchCommand: string;
+  /** Changes nothing on the router; null when the backend sent none. */
+  preflightCommand: string | null;
   allocatedVpnIp: string | null;
   /** ISO instant with an explicit offset. */
   expiresAt: string | null;

@@ -33,6 +33,7 @@ describe("Step1Identity", () => {
       acknowledgeDestructiveReset: true,
       hotspotEnabled: true,
       pppoeEnabled: false,
+      downlinkInterfaces: ["ether7", "ether8"],
     });
   });
 
@@ -59,9 +60,9 @@ describe("Step1Identity", () => {
     expect(screen.getByRole("alert")).toHaveTextContent("Choose the station");
 
     await userEvent.selectOptions(screen.getByLabelText(/Station/), "7");
-    const port = screen.getByLabelText(/Internet \(WAN\) port/);
-    await userEvent.clear(port);
-    await userEvent.type(port, "ether5");
+    await userEvent.selectOptions(screen.getByLabelText(/Internet in/), "__other");
+    await userEvent.type(screen.getByLabelText(/Internet port name/), "ether5");
+    await userEvent.click(screen.getByRole("checkbox", { name: /from ether8/ }));
     await userEvent.click(screen.getByRole("button", { name: /Continue/ }));
 
     expect(onContinue).toHaveBeenCalledWith({
@@ -71,6 +72,7 @@ describe("Step1Identity", () => {
       pppoeEnabled: true,
       stationIdxno: 7,
       wanInterface: "ether5",
+      downlinkInterfaces: ["ether7"],
     });
   });
 
@@ -84,5 +86,26 @@ describe("Step1Identity", () => {
 
     expect(onContinue).toHaveBeenCalledTimes(1);
     expect(screen.getByText(/no stations yet/)).toBeInTheDocument();
+  });
+
+  it("detects the uplink by default and lets the office pick the SFP port as a check", async () => {
+    const onContinue = vi.fn().mockResolvedValue(null);
+    render(<Step1Identity onContinue={onContinue} onCancel={vi.fn()} />);
+
+    await fillForm();
+    expect(screen.getByLabelText(/Internet in/)).toHaveValue("");
+    await userEvent.selectOptions(screen.getByLabelText(/Internet in/), "sfp-sfpplus1");
+    await userEvent.click(screen.getByRole("checkbox", { name: /from ether7/ }));
+    await userEvent.click(screen.getByRole("checkbox", { name: /from ether8/ }));
+    await userEvent.click(screen.getByRole("checkbox", { name: /Acknowledge/ }));
+    await userEvent.click(screen.getByRole("button", { name: /Continue/ }));
+
+    expect(onContinue).toHaveBeenCalledWith({
+      identity: "Adrinold 02",
+      acknowledgeDestructiveReset: true,
+      hotspotEnabled: true,
+      pppoeEnabled: true,
+      wanInterface: "sfp-sfpplus1",
+    });
   });
 });
