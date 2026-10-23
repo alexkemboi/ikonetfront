@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
 import { Loader2, Pause, Play } from "lucide-react";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import {
   addPppoeDays,
+  correctPppoeDates,
   getPppoeSubscriptionTime,
   pausePppoeSubscription,
   resumePppoeSubscription,
@@ -36,7 +38,12 @@ export function ManagePppoeSubscriptionDialog({
   const [days, setDays] = useState("");
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
+  const [newStart, setNewStart] = useState("");
+  const [newExpiry, setNewExpiry] = useState("");
   const subscriptionId = subscription?.id;
+  const role = (useSession().data?.user?.role ?? "").replace(/^ROLE_/i, "").toUpperCase();
+  // the backend enforces the same rule; this only hides what the caller cannot do
+  const canCorrectDates = ["SYSADMIN", "ADMIN", "01"].includes(role);
 
   useEffect(() => {
     if (!subscriptionId) return;
@@ -45,6 +52,10 @@ export function ManagePppoeSubscriptionDialog({
       if (cancelled) return;
       setTime(res.success ? res.data : null);
       setLoadError(res.success ? "" : res.message);
+      if (res.success) {
+        setNewStart(res.data.startDate ?? "");
+        setNewExpiry(res.data.expiryDate ?? "");
+      }
     });
     return () => {
       cancelled = true;
@@ -56,6 +67,8 @@ export function ManagePppoeSubscriptionDialog({
     setLoadError("");
     setDays("");
     setReason("");
+    setNewStart("");
+    setNewExpiry("");
     onClose();
   }
 
@@ -89,6 +102,15 @@ export function ManagePppoeSubscriptionDialog({
       return;
     }
     void run(() => addPppoeDays(subscriptionId, count, reason.trim()));
+  }
+
+  function correctDates() {
+    if (!subscriptionId || !needReason()) return;
+    if (!newStart || !newExpiry) {
+      toast.error("Give both dates.");
+      return;
+    }
+    void run(() => correctPppoeDates(subscriptionId, newStart, newExpiry, reason.trim()));
   }
 
   const pausesLeft = time ? Math.max(0, time.pausesAllowed - time.pausesUsed) : 0;
@@ -134,7 +156,7 @@ export function ManagePppoeSubscriptionDialog({
               <>
                 <div className="space-y-1.5">
                   <label htmlFor="pppoe-reason" className="text-xs font-medium text-muted-foreground">
-                    Reason (needed to add time or pause)
+                    Reason (needed to add time, pause or correct dates)
                   </label>
                   <input id="pppoe-reason" value={reason} onChange={(e) => setReason(e.target.value)} maxLength={300}
                     placeholder="e.g. Fibre cut on 6 October" className={`${FIELD} w-full`} />
@@ -178,6 +200,34 @@ export function ManagePppoeSubscriptionDialog({
                     </>
                   )}
                 </section>
+
+                {canCorrectDates && !time.paused && (
+                  <section className="space-y-2 border-t border-border pt-4">
+                    <h3 className="text-sm font-medium">Correct dates</h3>
+                    <p className="text-xs text-muted-foreground">
+                      For mistakes, such as a wrong start date or too much time given. It can shorten the
+                      subscription and records no payment. An expiry of today or earlier ends it now and
+                      disconnects the customer.
+                    </p>
+                    <div className="flex flex-wrap items-end gap-2">
+                      <label className="space-y-1 text-xs text-muted-foreground">
+                        <span className="block">Start</span>
+                        <input type="date" value={newStart} onChange={(e) => setNewStart(e.target.value)}
+                          aria-label="Start date" className={FIELD} />
+                      </label>
+                      <label className="space-y-1 text-xs text-muted-foreground">
+                        <span className="block">Expiry</span>
+                        <input type="date" value={newExpiry} onChange={(e) => setNewExpiry(e.target.value)}
+                          aria-label="Expiry date" className={FIELD} />
+                      </label>
+                      <Button type="button" variant="outline" size="sm" onClick={correctDates}
+                        disabled={busy || !newStart || !newExpiry
+                          || (newStart === (time.startDate ?? "") && newExpiry === (time.expiryDate ?? ""))}>
+                        Save dates
+                      </Button>
+                    </div>
+                  </section>
+                )}
               </>
             )}
           </div>

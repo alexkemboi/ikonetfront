@@ -21,6 +21,7 @@ export interface PppoeSubscriptionTime {
   username: string | null;
   status: string;
   paused: boolean;
+  startDate: string | null;
   expiryDate: string | null;
   pausedRemainingDays: number | null;
   pausesUsed: number;
