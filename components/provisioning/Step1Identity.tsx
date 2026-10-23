@@ -16,13 +16,28 @@ interface Props {
  stationsError?: string | null;
 }
 
+/** Uplinks the office usually picks. Starlink comes in on ether1; fibre providers on the SFP cage. */
+const WAN_OPTIONS = [
+ { value: "", label: "Detect on the router (recommended)" },
+ { value: "ether1", label: "ether1 — Starlink or another Ethernet uplink" },
+ { value: "sfp-sfpplus1", label: "sfp-sfpplus1 — SFP+ fibre (RB4011, RB5009, CCR)" },
+ { value: "sfp1", label: "sfp1 — SFP fibre (hEX S and similar)" },
+];
+const OTHER_PORT = "__other";
+/** Ports kept out of the customer bridge to feed the next router. */
+const DOWNLINK_OPTIONS = ["ether7", "ether8"];
+const DEFAULT_DOWNLINKS = ["ether7", "ether8"];
+
 const INPUT_CLASS =
  "mt-1 w-full rounded-lg border border-border bg-muted p-3 text-sm text-foreground focus:border-amber-500 focus:outline-none";
 
 export function Step1Identity({ onContinue, onCancel, stations = [], stationsError = null }: Props) {
  const [identity, setIdentity] = useState("");
  const [stationIdxno, setStationIdxno] = useState("");
- const [wanInterface, setWanInterface] = useState("ether1");
+ // "" = detect on the router; OTHER_PORT = typed by hand
+ const [wanChoice, setWanChoice] = useState("");
+ const [wanOther, setWanOther] = useState("");
+ const [downlinks, setDownlinks] = useState<string[]>([...DEFAULT_DOWNLINKS]);
  const [hotspot, setHotspot] = useState(true);
  const [pppoe, setPppoe] = useState(true);
  const [acknowledged, setAcknowledged] = useState(false);
@@ -44,12 +59,13 @@ export function Step1Identity({ onContinue, onCancel, stations = [], stationsErr
  return;
  }
  if (stationIdxno) input.stationIdxno = Number(stationIdxno);
- const port = wanInterface.trim();
- if (!port) {
- setError("Enter the port the internet cable is plugged into, for example ether1.");
+ const port = (wanChoice === OTHER_PORT ? wanOther : wanChoice).trim();
+ if (wanChoice === OTHER_PORT && !port) {
+ setError("Type the internet port's RouterOS name, for example sfp-sfpplus1 or INTERNET_VLAN_2755.");
  return;
  }
- if (port !== "ether1") input.wanInterface = port;
+ if (port) input.wanInterface = port;
+ if (downlinks.length > 0) input.downlinkInterfaces = downlinks;
  const invalid = validateZtpBootstrapInput(input);
  if (invalid) {
  setError(invalid);
@@ -118,20 +134,57 @@ export function Step1Identity({ onContinue, onCancel, stations = [], stationsErr
  </div>
 
  <div>
- <label htmlFor="ztp-wan" className="text-xs font-sans tabular-nums text-muted-foreground">Internet (WAN) port *</label>
+ <label htmlFor="ztp-wan" className="text-xs font-sans tabular-nums text-muted-foreground">Internet in (WAN)</label>
+ <select id="ztp-wan" value={wanChoice} onChange={(e) => setWanChoice(e.target.value)} className={INPUT_CLASS}>
+ {WAN_OPTIONS.map((option) => (
+ <option key={option.value} value={option.value}>{option.label}</option>
+ ))}
+ <option value={OTHER_PORT}>Other port or VLAN…</option>
+ </select>
+ {wanChoice === OTHER_PORT && (
  <input
- id="ztp-wan"
+ id="ztp-wan-other"
+ aria-label="Internet port name"
  type="text"
- value={wanInterface}
- onChange={(e) => setWanInterface(e.target.value)}
- placeholder="ether1"
+ value={wanOther}
+ onChange={(e) => setWanOther(e.target.value)}
+ placeholder="e.g. sfp-sfpplus1 or INTERNET_VLAN_2755"
  maxLength={32}
  className={INPUT_CLASS}
  />
+ )}
  <p className="mt-2 text-xs text-muted-foreground">
- The port the internet cable is plugged into. Every other Ethernet and SFP port becomes a customer port.
+ The router keeps the connection it fetches the command over as its internet: Ethernet, SFP, VLAN,
+ PPPoE or LTE. Pick a port to have it check: if its internet is somewhere else, it stops without
+ changing anything.
  </p>
  </div>
+
+ <fieldset>
+ <legend className="text-xs font-sans tabular-nums text-muted-foreground">Internet out to another MikroTik</legend>
+ <div className="mt-2 flex flex-wrap gap-3">
+ {DOWNLINK_OPTIONS.map((port) => (
+ <label key={port} className="flex cursor-pointer items-center gap-2 rounded-lg border border-border bg-muted px-3 py-2 text-sm text-foreground">
+ <input
+ type="checkbox"
+ aria-label={`Feed another router from ${port}`}
+ checked={downlinks.includes(port)}
+ onChange={(e) =>
+ setDownlinks((current) => (e.target.checked ? [...current, port] : current.filter((p) => p !== port)))
+ }
+ className="h-4 w-4 rounded border-border bg-secondary text-amber-500"
+ />
+ {port}
+ </label>
+ ))}
+ </div>
+ <p className="mt-2 text-xs text-muted-foreground">
+ Ticked ports stay out of the customer bridge and hand the internet to the next router&apos;s WAN port
+ (it gets its address by DHCP). Every other Ethernet and SFP port becomes a customer port. A router
+ without that port skips it. Anything plugged into a ticked port gets internet without the hotspot
+ sign-in, so use them only for routers.
+ </p>
+ </fieldset>
 
  <fieldset className="space-y-3">
  <legend className="text-xs font-sans tabular-nums text-muted-foreground">Services to configure on this router</legend>

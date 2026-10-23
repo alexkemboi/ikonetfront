@@ -13,6 +13,7 @@ const scriptData = {
   routerIdxno: 7,
   identity: "Adrinold 02",
   fetchCommand: "/tool fetch url=example",
+  preflightCommand: null,
   allocatedVpnIp: "10.9.0.7",
   expiresAt: "2026-10-06T13:00:00+03:00",
 };
@@ -46,5 +47,20 @@ describe("Step2Script", () => {
     await userEvent.click(await screen.findByRole("button", { name: /Generate a new command/ }));
     expect(onRestart).toHaveBeenCalledTimes(1);
     expect(mockedStatus).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows the read-only check before the provisioning command when the backend sends one", async () => {
+    mockedStatus.mockResolvedValue({ status: "PENDING", online: false });
+    render(
+      <Step2Script
+        scriptData={{ ...scriptData, preflightCommand: ':put ("Internet: ether1")' }}
+        onConnected={vi.fn()}
+        onRestart={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText(':put ("Internet: ether1")')).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Copy check/ })).toBeInTheDocument();
+    expect(screen.getByText(/A line starting with STOP/)).toBeInTheDocument();
   });
 });

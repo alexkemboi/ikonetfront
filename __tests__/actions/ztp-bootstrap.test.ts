@@ -67,6 +67,7 @@ describe("generateZtpScript", () => {
         routerIdxno: 7,
         identity: "Adrinold 02",
         fetchCommand: FETCH_COMMAND,
+        preflightCommand: null,
         allocatedVpnIp: "10.9.0.7",
         // zoneless backend business time is pinned to EAT
         expiresAt: "2026-10-06T13:00:00+03:00",
@@ -150,10 +151,15 @@ describe("station and internet port", () => {
     expect(mockedFetch.mock.calls[0][1]?.body).toEqual({ ...input, stationIdxno: 3, wanInterface: "sfp-sfpplus1" });
   });
 
-  it("leaves the default internet port to the backend", async () => {
-    await generateZtpScript({ ...input, wanInterface: "ether1" });
+  it("sends ether1 as a check and the downstream ports", async () => {
+    await generateZtpScript({ ...input, wanInterface: "ether1", downlinkInterfaces: [" ether7", "ether8", "ether7"] });
 
-    expect(mockedFetch.mock.calls[0][1]?.body).toEqual(input);
+    // ether1 is now a check like any other port, and downstream ports are sent once each
+    expect(mockedFetch.mock.calls[0][1]?.body).toEqual({
+      ...input,
+      wanInterface: "ether1",
+      downlinkInterfaces: ["ether7", "ether8"],
+    });
   });
 
   it("rejects an internet port that is not an interface name before calling the backend", async () => {
@@ -203,5 +209,12 @@ describe("station and internet port", () => {
     vi.mocked(getRegions).mockResolvedValue({ success: false, status: 500, message: "DATA_SOURCE_UNAVAILABLE" });
 
     expect(await getZtpStations()).toEqual({ stations: [], error: "DATA_SOURCE_UNAVAILABLE" });
+  });
+
+  it("refuses the internet port as a downstream port before calling the backend", async () => {
+    const result = await generateZtpScript({ ...input, wanInterface: "sfp-sfpplus1", downlinkInterfaces: ["sfp-sfpplus1"] });
+
+    expect(result.success).toBe(false);
+    expect(mockedFetch).not.toHaveBeenCalled();
   });
 });

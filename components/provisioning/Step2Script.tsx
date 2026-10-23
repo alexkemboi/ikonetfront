@@ -35,12 +35,20 @@ function describeProgress(status: ZtpSessionStatus | null): string {
 
 export function Step2Script({ scriptData, onConnected, onRestart }: Props) {
  const [copied, setCopied] = useState(false);
+ const [preflightCopied, setPreflightCopied] = useState(false);
  const [isChecking, setIsChecking] = useState(true);
  const [pollCount, setPollCount] = useState(0);
  const [stopped, setStopped] = useState(false);
  const [restartToken, setRestartToken] = useState(0);
  const [sessionStatus, setSessionStatus] = useState<ZtpSessionStatus | null>(null);
  const commandDead = sessionStatus === "EXPIRED" || sessionStatus === "REVOKED";
+
+ function handleCopyPreflight() {
+ if (!scriptData.preflightCommand) return;
+ navigator.clipboard.writeText(scriptData.preflightCommand);
+ setPreflightCopied(true);
+ setTimeout(() => setPreflightCopied(false), 2000);
+ }
 
  function handleCopy() {
  navigator.clipboard.writeText(scriptData.fetchCommand);
@@ -135,6 +143,23 @@ export function Step2Script({ scriptData, onConnected, onRestart }: Props) {
  </div>
  )}
  </dl>
+ )}
+
+ {scriptData.preflightCommand && (
+ <div className="mt-4">
+ <p className="text-xs text-muted-foreground">
+ 1. Check first (changes nothing): it prints the internet, the ports that feed other routers and
+ the customer ports. A line starting with STOP must be fixed before step 2.
+ </p>
+ <div className="relative mt-2 rounded-xl border border-border bg-[#101010] p-4 font-sans tabular-nums text-xs text-zinc-200 break-all">
+ <code className="font-mono-tech">{scriptData.preflightCommand}</code>
+ <Button onClick={handleCopyPreflight} variant="secondary" size="sm" className="absolute right-3 top-3">
+ {preflightCopied ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5" />}
+ {preflightCopied ? "Copied!" : "Copy check"}
+ </Button>
+ </div>
+ <p className="mt-4 text-xs text-muted-foreground">2. Provision:</p>
+ </div>
  )}
 
  <div className="relative mt-4 rounded-xl border border-border bg-[#101010] p-4 font-sans tabular-nums text-xs text-zinc-200 break-all">

@@ -216,9 +216,11 @@ export async function generateZtpScript(input: ZtpBootstrapInput): Promise<ZtpSc
     pppoeEnabled: input.pppoeEnabled === true,
   };
   if (input.stationIdxno !== undefined) request.stationIdxno = input.stationIdxno;
-  // ether1 is the backend's default; only another port is sent
+  // optional check: without it the router keeps whatever it fetched the command over as its internet
   const wanInterface = input.wanInterface?.trim();
-  if (wanInterface && wanInterface !== "ether1") request.wanInterface = wanInterface;
+  if (wanInterface) request.wanInterface = wanInterface;
+  const downlinks = [...new Set((input.downlinkInterfaces ?? []).map((p) => p.trim()).filter(Boolean))];
+  if (downlinks.length > 0) request.downlinkInterfaces = downlinks;
   const invalid = validateZtpBootstrapInput(request);
   if (invalid) return { success: false, message: invalid };
 
@@ -251,6 +253,7 @@ export async function generateZtpScript(input: ZtpBootstrapInput): Promise<ZtpSc
         routerIdxno: res.data?.routerIdxno ?? null,
         identity: res.data?.identity ?? request.identity,
         fetchCommand,
+        preflightCommand: res.data?.preflightCommand?.trim() || null,
         allocatedVpnIp: res.data?.allocatedVpnIp ?? null,
         expiresAt: eatToIso(res.data?.expiresAt),
       },
