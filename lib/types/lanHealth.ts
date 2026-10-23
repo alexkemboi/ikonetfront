@@ -37,6 +37,20 @@ export interface RouterLanHealth {
   radiusPasswordSetAt?: string | null;
   /** ZTP, REPROVISION, DIRECT_LINK or MANUAL_PUSH. */
   radiusPasswordSetBy?: string | null;
+  /**
+   * Is the router's clock right? Session times come from it: a wrong clock shows paying customers as
+   * "Paid, not connected" and online customers as offline. NO_TIME_SERVER = right now, but it will be
+   * wrong again after the router's next restart (the check sets it again within minutes).
+   */
+  clockStatus?: "OK" | "WRONG" | "NO_TIME_SERVER" | "UNKNOWN";
+  /** Router time minus server time at the last check, in seconds; negative = slow. */
+  clockOffsetSeconds?: number | null;
+  /** The router's NTP client status (synchronized, waiting, ...), DISABLED when off. */
+  ntpStatus?: string | null;
+  /** Last time within 7 days the check found the clock wrong and set it. */
+  clockCorrectedAt?: string | null;
+  /** How far off it was then, in seconds; negative = slow. */
+  clockCorrectedBySeconds?: number | null;
 }
 
 /** `POST /network/radius-password/reprovision`: one line per router tried. */

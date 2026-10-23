@@ -6,7 +6,9 @@ import { Check, Pencil, Radio, ShieldAlert, X } from "lucide-react";
 import { toast } from "sonner";
 import { getRouterLanDetail, updateAccessPoint } from "@/actions/lanHealth";
 import type { LanAccessPoint, RouterLanDetail } from "@/lib/types/lanHealth";
-import { passwordLabel, signInLabel, signInProblemSentence, timeAgo } from "@/lib/utils/lanHealth";
+import {
+  clockCorrectedSentence, clockLabel, passwordLabel, signInLabel, signInProblemSentence, timeAgo,
+} from "@/lib/utils/lanHealth";
 import { HelpTip, HowToReadPanel } from "@/components/network/HealthHelp";
 import type { HelpKey } from "@/lib/help/networkHealthHelp";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -149,7 +151,7 @@ export function RouterAccessPoints({ routerId, canEdit }: { routerId: number; ca
 
       <HowToReadPanel />
 
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-6">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-7">
         <Tile label="Customer sign-in" value={signInLabel(health)} help="customerSignIn"
           tone={health.signInStatus === "NOT_WORKING" || health.signInStatus === "NOT_SET_UP" ? "red"
             : health.signInStatus === "WORKING" ? "green" : "plain"}
@@ -164,6 +166,13 @@ export function RouterAccessPoints({ routerId, canEdit }: { routerId: number; ca
             : health.radiusPasswordSetAt
               ? `given ${timeAgo(health.radiusPasswordSetAt)} (${(health.radiusPasswordSetBy ?? "").toLowerCase().replace("_", " ")})`
               : "not recorded: run Reprovision Router once to record it"} />
+        <Tile label="Router clock" value={clockLabel(health)} help="routerClock"
+          tone={health.clockStatus === "WRONG" ? "red" : health.clockStatus === "NO_TIME_SERVER" ? "amber"
+            : health.clockStatus === "OK" ? "green" : "plain"}
+          hint={health.clockStatus === "WRONG"
+            ? "purchases here show as \"Paid, not connected\": run Sync Router Time"
+            : [health.clockStatus === "NO_TIME_SERVER" ? `time server ${health.ntpStatus?.toLowerCase() ?? "not answering"}` : null,
+               clockCorrectedSentence(health)].filter(Boolean).join("; ") || "session times from this router can be trusted"} />
         <Tile label="Customer devices" help="customerDevices" value={String(health.devicesOnHotspot ?? "—")} hint="on the hotspot now, signed in or not; access points not counted" />
         <Tile label="Customers on a wrong address" help="wrongAddress" value={String(health.devicesOnWrongAddress ?? "—")}
           hint="hold an address this router did not give out; should be 0" bad={(health.devicesOnWrongAddress ?? 0) > 0} />

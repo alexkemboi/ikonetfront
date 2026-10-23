@@ -7,7 +7,7 @@ import { getLanHealth } from "@/actions/lanHealth";
 import type { RouterLanHealth } from "@/lib/types/lanHealth";
 import {
   lanProblemSentence, routersThatCannotSignIn, routersWithCustomersOnWrongAddress, routersWithDhcpServersOnly,
-  signInLabel, signInProblemSentence, timeAgo,
+  clockCorrectedSentence, clockLabel, signInLabel, signInProblemSentence, timeAgo,
 } from "@/lib/utils/lanHealth";
 import { KeyRound, RefreshCcw } from "lucide-react";
 import { toast } from "sonner";
@@ -210,12 +210,13 @@ export function CustomerNetworkHealth({
         </p>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[1080px] text-left text-sm">
+          <table className="w-full min-w-[1200px] text-left text-sm">
             <thead>
               <tr className="border-b border-border">
                 <th className={TH}>Router</th>
                 <th className={TH}>Customer sign-in <HelpTip term="customerSignIn" /></th>
                 <th className={TH}>RADIUS password <HelpTip term="radiusPassword" /></th>
+                <th className={TH}>Router clock <HelpTip term="routerClock" /></th>
                 <th className={TH}>Customer devices <HelpTip term="customerDevices" /></th>
                 <th className={TH}>Customers on a wrong address <HelpTip term="wrongAddress" /></th>
                 <th className={TH}>Unauthorised DHCP servers <HelpTip term="rogueDhcp" /></th>
@@ -264,6 +265,21 @@ export function CustomerNetworkHealth({
                     </span>
                     {" "}<HelpTip term={r.radiusPasswordStatus === "CURRENT" ? "passwordCurrent"
                       : r.radiusPasswordStatus === "OUT_OF_DATE" ? "passwordOutOfDate" : "passwordUnknown"} />
+                  </td>
+                  <td className="px-4 py-3">
+                    <span
+                      title={[r.ntpStatus ? `Time server: ${r.ntpStatus}` : null, clockCorrectedSentence(r)].filter(Boolean).join("; ") || undefined}
+                      className={cn(
+                        r.clockStatus === "WRONG" ? "font-semibold text-red-600 dark:text-red-400"
+                          : r.clockStatus === "NO_TIME_SERVER" ? "text-amber-600"
+                          : r.clockStatus === "OK" ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"
+                      )}
+                    >
+                      {clockLabel(r)}
+                    </span>
+                    {" "}<HelpTip term={r.clockStatus === "OK" ? "clockRight" : r.clockStatus === "WRONG" ? "clockWrong"
+                      : r.clockStatus === "NO_TIME_SERVER" ? "clockNoTimeServer" : "clockUnknown"} />
+                    {r.clockCorrectedAt && <p className="text-xs text-muted-foreground">{clockCorrectedSentence(r)}</p>}
                   </td>
                   <td className="px-4 py-3"><Figure value={r.devicesOnHotspot} bad={false} /></td>
                   <td className="px-4 py-3"><Figure value={r.devicesOnWrongAddress} bad={(r.devicesOnWrongAddress ?? 0) > 0} /></td>
