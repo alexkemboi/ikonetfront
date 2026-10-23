@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { checkUplinkNow, getUplink, getUplinkHistory } from "@/actions/uplink";
 import type { UplinkCheck } from "@/lib/types/uplink";
-import { UPLINK_LABEL, UPLINK_TONE, ageText, mbps, pingText, uplinkProblems } from "@/lib/utils/uplink";
+import { UPLINK_LABEL, UPLINK_TONE, ageText, mbps, pingText, uplinkProblems, windowText } from "@/lib/utils/uplink";
 import { timeAgo } from "@/lib/utils/lanHealth";
 import { visibleInterval } from "@/lib/hooks/useVisibleInterval";
 
@@ -93,8 +93,10 @@ export function RouterUplinkPanel({
         <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
           Whether each site&apos;s internet source is working, checked every minute. &quot;No contact&quot; means
           neither the management tunnel nor customer sign-ins have been heard from the router: no power, no internet,
-          or the router is off. &quot;Internet poor&quot; means the router is reachable but its own internet is failing
-          or crawling (under 0.1 Mbps with customers on). A site without internet cannot take payments.
+          or the router is off. The router pings the internet itself every minute, and the last 15 minutes are judged
+          together against the site&apos;s own speed when it is quiet: &quot;Internet slow&quot; means some pings are
+          lost or queued (customers feel pages crawl), &quot;Internet poor&quot; means many are lost, delays are long, or
+          the connection keeps dropping. A site without internet cannot take payments.
         </p>
       </div>
 
@@ -148,7 +150,7 @@ export function RouterUplinkPanel({
                 <th className={TH}>Provider</th>
                 <th className={TH}>Tunnel last heard</th>
                 <th className={TH}>Customers online</th>
-                <th className={TH}>From the router</th>
+                <th className={TH}>Router to internet</th>
                 <th className={TH}>WAN now</th>
                 <th className={TH}>Purchases failed / unconfirmed (24 h)</th>
                 <th className={TH}>Checked</th>
@@ -197,6 +199,12 @@ function UplinkRow({
             {c.routerName}
           </button>
           <p className="text-xs text-muted-foreground">{c.tunnelIp ?? "no tunnel address"}</p>
+          {c.drift && (
+            <p className={cn("mt-1 max-w-[280px] text-xs",
+              c.wanList ? "text-red-600 dark:text-red-400" : "text-muted-foreground")}>
+              {c.drift}
+            </p>
+          )}
         </td>
         <td className="px-4 py-3">
           <span className={UPLINK_TONE[c.status]} title={c.reason ?? undefined}>{UPLINK_LABEL[c.status]}</span>
@@ -217,11 +225,13 @@ function UplinkRow({
         </td>
         <td className="px-4 py-3">
           <span title={c.probeError ?? undefined}>{pingText(c)}</span>
+          {windowText(c) && <p className="text-xs text-muted-foreground tabular-nums">{windowText(c)}</p>}
           {c.defaultRouteOk === false && <p className="text-xs text-red-600 dark:text-red-400">no route to the internet</p>}
-          {c.wanRunning === false && <p className="text-xs text-red-600 dark:text-red-400">WAN port down</p>}
+          {c.wanRunning === false && <p className="text-xs text-red-600 dark:text-red-400">internet port down</p>}
         </td>
         <td className="px-4 py-3 tabular-nums">
           {c.wanRxBps == null ? "—" : mbps((c.wanRxBps ?? 0) + (c.wanTxBps ?? 0))}
+          {c.uplinkInterface && <p className="text-xs text-muted-foreground">{c.uplinkInterface}</p>}
         </td>
         <td className="px-4 py-3 tabular-nums">
           <span className={(c.failedPurchases24h ?? 0) > 0 ? "font-semibold text-red-600 dark:text-red-400" : undefined}>
