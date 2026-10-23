@@ -48,6 +48,7 @@ export function HelpTip({ term, className }: { term: HelpKey; className?: string
 const GROUPS: { heading: string; terms: HelpKey[] }[] = [
   { heading: "Can customers sign in?", terms: ["customerSignIn", "signInWorking", "signInNotWorking", "signInNoAttempts", "signInNotSetUp", "signInUnknown"] },
   { heading: "RADIUS password", terms: ["radiusPassword", "passwordCurrent", "passwordOutOfDate", "passwordUnknown"] },
+  { heading: "Router clock", terms: ["routerClock", "clockRight", "clockWrong", "clockNoTimeServer", "clockUnknown"] },
   { heading: "Customers and addresses", terms: ["customerDevices", "wrongAddress", "rogueDhcp"] },
   { heading: "Access points", terms: ["accessPoints", "apSeen", "apNotSeen", "apIgnored"] },
   { heading: "Router status", terms: ["statusHealthy", "statusAttention", "statusUnknown"] },

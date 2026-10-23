@@ -65,6 +65,33 @@ export const NETWORK_HEALTH_HELP = {
       "The system does not know which password this router holds: it was set up before this was recorded, and has not been reprovisioned since. It may be fine.",
     todo: "Run Reprovision Router once so it is recorded. If its sign-in shows Working, there is no hurry.",
   },
+  routerClock: {
+    title: "Router clock",
+    means:
+      "Whether the router's clock shows the right time. The router stamps every session with its own time, and the system " +
+      "uses those times to tell who is online and whether a purchase connected. The check sets a wrong clock by itself " +
+      "within 2 minutes.",
+    why:
+      "A router hours slow makes every purchase look \"Paid, not connected\" and every customer look offline, while they are " +
+      "online (ADRINOLD-WESTLANDS, 23 Oct 2026: 4 h 57 min slow after a restart).",
+    todo: "Wrong: check that the router reaches the internet, then run Sync Router Time or Reprovision Router.",
+  },
+  clockRight: { title: "Router clock: Right", means: "The clock is within 2 minutes of the system's, and a time server keeps it right." },
+  clockWrong: {
+    title: "Router clock: Wrong",
+    means: "The clock is more than 2 minutes off and the check could not set it.",
+    why: "Purchases at this router show as \"Paid, not connected\" and its customers as offline, whatever is really happening.",
+    todo: "Run Sync Router Time or Reprovision Router. If it stays wrong, the router cannot be written to over the tunnel: check it in WinBox.",
+  },
+  clockNoTimeServer: {
+    title: "Router clock: Right, no time server",
+    means:
+      "The clock is right now, but the router's time server is not answering (its NTP status says waiting, or NTP is off). " +
+      "After its next restart or power cut it will start with the wrong time.",
+    why: "The check sets it again within minutes, so the damage is short, but it should keep its own time.",
+    todo: "Run Sync Router Time or Reprovision Router: both give it time servers by address. If it stays like this, the site's internet blocks time servers.",
+  },
+  clockUnknown: { title: "Router clock: Not read", means: "The router has not been checked since this was added, or its clock could not be read." },
   customerDevices: {
     title: "Customer devices",
     means: "Phones, laptops and other customer devices the router can see on the hotspot right now, paid or not. Access points are not counted.",

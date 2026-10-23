@@ -54,6 +54,39 @@ export function passwordLabel(r: Pick<RouterLanHealth, "radiusPasswordStatus">):
   }
 }
 
+/** "4 h 56 min slow", "7 min fast", "on time". */
+export function clockOffsetLabel(seconds: number | null | undefined): string {
+  if (seconds == null) return "not read";
+  const abs = Math.abs(seconds);
+  if (abs < 60) return "on time";
+  const hours = Math.floor(abs / 3600);
+  const minutes = Math.floor((abs % 3600) / 60);
+  return `${hours > 0 ? `${hours} h ${minutes} min` : `${minutes} min`} ${seconds < 0 ? "slow" : "fast"}`;
+}
+
+/** Short label for the router clock column. */
+export function clockLabel(r: Pick<RouterLanHealth, "clockStatus" | "clockOffsetSeconds">): string {
+  switch (r.clockStatus) {
+    case "OK":
+      return "Right";
+    case "WRONG":
+      return `Wrong (${clockOffsetLabel(r.clockOffsetSeconds)})`;
+    case "NO_TIME_SERVER":
+      return "Right, no time server";
+    default:
+      return "Not read";
+  }
+}
+
+/** One line on when the check last had to set the clock, or null when it never had to this week. */
+export function clockCorrectedSentence(
+  r: Pick<RouterLanHealth, "clockCorrectedAt" | "clockCorrectedBySeconds">,
+  now: number = Date.now()
+): string | null {
+  if (!r.clockCorrectedAt) return null;
+  return `set ${timeAgo(r.clockCorrectedAt, now)}; it was ${clockOffsetLabel(r.clockCorrectedBySeconds)}`;
+}
+
 /** Short label for the sign-in column. */
 export function signInLabel(r: Pick<RouterLanHealth, "signInStatus">): string {
   switch (r.signInStatus) {
@@ -92,6 +125,10 @@ export function lanProblemSentence(r: RouterLanHealth): string | null {
   if (r.status === "UNKNOWN") return null;
   const signIn = signInProblemSentence(r);
   if (signIn) return signIn.charAt(0).toUpperCase() + signIn.slice(1);
+  if (r.clockStatus === "WRONG") {
+    return `The router's clock is ${clockOffsetLabel(r.clockOffsetSeconds)} and could not be set: its customers show as ` +
+      `"Paid, not connected" or offline while they are online.`;
+  }
   if (wrong > 0) {
     return `${wrong} customer ${wrong === 1 ? "device has" : "devices have"} an address the router did not give out ` +
       `and cannot reach the payment page or the internet` +

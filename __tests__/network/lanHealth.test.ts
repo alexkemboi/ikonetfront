@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 import type { RouterLanHealth } from "@/lib/types/lanHealth";
 import {
   lanProblemSentence, routersThatCannotSignIn, routersWithCustomersOnWrongAddress, routersWithDhcpServersOnly,
-  passwordLabel, routersWithOldPassword, signInLabel, signInProblemSentence, timeAgo,
+  clockCorrectedSentence, clockLabel, clockOffsetLabel, passwordLabel, routersWithOldPassword, signInLabel,
+  signInProblemSentence, timeAgo,
 } from "@/lib/utils/lanHealth";
 import { COLOUR_LEGEND, NETWORK_HEALTH_HELP } from "@/lib/help/networkHealthHelp";
 
@@ -90,6 +91,25 @@ describe("customer network health helpers", () => {
     );
     expect(passwordLabel(stale)).toBe("Out of date");
     expect(passwordLabel({ radiusPasswordStatus: "UNKNOWN" })).toBe("Not recorded");
+  });
+
+  it("describes a router clock in plain words (ADRINOLD-WESTLANDS, 23 Oct: 4 h 56 min slow)", () => {
+    expect(clockOffsetLabel(-17816)).toBe("4 h 56 min slow");
+    expect(clockOffsetLabel(420)).toBe("7 min fast");
+    expect(clockOffsetLabel(3)).toBe("on time");
+    expect(clockLabel({ clockStatus: "WRONG", clockOffsetSeconds: -17816 })).toBe("Wrong (4 h 56 min slow)");
+    expect(clockLabel({ clockStatus: "NO_TIME_SERVER", clockOffsetSeconds: 1 })).toBe("Right, no time server");
+    expect(clockLabel({})).toBe("Not read");
+    expect(clockCorrectedSentence(
+      { clockCorrectedAt: "2026-10-23T12:13:39Z", clockCorrectedBySeconds: -17816 }, Date.parse("2026-10-23T12:23:39Z")
+    )).toBe("set 10 min ago; it was 4 h 56 min slow");
+    expect(clockCorrectedSentence({ clockCorrectedAt: null })).toBeNull();
+  });
+
+  it("names a wrong clock as the problem, since it hides every purchase on the router", () => {
+    const slow = { ...base, status: "ATTENTION" as const, clockStatus: "WRONG" as const, clockOffsetSeconds: -17816 };
+    expect(lanProblemSentence(slow)).toContain("4 h 56 min slow");
+    expect(lanProblemSentence(slow)).toContain("Paid, not connected");
   });
 
   it("explains every term in plain words and gives every colour a meaning", () => {
