@@ -1,5 +1,5 @@
 /** Router uplink: is the router's internet source working? Backend: /api/v1/network/uplink. */
-export type UplinkStatus = "UP" | "DEGRADED" | "TUNNEL_FAULT" | "DOWN" | "UNKNOWN";
+export type UplinkStatus = "UP" | "SLOW" | "DEGRADED" | "TUNNEL_FAULT" | "DOWN" | "UNKNOWN";
 
 export type UplinkCheck = {
   routerId: number;
@@ -25,6 +25,21 @@ export type UplinkCheck = {
   wanRxBps: number | null;
   wanTxBps: number | null;
   probeError: string | null;
+  /** pings in the router's latest burst, and the spread of their round trips */
+  pingSent?: number | null;
+  pingJitterMs?: number | null;
+  /** the interface the router's internet leaves by (its active default route) */
+  uplinkInterface?: string | null;
+  /** the router's "ibs-wan" list, comma-separated; "" = no list; null = not read */
+  wanList?: string | null;
+  /** the verdict's window (last 15 min): pings lost, mean round trip, and the router's quiet-time latency */
+  windowLossPct?: number | null;
+  windowAvgMs?: number | null;
+  baselineMs?: number | null;
+  /** changes of the router's public address or port in the window */
+  reconnects?: number | null;
+  /** router configuration that disagrees with its real uplink; null when it agrees or is not known */
+  drift?: string | null;
   /** only on the overview */
   failedPurchases24h: number | null;
   unconfirmedPurchases24h: number | null;

@@ -67,4 +67,21 @@ describe("RouterUplinkPanel", () => {
     expect(getUplinkHistory).toHaveBeenCalledWith(100, 24);
     expect(getUplink).not.toHaveBeenCalled();
   });
+
+  it("shows a slow site's window and a wan list that misses the real uplink", () => {
+    // BEDAK-UJAMAA 2, 22 Oct 20:00: fiber queueing at 70 customers; ibs-wan still on ether1
+    const ujamaa2: UplinkCheck = {
+      ...base, routerId: 7, routerName: "BEDAK-UJAMAA 2", status: "SLOW",
+      reason: "Internet slow: pings take 49 ms against 6 ms when the site is quiet (last 15 min)",
+      pingLossPct: 0, pingAvgMs: 52, windowLossPct: 3, windowAvgMs: 49, baselineMs: 6,
+      uplinkInterface: "INTERNET_VLAN_2755", wanList: "ether1",
+      drift: "The internet leaves by INTERNET_VLAN_2755, but the \"ibs-wan\" list holds ether1",
+    };
+    render(<RouterUplinkPanel initial={[ujamaa2]} />);
+    expect(screen.getByText("Internet slow")).toBeTruthy();
+    expect(screen.getByText("15 min: 3% loss · 49 ms (quiet 6 ms)")).toBeTruthy();
+    expect(screen.getByText(/list holds ether1/)).toBeTruthy();
+    expect(screen.getByText("INTERNET_VLAN_2755")).toBeTruthy();
+    expect(screen.queryByRole("alert")).toBeNull(); // slow is not "no working internet"
+  });
 });

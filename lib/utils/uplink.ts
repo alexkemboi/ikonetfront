@@ -2,6 +2,7 @@ import type { UplinkCheck, UplinkStatus } from "@/lib/types/uplink";
 
 export const UPLINK_LABEL: Record<UplinkStatus, string> = {
   UP: "Internet up",
+  SLOW: "Internet slow",
   DEGRADED: "Internet poor",
   TUNNEL_FAULT: "Management lost",
   DOWN: "No contact",
@@ -10,7 +11,8 @@ export const UPLINK_LABEL: Record<UplinkStatus, string> = {
 
 export const UPLINK_TONE: Record<UplinkStatus, string> = {
   UP: "text-emerald-600 dark:text-emerald-400",
-  DEGRADED: "font-semibold text-amber-600 dark:text-amber-400",
+  SLOW: "font-semibold text-amber-600 dark:text-amber-400",
+  DEGRADED: "font-semibold text-red-600 dark:text-red-400",
   TUNNEL_FAULT: "font-semibold text-amber-600 dark:text-amber-400",
   DOWN: "font-semibold text-red-600 dark:text-red-400",
   UNKNOWN: "text-muted-foreground",
@@ -39,6 +41,17 @@ export function pingText(c: Pick<UplinkCheck, "pingLossPct" | "pingAvgMs">): str
   if (c.pingLossPct == null) return "not checked";
   if (c.pingLossPct >= 100) return "every ping lost";
   return c.pingAvgMs == null ? `${c.pingLossPct}% loss` : `${c.pingLossPct}% loss · ${c.pingAvgMs} ms`;
+}
+
+/**
+ * The router's pings over the verdict's window: "15 min: 6% loss · 98 ms (quiet 24 ms)"; null when
+ * the check has no window (the tunnel was down, or it was stored before windows existed).
+ */
+export function windowText(c: Pick<UplinkCheck, "windowLossPct" | "windowAvgMs" | "baselineMs">): string | null {
+  if (c.windowLossPct == null) return null;
+  const avg = c.windowAvgMs == null ? "" : ` · ${c.windowAvgMs} ms`;
+  const quiet = c.baselineMs == null ? "" : ` (quiet ${c.baselineMs} ms)`;
+  return `15 min: ${c.windowLossPct}% loss${avg}${quiet}`;
 }
 
 /** Routers whose customers are likely affected now: no contact or poor internet. */
