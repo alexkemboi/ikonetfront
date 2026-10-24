@@ -38,3 +38,52 @@ export async function sendBulkEmailAction(payload: {
   });
   return { success: res.success, message: res.message, status: res.status, requestId: res.requestId };
 }
+// ── Sender settings (per company) ─────────────────────────────────────────────
+
+/** Empty fields mean "NotifyHub's default sender for the business". */
+export interface SenderSettings {
+  smsSenderId: string | null;
+  emailFromName: string | null;
+  emailFromAddress: string | null;
+  emailReplyTo: string | null;
+}
+
+export async function getSenderSettings(): Promise<{ data: SenderSettings | null; message?: string }> {
+  const res = await apiFetch<SenderSettings>("/communications/sender-settings", { auth: "required", cache: "no-store" });
+  return { data: res.success ? res.data ?? null : null, message: res.success ? undefined : res.message };
+}
+
+export async function saveSenderSettings(
+  value: SenderSettings
+): Promise<{ success: boolean; message?: string; data?: SenderSettings }> {
+  const res = await apiFetch<SenderSettings>("/communications/sender-settings", {
+    method: "PUT",
+    body: value,
+    auth: "required",
+    cache: "no-store",
+  });
+  return { success: res.success, message: res.message, data: res.data ?? undefined };
+}
+
+// ── Send history ──────────────────────────────────────────────────────────────
+
+export interface EmailCampaignSummary {
+  id: number;
+  subject: string;
+  category: "TRANSACTIONAL" | "MARKETING";
+  recipients: number;
+  sent: number;
+  queued: number;
+  failed: number;
+  skipped: number;
+  createdBy: string | null;
+  createdAt: string;
+}
+
+export async function getEmailCampaigns(): Promise<EmailCampaignSummary[]> {
+  const res = await apiFetch<EmailCampaignSummary[]>("/communications/email/campaigns", {
+    auth: "required",
+    cache: "no-store",
+  });
+  return res.success && Array.isArray(res.data) ? res.data : [];
+}
