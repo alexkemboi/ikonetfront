@@ -169,6 +169,15 @@ export interface RouterOutage {
   creditedMinutes: number;
   /** Phone numbers the outage SMS was queued for; null when none was sent. */
   outageSmsCount: number | null;
+  /** What happened to the outage SMS (older servers send none of these). */
+  outageSmsSent?: number;
+  outageSmsFailed?: number;
+  outageSmsExpired?: number;
+  outageSmsWaiting?: number;
+  restoredSmsSent?: number;
+  restoredSmsFailed?: number;
+  restoredSmsExpired?: number;
+  restoredSmsWaiting?: number;
   closedBy: string | null;
 }
 
