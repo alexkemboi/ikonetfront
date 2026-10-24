@@ -6,7 +6,9 @@ import { getOptOuts, getPromotions } from "@/actions/promotions";
 import { PromotionsClient } from "@/components/communications/PromotionsClient";
 import { redirect } from "next/navigation";
 import BulkEmailWizard from "./_components/BulkEmailWizard";
-import { getEmailTemplates } from "@/actions/communications";
+import { getEmailCampaigns, getEmailTemplates, getSenderSettings } from "@/actions/communications";
+import { SenderSettingsClient } from "@/components/communications/SenderSettingsClient";
+import { EmailCampaignHistory } from "@/components/communications/EmailCampaignHistory";
 import { getCustomers } from "@/actions/customer";
 import { getSystemUsers } from "@/actions/system";
 
@@ -42,12 +44,15 @@ export default async function BulkEmailPage({
   const pagePerms = await getPermissionForRoute("/communications/bulk-email");
   if (!pagePerms.canView) redirect("/dashboard");
 
-  const promotionsTab = (await searchParams).tab === "promotions";
+  const tab = (await searchParams).tab;
+  const promotionsTab = tab === "promotions";
+  const senderTab = tab === "sender";
   const tabs = (
     <nav className="mb-4 flex gap-1 border-b border-border" aria-label="Communication type">
       {[
-        { href: "/communications/bulk-email", label: "Email", active: !promotionsTab },
+        { href: "/communications/bulk-email", label: "Email", active: !promotionsTab && !senderTab },
         { href: "/communications/bulk-email?tab=promotions", label: "Promotional SMS", active: promotionsTab },
+        { href: "/communications/bulk-email?tab=sender", label: "Sender settings", active: senderTab },
       ].map((tab) => (
         <Link key={tab.href} href={tab.href} aria-current={tab.active ? "page" : undefined}
           className={cn("-mb-px border-b-2 px-3 py-2 text-sm transition-colors",
@@ -57,6 +62,21 @@ export default async function BulkEmailPage({
       ))}
     </nav>
   );
+
+  if (senderTab) {
+    const [session, sender] = await Promise.all([auth(), getSenderSettings()]);
+    const role = (session?.user?.role ?? "").replace(/^ROLE_/i, "").toUpperCase();
+    return (
+      <div className="p-6 h-full">
+        {tabs}
+        {sender.message && !sender.data ? (
+          <p role="alert" className="text-sm text-muted-foreground">{sender.message}</p>
+        ) : (
+          <SenderSettingsClient initial={sender.data} canEdit={role === "SYSADMIN" || role === "ADMIN" || role === "01"} />
+        )}
+      </div>
+    );
+  }
 
   if (promotionsTab) {
     // Only this tab's data is loaded; the email tab's customer and staff lists are not needed here.
@@ -78,10 +98,11 @@ export default async function BulkEmailPage({
     );
   }
 
- const [templatesResult, customersResult, systemUsers] = await Promise.all([
+ const [templatesResult, customersResult, systemUsers, campaigns] = await Promise.all([
    getEmailTemplates(),
   getCustomers(0, 200),
    getSystemUsers(),
+   getEmailCampaigns(),
  ]);
 
   const customers: CampaignRecipient[] = customersResult.success
@@ -117,14 +138,6 @@ export default async function BulkEmailPage({
  return (
  <div className="p-6 h-full">
  {tabs}
- {/* No bulk email service exists on the server yet (gap register #10): say so before anyone composes a campaign. */}
- <div role="status" className="mb-4 rounded-lg border border-warning/40 bg-warning/10 px-4 py-3 text-sm">
- <p className="font-medium text-foreground">Bulk email is not available yet</p>
- <p className="mt-1 text-muted-foreground">
- You can prepare a message here, but the server cannot send campaigns yet, so nothing will be delivered.
- Customers already receive renewal reminders, outage notices, payment confirmations and ticket updates automatically.
- </p>
- </div>
  <BulkEmailWizard
  customers={customers}
  systemUsers={staff}
@@ -134,6 +147,7 @@ export default async function BulkEmailPage({
  recipientError={!customersResult.success ? customersResult.message ?? "Customer recipients are unavailable." : undefined}
  recipientRequestId={customersResult.requestId}
  />
+ <EmailCampaignHistory campaigns={campaigns} />
  </div>
  );
 }
