@@ -324,7 +324,7 @@ function MapIPSheet({
 
  return (
  <Sheet open={open} onOpenChange={(o) => !o && handleClose()}>
- <SheetContent className="w-120 sm:max-w-120 overflow-y-auto p-4">
+ <SheetContent className="w-full sm:max-w-120 p-4">
  <SheetHeader className="pb-4">
  <SheetTitle className="flex items-center gap-2">
  <Network className="w-5 h-5 text-primary" />

@@ -89,6 +89,8 @@ type Tab = "vitals" | "interfaces" | "sessions";
 export type RouterActionsVariant = "full" | "row" | "page";
 
 const MENU_WIDTH = 252; // px; keeps right-edge alignment consistent
+const MENU_GAP = 6; // px between the button and the menu
+const SCREEN_EDGE = 8; // px the menu keeps from the edge of the window
 
 /**
  * The "•••" command menu for a NAS/router table row.
@@ -123,6 +125,8 @@ export function RouterActionsDropdown({
     top: number;
     left: number;
     openUpwards: boolean;
+    /** Set once the open menu is measured: the room it has, so a long menu scrolls. */
+    maxHeight: number | null;
   } | null>(null);
   const [drawerTab, setDrawerTab] = useState<Tab | null>(null);
   const [diagnose, setDiagnose] = useState<{
@@ -162,52 +166,31 @@ export function RouterActionsDropdown({
       return;
     }
     const rect = buttonRef.current.getBoundingClientRect();
-    const left = rect.right - MENU_WIDTH;
-
-    // ── Smart vertical flip ──
-    // Estimate the open menu's height (now 11 items + dividers). If there
-    // isn't enough viewport space below the anchor and there IS room above,
-    // flip upward so the menu never gets cut off at the bottom of the window.
-    const vh = window.innerHeight;
-    const menuHeight = Math.min(280, vh * 0.85);
-    const spaceBelow = vh - rect.bottom;
-    const openUpwards = spaceBelow < menuHeight && rect.top > menuHeight;
-
-    const top = openUpwards ? Math.max(8, rect.top - menuHeight - 6) : rect.bottom + 6;
-
+    // First drawn below the button; measured and placed before it is painted (below).
     didClampRef.current = false;
-    setCoords({ top, left, openUpwards });
+    setCoords({ top: rect.bottom + MENU_GAP, left: rect.right - MENU_WIDTH, openUpwards: false, maxHeight: null });
     setMenuOpen(true);
   };
 
-  // After the menu renders (portal), clamp coords so it stays on screen.
-  // Runs once per open (guarded by didClampRef) so coords updates don't loop.
+  // Once the menu is rendered (portal) and before it is painted, place it from its real height:
+  // below the button when it fits, otherwise on the side with more room, scrolling inside what
+  // that side has. It never covers its own button or leaves the window.
   useLayoutEffect(() => {
-    if (!menuOpen || !coords || !menuRef.current) return;
+    if (!menuOpen || !coords || !menuRef.current || !buttonRef.current) return;
     if (didClampRef.current) return;
-    const menuRect = menuRef.current.getBoundingClientRect();
-    const vh = window.innerHeight;
-    let nextLeft = coords.left;
-    if (menuRect.right > window.innerWidth - 8) {
-      nextLeft -= menuRect.right - window.innerWidth + 8;
-    }
-    if (nextLeft < 8) nextLeft = 8;
-
-    let nextTop = coords.top;
-    if (menuRect.bottom > vh - 8) {
-      // Even after flip (or when flipped up it still overflowed the top),
-      // shift so the menu's bottom stays visible.
-      nextTop -= menuRect.bottom - vh + 8;
-    }
-    if (nextTop < 8) nextTop = 8;
-
-    if (nextLeft !== coords.left || nextTop !== coords.top) {
-      didClampRef.current = true;
-      setCoords((c) =>
-        c ? { ...c, left: nextLeft, top: nextTop } : c
-      );
-    }
     didClampRef.current = true;
+    const anchor = buttonRef.current.getBoundingClientRect();
+    const height = menuRef.current.scrollHeight;
+    const below = window.innerHeight - anchor.bottom - MENU_GAP - SCREEN_EDGE;
+    const above = anchor.top - MENU_GAP - SCREEN_EDGE;
+    const openUpwards = height > below && above > below;
+    const maxHeight = Math.max(0, Math.min(height, openUpwards ? above : below));
+    const top = openUpwards ? anchor.top - MENU_GAP - maxHeight : anchor.bottom + MENU_GAP;
+    const left = Math.max(
+      SCREEN_EDGE,
+      Math.min(anchor.right - MENU_WIDTH, window.innerWidth - MENU_WIDTH - SCREEN_EDGE)
+    );
+    setCoords({ top: Math.max(SCREEN_EDGE, top), left, openUpwards, maxHeight });
   }, [menuOpen, coords]);
 
   // Close on outside click, scroll (capture) and Escape — the portal lives in
@@ -219,7 +202,11 @@ export function RouterActionsDropdown({
       if (menuRef.current?.contains(event.target as Node)) return;
       closeMenu();
     };
-    const onScroll = () => closeMenu();
+    // scrolling the page moves the button away from the menu; scrolling a long menu itself does not
+    const onScroll = (event: Event) => {
+      if (menuRef.current?.contains(event.target as Node)) return;
+      closeMenu();
+    };
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") closeMenu();
     };
@@ -414,10 +401,11 @@ export function RouterActionsDropdown({
         position: "fixed",
         top: Number(coords.top),
         left: Number(coords.left),
-        width: MENU_WIDTH,
+        width: `min(${MENU_WIDTH}px, calc(100vw - ${2 * SCREEN_EDGE}px))`,
+        maxHeight: coords.maxHeight ?? undefined,
         zIndex: 9999,
       }}
-      className={`rounded-xl border border-border bg-popover shadow-2xl py-1 text-sm text-popover-foreground max-h-[85vh] overflow-y-auto ${
+      className={`rounded-xl border border-border bg-popover shadow-2xl py-1 text-sm text-popover-foreground max-h-[calc(100dvh-1rem)] overflow-y-auto overscroll-contain ${
         coords.openUpwards
           ? "origin-bottom-right animate-in slide-in-from-bottom-2 duration-150"
           : "origin-top-right animate-in slide-in-from-top-2 duration-150"

@@ -350,43 +350,62 @@ describe("RouterActionsDropdown", () => {
     expect(td).toBeNull();
   });
 
-  it("flips the menu upward when the anchor is near the bottom of the viewport", async () => {
-    const user = userEvent.setup();
-    // Mock a viewport where the button sits near the bottom (space below < 280px).
-    Object.defineProperty(window, "innerHeight", {
+  /** The open menu measures this tall (jsdom does no layout); restore with the returned function. */
+  function menuHeight(px: number): () => void {
+    const original = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "scrollHeight");
+    Object.defineProperty(HTMLElement.prototype, "scrollHeight", {
       configurable: true,
-      value: 600,
+      get(this: HTMLElement) {
+        return this.getAttribute("role") === "menu" ? px : 0;
+      },
     });
-    vi.spyOn(window, "innerWidth", "get").mockReturnValue(1280);
+    return () => {
+      if (original) Object.defineProperty(HTMLElement.prototype, "scrollHeight", original);
+      else delete (HTMLElement.prototype as { scrollHeight?: number }).scrollHeight;
+    };
+  }
 
+  async function openAt(viewportHeight: number, rect: { top: number; bottom: number }) {
+    const user = userEvent.setup();
+    Object.defineProperty(window, "innerHeight", { configurable: true, value: viewportHeight });
+    vi.spyOn(window, "innerWidth", "get").mockReturnValue(1280);
     render(<RouterActionsDropdown router={router} />);
     const trigger = screen.getByRole("button", { name: /router actions/i });
-    // Button bottom at y=520, top at y=500 → space below = 80px < 280px, and
-    // space above (rect.top=500) > 280px, so it must open upward.
-    const mockRect = {
-      x: 1100,
-      y: 500,
-      top: 500,
-      bottom: 520,
-      left: 1100,
-      right: 1124,
-      width: 24,
-      height: 20,
-      toJSON: () => ({}),
-    } as DOMRect;
-    trigger.getBoundingClientRect = vi.fn(() => mockRect);
-
+    trigger.getBoundingClientRect = vi.fn(
+      () =>
+        ({
+          x: 1100, y: rect.top, top: rect.top, bottom: rect.bottom, left: 1100, right: 1124,
+          width: 24, height: rect.bottom - rect.top, toJSON: () => ({}),
+        }) as DOMRect
+    );
     await user.click(trigger);
-    const menu = screen.getByRole("menu", { name: /actions for/i });
+    return screen.getByRole("menu", { name: /actions for/i });
+  }
 
-    // Opened upward → coords.openUpwards true → the menu's element class
-    // includes slide-in-from-bottom (the flip-up animation variant),
-    // and top is clamped so the menu (max 280px tall) fits above the anchor.
-    expect(menu.className).toContain("slide-in-from-bottom-2");
-    // top should be ≤ 500 (above the anchor at 520) and ≥ 8.
-    const top = Number.parseFloat(menu.style.top);
-    expect(top).toBeGreaterThanOrEqual(8);
-    expect(top).toBeLessThanOrEqual(520);
+  it("flips the menu upward when it does not fit below the button, ending just above it", async () => {
+    const restore = menuHeight(450);
+    try {
+      // 80px below the button, 500px above: the whole 450px menu goes above
+      const menu = await openAt(600, { top: 500, bottom: 520 });
+      expect(menu.className).toContain("slide-in-from-bottom-2");
+      expect(Number.parseFloat(menu.style.top)).toBe(500 - 6 - 450);
+      expect(menu.style.maxHeight).toBe("450px");
+    } finally {
+      restore();
+    }
+  });
+
+  it("scrolls a menu taller than the room on either side instead of covering the button", async () => {
+    const restore = menuHeight(450);
+    try {
+      // 300px window, button in the middle: 125px above and 129px below, so it opens below and scrolls
+      const menu = await openAt(300, { top: 140, bottom: 157 });
+      expect(menu.className).toContain("slide-in-from-top-2");
+      expect(Number.parseFloat(menu.style.top)).toBe(157 + 6);
+      expect(menu.style.maxHeight).toBe(`${300 - 157 - 6 - 8}px`);
+    } finally {
+      restore();
+    }
   });
 
   it("uses routerId for actions and device id for delete (split id spaces)", async () => {

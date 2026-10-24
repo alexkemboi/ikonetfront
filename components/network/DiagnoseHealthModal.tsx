@@ -39,7 +39,7 @@ export function DiagnoseHealthModal({
       className="fixed inset-0 z-50 overflow-hidden bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
       data-testid="diagnose-modal"
     >
-      <div className="w-full max-w-lg bg-background border border-border rounded-2xl shadow-2xl flex flex-col max-h-[85vh]">
+      <div className="w-full max-w-lg bg-background border border-border rounded-2xl shadow-2xl flex flex-col max-h-[calc(100dvh-2rem)]">
         <div className="flex items-center justify-between px-6 py-4 border-b border-border">
           <div>
             <h2 className="text-lg font-normal flex items-center gap-2">

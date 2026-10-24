@@ -293,7 +293,7 @@ export function MikrotikClient({ initialDevices }: MikrotikClientProps) {
  <Button>Add New Device</Button>
  </DialogTrigger>
  )}
- <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+ <DialogContent className="sm:max-w-[600px]">
  <DialogHeader>
  <DialogTitle>Add New MikroTik Device</DialogTitle>
  <DialogDescription>
@@ -531,7 +531,7 @@ export function MikrotikClient({ initialDevices }: MikrotikClientProps) {
  open={isStatusDialogOpen}
  onOpenChange={setIsStatusDialogOpen}
  >
- <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
+ <DialogContent className="sm:max-w-[800px]">
  <DialogHeader>
  <DialogTitle>Device Status: {selectedDeviceStatus?.name}</DialogTitle>
  <DialogDescription>
@@ -604,7 +604,7 @@ export function MikrotikClient({ initialDevices }: MikrotikClientProps) {
  open={isInterfacesDialogOpen}
  onOpenChange={setIsInterfacesDialogOpen}
  >
- <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
+ <DialogContent className="sm:max-w-[800px]">
  <DialogHeader>
  <DialogTitle>Device Interfaces</DialogTitle>
  <DialogDescription>

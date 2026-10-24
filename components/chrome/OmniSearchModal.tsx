@@ -136,7 +136,7 @@ export default function OmniSearchModal() {
         if (!next) reset();
       }}
     >
-      <DialogContent className="top-[12%] max-w-xl translate-y-0">
+      <DialogContent className="top-[12%] max-h-[calc(88dvh-1rem)] max-w-xl translate-y-0">
         <DialogHeader>
           <DialogTitle className="sr-only">Omni Search</DialogTitle>
           <DialogDescription className="sr-only">

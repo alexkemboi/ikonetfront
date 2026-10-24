@@ -185,7 +185,7 @@ const res = await generateVouchers({
  }
  }}
  >
- <DialogContent className="flex max-h-[85vh] w-full flex-col gap-0 overflow-hidden border-border bg-card p-0 text-foreground sm:max-w-lg">
+ <DialogContent className="flex max-h-[85dvh] flex-col gap-0 overflow-hidden border-border bg-card p-0 text-foreground sm:max-w-lg">
  <DialogHeader className="shrink-0 gap-2 border-b border-border px-6 pt-6 pb-4">
  <DialogTitle className="text-base font-semibold text-foreground">
  Generate Vouchers
