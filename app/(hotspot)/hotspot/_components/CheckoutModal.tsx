@@ -192,7 +192,7 @@ try {
   const canClose = !isProcessing;
 
   return <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true" aria-label="Hotspot payment">
-    <div className="bg-card rounded-xl max-w-md w-full shadow-lg border border-border">
+    <div className="bg-card rounded-xl max-w-md w-full max-h-[calc(100dvh-2rem)] overflow-y-auto overscroll-contain shadow-lg border border-border">
       <div className="flex items-center justify-between p-4 border-b border-border">
         <div><h3 className="text-lg font-normal text-foreground">{view === "active" ? "You’re connected" : view === "checkout" ? "Confirm Purchase" : "Payment status"}</h3><p className="text-xs text-muted-foreground">{brand}</p></div>
         <Button onClick={onClose} disabled={!canClose} variant="ghost" size="icon-sm" aria-label="Close"><X className="w-5 h-5" /></Button>

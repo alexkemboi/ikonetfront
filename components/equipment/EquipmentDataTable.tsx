@@ -210,7 +210,7 @@ export function EquipmentDataTable({ pageData, canEdit }: { pageData: EquipmentP
             role="dialog"
             aria-modal="true"
             aria-labelledby="asset-correction-title"
-            className="w-full max-w-lg space-y-4 rounded-lg border bg-card p-5"
+            className="max-h-[calc(100dvh-2rem)] w-full max-w-lg space-y-4 overflow-y-auto overscroll-contain rounded-lg border bg-card p-5"
             onClick={(event) => event.stopPropagation()}
             onSubmit={(event) => void saveCorrection(event)}
           >
@@ -261,7 +261,7 @@ export function EquipmentDataTable({ pageData, canEdit }: { pageData: EquipmentP
             role="dialog"
             aria-modal="true"
             aria-labelledby="asset-history-title"
-            className="max-h-[80vh] w-full max-w-2xl overflow-y-auto rounded-lg border bg-card p-5"
+            className="max-h-[calc(100dvh-2rem)] w-full max-w-2xl overflow-y-auto overscroll-contain rounded-lg border bg-card p-5"
             onClick={(event) => event.stopPropagation()}
           >
             <div className="flex items-center justify-between">

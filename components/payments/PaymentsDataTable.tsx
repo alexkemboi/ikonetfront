@@ -25,6 +25,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { DataTable } from "@/components/shared/data-table";
 
@@ -60,7 +61,6 @@ function ConnectionBadge({ connection }: { connection: PaymentConnection }) {
 
 export function PaymentsDataTable({ payments, canIssueVoucher = true, canRefund = false }: Props) {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
   const [emailTarget, setEmailTarget] = useState<PaymentLedgerItem | null>(null);
   const [viewTarget, setViewTarget] = useState<PaymentLedgerItem | null>(null);
   const [email, setEmail] = useState("");
@@ -83,7 +83,6 @@ export function PaymentsDataTable({ payments, canIssueVoucher = true, canRefund 
   const [refunding, setRefunding] = useState(false);
 
   const openRefund = (p: PaymentLedgerItem) => {
-    setActiveMenuId(null);
     setRefundTarget(p);
     setRefundAmount(String(p.amount));
     setRefundReason("");
@@ -123,7 +122,6 @@ export function PaymentsDataTable({ payments, canIssueVoucher = true, canRefund 
   function openCompensate(p: PaymentLedgerItem) {
     setCompensateTarget(p);
     setIssuedVoucher(null);
-    setActiveMenuId(null);
   }
 
   async function handleCompensate() {
@@ -151,16 +149,13 @@ export function PaymentsDataTable({ payments, canIssueVoucher = true, canRefund 
  function openEmailDialog(p: PaymentLedgerItem) {
  setEmailTarget(p);
  setEmail("");
- setActiveMenuId(null);
  }
 
  function openViewDialog(p: PaymentLedgerItem) {
  setViewTarget(p);
- setActiveMenuId(null);
  }
 
  async function handleDownload(p: PaymentLedgerItem) {
- setActiveMenuId(null);
  setDownloadingId(p.id);
  try {
  const pdf = await downloadReceiptPdf(p.statementId);
@@ -305,43 +300,31 @@ export function PaymentsDataTable({ payments, canIssueVoucher = true, canRefund 
  cell: ({ row }) => {
  const p = row.original;
  return (
- <div className="relative text-right">
- <button
- onClick={() => setActiveMenuId(activeMenuId === p.id ? null : p.id)}
- className="text-muted-foreground hover:text-accent-foreground"
- aria-label="Payment actions"
- >
+ <div className="text-right">
+ <DropdownMenu>
+ <DropdownMenuTrigger asChild>
+ <button className="text-muted-foreground hover:text-accent-foreground" aria-label="Payment actions">
  <MoreHorizontal className="h-4 w-4" />
  </button>
-
- {activeMenuId === p.id && (
- <div className="absolute right-0 top-8 z-20 w-44 rounded-xl border border-border bg-popover py-1 shadow-2xl text-left">
- <button
- onClick={() => openViewDialog(p)}
- className="flex w-full items-center gap-2 px-3 py-2 text-xs text-muted-foreground hover:bg-accent hover:text-accent-foreground"
- >
+ </DropdownMenuTrigger>
+ <DropdownMenuContent align="end" className="w-44 rounded-xl py-1 shadow-2xl">
+ <DropdownMenuItem onSelect={() => openViewDialog(p)} className="flex w-full items-center gap-2 px-3 py-2 text-xs text-muted-foreground focus:bg-accent focus:text-accent-foreground">
  <Eye className="h-3.5 w-3.5" /> View payment
- </button>
+ </DropdownMenuItem>
  {canIssueVoucher && p.connection === "NOT_CONNECTED" && p.mpesaReceipt && (
- <button
- onClick={() => openCompensate(p)}
- className="flex w-full items-center gap-2 px-3 py-2 text-xs text-rose-400 hover:bg-accent"
- >
+ <DropdownMenuItem onSelect={() => openCompensate(p)} className="flex w-full items-center gap-2 px-3 py-2 text-xs text-muted-foreground focus:bg-accent focus:text-accent-foreground text-rose-400 focus:text-rose-400">
  <RotateCcw className="h-3.5 w-3.5" /> Issue voucher
- </button>
+ </DropdownMenuItem>
  )}
  {canRefund && p.paymentId && (
- <button
- onClick={() => openRefund(p)}
- className="flex w-full items-center gap-2 px-3 py-2 text-xs text-muted-foreground hover:bg-accent hover:text-accent-foreground"
- >
+ <DropdownMenuItem onSelect={() => openRefund(p)} className="flex w-full items-center gap-2 px-3 py-2 text-xs text-muted-foreground focus:bg-accent focus:text-accent-foreground">
  <RotateCcw className="h-3.5 w-3.5" /> Refund…
- </button>
+ </DropdownMenuItem>
  )}
- <button
- onClick={() => handleDownload(p)}
+ <DropdownMenuItem
+ onSelect={() => handleDownload(p)}
  disabled={downloadingId === p.id || !p.statementId}
- className="flex w-full items-center gap-2 px-3 py-2 text-xs text-muted-foreground hover:bg-accent hover:text-accent-foreground disabled:opacity-40 disabled:pointer-events-none"
+ className="flex w-full items-center gap-2 px-3 py-2 text-xs text-muted-foreground focus:bg-accent focus:text-accent-foreground"
  >
  {downloadingId === p.id ? (
  <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -349,22 +332,18 @@ export function PaymentsDataTable({ payments, canIssueVoucher = true, canRefund 
  <Download className="h-3.5 w-3.5" />
  )}{" "}
  Download PDF receipt
- </button>
- <button
- onClick={() => openEmailDialog(p)}
- disabled={!p.statementId}
- className="flex w-full items-center gap-2 px-3 py-2 text-xs text-muted-foreground hover:bg-accent hover:text-accent-foreground disabled:opacity-40 disabled:pointer-events-none"
- >
+ </DropdownMenuItem>
+ <DropdownMenuItem onSelect={() => openEmailDialog(p)} disabled={!p.statementId} className="flex w-full items-center gap-2 px-3 py-2 text-xs text-muted-foreground focus:bg-accent focus:text-accent-foreground">
  <Mail className="h-3.5 w-3.5" /> Email receipt
- </button>
- </div>
- )}
+ </DropdownMenuItem>
+ </DropdownMenuContent>
+ </DropdownMenu>
  </div>
  );
  },
  },
  ],
- [activeMenuId, downloadingId, canIssueVoucher, canRefund]
+ [downloadingId, canIssueVoucher, canRefund]
  );
 
  return (
