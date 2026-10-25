@@ -21,6 +21,24 @@ const when = (value: string) =>
  * Confirmed outages of one router. Stricter than "Recent incidents" above it, which
  * lists every missed health check: an outage needs about 2 minutes without an answer.
  */
+/**
+ * " · outage SMS: 12 sent, 3 not sent (SMS sending is off)". What was delivered to the provider,
+ * never just what was queued: a queued message may still expire unsent.
+ */
+export function smsLine(label: string, queued: number | null, sent?: number, failed?: number, expired?: number,
+                        waiting?: number): string {
+  const total = (sent ?? 0) + (failed ?? 0) + (expired ?? 0) + (waiting ?? 0);
+  if (total === 0) {
+    // older server: only the queued count is known, and it does not mean delivered
+    return queued != null && queued > 0 ? ` · ${label} queued for ${queued} (delivery unknown)` : "";
+  }
+  const parts = [`${sent ?? 0} sent`];
+  if (waiting) parts.push(`${waiting} waiting`);
+  if (failed) parts.push(`${failed} refused by the provider`);
+  if (expired) parts.push(`${expired} not sent (SMS sending was off or failing)`);
+  return ` · ${label}: ${parts.join(", ")}`;
+}
+
 export function RouterOutages({ routerId }: { routerId: number }) {
   const [outages, setOutages] = useState<RouterOutage[] | null>(null);
   const [error, setError] = useState("");
@@ -98,7 +116,10 @@ export function RouterOutages({ routerId }: { routerId: number }) {
                 <span className="text-muted-foreground">{outageCauseLabel(outage)}</span>
                 <span className="basis-full text-xs text-muted-foreground">
                   {outageCreditLabel(outage)}
-                  {outage.outageSmsCount != null ? ` · outage SMS to ${outage.outageSmsCount} phone ${outage.outageSmsCount === 1 ? "number" : "numbers"}` : ""}
+                  {smsLine("outage SMS", outage.outageSmsCount, outage.outageSmsSent, outage.outageSmsFailed,
+                    outage.outageSmsExpired, outage.outageSmsWaiting)}
+                  {smsLine("“service restored” SMS", null, outage.restoredSmsSent, outage.restoredSmsFailed,
+                    outage.restoredSmsExpired, outage.restoredSmsWaiting)}
                 </span>
                 {(outage.status === "OPEN" || outage.creditStatus === "APPLIED" || outage.creditStatus === "PENDING") && (
                   <span className="basis-full">
