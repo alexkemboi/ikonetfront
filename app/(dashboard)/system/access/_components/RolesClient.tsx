@@ -539,16 +539,17 @@ async function handleSave() {
  };
  });
 
- const { success, failed } = await saveRoleMenusAction(role.id, assignments);
+ const { success, failed, message } = await saveRoleMenusAction(role.id, assignments);
 
  if (failed === 0) {
  toast.success("Permissions saved", {
- description: `${success} item${success !== 1 ? "s" : ""} updated.`,
+ description: `${success} item${success !== 1 ? "s" : ""} updated. People with this role see the change when they next load a page.`,
  });
  dispatch(markSaved(role.id));
  } else {
- toast.error("Partial save", {
- description: `${success} succeeded, ${failed} failed. Retry to fix failures.`,
+ // the save is all or nothing: nothing was changed
+ toast.error("Permissions not saved", {
+ description: message || "Nothing was changed. Try again.",
  });
  }
  } catch {

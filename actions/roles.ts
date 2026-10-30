@@ -1,7 +1,7 @@
 "use server";
 
 import { withCompanyContext } from "@/lib/companyContext";
-import { revalidatePath, revalidateTag } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
 import { auth } from "@/lib/auth";
 import { buildApiUrl } from "@/lib/constants";
 import type { ApiResponse } from "@/lib/types/auth";
@@ -158,7 +158,7 @@ export async function addRoleAction(
 export async function saveRoleMenusAction(
   roleCode: string,
   assignments: MenuAssignment[]
-): Promise<{ success: number; failed: number }> {
+): Promise<{ success: number; failed: number; message?: string }> {
   const headers = await getAuthHeaders();
   const url = buildApiUrl(`/system-setup/${roleCode}/menus`);
 
@@ -173,14 +173,16 @@ export async function saveRoleMenusAction(
     const data: ApiResponse<unknown> = await res.json();
 
     if (data.success) {
-      revalidateTag(NAV_MENUS_TAG, 'max');
-      revalidateTag(`${NAV_MENUS_TAG}-${roleCode}`, 'max');
+      // updateTag expires the cached menus at once, so every account of this role gets the new
+      // sidebar on its next page load (revalidateTag(…, 'max') served the old one once more)
+      updateTag(NAV_MENUS_TAG);
+      updateTag(`${NAV_MENUS_TAG}-${roleCode}`);
       revalidatePath("/system/access");
 
       return { success: assignments.length, failed: 0 };
     }
 
-    return { success: 0, failed: assignments.length };
+    return { success: 0, failed: assignments.length, message: data.message };
   } catch {
     return { success: 0, failed: assignments.length };
   }

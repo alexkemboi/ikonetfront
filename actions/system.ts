@@ -62,7 +62,8 @@ export type UserData = {
   otherName?:  string;
   email?:      string;
   phoneNumber?: string;
-  companyId:   string;
+  /** Left out for a Network Partner: an investor's login belongs to no company (it reads every linked one). */
+  companyId?:  string;
   /** Investor party id. Required by the backend for the Network Partner role, refused for any other. */
   investorId?: string;
 };
