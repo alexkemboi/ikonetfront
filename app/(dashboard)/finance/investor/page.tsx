@@ -27,6 +27,22 @@ const formatKES = (value: number): string =>
     Number.isFinite(value) ? value : 0
   );
 
+type Kpi = { label: string; value: string; hint?: string };
+
+function KpiCard({ kpi, large = false }: { kpi: Kpi; large?: boolean }) {
+  return (
+    <Card>
+      <CardHeader className="pb-1">
+        <CardTitle className="text-xs font-medium text-muted-foreground">{kpi.label}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <p className={large ? "text-2xl font-semibold tabular-nums" : "text-xl font-semibold tabular-nums"}>{kpi.value}</p>
+        {kpi.hint && <p className="mt-1 text-xs text-muted-foreground">{kpi.hint}</p>}
+      </CardContent>
+    </Card>
+  );
+}
+
 export default async function InvestorPortalPage({
   searchParams,
 }: {
@@ -64,19 +80,54 @@ export default async function InvestorPortalPage({
 
   // Owner decision 2026-10-05 (choice 7): an investor sees payout and maintenance
   // figures on their own login, alongside revenue and router attribution.
-  const kpis = revenue
+  // Owner, 2026-10-30: an investor's first figures are what their routers took in over the
+  // month, then what is credited to them, the system fee on that, and what is left.
+  const monthName = new Date(`${data.period}-01T00:00:00`).toLocaleString("en-KE", { month: "long", year: "numeric" });
+  const investorView = revenue !== null && revenue.investorId !== null && revenue.routersMonthRevenue != null;
+  const headline: Kpi[] = investorView && revenue
     ? [
-        { label: "Total Gross Revenue", value: formatKES(revenue.totalGrossRevenue) },
         {
-          label: revenue.investorId === null ? "Total Investor Payout Due" : "Net Investor Payout",
-          value: formatKES(revenue.netInvestorPayout),
+          label: "Your routers took in",
+          value: formatKES(revenue.routersMonthRevenue ?? 0),
+          hint: `${monthName}, whole month: hotspot, PPPoE and TV`,
         },
-        { label: "Maintenance Due", value: formatKES(revenue.totalMaintenanceDue) },
-        { label: "Active PPPoE Subscribers", value: String(revenue.activePppoeSubscribers ?? 0) },
-        { label: "Hotspot Gross", value: formatKES(revenue.hotspotGrossRevenue) },
-        { label: "Hotspot Maint. Fee", value: formatKES(revenue.hotspotMaintenanceFee) },
-        { label: "PPPoE Maint. Fee", value: formatKES(revenue.pppoeMaintenanceFee) },
+        {
+          label: "Credited to you",
+          value: formatKES(revenue.totalGrossRevenue),
+          hint: "Payments taken while each router was yours",
+        },
+        {
+          label: "System fee",
+          value: formatKES(revenue.totalMaintenanceDue),
+          hint: "On the amount credited to you, by your agreement",
+        },
+        {
+          label: "Your net payout",
+          value: formatKES(revenue.netInvestorPayout),
+          hint: "Credited to you, less the system fee",
+        },
       ]
+    : [];
+  const kpis: Kpi[] = revenue
+    ? investorView
+      ? [
+          { label: "Hotspot credited", value: formatKES(revenue.hotspotGrossRevenue) },
+          { label: "Hotspot fee", value: formatKES(revenue.hotspotMaintenanceFee) },
+          { label: "Paying PPPoE customers", value: String(revenue.activePppoeSubscribers ?? 0) },
+          { label: "PPPoE fee", value: formatKES(revenue.pppoeMaintenanceFee) },
+        ]
+      : [
+          { label: "Total Gross Revenue", value: formatKES(revenue.totalGrossRevenue) },
+          {
+            label: revenue.investorId === null ? "Total Investor Payout Due" : "Net Investor Payout",
+            value: formatKES(revenue.netInvestorPayout),
+          },
+          { label: "Maintenance Due", value: formatKES(revenue.totalMaintenanceDue) },
+          { label: "Active PPPoE Subscribers", value: String(revenue.activePppoeSubscribers ?? 0) },
+          { label: "Hotspot Gross", value: formatKES(revenue.hotspotGrossRevenue) },
+          { label: "Hotspot Maint. Fee", value: formatKES(revenue.hotspotMaintenanceFee) },
+          { label: "PPPoE Maint. Fee", value: formatKES(revenue.pppoeMaintenanceFee) },
+        ]
     : [];
 
   return (
@@ -137,15 +188,18 @@ export default async function InvestorPortalPage({
           </div>
         )}
 
+        {headline.length > 0 && (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {headline.map((kpi) => (
+              <KpiCard key={kpi.label} kpi={kpi} large />
+            ))}
+          </div>
+        )}
+
         {revenue && (
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
             {kpis.map((kpi) => (
-              <Card key={kpi.label}>
-                <CardHeader className="pb-1">
-                  <CardTitle className="text-xs font-medium text-muted-foreground">{kpi.label}</CardTitle>
-                </CardHeader>
-                <CardContent className="text-xl font-semibold">{kpi.value}</CardContent>
-              </Card>
+              <KpiCard key={kpi.label} kpi={kpi} />
             ))}
           </div>
         )}
