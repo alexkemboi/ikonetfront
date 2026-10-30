@@ -6,7 +6,12 @@ export const metadata = {
  title: "Reset Password — Beesmart Billing",
 };
 
-export default function ForgotPasswordPage() {
+export default async function ForgotPasswordPage({
+ searchParams,
+}: {
+ searchParams: Promise<{ email?: string }>;
+}) {
+ const { email = "" } = await searchParams;
  return (
  <div className="space-y-8">
  {/* Back link */}
@@ -30,7 +35,7 @@ export default function ForgotPasswordPage() {
  </div>
 
  {/* Form (client component) */}
- <ForgotPasswordForm />
+ <ForgotPasswordForm initialEmail={email} />
  </div>
  );
 }
