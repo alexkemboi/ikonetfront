@@ -19,7 +19,7 @@ const validationSchema = Yup.object({
  .required("Email is required"),
 });
 
-export default function ForgotPasswordForm() {
+export default function ForgotPasswordForm({ initialEmail = "" }: { initialEmail?: string }) {
  const router = useRouter();
  const [sentTo, setSentTo] = useState<string | null>(null);
  const [cooldown, setCooldown] = useState(0);
@@ -33,7 +33,7 @@ export default function ForgotPasswordForm() {
  }, [cooldown]);
 
  const formik = useFormik({
- initialValues: { email: "" },
+ initialValues: { email: initialEmail },
  validationSchema,
  onSubmit: async (values) => {
  const result = await forgotPasswordAction(values.email);

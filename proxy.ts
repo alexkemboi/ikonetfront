@@ -14,6 +14,7 @@ function investorMayOpen(pathname: string): boolean {
         pathname === INVESTOR_HOME ||
         pathname.startsWith(`${INVESTOR_HOME}/`) ||
         pathname === "/dashboard" ||
+        pathname === "/account/alerts" ||
         pathname === "/no-access" ||
         pathname.startsWith("/api/")
     );

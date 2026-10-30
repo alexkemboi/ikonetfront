@@ -22,6 +22,7 @@ import StepUpIndicator from "@/components/chrome/StepUpIndicator";
 import ChangePasswordDialog from "@/components/chrome/ChangePasswordDialog";
 import { openOmniSearch } from "@/lib/omniSearchEvents";
 import type { NavGroup } from "@/lib/nav";
+import { normalizeRole, ROLE_NAME } from "@/lib/types/roles";
 import { useAppTheme } from "@/providers/AppThemeProvider";
 
 // Derives a human-readable title from the current pathname
@@ -193,6 +194,14 @@ const breadcrumbs = useBreadcrumb();
  <KeyRound className="mr-2 h-4 w-4" />
  Change my password
  </DropdownMenuItem>
+ {normalizeRole(user.role) !== ROLE_NAME.CUSTOMER && (
+ <DropdownMenuItem asChild className="cursor-pointer">
+ <Link href="/account/alerts">
+ <Bell className="mr-2 h-4 w-4" />
+ My alerts
+ </Link>
+ </DropdownMenuItem>
+ )}
  <DropdownMenuItem asChild className="cursor-pointer text-destructive focus:bg-destructive/10 focus:text-destructive">
  <Link href="/signout">
  <LogOut className="mr-2 h-4 w-4" />
