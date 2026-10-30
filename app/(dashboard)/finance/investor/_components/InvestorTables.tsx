@@ -19,6 +19,8 @@ const formatDate = (value: string | null): string =>
   value ? new Date(value).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) : "—";
 
 export function RouterAttributionTable({ rows }: { rows: RouterAttributionItem[] }) {
+  // an investor's view also says what each router took in over the whole month
+  const withMonth = rows.some((r) => r.routerMonthRevenue != null);
   const columns = useMemo<ColumnDef<RouterAttributionItem>[]>(
     () => [
       {
@@ -30,19 +32,30 @@ export function RouterAttributionTable({ rows }: { rows: RouterAttributionItem[]
           row.original.routerName || <span className="text-muted-foreground">Router not recorded</span>,
       },
       { accessorKey: "stationName", header: "Station", cell: ({ row }) => row.original.stationName || "—" },
+      ...(withMonth
+        ? [
+            {
+              id: "routerMonthRevenue",
+              header: "Router took in (month)",
+              accessorFn: (r: RouterAttributionItem) => r.routerMonthRevenue ?? 0,
+              cell: ({ row }: { row: { original: RouterAttributionItem } }) =>
+                formatKES(row.original.routerMonthRevenue ?? 0),
+            } satisfies ColumnDef<RouterAttributionItem>,
+          ]
+        : []),
       {
         accessorKey: "hotspotRevenue",
-        header: "Hotspot Revenue",
+        header: withMonth ? "Hotspot credited" : "Hotspot Revenue",
         cell: ({ row }) => formatKES(row.original.hotspotRevenue),
       },
-      { accessorKey: "pppoeSubscribers", header: "PPPoE Subscribers" },
+      { accessorKey: "pppoeSubscribers", header: withMonth ? "Paying PPPoE customers" : "PPPoE Subscribers" },
       {
         accessorKey: "totalAttributedRevenue",
-        header: "Attributed Revenue",
+        header: withMonth ? "Credited to you" : "Attributed Revenue",
         cell: ({ row }) => <span className="font-medium">{formatKES(row.original.totalAttributedRevenue)}</span>,
       },
     ],
-    []
+    [withMonth]
   );
 
   return <DataTable columns={columns} data={rows} searchPlaceholder="Search routers…" />;

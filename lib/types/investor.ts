@@ -21,6 +21,8 @@ export interface RouterAttributionItem {
   hotspotRevenue: number;
   pppoeSubscribers: number;
   totalAttributedRevenue: number;
+  /** All the router took in over the whole month, whoever it was credited to; null outside an investor view. */
+  routerMonthRevenue?: number | null;
 }
 
 /** `InvestorRevenueSummaryResponse` — bare object, no envelope. */
@@ -38,6 +40,11 @@ export interface InvestorRevenueSummary {
   totalMaintenanceDue: number;
   netInvestorPayout: number;
   routerBreakdown: RouterAttributionItem[];
+  /**
+   * For one investor: everything their routers took in over the whole month (hotspot, PPPoE
+   * and TV), including any part taken before a router became theirs. Null without an investor.
+   */
+  routersMonthRevenue?: number | null;
 }
 
 /** `InvestorBillingSnapshot` — one FINALIZED/PAID monthly bill for the investor. */
