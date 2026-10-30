@@ -651,7 +651,8 @@ export default function InvestorsClient({ investors, routers, isPlatformAdmin }:
                 </p>
               </div>
               <p className="text-xs text-muted-foreground">
-                Maintenance charge the company keeps each month. Leave a rate empty to charge nothing for that service.
+                Maintenance charge the company keeps each month. Leave one rate empty to charge nothing for that service;
+                leave both empty to use the company&apos;s standard terms.
               </p>
               {(
                 [
