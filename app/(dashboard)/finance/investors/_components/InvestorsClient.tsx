@@ -3,7 +3,7 @@
 import { useCallback, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Loader2, Plus, Router as RouterIcon, FileText, Building2, UserRound } from "lucide-react";
+import { Loader2, Plus, Router as RouterIcon, FileText, Building2, UserRound, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -17,6 +17,7 @@ import {
   assignRouterAction,
   createAgreementAction,
   createInvestorAction,
+  deleteInvestorAction,
   endAgreementAction,
   endRouterAssignmentAction,
   getInvestor,
@@ -120,6 +121,21 @@ export default function InvestorsClient({ investors, routers, isPlatformAdmin }:
         const fresh = await getInvestor(detail.id);
         if (fresh.success && fresh.data) setDetail(fresh.data);
       }
+    });
+  };
+
+  /** Only an investor with no history goes; the API refuses the rest with the reason (retire them instead). */
+  const deleteInvestor = (target: InvestorDetail) => {
+    if (!window.confirm(`Delete ${target.legalName} (${target.code})? This cannot be undone.`)) return;
+    startTransition(async () => {
+      const res = await deleteInvestorAction(target.id);
+      if (!res.success) {
+        toast.error(res.message || "The investor could not be deleted");
+        return;
+      }
+      toast.success(`${target.legalName} deleted`);
+      setDetail(null);
+      router.refresh();
     });
   };
 
@@ -325,6 +341,23 @@ export default function InvestorsClient({ investors, routers, isPlatformAdmin }:
                       <Building2 className="mr-2 h-4 w-4" />
                       Link to {companyCode ?? "a company"}
                     </Button>
+                    {detail.agreements.length === 0 && detail.routers.length === 0 && detail.accounts.length === 0 ? (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-destructive"
+                        disabled={pending}
+                        onClick={() => deleteInvestor(detail)}
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Delete
+                      </Button>
+                    ) : (
+                      <p className="w-full text-xs text-muted-foreground">
+                        This investor has agreements, routers or a login, so it cannot be deleted. To stop working with
+                        it, end its router assignments, then set Status to Retired under Edit details.
+                      </p>
+                    )}
                   </div>
                 )}
 
@@ -504,7 +537,8 @@ export default function InvestorsClient({ investors, routers, isPlatformAdmin }:
             <DialogTitle>{investorForm?.id ? "Edit investor" : "Register investor"}</DialogTitle>
             <DialogDescription>
               An investor belongs to the platform and can work with more than one company. The code is issued
-              automatically.
+              automatically. These are contact details only: they create no login. The investor&apos;s login is a
+              Network Partner account made under System &gt; Users.
             </DialogDescription>
           </DialogHeader>
           {investorForm && (
@@ -617,7 +651,8 @@ export default function InvestorsClient({ investors, routers, isPlatformAdmin }:
                 </p>
               </div>
               <p className="text-xs text-muted-foreground">
-                Maintenance charge the company keeps each month. Leave a rate empty to charge nothing for that service.
+                Maintenance charge the company keeps each month. Leave one rate empty to charge nothing for that service;
+                leave both empty to use the company&apos;s standard terms.
               </p>
               {(
                 [

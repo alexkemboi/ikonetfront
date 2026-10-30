@@ -57,6 +57,11 @@ export async function updateInvestorAction(
   return write<InvestorDetail>(`/investors/${encodeURIComponent(investorId)}`, "PUT", input);
 }
 
+/** Removes an investor with no history; the backend refuses one with history (retire it instead). */
+export async function deleteInvestorAction(investorId: string): Promise<ApiResponse<null>> {
+  return write<null>(`/investors/${encodeURIComponent(investorId)}`, "DELETE");
+}
+
 /** Links the investor to the selected company (the backend takes the company from the context). */
 export async function linkInvestorCompanyAction(investorId: string): Promise<ApiResponse<InvestorDetail>> {
   return write<InvestorDetail>(`/investors/${encodeURIComponent(investorId)}/companies`, "POST", {});

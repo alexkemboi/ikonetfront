@@ -143,8 +143,11 @@ function CreateUserSheet({
  initialValues: EMPTY,
  validationSchema: schema,
  onSubmit: async (values, { resetForm, setFieldError }) => {
- if (!companyId) {
- toast.error("Choose a company before creating a user.");
+ // A Network Partner login belongs to no company, so an investor working with several
+ // companies is not tied to one; every other account belongs to the selected company.
+ const investorLogin = isInvestorRole(values.role);
+ if (!companyId && !investorLogin) {
+ toast.error("Choose a company in the top bar before creating a staff account.");
  return;
  }
  const payload: UserData = {
@@ -156,8 +159,7 @@ function CreateUserSheet({
  phoneNumber: values.phoneNumber || undefined,
  role: values.role,
  password: values.password,
- companyId,
- ...(isInvestorRole(values.role) ? { investorId: values.investorId } : {}),
+ ...(investorLogin ? { investorId: values.investorId } : { companyId: companyId ?? undefined }),
  };
 
  const result = await addSystemUser(payload);
@@ -536,7 +538,11 @@ export default function StaffUsersClient({ initialPage, roles, isPlatformAdmin, 
  </Button>
  )}
  {perms.canCreate && canManageUsers && (
- <Button onClick={() => requireCompany(() => setSheetOpen(true))} className="gap-2 shrink-0">
+ <Button
+ // a SYSADMIN may open the form with no company: a Network Partner login needs none, and the form asks for one for any other role
+ onClick={() => (isPlatformAdmin ? setSheetOpen(true) : requireCompany(() => setSheetOpen(true)))}
+ className="gap-2 shrink-0"
+ >
  <UserPlus className="w-4 h-4" />
  Add User
  </Button>
