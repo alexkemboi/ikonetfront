@@ -14,6 +14,8 @@ import { AgreementsTable, BillingSnapshotsTable, RouterAttributionTable } from "
 import { getFeeReceivingAccount, getMyFees } from "@/actions/platformFees";
 import { FeePayNow } from "@/components/finance/FeePayNow";
 import { feeDate, kes, STANDING_CLASS, STANDING_LABEL } from "@/components/finance/systemFeeFormat";
+import { getMyPortfolio } from "@/actions/investorPortfolio";
+import InvestorPortfolioView from "@/components/investors/InvestorPortfolioView";
 
 export const dynamic = "force-dynamic";
 
@@ -67,14 +69,81 @@ export default async function InvestorPortalPage({
   const pagePerms = await getPermissionForRoute("/finance/investor");
   if (!pagePerms.canView) redirect("/no-access");
 
+  // Owner, 2026-10-31: an investor's page tells the whole story of their month (what their
+  // routers made, what is theirs, what they owe) per router and per service.
+  if (role === ROLE_NAME.INVESTOR) {
+    const [{ portfolio, message }, fees] = await Promise.all([getMyPortfolio(period), getMyFees()]);
+    const owing = fees.filter((f) => f.balance.balance > 0);
+    const account = owing.length > 0 ? await getFeeReceivingAccount() : null;
+    return (
+      <div className="min-h-screen p-4 text-foreground sm:p-6 lg:p-8">
+        <div className="mx-auto max-w-7xl space-y-6">
+          <div className="flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <span className="text-[11px] tracking-wider text-muted-foreground uppercase">
+                Partner — investor portal{portfolio ? ` · ${portfolio.investor.name}` : ""}
+              </span>
+              <h1 className="text-3xl font-normal">Money flow.</h1>
+              <p className="mt-1 text-xs text-muted-foreground">
+                What your routers made, what is yours, and what you owe the platform · read-only
+              </p>
+            </div>
+            <form method="get" className="flex items-end gap-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="portfolio-period">Month</Label>
+                <Input id="portfolio-period" name="period" type="month" defaultValue={portfolio?.period ?? period} className="w-44" />
+              </div>
+              <Button type="submit" variant="outline">Show</Button>
+            </form>
+          </div>
+
+          {owing.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Pay the system fee</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {owing.map(({ balance }) => (
+                  <div key={balance.agreementId} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border p-3">
+                    <div>
+                      <p className="text-sm font-medium">
+                        {balance.companyName} · {balance.agreementCode}{" "}
+                        <span className={`ml-1 rounded-full px-2 py-0.5 text-xs font-semibold ${STANDING_CLASS[balance.feeStatus]}`}>
+                          {STANDING_LABEL[balance.feeStatus]}
+                        </span>
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {kes(balance.balance)} due {feeDate(balance.oldestDueDate)} · suspension from {feeDate(balance.suspendDate)}
+                      </p>
+                    </div>
+                    <FeePayNow agreementId={balance.agreementId} agreementCode={balance.agreementCode}
+                      balance={balance.balance} account={account} />
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
+
+          {portfolio ? (
+            <InvestorPortfolioView portfolio={portfolio} audience="investor" />
+          ) : (
+            <div className="rounded-lg border border-dashed border-border p-6 text-sm text-muted-foreground">
+              {message || "Your figures could not be loaded."}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   const data = await getInvestorMoneyFlowData({
     period,
     companyId: platformAdmin ? params.companyId : undefined,
     investorId: platformAdmin ? params.investorId : undefined,
   });
   const revenue = data.revenue;
-  // what the signed-in investor owes the platform; empty for every other role
-  const myFees = role === ROLE_NAME.INVESTOR ? await getMyFees() : [];
+  // what the signed-in investor owes the platform: investors were served above, so none here
+  const myFees: Awaited<ReturnType<typeof getMyFees>> = [];
   const feeAccount = myFees.some((f) => f.balance.balance > 0) ? await getFeeReceivingAccount() : null;
   const routerRows: RouterAttributionItem[] = revenue?.routerBreakdown ?? [];
 

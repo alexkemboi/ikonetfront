@@ -39,6 +39,8 @@ type Props = {
   investors: InvestorSummary[];
   routers: RouterOption[];
   isPlatformAdmin: boolean;
+  /** This investor's set-up sheet, open from the start (linked from the investor page). */
+  initialDetail?: InvestorDetail | null;
 };
 
 const EMPTY_INVESTOR: InvestorInput = { legalName: "", contactName: "", phone: "", email: "", notes: "" };
@@ -74,12 +76,12 @@ function lastMonth(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 }
 
-export default function InvestorsClient({ investors, routers, isPlatformAdmin }: Props) {
+export default function InvestorsClient({ investors, routers, isPlatformAdmin, initialDetail = null }: Props) {
   const router = useRouter();
   const { requireCompany, companyCode } = useCompanyScope();
   const [pending, startTransition] = useTransition();
 
-  const [detail, setDetail] = useState<InvestorDetail | null>(null);
+  const [detail, setDetail] = useState<InvestorDetail | null>(initialDetail);
   const [loadingId, setLoadingId] = useState<string | null>(null);
 
   const [investorForm, setInvestorForm] = useState<{ id: string | null; values: InvestorInput } | null>(null);
@@ -254,12 +256,13 @@ export default function InvestorsClient({ investors, routers, isPlatformAdmin }:
                 <TableHead className="text-right">Routers</TableHead>
                 {isPlatformAdmin && <TableHead className="text-right">Accounts</TableHead>}
                 <TableHead>Status</TableHead>
+                <TableHead className="w-0" />
               </TableRow>
             </TableHeader>
             <TableBody>
               {investors.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={isPlatformAdmin ? 8 : 7} className="py-10 text-center text-sm text-muted-foreground">
+                  <TableCell colSpan={isPlatformAdmin ? 9 : 8} className="py-10 text-center text-sm text-muted-foreground">
                     {isPlatformAdmin
                       ? "No investor is registered yet. Start with Register investor."
                       : "No investor is linked to your company. A system administrator registers investors and their agreements."}
@@ -267,7 +270,7 @@ export default function InvestorsClient({ investors, routers, isPlatformAdmin }:
                 </TableRow>
               )}
               {investors.map((inv) => (
-                <TableRow key={inv.id} className="cursor-pointer" onClick={() => openDetail(inv.id)}>
+                <TableRow key={inv.id} className="cursor-pointer" onClick={() => router.push(`/finance/investors/${inv.id}`)}>
                   <TableCell className="font-mono text-xs">{inv.code}</TableCell>
                   <TableCell className="font-medium">
                     {inv.legalName}
@@ -286,6 +289,19 @@ export default function InvestorsClient({ investors, routers, isPlatformAdmin }:
                     <Badge variant={inv.status === "ACTIVE" ? "default" : "secondary"}>
                       {inv.status === "ACTIVE" ? "Active" : "Retired"}
                     </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={(e) => {
+                        // the row opens the investor's page; this opens the set-up sheet instead
+                        e.stopPropagation();
+                        openDetail(inv.id);
+                      }}
+                    >
+                      Manage
+                    </Button>
                   </TableCell>
                 </TableRow>
               ))}

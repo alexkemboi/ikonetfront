@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
-import { listInvestors, listRouterAssignments } from "@/actions/investorRegistry";
+import { getInvestor, listInvestors, listRouterAssignments } from "@/actions/investorRegistry";
 import { getMikrotikDevices } from "@/actions/mikrotik";
 import { isPlatformAdminRole, normalizeRole, ROLE_NAME } from "@/lib/types/roles";
 import InvestorsClient from "./_components/InvestorsClient";
@@ -17,19 +17,22 @@ export const metadata = { title: "Investors" };
  * SYSADMIN does everything. A company admin sees the investors linked to their
  * company and assigns or releases their company's routers.
  */
-export default async function InvestorsPage() {
+export default async function InvestorsPage({ searchParams }: { searchParams: Promise<{ manage?: string }> }) {
+  const { manage } = await searchParams;
   const session = await auth();
   const role = session?.user?.role ?? "";
   const isPlatformAdmin = isPlatformAdminRole(role);
   const isCompanyAdmin = normalizeRole(role) === ROLE_NAME.ADMIN && !isPlatformAdmin;
   if (!isPlatformAdmin && !isCompanyAdmin) redirect("/dashboard");
 
-  const [investors, devices, owned, feeBalances, receivingCandidates] = await Promise.all([
+  // "Manage agreements and routers" on an investor's page lands here with ?manage=<id>
+  const [investors, devices, owned, feeBalances, receivingCandidates, managed] = await Promise.all([
     listInvestors(),
     getMikrotikDevices(),
     listRouterAssignments({ currentOnly: true }),
     getFeeBalances(),
     isPlatformAdmin ? getFeeReceivingCandidates() : Promise.resolve([]),
+    manage ? getInvestor(manage) : Promise.resolve(null),
   ]);
   const ownerOf = new Map(owned.map((a) => [a.routerId, `${a.investorName} (${a.investorCode})`]));
   const routers: RouterOption[] = (devices.data ?? [])
@@ -44,7 +47,7 @@ export default async function InvestorsPage() {
 
   return (
     <>
-      <InvestorsClient investors={investors} routers={routers} isPlatformAdmin={isPlatformAdmin} />
+      <InvestorsClient investors={investors} routers={routers} isPlatformAdmin={isPlatformAdmin} initialDetail={managed?.success ? managed.data : null} />
       <SystemFeesLedger
         balances={feeBalances}
         canRecordPayment={isPlatformAdmin}
