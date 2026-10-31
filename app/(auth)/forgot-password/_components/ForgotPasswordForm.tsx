@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useHydrated } from "@/lib/useHydrated";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useFormik } from "formik";
@@ -24,6 +25,7 @@ export default function ForgotPasswordForm({ initialEmail = "" }: { initialEmail
  const [sentTo, setSentTo] = useState<string | null>(null);
  const [cooldown, setCooldown] = useState(0);
  const [resending, setResending] = useState(false);
+  const ready = useHydrated();
 
  // Countdown timer after code is sent
  useEffect(() => {
@@ -104,7 +106,7 @@ export default function ForgotPasswordForm({ initialEmail = "" }: { initialEmail
 
  // ── Step 1: email form ────────────────────────────────────────────────
  return (
- <form onSubmit={formik.handleSubmit} noValidate className="space-y-5">
+ <form method="post" onSubmit={formik.handleSubmit} noValidate className="space-y-5">
  <div className="space-y-2">
  <Label htmlFor="email">Email Address</Label>
  <Input
@@ -121,7 +123,7 @@ export default function ForgotPasswordForm({ initialEmail = "" }: { initialEmail
  )}
  </div>
 
- <Button type="submit" className="w-full h-10" disabled={formik.isSubmitting}>
+ <Button type="submit" className="w-full h-10" disabled={formik.isSubmitting || !ready}>
  {formik.isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Send Reset Code"}
  </Button>
  </form>

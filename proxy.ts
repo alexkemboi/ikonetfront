@@ -33,6 +33,15 @@ export const proxy = authMiddleware((req) => {
     // Always let NextAuth's own API routes through
     if (isApiAuthRoute) return NextResponse.next();
 
+    // Credentials must never travel in a URL. A sign-in that was submitted as a plain GET (or an
+    // old link/bookmark carrying them) is sent back to the clean page without them.
+    if (["/login", "/forgot-password", "/reset-password"].includes(nextUrl.pathname) && ["username", "email", "password", "newPassword", "confirmPassword", "otp", "code"].some((k) => nextUrl.searchParams.has(k))) {
+        const clean = new URL(nextUrl.pathname, req.url);
+        const error = nextUrl.searchParams.get("error");
+        if (error) clean.searchParams.set("error", error);
+        return NextResponse.redirect(clean);
+    }
+
     // On login/reset pages: send already-authed users to dashboard
     if (isAuthRoute) {
         if (isAuthenticated && !hasTokenError && req.auth?.user && nextUrl.pathname !== "/signout") {
