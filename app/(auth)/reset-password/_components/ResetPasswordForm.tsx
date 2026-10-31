@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useHydrated } from "@/lib/useHydrated";
 import { useRouter } from "next/navigation";
 import { useFormik } from "formik";
 import * as Yup from "yup";
@@ -45,6 +46,7 @@ export default function ResetPasswordForm({ email }: { email: string }) {
  const [showConfirm, setShowConfirm] = useState(false);
  const [apiError, setApiError] = useState<string | null>(null);
  const [done, setDone] = useState(false);
+  const ready = useHydrated();
 
  const formik = useFormik({
  initialValues: { otp: "", password: "", confirmPassword: "" },
@@ -86,7 +88,7 @@ export default function ResetPasswordForm({ email }: { email: string }) {
 
  // ── Form ──────────────────────────────────────────────────────────────
  return (
- <form onSubmit={formik.handleSubmit} noValidate className="space-y-5">
+ <form method="post" onSubmit={formik.handleSubmit} noValidate className="space-y-5">
 
  {/* API error banner */}
  {apiError && (
@@ -188,7 +190,7 @@ export default function ResetPasswordForm({ email }: { email: string }) {
  )}
  </div>
 
- <Button type="submit" className="w-full h-10" disabled={formik.isSubmitting}>
+ <Button type="submit" className="w-full h-10" disabled={formik.isSubmitting || !ready}>
  {formik.isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Reset Password"}
  </Button>
  </form>

@@ -22,6 +22,7 @@ import { signIn } from "next-auth/react";
 import { clearCompanyContextCookie } from "@/lib/companyContextClient";
 import { signInAction, signInCodeAction } from "@/actions/auth";
 import { cn } from "@/lib/utils";
+import { useHydrated } from "@/lib/useHydrated";
 
 const DISMISS_AFTER_MS = 6000;
 
@@ -88,6 +89,7 @@ const validationSchema = Yup.object({
 export default function LoginForm({ error }: { error?: string }) {
   const [showPassword, setShowPassword] = useState(false);
   const [busy, setBusy] = useState(false);
+  const ready = useHydrated();
   const [localError, setLocalError] = useState<string | undefined>(undefined);
   // set when the password was accepted and the server emailed a sign-in code
   const [codeStep, setCodeStep] = useState<{ username: string; role?: string } | null>(null);
@@ -159,7 +161,7 @@ export default function LoginForm({ error }: { error?: string }) {
 
   if (codeStep) {
     return (
-      <form onSubmit={submitCode} className="space-y-4" noValidate>
+      <form method="post" onSubmit={submitCode} className="space-y-4" noValidate>
         {localError && <ErrorAlert message={localError} />}
         <div className="space-y-1">
           <p className="text-sm font-medium">Check your email</p>
@@ -182,7 +184,7 @@ export default function LoginForm({ error }: { error?: string }) {
             className="h-11 tracking-widest"
           />
         </div>
-        <Button type="submit" className="h-11 w-full" disabled={busy}>
+        <Button type="submit" className="h-11 w-full" disabled={busy || !ready}>
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Sign in"}
         </Button>
         <button
@@ -200,7 +202,7 @@ export default function LoginForm({ error }: { error?: string }) {
   }
 
   return (
-    <form onSubmit={formik.handleSubmit} className="space-y-4" noValidate>
+    <form method="post" onSubmit={formik.handleSubmit} className="space-y-4" noValidate>
       {/* Auth error from URL ?error= param */}
       {error && <ErrorAlert message={error} />}
       {localError && <ErrorAlert message={localError} />}
@@ -255,7 +257,7 @@ export default function LoginForm({ error }: { error?: string }) {
           {passwordError && <p className="text-xs text-destructive">{passwordError}</p>}
         </div>
 
-        <Button type="submit" className="h-12 w-full gap-2 rounded-full text-base" disabled={busy}>
+        <Button type="submit" className="h-12 w-full gap-2 rounded-full text-base" disabled={busy || !ready}>
           {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : "Sign in"}
         </Button>
 
