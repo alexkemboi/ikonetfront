@@ -49,7 +49,7 @@ export default function ResetPasswordForm({ email }: { email: string }) {
   const ready = useHydrated();
 
  const formik = useFormik({
- initialValues: { otp: "", password: "", confirmPassword: "" },
+ initialValues: { email, otp: "", password: "", confirmPassword: "" },
  validationSchema,
  onSubmit: async (values) => {
  setApiError(null);
@@ -94,6 +94,14 @@ export default function ResetPasswordForm({ email }: { email: string }) {
  {apiError && (
  <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3">
  <p className="text-sm text-destructive">{apiError}</p>
+ </div>
+ )}
+
+ {/* The address the code was sent to: normally carried over from the previous step */}
+ {!email && (
+ <div className="space-y-2">
+ <Label htmlFor="email">Email Address</Label>
+ <Input id="email" type="email" autoComplete="email" required placeholder="The address the code was sent to" {...formik.getFieldProps("email")} />
  </div>
  )}
 

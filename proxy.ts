@@ -35,7 +35,7 @@ export const proxy = authMiddleware((req) => {
 
     // Credentials must never travel in a URL. A sign-in that was submitted as a plain GET (or an
     // old link/bookmark carrying them) is sent back to the clean page without them.
-    if (["/login", "/forgot-password", "/reset-password"].includes(nextUrl.pathname) && ["username", "email", "password", "newPassword", "confirmPassword", "otp", "code"].some((k) => nextUrl.searchParams.has(k))) {
+    if (["/login", "/forgot-password", "/reset-password"].includes(nextUrl.pathname) && ["username", "password", "newPassword", "confirmPassword", "otp", "code"].some((k) => nextUrl.searchParams.has(k))) {
         const clean = new URL(nextUrl.pathname, req.url);
         const error = nextUrl.searchParams.get("error");
         if (error) clean.searchParams.set("error", error);
