@@ -3,6 +3,7 @@
 import type { ApiResponse, LoginData, RefreshTokenResponse, AccountTypeResponse } from "@/lib/types/auth";
 import { apiFetch } from "@/lib/apiClient";
 import { getBackendAccessToken } from "@/lib/authToken";
+import { clientOriginHeaders } from "@/lib/clientOrigin";
 
 export async function loginAction(credentials: {
   username: string;
@@ -39,6 +40,7 @@ export async function signInAction(identifier: string, password: string): Promis
     method: "POST",
     body: { username: identifier, password },
     auth: "public",
+    headers: await clientOriginHeaders(),
     cache: "no-store",
   });
 }
@@ -49,6 +51,7 @@ export async function signInCodeAction(identifier: string, code: string, role?: 
     method: "POST",
     body: role ? { username: identifier, code, role } : { username: identifier, code },
     auth: "public",
+    headers: await clientOriginHeaders(),
     cache: "no-store",
   });
 }
@@ -103,6 +106,7 @@ export async function forgotPasswordAction(
     method: "POST",
     body: { email },
     auth: "public",
+    headers: await clientOriginHeaders(),
     cache: "no-store",
   });
 }
@@ -116,6 +120,7 @@ export async function resetPasswordAction(payload: {
     method: "POST",
     body: payload,
     auth: "public",
+    headers: await clientOriginHeaders(),
     cache: "no-store",
   });
 }
