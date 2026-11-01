@@ -6,13 +6,13 @@ import { getOptOuts, getPromotions } from "@/actions/promotions";
 import { PromotionsClient } from "@/components/communications/PromotionsClient";
 import { redirect } from "next/navigation";
 import BulkEmailWizard from "./_components/BulkEmailWizard";
-import { getEmailCampaigns, getEmailTemplates, getSenderSettings } from "@/actions/communications";
+import { getAudienceTree, getEmailCampaigns, getEmailTemplates, getSenderSettings, getSmsNotices } from "@/actions/communications";
 import { SenderSettingsClient } from "@/components/communications/SenderSettingsClient";
 import { EmailCampaignHistory } from "@/components/communications/EmailCampaignHistory";
-import { getCustomers } from "@/actions/customer";
+import { SmsNoticeHistory } from "@/components/communications/SmsNoticeHistory";
 import { getSystemUsers } from "@/actions/system";
 
-export const metadata = { title: "Bulk Email — Beesmart" };
+export const metadata = { title: "SMS & Emails — Beesmart" };
 
 export type EmailTemplate = {
  id: string;
@@ -50,7 +50,7 @@ export default async function BulkEmailPage({
   const tabs = (
     <nav className="mb-4 flex gap-1 border-b border-border" aria-label="Communication type">
       {[
-        { href: "/communications/bulk-email", label: "Email", active: !promotionsTab && !senderTab },
+        { href: "/communications/bulk-email", label: "Send SMS or email", active: !promotionsTab && !senderTab },
         { href: "/communications/bulk-email?tab=promotions", label: "Promotional SMS", active: promotionsTab },
         { href: "/communications/bulk-email?tab=sender", label: "Sender settings", active: senderTab },
       ].map((tab) => (
@@ -80,13 +80,14 @@ export default async function BulkEmailPage({
 
   if (promotionsTab) {
     // Only this tab's data is loaded; the email tab's customer and staff lists are not needed here.
-    const [session, promotions, optOuts] = await Promise.all([auth(), getPromotions(), getOptOuts()]);
+    const [session, promotions, optOuts, tree] = await Promise.all([auth(), getPromotions(), getOptOuts(), getAudienceTree()]);
     const role = (session?.user?.role ?? "").replace(/^ROLE_/i, "").toUpperCase();
     const isAdmin = role === "SYSADMIN" || role === "ADMIN" || role === "01";
     return (
       <div className="p-6 h-full">
         {tabs}
         <PromotionsClient
+          tree={tree.data}
           initialPromotions={promotions.data}
           initialOptOuts={optOuts.data}
           loadError={promotions.error ?? optOuts.error ?? undefined}
@@ -98,23 +99,14 @@ export default async function BulkEmailPage({
     );
   }
 
- const [templatesResult, customersResult, systemUsers, campaigns] = await Promise.all([
+ // Customers are not loaded here: the wizard asks for them by place on the network.
+ const [templatesResult, tree, systemUsers, campaigns, notices] = await Promise.all([
    getEmailTemplates(),
-  getCustomers(0, 200),
+   getAudienceTree(),
    getSystemUsers(),
    getEmailCampaigns(),
+   getSmsNotices(),
  ]);
-
-  const customers: CampaignRecipient[] = customersResult.success
-    ? (customersResult.data?.content ?? []).map((customer) => ({
-      id: customer.userIdxno,
-      name: customer.fullName || customer.username,
-      email: customer.email?.trim() || null,
-      phoneNumber: customer.phoneNumber?.trim() || null,
-      recipientType: "CUSTOMER",
-      selectable: Boolean(customer.email?.trim()),
-    }))
-    : [];
   const staff: CampaignRecipient[] = systemUsers.map((user) => ({
     id: user.idxno,
     name: user.fullName || user.username,
@@ -139,14 +131,14 @@ export default async function BulkEmailPage({
  <div className="p-6 h-full">
  {tabs}
  <BulkEmailWizard
- customers={customers}
+ tree={tree.data}
  systemUsers={staff}
  templates={templates}
  templateNotice={!templatesResult.success || templatesResult.data.length === 0 ? templatesResult.message ?? "Using built-in templates because no saved templates are available." : undefined}
  templateRequestId={templatesResult.requestId}
- recipientError={!customersResult.success ? customersResult.message ?? "Customer recipients are unavailable." : undefined}
- recipientRequestId={customersResult.requestId}
+ recipientError={tree.data ? undefined : tree.message ?? "Customer recipients are unavailable."}
  />
+ <SmsNoticeHistory notices={notices} tree={tree.data} />
  <EmailCampaignHistory campaigns={campaigns} />
  </div>
  );

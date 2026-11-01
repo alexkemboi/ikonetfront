@@ -7,8 +7,8 @@ const when = (iso: string) =>
 export function EmailCampaignHistory({ campaigns }: { campaigns: EmailCampaignSummary[] }) {
   if (campaigns.length === 0) return null;
   return (
-    <section aria-label="Recent bulk emails" className="mt-6 rounded-2xl border border-border bg-card p-5">
-      <h2 className="text-lg font-normal text-foreground">Recent bulk emails</h2>
+    <section aria-label="Recent emails" className="mt-6 rounded-2xl border border-border bg-card p-5">
+      <h2 className="text-lg font-normal text-foreground">Recent emails</h2>
       <p className="mt-1 text-xs text-muted-foreground">
         Emails go out in batches within a few minutes. &quot;No address&quot; counts people whose account has no email.
       </p>

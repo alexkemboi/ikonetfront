@@ -36,7 +36,7 @@ export const adminNavGroups: NavGroup[] = [
   {
     label: "Communications",
     items: [
-      { href: "/communications/bulk-email", label: "Bulk Email", icon: "mail" },
+      { href: "/communications/bulk-email", label: "SMS & Emails", icon: "mail" },
     ],
   },
   {

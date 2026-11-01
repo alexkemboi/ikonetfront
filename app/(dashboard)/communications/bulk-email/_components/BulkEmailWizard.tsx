@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useFormik } from "formik";
 import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
@@ -33,7 +33,17 @@ import {
   Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { sendBulkEmailAction } from "@/actions/communications";
+import {
+  getAudiencePeople,
+  sendBulkEmailAction,
+  sendSmsNoticeAction,
+  type AudienceListing,
+  type AudiencePerson,
+  type AudienceScope,
+  type AudienceTree,
+} from "@/actions/communications";
+import { AudienceFilter } from "@/components/communications/AudienceFilter";
+import { EMPTY_SCOPE, KIND_LABEL, describeScope } from "@/lib/communications/audience";
 import type { CampaignRecipient, EmailTemplate } from "../page";
 import {
   bulkEmailSchema,
@@ -44,7 +54,8 @@ import {
 } from "@/lib/validation/bulk-email";
 
 interface Props {
- customers: CampaignRecipient[];
+ /** The company's regions, locations, stations and MikroTiks; null when they could not be read. */
+ tree: AudienceTree | null;
  systemUsers: CampaignRecipient[];
  templates: EmailTemplate[];
  templateNotice?: string;
@@ -53,23 +64,42 @@ interface Props {
  recipientRequestId?: string;
 }
 
+/**
+ * One person on the list. `id` is the key sent to the server: U:<account> and P:<number>
+ * for customers (from the network filter), S:<account> for system users.
+ */
 type Recipient = {
   id: string;
   name: string;
   email: string;
   phone: string;
   recipientType: "CUSTOMER" | "SYSTEM_USER";
+  /** Where they are, e.g. "WESTGATE · ADRINOLD-WESTLANDS · PPPoE subscribers". */
+  detail?: string;
 };
 
-function campaignToRecipient(c: CampaignRecipient): Recipient {
+function staffToRecipient(c: CampaignRecipient): Recipient {
   return {
-    id: String(c.id),
+    id: `S:${c.id}`,
     name: c.name,
     email: c.email ?? "",
     phone: c.phoneNumber ?? "",
-    recipientType: c.recipientType,
+    recipientType: "SYSTEM_USER",
   };
 }
+
+function personToRecipient(p: AudiencePerson): Recipient {
+  return {
+    id: p.key,
+    name: p.name || (p.phone ? `+${p.phone}` : "Customer"),
+    email: p.email ?? "",
+    phone: p.phone ?? "",
+    recipientType: "CUSTOMER",
+    detail: [p.stationName ?? "No station", p.deviceName, KIND_LABEL[p.kind]].filter(Boolean).join(" · "),
+  };
+}
+
+const isCustomerKey = (id: string) => id.startsWith("U:") || id.startsWith("P:");
 
 function hasContactForChannel(recipient: Recipient, channel: NotificationChannel): boolean {
   return channel === "EMAIL" ? !!recipient.email : !!recipient.phone;
@@ -202,6 +232,7 @@ function RecipientRow({
         <p className="text-sm font-medium text-foreground truncate">{recipient.name}</p>
         <p className="text-xs text-muted-foreground truncate">
           {reachable ? contact : `No ${channel === "EMAIL" ? "email" : "phone number"} on file`}
+          {recipient.detail ? ` · ${recipient.detail}` : ""}
         </p>
       </div>
     </label>
@@ -246,8 +277,8 @@ function EmailPreview({
               B
             </div>
             <div>
-              <p className="text-xs font-medium text-foreground">Beesmart Internet</p>
-              <p className="text-[11px] text-muted-foreground">noreply@beesmart.co.ke</p>
+              <p className="text-xs font-medium text-foreground">Your company</p>
+              <p className="text-[11px] text-muted-foreground">Sent under the company&apos;s sender settings</p>
             </div>
           </div>
           <pre className="text-sm text-foreground font-sans whitespace-pre-wrap leading-relaxed">
@@ -294,7 +325,8 @@ function SmsPreview({ body, recipientCount, audienceLabel }: { body: string; rec
       <div className="flex items-start gap-2 p-3 rounded-lg bg-warning/10 border border-warning/30">
         <AlertCircle className="w-4 h-4 text-warning shrink-0 mt-0.5" />
         <p className="text-xs text-warning">
-          Variables like <code className="font-mono bg-warning/15 px-1 rounded">{"{{customer_name}}"}</code> will be replaced with each recipient&apos;s actual details before sending.
+          An SMS goes out exactly as written: placeholders such as {"{{customer_name}}"} are not filled in. It is sent
+          straight away, within the company&apos;s daily SMS limit, and reaches numbers that opted out of promotions.
         </p>
       </div>
     </div>
@@ -303,7 +335,7 @@ function SmsPreview({ body, recipientCount, audienceLabel }: { body: string; rec
 
 export default function BulkEmailWizard({
   templates,
-  customers,
+  tree,
   systemUsers,
   templateNotice,
   templateRequestId,
@@ -315,34 +347,52 @@ export default function BulkEmailWizard({
   const [search, setSearch] = useState("");
   const [sendError, setSendError] = useState<string | null>(null);
   const [sendRequestId, setSendRequestId] = useState<string | null>(null);
+  const [sentCount, setSentCount] = useState(0);
+  const [scope, setScope] = useState<AudienceScope>(EMPTY_SCOPE);
+  const [listing, setListing] = useState<AudienceListing | null>(null);
+  const [listingError, setListingError] = useState<string | null>(null);
+  // the scope the list on screen belongs to; while it differs from `scope` a new list is loading
+  const [loadedScope, setLoadedScope] = useState<AudienceScope | null>(null);
+  const loadingPeople = loadedScope !== scope;
 
-  // Declared before useFormik so onSubmit can resolve the selected ids to the
-  // backend payload shape ({ recipientType, recipientId: number }).
-  const customerRecipients = customers.map(campaignToRecipient);
-  const userRecipients = systemUsers.map(campaignToRecipient);
+  // Customers come from the network filter; system users from the account list.
+  const customerRecipients = (listing?.people ?? []).map(personToRecipient);
+  const userRecipients = systemUsers.map(staffToRecipient);
 
   const formik = useFormik<BulkEmailValues>({
     initialValues: BULK_EMAIL_INITIAL_VALUES,
     validationSchema: bulkEmailSchema,
     onSubmit: async (values, helpers) => {
-      const recipients = [...customerRecipients, ...userRecipients]
-        .filter((r) => values.recipientIds.includes(r.id))
-        .map((r) => ({ recipientType: r.recipientType, recipientId: Number(r.id) }))
-        .filter((r) => Number.isFinite(r.recipientId));
-
       setSendError(null);
       setSendRequestId(null);
 
-      const result = await sendBulkEmailAction({
-        recipients,
-        templateId: values.templateId,
-        subject: values.subject,
-        body: values.body,
-      });
+      let result: { success: boolean; message?: string; requestId?: string };
+      if (values.channel === "SMS") {
+        // only customers of the chosen part of the network; the server checks them again
+        const keys = values.recipientIds.filter(isCustomerKey);
+        const sms = await sendSmsNoticeAction({ scope, keys, message: values.body });
+        result = sms;
+        if (sms.success) setSentCount(sms.data?.recipients ?? keys.length);
+      } else {
+        const recipients = values.recipientIds
+          .filter((id) => id.startsWith("U:") || id.startsWith("S:"))
+          .map((id) => ({
+            recipientType: (id.startsWith("S:") ? "SYSTEM_USER" : "CUSTOMER") as "SYSTEM_USER" | "CUSTOMER",
+            recipientId: Number(id.slice(2)),
+          }))
+          .filter((r) => Number.isFinite(r.recipientId));
+        result = await sendBulkEmailAction({
+          recipients,
+          templateId: values.templateId,
+          subject: values.subject,
+          body: values.body,
+        });
+        if (result.success) setSentCount(recipients.length);
+      }
       if (result.success) {
         setSent(true);
       } else {
-        setSendError(result.message);
+        setSendError(result.message ?? "The message could not be sent.");
         setSendRequestId(result.requestId ?? null);
         toast.error("Failed to send campaign", { description: result.message });
       }
@@ -352,16 +402,40 @@ export default function BulkEmailWizard({
 
   const { values, errors, touched } = formik;
 
+  // The list follows the filter. A new filter starts a new customer selection, so what is sent
+  // is always what the filter shows.
+  useEffect(() => {
+    if (!tree) return;
+    let cancelled = false;
+    getAudiencePeople(scope).then((res) => {
+      if (cancelled) return;
+      setListing(res.data);
+      setListingError(res.data ? null : res.message ?? "The customers could not be loaded.");
+      setLoadedScope(scope);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [scope, tree]);
+
+  function changeScope(next: AudienceScope) {
+    setScope(next);
+    formik.setFieldValue("recipientIds", values.recipientIds.filter((id) => !isCustomerKey(id)));
+  }
+
   // `source` only filters which list is shown; a campaign may target customers
   // AND system users at once, so selections are tracked across both pools and
   // the send payload resolves ids against the union.
   const allRecipients = [...customerRecipients, ...userRecipients];
   const sourceRecipients = values.source === "customers" ? customerRecipients : userRecipients;
   const selectedRecipients = allRecipients.filter((r) => values.recipientIds.includes(r.id));
-  const audienceLabel = values.source === "customers" ? "Customers" : "System Users";
+  const audienceLabel = values.source === "customers" ? describeScope(tree, scope) : "System Users";
 
+  // "0712..." finds 254712...
+  const searchDigits = search.replace(/\D/g, "").replace(/^0/, "");
   const visibleRecipients = sourceRecipients.filter(
     (r) => !search.trim() || r.name.toLowerCase().includes(search.trim().toLowerCase())
+      || (searchDigits.length >= 3 && r.phone.includes(searchDigits))
   );
   const reachableVisibleIds = visibleRecipients
     .filter((r) => hasContactForChannel(r, values.channel))
@@ -384,8 +458,10 @@ export default function BulkEmailWizard({
 
   function handleChannelChange(channel: NotificationChannel) {
     formik.setFieldValue("channel", channel);
-    const stillReachable = sourceRecipients
-      .filter((r) => hasContactForChannel(r, channel))
+    // SMS goes to customers only: staff are texted through their own alerts
+    if (channel === "SMS") formik.setFieldValue("source", "customers");
+    const stillReachable = allRecipients
+      .filter((r) => hasContactForChannel(r, channel) && (channel === "EMAIL" || r.recipientType === "CUSTOMER"))
       .map((r) => r.id);
     formik.setFieldValue(
       "recipientIds",
@@ -448,10 +524,9 @@ export default function BulkEmailWizard({
         <h2 className="text-2xl font-normal text-foreground">Campaign Sent!</h2>
         <p className="text-sm text-muted-foreground text-center max-w-xs">
           Your {values.channel === "EMAIL" ? "email" : "SMS"} has been queued for delivery to{" "}
-          <strong>{values.recipientIds.length.toLocaleString()} recipients</strong> in{" "}
-          <strong>{audienceLabel}</strong>.
+          <strong>{sentCount.toLocaleString()} recipient{sentCount === 1 ? "" : "s"}</strong>.
         </p>
-        <Button onClick={startNewCampaign}>Send Another Campaign</Button>
+        <Button onClick={startNewCampaign}>Send another message</Button>
       </div>
     );
   }
@@ -460,16 +535,16 @@ export default function BulkEmailWizard({
     <form onSubmit={formik.handleSubmit} className="w-full max-w-5xl mx-auto space-y-8">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-normal text-foreground">Bulk Email</h1>
+        <h1 className="text-2xl font-normal text-foreground">SMS &amp; Emails</h1>
         <p className="text-sm text-muted-foreground mt-0.5">
-          Reach customers at scale — renewals, promos, and notices in a few clicks
+          Message the customers of a region, location, station or MikroTik, or the whole company
         </p>
       </div>
 
       {/* Step indicator */}
       <StepIndicator current={step} />
 
- {recipientError && <p role="alert" className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm">Customer recipients unavailable: {recipientError}{recipientRequestId ? ` · Ref: ${recipientRequestId}` : ""}</p>}
+ {(recipientError || listingError) && <p role="alert" className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm">Customer recipients unavailable: {listingError ?? recipientError}{recipientRequestId ? ` · Ref: ${recipientRequestId}` : ""}</p>}
  {templateNotice && step === 2 && <p role="status" className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">Using built-in templates. {templateNotice}{templateRequestId ? ` · Ref: ${templateRequestId}` : ""}</p>}
  {sendError && <p role="alert" className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm">{sendError}{sendRequestId ? ` · Ref: ${sendRequestId}` : ""}</p>}
 
@@ -482,7 +557,7 @@ export default function BulkEmailWizard({
               <div>
                 <h2 className="text-base font-normal text-foreground">How should we reach them?</h2>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  Choose a channel, then select recipients individually from customers or system users.
+                  Choose a channel, narrow the customers to a part of the network, then select who gets it.
                 </p>
               </div>
 
@@ -490,14 +565,33 @@ export default function BulkEmailWizard({
 
               <Separator />
 
+              {values.source === "customers" && tree && (
+                <AudienceFilter tree={tree} scope={scope} onChange={changeScope} disabled={formik.isSubmitting} />
+              )}
+              {values.source === "customers" && listing && (
+                <p className="text-xs text-muted-foreground" role="status">
+                  {loadingPeople ? "Loading…" : (
+                    <>
+                      {listing.total.toLocaleString()} customer{listing.total === 1 ? "" : "s"} here:{" "}
+                      {listing.withPhone.toLocaleString()} with a mobile number, {listing.withEmail.toLocaleString()} with an email.
+                      {listing.truncated ? ` The first ${listing.people.length.toLocaleString()} are listed; narrow the filter to see the rest.` : ""}
+                    </>
+                  )}
+                </p>
+              )}
+
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                <ToggleGroup options={SOURCE_OPTIONS} value={values.source} onChange={handleSourceChange} size="sm" />
+                {values.channel === "EMAIL" ? (
+                  <ToggleGroup options={SOURCE_OPTIONS} value={values.source} onChange={handleSourceChange} size="sm" />
+                ) : (
+                  <span className="text-xs text-muted-foreground">SMS goes to customers. Staff get theirs through My alerts.</span>
+                )}
                 <div className="relative w-full sm:w-56">
                   <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
                   <Input
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Search by name"
+                    placeholder="Search by name or number"
                     className="h-8 pl-8 text-xs"
                   />
                 </div>
@@ -725,7 +819,7 @@ export default function BulkEmailWizard({
               ) : (
                 <Send className="w-4 h-4" />
               )}
-              Send Campaign
+              {values.channel === "SMS" ? "Send SMS" : "Send email"}
             </Button>
           )}
         </div>
