@@ -35,7 +35,7 @@ describe("PromotionsClient", () => {
     vi.mocked(previewPromotion).mockResolvedValue({ data: preview, error: null });
     vi.mocked(saveDraft).mockResolvedValue({ data: draft, error: null });
     vi.mocked(sendPromotion).mockResolvedValue({ data: { ...draft, status: "QUEUED", recipients: 35 }, error: null });
-    render(<PromotionsClient initialPromotions={[]} initialOptOuts={[]} canDraft canSend canRemoveOptOut />);
+    render(<PromotionsClient tree={null} initialPromotions={[]} initialOptOuts={[]} canDraft canSend canRemoveOptOut />);
     await compose();
     expect(screen.getByRole("button", { name: /Send/ })).toHaveProperty("disabled", true); // preview first
     await userEvent.click(screen.getByRole("button", { name: "Preview" }));
@@ -47,14 +47,14 @@ describe("PromotionsClient", () => {
   });
 
   it("a manager can only save a draft", async () => {
-    render(<PromotionsClient initialPromotions={[]} initialOptOuts={[]} canDraft canSend={false} canRemoveOptOut={false} />);
+    render(<PromotionsClient tree={null} initialPromotions={[]} initialOptOuts={[]} canDraft canSend={false} canRemoveOptOut={false} />);
     expect(screen.queryByRole("button", { name: /Send/ })).toBeNull();
     expect(screen.getByText(/a company admin sends it/)).toBeTruthy();
   });
 
   it("records an opt-out", async () => {
     vi.mocked(addOptOut).mockResolvedValue({ data: { withdrawn: 1 }, error: null });
-    render(<PromotionsClient initialPromotions={[]} initialOptOuts={[]} canDraft={false} canSend={false} canRemoveOptOut={false} />);
+    render(<PromotionsClient tree={null} initialPromotions={[]} initialOptOuts={[]} canDraft={false} canSend={false} canRemoveOptOut={false} />);
     await userEvent.type(screen.getByLabelText("Phone number"), "0712000003");
     await userEvent.selectOptions(screen.getByLabelText("How they asked"), "WHATSAPP");
     await userEvent.click(screen.getByRole("button", { name: "Record opt-out" }));

@@ -2,6 +2,7 @@
 
 import { apiFetch } from "@/lib/apiClient";
 import type { OptOutChannel, Promotion, PromotionOptOut, PromotionPreview } from "@/lib/types/promotions";
+import type { AudienceScope } from "@/actions/communications";
 
 type Result<T> = { data: T | null; error: string | null };
 const BASE = "/communications/promotions";
@@ -19,15 +20,16 @@ export async function getPromotions(): Promise<Result<Promotion[]>> {
   return result(await apiFetch<Promotion[]>(BASE, { auth: "required", cache: "no-store" }), "Could not load the promotions.");
 }
 
-export async function previewPromotion(message: string): Promise<Result<PromotionPreview>> {
-  return result(await apiFetch<PromotionPreview>(`${BASE}/preview`, { method: "POST", auth: "required", body: { message } }),
+/** `scope`: the part of the network it goes to; omitted = the whole company. */
+export async function previewPromotion(message: string, scope?: AudienceScope): Promise<Result<PromotionPreview>> {
+  return result(await apiFetch<PromotionPreview>(`${BASE}/preview`, { method: "POST", auth: "required", body: { message, scope } }),
     "Could not work out who would receive it.");
 }
 
-export async function saveDraft(name: string, message: string, id?: number): Promise<Result<Promotion>> {
+export async function saveDraft(name: string, message: string, id?: number, scope?: AudienceScope): Promise<Result<Promotion>> {
   const res = id == null
-    ? await apiFetch<Promotion>(BASE, { method: "POST", auth: "required", body: { name, message } })
-    : await apiFetch<Promotion>(`${BASE}/${id}`, { method: "PUT", auth: "required", body: { name, message } });
+    ? await apiFetch<Promotion>(BASE, { method: "POST", auth: "required", body: { name, message, scope } })
+    : await apiFetch<Promotion>(`${BASE}/${id}`, { method: "PUT", auth: "required", body: { name, message, scope } });
   return result(res, "Could not save the draft.");
 }
 

@@ -16,6 +16,10 @@ import {
   addOptOut, cancelPromotion, getOptOuts, getPromotions, previewPromotion, removeOptOut, saveDraft, sendPromotion,
 } from "@/actions/promotions";
 import type { OptOutChannel, Promotion, PromotionOptOut, PromotionPreview } from "@/lib/types/promotions";
+import type { AudienceScope, AudienceTree } from "@/actions/communications";
+import { AudienceFilter } from "@/components/communications/AudienceFilter";
+import { noticeAudience } from "@/components/communications/SmsNoticeHistory";
+import { EMPTY_SCOPE } from "@/lib/communications/audience";
 
 const MAX_MESSAGE = 600;
 const CHANNELS: { value: OptOutChannel; label: string }[] = [
@@ -37,7 +41,9 @@ export function PromotionsClient({
   canDraft,
   canSend,
   canRemoveOptOut,
+  tree,
 }: {
+  tree: AudienceTree | null;
   initialPromotions: Promotion[] | null;
   initialOptOuts: PromotionOptOut[] | null;
   loadError?: string;
@@ -66,16 +72,17 @@ export function PromotionsClient({
       {loadError && (
         <p role="alert" className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm">{loadError}</p>
       )}
-      {canDraft && <Compose canSend={canSend} onChanged={reloadPromotions} />}
-      <PromotionList promotions={promotions} canSend={canSend} onChanged={reloadPromotions} />
+      {canDraft && <Compose canSend={canSend} onChanged={reloadPromotions} tree={tree} />}
+      <PromotionList promotions={promotions} canSend={canSend} onChanged={reloadPromotions} tree={tree} />
       <OptOuts optOuts={optOuts} canRemove={canRemoveOptOut}
         onChanged={() => { void reloadOptOuts(); void reloadPromotions(); }} />
     </div>
   );
 }
 
-function Compose({ canSend, onChanged }: { canSend: boolean; onChanged: () => Promise<void> }) {
+function Compose({ canSend, onChanged, tree }: { canSend: boolean; onChanged: () => Promise<void>; tree: AudienceTree | null }) {
   const [name, setName] = useState("");
+  const [scope, setScope] = useState<AudienceScope>(EMPTY_SCOPE);
   const [message, setMessage] = useState("");
   const [draftId, setDraftId] = useState<number | null>(null);
   const [preview, setPreview] = useState<PromotionPreview | null>(null);
@@ -87,7 +94,7 @@ function Compose({ canSend, onChanged }: { canSend: boolean; onChanged: () => Pr
   async function runPreview() {
     setBusy("preview");
     try {
-      const res = await previewPromotion(message);
+      const res = await previewPromotion(message, scope);
       if (res.data) setPreview(res.data); else toast.error(res.error);
     } finally {
       setBusy("");
@@ -97,7 +104,7 @@ function Compose({ canSend, onChanged }: { canSend: boolean; onChanged: () => Pr
   async function save(): Promise<number | null> {
     setBusy("save");
     try {
-      const res = await saveDraft(name, message, draftId ?? undefined);
+      const res = await saveDraft(name, message, draftId ?? undefined, scope);
       if (!res.data) {
         toast.error(res.error);
         return null;
@@ -119,7 +126,7 @@ function Compose({ canSend, onChanged }: { canSend: boolean; onChanged: () => Pr
       const res = await sendPromotion(id);
       if (res.data) {
         toast.success(`Queued for ${res.data.recipients ?? 0} people`);
-        setName(""); setMessage(""); setDraftId(null); setPreview(null);
+        setName(""); setMessage(""); setDraftId(null); setPreview(null); setScope(EMPTY_SCOPE);
         await onChanged();
       } else {
         toast.error(res.error);
@@ -136,11 +143,17 @@ function Compose({ canSend, onChanged }: { canSend: boolean; onChanged: () => Pr
           <Megaphone className="h-4 w-4 text-primary" /> New promotion
         </h2>
         <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
-          Goes to every customer and every number that has bought hotspot access, except those who opted out.
-          The opt-out line is added for you. Promotions go out after all other SMS, between 8 am and 7 pm, within
+          Goes to the customers of the part of the network you choose below (the whole company unless you narrow
+          it), except those who opted out. The opt-out line is added for you. Promotions go out after all other SMS, between 8 am and 7 pm, within
           the company&apos;s daily SMS limit, so a large one can take more than a day.
         </p>
       </div>
+      {tree && (
+        <div className="px-6 pt-6">
+          <AudienceFilter tree={tree} scope={scope} disabled={busy !== ""}
+            onChange={(next) => { setScope(next); setPreview(null); }} />
+        </div>
+      )}
       <div className="grid gap-6 p-6 lg:grid-cols-2">
         <div className="space-y-4">
           <div className="space-y-1.5">
@@ -221,7 +234,7 @@ function PreviewCard({ preview }: { preview: PromotionPreview | null }) {
   );
 }
 
-function PromotionList({ promotions, canSend, onChanged }: { promotions: Promotion[]; canSend: boolean; onChanged: () => Promise<void> }) {
+function PromotionList({ promotions, canSend, onChanged, tree }: { promotions: Promotion[]; canSend: boolean; onChanged: () => Promise<void>; tree: AudienceTree | null }) {
   const [busy, setBusy] = useState<number | null>(null);
 
   async function cancel(id: number) {
@@ -256,6 +269,7 @@ function PromotionList({ promotions, canSend, onChanged }: { promotions: Promoti
                 <tr key={p.id} className="border-b border-border last:border-0">
                   <td className="max-w-sm px-4 py-3">
                     <p className="font-medium">{p.name}</p>
+                    <p className="text-xs text-muted-foreground">To: {noticeAudience(tree, p.audience ?? null)}</p>
                     <p className="truncate text-xs text-muted-foreground" title={p.message}>{p.message}</p>
                   </td>
                   <td className="px-4 py-3">

@@ -21,6 +21,8 @@ export type Promotion = {
   failed: number;
   expired: number;
   cancelled: number;
+  /** The part of the network it goes to (JSON of AudienceScope); null = the whole company. */
+  audience?: string | null;
 };
 
 export type PromotionPreview = {
