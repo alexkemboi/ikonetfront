@@ -25,13 +25,16 @@ import type { NavGroup } from "@/lib/nav";
 import { normalizeRole, ROLE_NAME } from "@/lib/types/roles";
 import { useAppTheme } from "@/providers/AppThemeProvider";
 
+// Pages whose name differs from their address (kept so bookmarks and permissions still work)
+const SEGMENT_LABELS: Record<string, string> = { "bulk-email": "SMS & Emails" };
+
 // Derives a human-readable title from the current pathname
 function useBreadcrumb() {
  const pathname = usePathname();
  const segments = pathname.split("/").filter(Boolean);
 
  return segments.map((seg, i) => ({
- label: seg
+ label: SEGMENT_LABELS[seg] ?? seg
  .split("-")
  .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
  .join(" "),
