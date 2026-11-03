@@ -22,6 +22,8 @@ export interface Customer {
   lastActiveDate: string | null;
   /** Id used by the PPPoE package and payment actions; absent when the customer has no PPPoE account. */
   customerId?: string | null;
+  /** PPPoE account number: what the customer pays the paybill to and renews with (e.g. BDK0069). */
+  accountNumber?: string | null;
   /** PPPoE account state (ACTIVE / SUSPENDED / DISABLED); absent with no PPPoE account. */
   pppoeAccountStatus?: string | null;
 }

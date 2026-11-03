@@ -56,6 +56,16 @@ export function createPPPoEColumns(
  },
  },
  {
+ accessorKey: "accountNumber",
+ header: ({ column }) => (
+ <DataTableColumnHeader column={column} title="Account no." />
+ ),
+ // what the customer pays the paybill to and renews with
+ cell: ({ row }) => (
+ <span className="text-sm font-sans tabular-nums">{row.original.accountNumber ?? "—"}</span>
+ ),
+ },
+ {
  accessorKey: "phoneNumber",
  header: ({ column }) => (
  <DataTableColumnHeader column={column} title="Phone" />
