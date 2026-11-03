@@ -27,7 +27,9 @@ export const proxy = authMiddleware((req) => {
     const hasTokenError = req.auth?.error === "RefreshAccessTokenError";
 
     const isApiAuthRoute = nextUrl.pathname.startsWith(apiAuthPrefix);
-    const isPublicRoute = publicRoutes.some((route) => nextUrl.pathname.includes(route));
+    // "/renew" is matched from the start only, so no staff page whose path holds "renew" becomes public
+    const isRenewalPage = nextUrl.pathname === "/renew" || nextUrl.pathname.startsWith("/renew/");
+    const isPublicRoute = isRenewalPage || publicRoutes.some((route) => nextUrl.pathname.includes(route));
     const isAuthRoute = authRoutes.some((route) => nextUrl.pathname.includes(route));
 
     // Always let NextAuth's own API routes through
@@ -88,6 +90,8 @@ export const config = {
         "/reset-password",
         "/signout",
         "/hotspot",
+        "/renew",
+        "/renew/:path*",
         "/settings/:path*",
         "/system/:path*",
         "/communications",

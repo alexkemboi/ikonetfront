@@ -58,6 +58,11 @@ export function CustomerProfileHeader({ customer }: CustomerProfileHeaderProps) 
  ACNO: {customer.acno}
  </Badge>
  )}
+ {customer.accountNumber && (
+ <Badge variant="outline" className="font-sans tabular-nums text-xs" title="The customer pays the paybill to this account number and renews with it at /renew">
+ M-PESA ACCOUNT: {customer.accountNumber}
+ </Badge>
+ )}
  {customer.custtype && (
  <Badge variant="secondary" className="uppercase text-xs">
  {customer.custtype}
