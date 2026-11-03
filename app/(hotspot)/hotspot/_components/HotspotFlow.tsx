@@ -1,9 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { CheckCircle2 } from "lucide-react";
 import ActivateTab from "./ActivateTab";
 import BuyTab from "./BuyTab";
-import { HotspotPackage } from "@/lib/types/hotspot";
+import { checkActiveSession } from "@/actions/hotspot";
+import { HotspotPackage, type ReconnectResponseData } from "@/lib/types/hotspot";
+import type { PortalRouter } from "@/lib/hotspot/portalRouter";
 
 type Tab = "activate" | "buy";
 
@@ -23,6 +26,8 @@ interface HotspotFlowProps {
   clientIp?: string;
   /** RouterOS $(identity) of the serving router (redirect `identity`/`router`). */
   routerIdentity?: string;
+  /** Signed id of the serving router; passed in because the page sets the shared one after this mounts. */
+  portalRouter?: PortalRouter | null;
 }
 
 export default function HotspotFlow({
@@ -33,8 +38,28 @@ export default function HotspotFlow({
   redirectClientMac,
   clientIp,
   routerIdentity,
+  portalRouter,
 }: HotspotFlowProps) {
   const [activeTab, setActiveTab] = useState<Tab>(resolveInitialTab);
+  const [reconnected, setReconnected] = useState<ReconnectResponseData | null>(null);
+
+  // A device that already paid (and lost its connection to a power cut or a Wi-Fi drop) is
+  // signed back in by the backend, so the customer is not left with "buy" as the only choice.
+  useEffect(() => {
+    const mac = clientMac || redirectClientMac;
+    if (!mac || !clientIp) return;
+    let cancelled = false;
+    void checkActiveSession(mac, clientIp, portalRouter)
+      .then((res) => {
+        if (!cancelled && res.data?.hasActiveSession) setReconnected(res.data);
+      })
+      .catch(() => {
+        // the portal works as before when the check cannot be made
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [clientMac, redirectClientMac, clientIp, portalRouter]);
 
   const handleTabChange = (nextTab: Tab) => {
     setActiveTab(nextTab);
@@ -53,8 +78,26 @@ export default function HotspotFlow({
     window.history.replaceState({}, "", nextUrl);
   };
 
+  const reconnectedUntil = reconnected?.expiresAt ? new Date(reconnected.expiresAt) : null;
+
   return (
     <div className="w-full">
+      {reconnected && (
+        <div role="status" className="mb-6 flex items-start gap-3 rounded-lg border border-green-200 bg-green-50 p-4 text-green-800">
+          <CheckCircle2 className="mt-0.5 size-5 shrink-0" aria-hidden="true" />
+          <div className="text-sm">
+            <p className="font-medium">Welcome back, you&apos;re connected again.</p>
+            <p>
+              {reconnected.packageName ? `${reconnected.packageName}: ` : ""}
+              {reconnectedUntil && !Number.isNaN(reconnectedUntil.getTime())
+                ? `valid until ${reconnectedUntil.toLocaleString()}.`
+                : reconnected.message}
+            </p>
+            <p className="mt-1 text-xs">No need to pay again. If pages don&apos;t open within a minute, turn Wi-Fi off and on.</p>
+          </div>
+        </div>
+      )}
+
       {/* Tab navigation */}
       <div className="flex gap-1 mb-6 border-b border-border">
         <button

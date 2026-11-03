@@ -138,6 +138,7 @@ export async function checkActiveSession(
   portalRouter?: PortalRouter | null
 ): Promise<ReconnectResponse> {
   // Contract: `POST /api/v1/hotspot/reconnect` body `HotspotConnectRequest { macAddress, clientIp }`.
+  // A device with paid time left is signed back in by the backend when its router sees it at clientIp.
   const res = await apiFetch<ReconnectResponseData>(withPortalRouter('/hotspot/reconnect', portalRouter), {
     method: 'POST',
     body: { macAddress, clientIp: ipAddress },
@@ -145,22 +146,8 @@ export async function checkActiveSession(
   });
 
   if (!res.success) {
-    return {
-      ...res,
-      data: {
-        hasActiveSession: false,
-        message: res.message,
-        session: null,
-      },
-    };
+    return { ...res, data: { hasActiveSession: false, message: res.message } };
   }
 
-  return {
-    ...res,
-    data: res.data ?? {
-      hasActiveSession: false,
-      message: res.message,
-      session: null,
-    },
-  };
+  return { ...res, data: res.data ?? { hasActiveSession: false, message: res.message } };
 }
