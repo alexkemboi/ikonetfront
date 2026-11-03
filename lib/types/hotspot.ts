@@ -95,10 +95,14 @@ export interface PendingHotspotPurchase {
   startedAt: number;
 }
 
+/** `POST /hotspot/reconnect`: paid time this device still has. Nothing that identifies the customer. */
 export interface ReconnectResponseData {
   hasActiveSession: boolean;
   message: string;
-  session: HotspotSessionResponse | null;
+  /** ISO instant the paid time ends; null when there is no session. */
+  expiresAt?: string | null;
+  minutesRemaining?: number | null;
+  packageName?: string | null;
 }
 
 export type ReconnectResponse = ApiResponse<ReconnectResponseData>;

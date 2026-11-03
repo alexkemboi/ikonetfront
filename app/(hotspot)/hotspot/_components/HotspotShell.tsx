@@ -115,6 +115,7 @@ export default function HotspotShell({ packages, initialCompanyCode, clientMac, 
             redirectClientMac={redirectClientMac}
             clientIp={clientIp}
             routerIdentity={routerIdentity}
+            portalRouter={portalRouter}
           />
         </div>
       </div>
