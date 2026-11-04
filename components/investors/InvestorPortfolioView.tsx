@@ -322,10 +322,12 @@ function AgreementCard({ agreement: a, you }: { agreement: PortfolioAgreement; y
 
       {a.statements.length > 0 && (
         <details className="mt-3 text-sm">
-          <summary className="cursor-pointer text-xs text-muted-foreground">Month-end statements ({a.statements.length})</summary>
+          <summary className="cursor-pointer text-xs text-muted-foreground">
+            Month-end statements ({a.statements.length}) · download each as a PDF invoice
+          </summary>
           <table className="mt-2 w-full text-left text-xs tabular-nums">
             <thead className="text-muted-foreground">
-              <tr><th className="py-1 font-medium">Month</th><th className="py-1 font-medium">Statement</th><th className="py-1 text-right font-medium">Hotspot and TV</th><th className="py-1 text-right font-medium">PPPoE paying</th><th className="py-1 text-right font-medium">Fee</th><th className="py-1 text-right font-medium">Status</th></tr>
+              <tr><th className="py-1 font-medium">Month</th><th className="py-1 font-medium">Statement</th><th className="py-1 text-right font-medium">Hotspot and TV</th><th className="py-1 text-right font-medium">PPPoE paying</th><th className="py-1 text-right font-medium">Fee</th><th className="py-1 text-right font-medium">Status</th><th className="py-1 text-right font-medium">Invoice</th></tr>
             </thead>
             <tbody>
               {a.statements.map((s) => (
@@ -336,6 +338,11 @@ function AgreementCard({ agreement: a, you }: { agreement: PortfolioAgreement; y
                   <td className="py-1 text-right">{s.pppoePayers}</td>
                   <td className="py-1 text-right">{kes(s.fee, 2)}</td>
                   <td className="py-1 text-right">{s.status}</td>
+                  <td className="py-1 text-right">
+                    <a href={`/api/investor-statements/${s.id}/pdf`} className="font-medium text-primary hover:underline">
+                      PDF
+                    </a>
+                  </td>
                 </tr>
               ))}
             </tbody>

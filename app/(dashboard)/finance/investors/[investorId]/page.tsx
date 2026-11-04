@@ -11,6 +11,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import MessageInvestorsDialog from "@/components/investors/MessageInvestorsDialog";
+import MessageHistory from "@/components/investors/MessageHistory";
+import { getInvestorMessages } from "@/actions/investorMessages";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Investor" };
@@ -36,7 +39,10 @@ export default async function InvestorDetailPage({
 
   const { investorId } = await params;
   const { period } = await searchParams;
-  const { portfolio, message } = await getInvestorPortfolio(investorId, period);
+  const [{ portfolio, message }, messages] = await Promise.all([
+    getInvestorPortfolio(investorId, period),
+    isPlatformAdmin ? getInvestorMessages(investorId) : Promise.resolve([]),
+  ]);
 
   return (
     <div className="min-h-screen p-4 text-foreground sm:p-6 lg:p-8">
@@ -81,10 +87,18 @@ export default async function InvestorDetailPage({
                     <Settings2 className="mr-2 size-4" /> Manage agreements and routers
                   </Link>
                 </Button>
+                {isPlatformAdmin && (
+                  <MessageInvestorsDialog
+                    target={{ kind: "one", investorId: portfolio.investor.id, name: portfolio.investor.name }}
+                    label="Message investor"
+                  />
+                )}
               </div>
             </div>
 
             <InvestorPortfolioView portfolio={portfolio} audience="admin" />
+
+            {isPlatformAdmin && <MessageHistory messages={messages} audience="admin" />}
 
             {isPlatformAdmin && (
               <Card>

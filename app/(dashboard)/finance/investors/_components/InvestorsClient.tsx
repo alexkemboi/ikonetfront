@@ -34,6 +34,7 @@ import type {
   RuleBasis,
 } from "@/lib/types/investor";
 import { RouterPicker, routerOptionText, type RouterOption } from "./RouterPicker";
+import MessageInvestorsDialog from "@/components/investors/MessageInvestorsDialog";
 
 type Props = {
   investors: InvestorSummary[];
@@ -235,6 +236,7 @@ export default function InvestorsClient({ investors, routers, isPlatformAdmin, i
               <FileText className="mr-2 h-4 w-4" />
               Month-end statements
             </Button>
+            <MessageInvestorsDialog target={{ kind: "company", companyCode }} label="Message investors" />
             <Button onClick={() => setInvestorForm({ id: null, values: EMPTY_INVESTOR })}>
               <Plus className="mr-2 h-4 w-4" />
               Register investor
