@@ -30,7 +30,8 @@ const portfolio: InvestorPortfolio = {
     rules: [{ serviceType: "HOTSPOT", calculationBasis: "PERCENTAGE_OF_GROSS", rate: 3 },
       { serviceType: "PPPOE", calculationBasis: "FIXED_PER_ACTIVE_SUBSCRIBER", rate: 25 }],
     routerNames: ["BEDAK-NEWYORK"], hotspotBase: 2445, pppoePayers: 0, hotspotFee: 73.35, pppoeFee: 0, fee: 73.35,
-    feeCharged: 0, feePaid: 0, feeOutstanding: 0, standing: "GOOD", oldestDueDate: null, suspendDate: null, statements: [],
+    feeCharged: 0, feePaid: 0, feeOutstanding: 0, standing: "GOOD", oldestDueDate: null, suspendDate: null,
+    statements: [{ id: "11111111-2222-3333-4444-555555555555", number: "STMT-1", period: "2026-09", hotspotGross: 0, pppoePayers: 0, fee: 0, status: "FINALIZED" }],
   }],
   accounts: [],
 };
@@ -45,6 +46,12 @@ describe("InvestorPortfolioView", () => {
     expect(screen.getAllByText("BEDAK-NEWYORK").length).toBeGreaterThan(0);
     expect(screen.getByText("Hotspot and TV: 3% of revenue")).toBeInTheDocument();
     expect(screen.getByText("61 purchases · 100% of credited")).toBeInTheDocument();
+  });
+
+  it("offers each statement as a PDF invoice", () => {
+    render(<InvestorPortfolioView portfolio={portfolio} audience="investor" />);
+    expect(screen.getByRole("link", { name: "PDF" })).toHaveAttribute(
+      "href", "/api/investor-statements/11111111-2222-3333-4444-555555555555/pdf");
   });
 
   it("names the investor for an administrator", () => {

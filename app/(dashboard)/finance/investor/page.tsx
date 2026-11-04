@@ -16,6 +16,8 @@ import { FeePayNow } from "@/components/finance/FeePayNow";
 import { feeDate, kes, STANDING_CLASS, STANDING_LABEL } from "@/components/finance/systemFeeFormat";
 import { getMyPortfolio } from "@/actions/investorPortfolio";
 import InvestorPortfolioView from "@/components/investors/InvestorPortfolioView";
+import MessageHistory from "@/components/investors/MessageHistory";
+import { getMyMessages } from "@/actions/investorMessages";
 
 export const dynamic = "force-dynamic";
 
@@ -72,7 +74,7 @@ export default async function InvestorPortalPage({
   // Owner, 2026-10-31: an investor's page tells the whole story of their month (what their
   // routers made, what is theirs, what they owe) per router and per service.
   if (role === ROLE_NAME.INVESTOR) {
-    const [{ portfolio, message }, fees] = await Promise.all([getMyPortfolio(period), getMyFees()]);
+    const [{ portfolio, message }, fees, messages] = await Promise.all([getMyPortfolio(period), getMyFees(), getMyMessages()]);
     const owing = fees.filter((f) => f.balance.balance > 0);
     const account = owing.length > 0 ? await getFeeReceivingAccount() : null;
     return (
@@ -125,7 +127,10 @@ export default async function InvestorPortalPage({
           )}
 
           {portfolio ? (
-            <InvestorPortfolioView portfolio={portfolio} audience="investor" />
+            <>
+              <InvestorPortfolioView portfolio={portfolio} audience="investor" />
+              <MessageHistory messages={messages} audience="investor" />
+            </>
           ) : (
             <div className="rounded-lg border border-dashed border-border p-6 text-sm text-muted-foreground">
               {message || "Your figures could not be loaded."}

@@ -89,6 +89,8 @@ export interface PortfolioRule {
 }
 
 export interface PortfolioStatement {
+  /** The PDF: /api/investor-statements/{id}/pdf */
+  id: string;
   number: string;
   period: string;
   hotspotGross: number;
