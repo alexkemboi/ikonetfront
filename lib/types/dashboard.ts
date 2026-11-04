@@ -1,9 +1,14 @@
+/**
+ * A PPPoE subscription running out within two days, as the operations cockpit sends it.
+ * The card once read fields the backend never sent (subscriberCode, countdown): it crashed the
+ * whole overview the first time the list was not empty (4 Nov).
+ */
 export interface RenewalDueItem {
-  id: string;
-  subscriberCode: string;
-  phoneMasked: string;
-  expiresInSeconds: number;
-  formattedCountdown: string; // e.g. "22s from now", "3m 40s from now"
+  accountUsername?: string | null;
+  phoneMasked?: string | null;
+  /** Last day of service, YYYY-MM-DD (Nairobi); the subscription runs to the end of it. */
+  expiryDate?: string | null;
+  amount?: number | null;
 }
 
 export interface RouterTrafficItem {
@@ -20,6 +25,8 @@ export interface WhatsNextItem {
   title: string;
   description: string;
   isUrgent: boolean;
+  /** The backend's name for isUrgent (a Java boolean "isUrgent" is sent as "urgent"); read once in getDashboardOverview. */
+  urgent?: boolean;
   actionUrl: string;
 }
 
