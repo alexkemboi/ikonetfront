@@ -45,6 +45,15 @@ export async function getDashboardOverview(): Promise<DashboardOverviewLoadResul
     data: {
       ...res.data,
       companyName: res.data.companyName ?? res.data.tenantName ?? "",
+      // lists absent from an older or partial answer render as empty, never crash the page
+      renewalsDue: res.data.renewalsDue ?? [],
+      routerTraffic: res.data.routerTraffic ?? [],
+      todayRecentPayments: res.data.todayRecentPayments ?? [],
+      // the backend sends a Java boolean "isUrgent" as "urgent"
+      whatsNextQueue: (res.data.whatsNextQueue ?? []).map((item) => ({
+        ...item,
+        isUrgent: item.isUrgent ?? item.urgent ?? false,
+      })),
     },
     requestId: res.requestId,
   };
