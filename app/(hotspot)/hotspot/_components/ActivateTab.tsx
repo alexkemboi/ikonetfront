@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { activateVoucherAction } from "@/actions/hotspot";
 import { getPortalRouter } from "@/lib/hotspot/portalRouter";
 import { sanitizeErrorMessage } from "@/lib/brand";
+import AlreadyPaidForm from "./AlreadyPaidForm";
 
 type ValidationState = "idle" | "validating" | "valid" | "invalid" | "activated";
 
@@ -145,6 +146,8 @@ export default function ActivateTab({ clientMac, clientIp, routerIdentity }: Act
  <p className="text-xs text-muted-foreground text-center">
  Enter the voucher code from your purchased package to activate internet access.
  </p>
+
+ <AlreadyPaidForm clientMac={clientMac} clientIp={clientIp} />
  </div>
  );
 }

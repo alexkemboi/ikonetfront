@@ -126,6 +126,16 @@ export default function HotspotFlow({
         </button>
       </div>
 
+      {/* A customer cut off mid-package should not buy again: the M-Pesa code brings it back. */}
+      {activeTab === "buy" && !reconnected && (
+        <p className="mb-4 text-sm text-muted-foreground">
+          Already paid but not connected?{" "}
+          <button type="button" onClick={() => handleTabChange("activate")} className="font-medium text-primary underline underline-offset-2">
+            Get back online with your M-Pesa code
+          </button>
+        </p>
+      )}
+
       {/* Tab content */}
       <div>
         {activeTab === "activate" && (
