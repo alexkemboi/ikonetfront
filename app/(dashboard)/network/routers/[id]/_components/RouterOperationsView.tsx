@@ -107,11 +107,22 @@ export function RouterOperationsView({
                 {r.vpnIp && <span className="inline-flex items-center gap-1.5"><Hash className="h-3.5 w-3.5" />{r.vpnIp}</span>}
                 {r.model && <span className="inline-flex items-center gap-1.5"><Cpu className="h-3.5 w-3.5" />{r.model}</span>}
                 {r.routerOsVersion && <span className="inline-flex items-center gap-1.5"><Package className="h-3.5 w-3.5" />RouterOS {r.routerOsVersion}</span>}
-                {r.uptime && <span className="inline-flex items-center gap-1.5"><Timer className="h-3.5 w-3.5" />Up {r.uptime}</span>}
+                {r.uptime && (
+                  <span className="inline-flex items-center gap-1.5">
+                    <Timer className="h-3.5 w-3.5" />Up {r.uptime}
+                    {/* offline: the uptime is from the last answered check, not now */}
+                    {!r.online && r.readingAt && ` (as of ${new Date(r.readingAt).toLocaleString()})`}
+                  </span>
+                )}
                 {r.stationName && <span className="inline-flex items-center gap-1.5"><MapPin className="h-3.5 w-3.5" />{r.stationName}</span>}
               </div>
               {!r.online && r.lastSeenAt && (
-                <p className="text-xs text-muted-foreground">Last reading {new Date(r.lastSeenAt).toLocaleString()}</p>
+                <p className="text-xs text-muted-foreground">
+                  Last check {new Date(r.lastSeenAt).toLocaleString()}
+                  {r.readingAt
+                    ? ` · last answered ${new Date(r.readingAt).toLocaleString()}; the figures below are from then`
+                    : " · not answered yet"}
+                </p>
               )}
               {r.telemetryNote && (
                 <p role="status" className="max-w-2xl rounded-md border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-xs text-muted-foreground">

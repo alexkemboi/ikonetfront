@@ -289,7 +289,13 @@ export interface RouterOverview {
     statusSource?: "TELEMETRY" | "HEALTH_CHECK" | "NONE";
     /** Why there is no recent telemetry reading; null when there is one. */
     telemetryNote?: string | null;
+    /** The latest check, answered or not. */
     lastSeenAt: string | null;
+    /**
+     * When uptime, RouterOS version and CPU/memory/disk were read: the last check the router
+     * answered, which can be hours before lastSeenAt. Absent on backends older than this field.
+     */
+    readingAt?: string | null;
     companyId: string | null;
     stationName: string | null;
     hotspotEnabled: boolean | null;

@@ -12,6 +12,7 @@ import type {
 } from '@/lib/types/hotspot';
 import type { ApiResponse } from '@/lib/types/api';
 import { apiFetch } from '@/lib/apiClient';
+import { clientOriginHeaders } from '@/lib/clientOrigin';
 import { withPortalRouter, type PortalRouter } from '@/lib/hotspot/portalRouter';
 
 /**
@@ -59,6 +60,8 @@ export async function getHotspotPortalContextAction(scope: {
   const path = query.size > 0 ? `/hotspot/branding/portal-context?${query.toString()}` : "/hotspot/branding/portal-context";
   const res = await apiFetch<HotspotPortalContext>(withPortalRouter(path, scope.portalRouter), {
     auth: 'public',
+    // the visitor's address, not this server's: per-visitor limits and router checks need it
+    headers: await clientOriginHeaders(),
     cache: 'no-store',
   });
   return res.success && res.data?.companyName ? res.data : null;
@@ -72,6 +75,8 @@ export async function getPublicHotspotPackagesAction(scope: { routerIdentity?: s
   // A signed router scopes the list to one company: never share that response between routers.
   const res = await apiFetch<HotspotPackage[]>(withPortalRouter(`/hotspot/packages?${query.toString()}`, scope.portalRouter), {
     auth: 'public',
+    // the visitor's address, not this server's: per-visitor limits and router checks need it
+    headers: await clientOriginHeaders(),
     ...(scope.portalRouter ? { cache: 'no-store' as const } : { tags: ['hotspot-packages'], revalidate: 60 }),
   });
   return { ...res, data: res.data ?? [] };
@@ -88,6 +93,8 @@ export async function initiateHotspotPayment(
     method: 'POST',
     body: requestBody,
     auth: 'public',
+    // the visitor's address, not this server's: per-visitor limits and router checks need it
+    headers: await clientOriginHeaders(),
   });
 
   if (!res.success) {
@@ -128,6 +135,8 @@ export async function activateVoucherAction(
       routerIdentity: request.routerIdentity?.trim() || undefined,
     },
     auth: 'public',
+    // the visitor's address, not this server's: per-visitor limits and router checks need it
+    headers: await clientOriginHeaders(),
   });
   return { ...res, data: res.data ?? null };
 }
@@ -143,6 +152,8 @@ export async function checkActiveSession(
     method: 'POST',
     body: { macAddress, clientIp: ipAddress },
     auth: 'public',
+    // the visitor's address, not this server's: per-visitor limits and router checks need it
+    headers: await clientOriginHeaders(),
   });
 
   if (!res.success) {
