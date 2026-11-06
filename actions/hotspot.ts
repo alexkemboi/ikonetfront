@@ -112,8 +112,9 @@ export async function initiateHotspotPayment(
  * The backend binds the voucher to this device's MAC (recovering it from the
  * router by `clientIp` when the CNA stripped `mac`), starts the validity clock on
  * first use, writes the RADIUS rows and auto-logs the device in on the serving
- * router. Errors come back as readable envelopes (404 unknown code, 409 bound to
- * another device, 410 expired/revoked, 403 voucher of another provider).
+ * router. A code already used on another device moves to this one (one device per
+ * purchase). Errors come back as readable envelopes (404 unknown code,
+ * 410 expired/revoked, 403 voucher of another provider).
  */
 export interface ActivateVoucherRequest {
   voucherCode: string;
@@ -133,6 +134,40 @@ export async function activateVoucherAction(
       macAddress: request.macAddress?.trim() || undefined,
       clientIp: request.clientIp?.trim() || undefined,
       routerIdentity: request.routerIdentity?.trim() || undefined,
+    },
+    auth: 'public',
+    // the visitor's address, not this server's: per-visitor limits and router checks need it
+    headers: await clientOriginHeaders(),
+  });
+  return { ...res, data: res.data ?? null };
+}
+
+/**
+ * "Already paid?" — `POST /api/v1/hotspot/reconnect-by-receipt` (permitAll, router-bound).
+ *
+ * For a customer whose phone is no longer signed in: its private Wi-Fi address changed, or the
+ * sign-in cookie was lost. The phone number that paid and the M-Pesa code from the SMS bring the
+ * package back, moved to this device (one device per purchase). 404 PURCHASE_NOT_FOUND when the
+ * code is not this number's paid purchase here; 429 after too many wrong codes.
+ */
+export interface ReconnectByReceiptRequest {
+  phone: string;
+  mpesaCode: string;
+  macAddress?: string;
+  clientIp?: string;
+  portalRouter?: PortalRouter | null;
+}
+
+export async function reconnectByReceiptAction(
+  request: ReconnectByReceiptRequest
+): Promise<ApiResponse<HotspotSessionResponse | null>> {
+  const res = await apiFetch<HotspotSessionResponse>(withPortalRouter('/hotspot/reconnect-by-receipt', request.portalRouter), {
+    method: 'POST',
+    body: {
+      phone: request.phone.trim(),
+      mpesaCode: request.mpesaCode.replace(/\s/g, '').toUpperCase(),
+      macAddress: request.macAddress?.trim() || undefined,
+      clientIp: request.clientIp?.trim() || undefined,
     },
     auth: 'public',
     // the visitor's address, not this server's: per-visitor limits and router checks need it
