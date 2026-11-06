@@ -5,9 +5,10 @@ import { auth } from "@/lib/auth";
 import { getDarajaReconciliation, getReconciliationDay } from "@/actions/payments";
 import { todayEatIso } from "@/lib/dates";
 import { normalizeRole, ROLE_NAME } from "@/lib/types/roles";
-import { canAccessReconciliation } from "@/lib/utils/reconciliationAccess";
+import { canAccessPaybillRegister, canAccessReconciliation } from "@/lib/utils/reconciliationAccess";
 import { DarajaPullTrigger } from "@/components/finance/DarajaPullTrigger";
 import { ReconciliationDayView } from "@/components/finance/ReconciliationDayView";
+import { PaybillTransactionsPanel } from "@/components/finance/PaybillTransactionsPanel";
 
 export const dynamic = "force-dynamic";
 
@@ -16,18 +17,42 @@ export const metadata: Metadata = {
   description: "Daraja PullTransactions sweep and daily reconciliation for M-Pesa payments.",
 };
 
-export default async function ReconciliationPage() {
+export default async function ReconciliationPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ paybill?: string }>;
+}) {
   const session = await auth();
   const roleValue = session?.user?.role;
   const role = normalizeRole(roleValue);
+  const { paybill } = await searchParams;
+  // a receipt from the universal search (Ctrl+K): letters and digits only
+  const paybillQuery = typeof paybill === "string" ? paybill.replace(/[^A-Za-z0-9]/g, "").slice(0, 40) : "";
 
-  // 01 Admin / 02 Management only. Staff, investor, and customer are redirected
-  // to their own landing routes; the reconciliation UI stays hidden from them.
-  if (!canAccessReconciliation(roleValue)) {
-    if (role === ROLE_NAME.STAFF) redirect("/customers");
+  // Staff see the paybill payments only; the reconciliation itself stays with
+  // 01 Admin / 02 Management. Investors and customers go to their own pages.
+  if (!canAccessPaybillRegister(roleValue)) {
     if (role === ROLE_NAME.INVESTOR) redirect("/finance/investor");
     if (role === ROLE_NAME.CUSTOMER) redirect("/portal/pppoe");
     redirect("/dashboard");
+  }
+  if (!canAccessReconciliation(roleValue)) {
+    return (
+      <div className="min-h-screen p-4 text-foreground sm:p-6 lg:p-8">
+        <div className="mx-auto max-w-7xl space-y-6">
+          <div>
+            <span className="text-[11px] font-sans tabular-nums tracking-wider text-muted-foreground uppercase">
+              FINANCE — PAYBILL PAYMENTS
+            </span>
+            <h1 className="text-3xl font-sans font-normal text-foreground">Paybill payments.</h1>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Find a payment a customer says they made, and give it to the right account.
+            </p>
+          </div>
+          <PaybillTransactionsPanel initialQuery={paybillQuery} canChange />
+        </div>
+      </div>
+    );
   }
 
   const day = todayEatIso();
@@ -48,15 +73,19 @@ export default async function ReconciliationPage() {
           </h1>
           <p className="mt-1 text-xs text-muted-foreground">
             What came in, who got connected, and what someone needs to act on.
-            Admin &amp; management only.
+            Admin &amp; management; staff see the paybill payments.
           </p>
         </div>
+
+        {paybillQuery && <PaybillTransactionsPanel initialQuery={paybillQuery} canChange />}
 
         <ReconciliationDayView
           initialDate={day}
           initialData={dayView.data}
           initialMessage={dayView.message}
         />
+
+        {!paybillQuery && <PaybillTransactionsPanel canChange />}
 
         <div className="pt-4">
           <span className="text-[11px] font-sans tabular-nums tracking-wider text-muted-foreground uppercase">
