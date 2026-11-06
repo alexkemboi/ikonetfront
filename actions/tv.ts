@@ -1,6 +1,7 @@
 "use server";
 
 import { apiFetch } from "@/lib/apiClient";
+import { clientOriginHeaders } from "@/lib/clientOrigin";
 import type { TvPackage, TvPackageOptionResponse, TvPackagesResult, TvPortalSession } from "@/lib/types/tv";
 import { tvDeviceSchema, type TvDeviceDetails } from "@/lib/validation/tv-device";
 import { withPortalRouter, type PortalRouter } from "@/lib/hotspot/portalRouter";
@@ -17,7 +18,7 @@ export async function getNearbyTvDevicesAction(clientIp?: string | null, portalR
   { devices: TvNearbyDevice[]; error?: string }
 > {
   const path = clientIp?.trim() ? `/tv/devices/nearby?ip=${encodeURIComponent(clientIp.trim())}` : "/tv/devices/nearby";
-  const result = await apiFetch<TvNearbyDevice[]>(withPortalRouter(path, portalRouter), { auth: "public", cache: "no-store" });
+  const result = await apiFetch<TvNearbyDevice[]>(withPortalRouter(path, portalRouter), { auth: "public", headers: await clientOriginHeaders(), cache: "no-store" });
   if (!result.success || !result.data) {
     return { devices: [], error: "We couldn’t list the devices on this Wi-Fi. Enter the address from your TV’s settings." };
   }
@@ -42,6 +43,7 @@ export async function prepareTvDeviceAction(values: TvDeviceDetails, portalRoute
         ? { customerPhone: device.customerPhone, deviceToken, routerIdentity: values.routerIdentity }
         : { customerPhone: device.customerPhone, macAddress: device.macAddress, routerIdentity: values.routerIdentity },
       auth: "public",
+      headers: await clientOriginHeaders(),
       cache: "no-store",
     });
     if (!verification.success || !verification.data?.eligible) {
@@ -105,7 +107,7 @@ export async function getEligibleTvPackagesAction(portalToken: string, macAddres
   const query = new URLSearchParams({ macAddress });
   const result = await apiFetch<TvPackageOptionResponse[]>(`/tv/packages/eligible?${query}`, {
     auth: "public",
-    headers: { "X-TV-Portal-Token": portalToken },
+    headers: { ...(await clientOriginHeaders()), "X-TV-Portal-Token": portalToken },
     cache: "no-store",
   });
   if (!result.success || !result.data) return { packages: [], error: result.message };
@@ -131,7 +133,7 @@ export async function initiateTvPaymentAction(values: import("@/lib/validation/t
       submittedAmount: String(values.submittedAmount ?? "0"),
     },
     auth: "public",
-    headers: { "X-TV-Portal-Token": values.portalToken, "Idempotency-Key": idempotencyKey },
+    headers: { ...(await clientOriginHeaders()), "X-TV-Portal-Token": values.portalToken, "Idempotency-Key": idempotencyKey },
     cache: "no-store",
   });
   if (!result.success) {
@@ -156,7 +158,7 @@ export async function initiateTvPaymentAction(values: import("@/lib/validation/t
 export async function getTvPaymentStatusAction(transactionReference: string, portalToken: string) {
   const result = await apiFetch<TvPaymentStatusResponse>(
     `/tv/payments/${encodeURIComponent(transactionReference)}/status`,
-    { auth: "public", headers: { "X-TV-Portal-Token": portalToken }, cache: "no-store" }
+    { auth: "public", headers: { ...(await clientOriginHeaders()), "X-TV-Portal-Token": portalToken }, cache: "no-store" }
   );
   return result.success && result.data ? { success: true as const, data: result.data, requestId: result.requestId } : { success: false as const, message: result.message, requestId: result.requestId };
 }
@@ -215,7 +217,7 @@ export async function redeemTvVoucherAction(
     method: "POST",
     body: { voucherCode: code },
     auth: "public",
-    headers: { "X-TV-Portal-Token": portalToken },
+    headers: { ...(await clientOriginHeaders()), "X-TV-Portal-Token": portalToken },
     cache: "no-store",
   });
   return res.success && res.data ? { success: true, data: res.data } : { success: false, error: redeemError(res) };
