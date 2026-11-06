@@ -246,3 +246,55 @@ export interface ReconciliationDay {
   };
   generatedAt?: string;
 }
+
+/** What became of a paybill payment (backend `paybill_transactions.outcome`). */
+export type PaybillOutcome = "NEW" | "RENEWED" | "RECORDED" | "PLATFORM_FEE" | "NEEDS_REVIEW" | "HANDLED";
+
+/** One paybill payment seen by C2B or the Daraja Pull (`GET /payments/paybill-transactions`). */
+export interface PaybillTransaction {
+  id: string;
+  receiptNo: string;
+  shortCode: string | null;
+  amount: number | null;
+  /** the "Account Number" exactly as the payer typed it */
+  billRef: string | null;
+  /** the same, normalised (BDK0069), or the account staff assigned it to */
+  accountNumber: string | null;
+  /** 2547..., the masked form M-Pesa sent, or "Hidden by M-Pesa" */
+  payer: string | null;
+  firstName: string | null;
+  paidAt: string | null;
+  viaC2b: boolean;
+  viaPull: boolean;
+  outcome: PaybillOutcome;
+  outcomeReason: string | null;
+  handledBy: string | null;
+  handledAt: string | null;
+  note: string | null;
+  companyCode: string | null;
+  companyName: string | null;
+  accountUsername: string | null;
+  customerName: string | null;
+  customerIdxno: number | null;
+  createdAt: string | null;
+}
+
+export interface PaybillTransactionPage {
+  items: PaybillTransaction[];
+  total: number;
+  page: number;
+  size: number;
+  /** count per outcome for the current filters (without the outcome filter) */
+  counts: Partial<Record<PaybillOutcome, number>>;
+  shortCodes: string[];
+}
+
+export interface PaybillTransactionFilters {
+  from?: string;
+  to?: string;
+  shortCode?: string;
+  outcome?: PaybillOutcome | "";
+  q?: string;
+  page?: number;
+  size?: number;
+}

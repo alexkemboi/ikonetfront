@@ -5,7 +5,7 @@ import { apiFetch } from "@/lib/apiClient";
 import { buildApiUrl } from "@/lib/constants";
 import { getPermissionForRoute } from "@/lib/data/nav";
 import { todayEatIso } from "@/lib/dates";
-import { canAccessReconciliation } from "@/lib/utils/reconciliationAccess";
+import { canAccessPaybillRegister, canAccessReconciliation } from "@/lib/utils/reconciliationAccess";
 import { timeoutSignal, unwrapPostings } from "@/lib/finance/ledger";
 import { withCompanyContext } from "@/lib/companyContext";
 import { revalidatePath } from "next/cache";
@@ -27,6 +27,8 @@ import type {
   VoucherBatchKpis,
   PaymentConnection,
   ReconciliationDay,
+  PaybillTransactionFilters,
+  PaybillTransactionPage,
 } from "@/lib/types/payments";
 
 // Zero-safe KPIs — the ledger never fabricates numbers when Account 1110 has
@@ -916,4 +918,144 @@ export async function postPaymentToLedgerAction(
   revalidatePath("/finance/reconciliation");
   revalidatePath("/finance/billing/payments");
   return { success: true, posted: res.data?.posted, message: res.message || "Posted to the ledger." };
+}
+
+// ---------------------------------------------------------------------------
+// Paybill payments register (C2B + Daraja Pull), on the reconciliation page
+// ---------------------------------------------------------------------------
+
+const EMPTY_PAYBILL_PAGE: PaybillTransactionPage = {
+  items: [],
+  total: 0,
+  page: 0,
+  size: 50,
+  counts: {},
+  shortCodes: [],
+};
+
+function errorDetail(json: Record<string, unknown> | null, fallback: string): string {
+  if (typeof json?.detail === "string") return json.detail as string;
+  if (typeof json?.message === "string") return json.message as string;
+  return fallback;
+}
+
+/** `GET /payments/paybill-transactions`: one page of paybill payments, newest first. */
+export async function getPaybillTransactions(
+  filters: PaybillTransactionFilters = {}
+): Promise<{ data: PaybillTransactionPage; message: string }> {
+  const session = await auth();
+  if (!session?.user?.apiToken) {
+    return { data: EMPTY_PAYBILL_PAGE, message: "You must be signed in." };
+  }
+  if (!canAccessPaybillRegister(session.user.role)) {
+    return { data: EMPTY_PAYBILL_PAGE, message: "You don't have permission to view paybill payments." };
+  }
+  const params = new URLSearchParams();
+  if (isValidDateString(filters.from)) params.set("from", filters.from as string);
+  if (isValidDateString(filters.to)) params.set("to", filters.to as string);
+  if (filters.shortCode?.trim()) params.set("shortCode", filters.shortCode.trim());
+  if (filters.outcome) params.set("outcome", filters.outcome);
+  if (filters.q?.trim()) params.set("q", filters.q.trim());
+  params.set("page", String(Math.max(0, filters.page ?? 0)));
+  params.set("size", String(Math.min(200, Math.max(1, filters.size ?? 50))));
+  try {
+    const res = await fetch(buildApiUrl(`/payments/paybill-transactions?${params.toString()}`), {
+      headers: await getAuthHeaders(),
+      cache: "no-store",
+    });
+    if (!res.ok) {
+      return {
+        data: EMPTY_PAYBILL_PAGE,
+        message:
+          res.status === 403
+            ? "Your role cannot view paybill payments. Ask an administrator to grant view on M-Pesa reconciliation."
+            : `Paybill payments unavailable (HTTP ${res.status}).`,
+      };
+    }
+    const json = (await res.json()) as Partial<PaybillTransactionPage>;
+    return {
+      data: {
+        items: Array.isArray(json.items) ? json.items : [],
+        total: typeof json.total === "number" ? json.total : 0,
+        page: typeof json.page === "number" ? json.page : 0,
+        size: typeof json.size === "number" ? json.size : 50,
+        counts: typeof json.counts === "object" && json.counts !== null ? json.counts : {},
+        shortCodes: Array.isArray(json.shortCodes) ? json.shortCodes : [],
+      },
+      message: "",
+    };
+  } catch (error) {
+    console.error("[Payments] getPaybillTransactions error:", error);
+    return { data: EMPTY_PAYBILL_PAGE, message: "Failed to reach the paybill payments endpoint." };
+  }
+}
+
+/** Gives a paybill payment that needs review to a PPPoE account, which renews it. */
+export async function assignPaybillTransaction(
+  id: string,
+  accountNumber: string,
+  note?: string
+): Promise<{ success: boolean; message: string }> {
+  const session = await auth();
+  if (!session?.user?.apiToken) {
+    return { success: false, message: "You must be signed in." };
+  }
+  if (!canAccessPaybillRegister(session.user.role)) {
+    return { success: false, message: "You don't have permission to change paybill payments." };
+  }
+  if (!accountNumber.trim()) {
+    return { success: false, message: "Enter the account number to give this payment to." };
+  }
+  try {
+    const res = await fetch(buildApiUrl(`/payments/paybill-transactions/${encodeURIComponent(id)}/assign`), {
+      method: "POST",
+      headers: await getAuthHeaders(),
+      cache: "no-store",
+      body: JSON.stringify({ accountNumber: accountNumber.trim(), note: note?.trim() || null }),
+    });
+    const json = (await res.json().catch(() => null)) as Record<string, unknown> | null;
+    if (!res.ok) {
+      return { success: false, message: errorDetail(json, `Assign failed (HTTP ${res.status}).`) };
+    }
+    return {
+      success: true,
+      message: `Payment given to ${String(json?.accountNumber ?? accountNumber.trim())}; the account is renewed.`,
+    };
+  } catch (error) {
+    console.error("[Payments] assignPaybillTransaction error:", error);
+    return { success: false, message: "Failed to reach the paybill payments endpoint." };
+  }
+}
+
+/** Closes a paybill payment that needs review without renewing anything. */
+export async function markPaybillTransactionHandled(
+  id: string,
+  note: string
+): Promise<{ success: boolean; message: string }> {
+  const session = await auth();
+  if (!session?.user?.apiToken) {
+    return { success: false, message: "You must be signed in." };
+  }
+  if (!canAccessPaybillRegister(session.user.role)) {
+    return { success: false, message: "You don't have permission to change paybill payments." };
+  }
+  if (!note.trim()) {
+    return { success: false, message: "Say what was done with this payment." };
+  }
+  try {
+    const res = await fetch(buildApiUrl(`/payments/paybill-transactions/${encodeURIComponent(id)}/handled`), {
+      method: "POST",
+      headers: await getAuthHeaders(),
+      cache: "no-store",
+      body: JSON.stringify({ note: note.trim() }),
+    });
+    const json = (await res.json().catch(() => null)) as Record<string, unknown> | null;
+    if (!res.ok) {
+      return { success: false, message: errorDetail(json, `Could not mark it handled (HTTP ${res.status}).`) };
+    }
+    return { success: true, message: "Marked handled." };
+  } catch (error) {
+    console.error("[Payments] markPaybillTransactionHandled error:", error);
+    return { success: false, message: "Failed to reach the paybill payments endpoint." };
+  }
 }
