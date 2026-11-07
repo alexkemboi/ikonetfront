@@ -3,7 +3,18 @@
 import { useCallback, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Loader2, Plus, Router as RouterIcon, FileText, Building2, UserRound, Trash2 } from "lucide-react";
+import { Loader2, Plus, Router as RouterIcon, FileText, Building2, UserRound, Trash2, MoreVertical, Eye, Settings2, Smartphone, Mail, Pencil } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import InvestorInvoiceDialog from "@/components/investors/InvestorInvoiceDialog";
+import { feeDate, kes, STANDING_CLASS, STANDING_LABEL } from "@/components/finance/systemFeeFormat";
+import type { FeeReceivingAccount } from "@/lib/types/platformFee";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -42,6 +53,8 @@ type Props = {
   isPlatformAdmin: boolean;
   /** This investor's set-up sheet, open from the start (linked from the investor page). */
   initialDetail?: InvestorDetail | null;
+  /** Where the system fee is paid (for the invoice); null until the platform has chosen. */
+  feeAccount?: FeeReceivingAccount | null;
 };
 
 const EMPTY_INVESTOR: InvestorInput = { legalName: "", contactName: "", phone: "", email: "", notes: "" };
@@ -77,7 +90,7 @@ function lastMonth(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 }
 
-export default function InvestorsClient({ investors, routers, isPlatformAdmin, initialDetail = null }: Props) {
+export default function InvestorsClient({ investors, routers, isPlatformAdmin, initialDetail = null, feeAccount = null }: Props) {
   const router = useRouter();
   const { requireCompany, companyCode } = useCompanyScope();
   const [pending, startTransition] = useTransition();
@@ -98,6 +111,37 @@ export default function InvestorsClient({ investors, routers, isPlatformAdmin, i
   } | null>(null);
   const [assignForm, setAssignForm] = useState<{ agreementId: string; routerId: string; start: string } | null>(null);
   const [billingPeriod, setBillingPeriod] = useState<string | null>(null);
+  const [invoiceFor, setInvoiceFor] = useState<InvestorSummary | null>(null);
+  const [messageFor, setMessageFor] = useState<InvestorSummary | null>(null);
+
+  const totals = investors.reduce(
+    (t, i) => ({
+      charged: t.charged + (i.fees?.charged ?? 0),
+      paid: t.paid + (i.fees?.paid ?? 0),
+      outstanding: t.outstanding + Math.max(i.fees?.outstanding ?? 0, 0),
+      late: t.late + (i.fees && (i.fees.standing === "OVERDUE" || i.fees.standing === "SUSPENDED") ? 1 : 0),
+    }),
+    { charged: 0, paid: 0, outstanding: 0, late: 0 }
+  );
+
+  /** Edit details from the list: the form needs the notes, which only the full record has. */
+  const editInvestor = (investorId: string) => {
+    setLoadingId(investorId);
+    startTransition(async () => {
+      const res = await getInvestor(investorId);
+      setLoadingId(null);
+      if (!res.success || !res.data) {
+        toast.error(res.message || "Could not load the investor");
+        return;
+      }
+      const d = res.data;
+      setInvestorForm({
+        id: d.id,
+        values: { legalName: d.legalName, contactName: d.contactName ?? "", phone: d.phone ?? "", email: d.email ?? "",
+          notes: d.notes ?? "", status: d.status },
+      });
+    });
+  };
 
   const openDetail = useCallback((investorId: string) => {
     setLoadingId(investorId);
@@ -128,7 +172,7 @@ export default function InvestorsClient({ investors, routers, isPlatformAdmin, i
   };
 
   /** Only an investor with no history goes; the API refuses the rest with the reason (retire them instead). */
-  const deleteInvestor = (target: InvestorDetail) => {
+  const deleteInvestor = (target: Pick<InvestorDetail, "id" | "legalName" | "code">) => {
     if (!window.confirm(`Delete ${target.legalName} (${target.code})? This cannot be undone.`)) return;
     startTransition(async () => {
       const res = await deleteInvestorAction(target.id);
@@ -245,72 +289,145 @@ export default function InvestorsClient({ investors, routers, isPlatformAdmin, i
         )}
       </div>
 
+      {/* totals over the investors listed (one company, or all) */}
+      {investors.some((i) => i.fees) && (
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {[
+            { label: "Charged (all statements)", value: kes(totals.charged) },
+            { label: "Paid", value: kes(totals.paid) },
+            { label: "Outstanding", value: kes(totals.outstanding) },
+            { label: "Investors overdue or suspended", value: String(totals.late) },
+          ].map((t) => (
+            <div key={t.label} className="rounded-xl border border-border bg-card p-3">
+              <p className="text-xs text-muted-foreground">{t.label}</p>
+              <p className="mt-1 text-lg font-semibold tabular-nums">{t.value}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
       <Card>
-        <CardContent className="p-0">
-          <Table>
+        <CardContent className="overflow-x-auto p-0">
+          <Table className="min-w-[960px]">
             <TableHeader>
               <TableRow>
-                <TableHead>Code</TableHead>
                 <TableHead>Investor</TableHead>
-                <TableHead>Contact</TableHead>
                 <TableHead>Companies</TableHead>
-                <TableHead className="text-right">Agreements</TableHead>
                 <TableHead className="text-right">Routers</TableHead>
-                {isPlatformAdmin && <TableHead className="text-right">Accounts</TableHead>}
+                <TableHead className="text-right">Charged</TableHead>
+                <TableHead className="text-right">Paid</TableHead>
+                <TableHead className="text-right">Outstanding</TableHead>
+                <TableHead>System fee</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead className="w-0" />
+                <TableHead className="w-0"><span className="sr-only">Actions</span></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {investors.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={isPlatformAdmin ? 9 : 8} className="py-10 text-center text-sm text-muted-foreground">
+                  <TableCell colSpan={9} className="py-10 text-center text-sm text-muted-foreground">
                     {isPlatformAdmin
                       ? "No investor is registered yet. Start with Register investor."
                       : "No investor is linked to your company. A system administrator registers investors and their agreements."}
                   </TableCell>
                 </TableRow>
               )}
-              {investors.map((inv) => (
-                <TableRow key={inv.id} className="cursor-pointer" onClick={() => router.push(`/finance/investors/${inv.id}`)}>
-                  <TableCell className="font-mono text-xs">{inv.code}</TableCell>
-                  <TableCell className="font-medium">
-                    {inv.legalName}
-                    {loadingId === inv.id && <Loader2 className="ml-2 inline h-3 w-3 animate-spin" />}
-                  </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {[inv.contactName, inv.phone].filter(Boolean).join(" · ") || "—"}
-                  </TableCell>
-                  <TableCell className="text-sm">
-                    {inv.companies.filter((c) => c.status === "ACTIVE").map((c) => c.companyName).join(", ") || "—"}
-                  </TableCell>
-                  <TableCell className="text-right">{inv.agreementCount}</TableCell>
-                  <TableCell className="text-right">{inv.routerCount}</TableCell>
-                  {isPlatformAdmin && <TableCell className="text-right">{inv.accountCount}</TableCell>}
-                  <TableCell>
-                    <Badge variant={inv.status === "ACTIVE" ? "default" : "secondary"}>
-                      {inv.status === "ACTIVE" ? "Active" : "Retired"}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={(e) => {
-                        // the row opens the investor's page; this opens the set-up sheet instead
-                        e.stopPropagation();
-                        openDetail(inv.id);
-                      }}
-                    >
-                      Manage
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
+              {investors.map((inv) => {
+                const fees = inv.fees;
+                const owes = (fees?.outstanding ?? 0) > 0;
+                return (
+                  <TableRow key={inv.id} className="cursor-pointer" onClick={() => router.push(`/finance/investors/${inv.id}`)}>
+                    <TableCell>
+                      <p className="font-medium">
+                        {inv.legalName}
+                        {loadingId === inv.id && <Loader2 className="ml-2 inline h-3 w-3 animate-spin" />}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        <span className="font-mono">{inv.code}</span>
+                        {[inv.contactName, inv.phone].filter(Boolean).length > 0 ? ` · ${[inv.contactName, inv.phone].filter(Boolean).join(" · ")}` : ""}
+                      </p>
+                    </TableCell>
+                    <TableCell className="text-sm">
+                      {inv.companies.filter((c) => c.status === "ACTIVE").map((c) => c.companyName).join(", ") || "—"}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">{inv.routerCount}</TableCell>
+                    <TableCell className="text-right tabular-nums">{kes(fees?.charged ?? 0)}</TableCell>
+                    <TableCell className="text-right tabular-nums">{kes(fees?.paid ?? 0)}</TableCell>
+                    <TableCell className={`text-right font-medium tabular-nums ${owes ? "" : "text-muted-foreground"}`}>
+                      {kes(fees?.outstanding ?? 0)}
+                    </TableCell>
+                    <TableCell>
+                      {fees ? (
+                        <div className="space-y-0.5">
+                          <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${STANDING_CLASS[fees.standing]}`}>
+                            {STANDING_LABEL[fees.standing]}
+                          </span>
+                          {owes && fees.nextDueDate && (
+                            <p className="text-xs text-muted-foreground">Due {feeDate(fees.nextDueDate)}</p>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={inv.status === "ACTIVE" ? "default" : "secondary"}>
+                        {inv.status === "ACTIVE" ? "Active" : "Retired"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell onClick={(e) => e.stopPropagation()}>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button size="icon" variant="ghost" aria-label={`Actions for ${inv.legalName}`}>
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-60">
+                          <DropdownMenuLabel>{inv.legalName}</DropdownMenuLabel>
+                          <DropdownMenuItem onClick={() => router.push(`/finance/investors/${inv.id}`)}>
+                            <Eye className="mr-2 h-4 w-4" /> View details
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => openDetail(inv.id)}>
+                            <Settings2 className="mr-2 h-4 w-4" /> Manage agreements and routers
+                          </DropdownMenuItem>
+                          {isPlatformAdmin && (
+                            <>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem disabled={!owes} onClick={() => setInvoiceFor(inv)}>
+                                <Smartphone className="mr-2 h-4 w-4" /> Invoice: M-Pesa prompt or paybill
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => setMessageFor(inv)}>
+                                <Mail className="mr-2 h-4 w-4" /> Message
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem onClick={() => editInvestor(inv.id)}>
+                                <Pencil className="mr-2 h-4 w-4" /> Edit details
+                              </DropdownMenuItem>
+                              <DropdownMenuItem className="text-destructive" onClick={() => deleteInvestor(inv)}>
+                                <Trash2 className="mr-2 h-4 w-4" /> Delete
+                              </DropdownMenuItem>
+                            </>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </CardContent>
       </Card>
+
+      {invoiceFor && (
+        <InvestorInvoiceDialog key={invoiceFor.id} investor={invoiceFor} account={feeAccount}
+          open onOpenChange={(open) => !open && setInvoiceFor(null)} />
+      )}
+      {messageFor && (
+        <MessageInvestorsDialog key={messageFor.id} label="Message"
+          target={{ kind: "one", investorId: messageFor.id, name: messageFor.legalName }}
+          open onOpenChange={(open) => !open && setMessageFor(null)} />
+      )}
 
       {/* ── one investor ─────────────────────────────────────────────── */}
       <Sheet open={detail !== null} onOpenChange={(open) => !open && setDetail(null)}>

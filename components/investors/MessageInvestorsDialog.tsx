@@ -22,13 +22,21 @@ export default function MessageInvestorsDialog({
   target,
   label,
   variant = "outline",
+  open: openProp,
+  onOpenChange,
 }: {
   target: { kind: "one"; investorId: string; name: string } | { kind: "company"; companyCode: string | null };
   label: string;
   variant?: "outline" | "default";
+  /** Opened from elsewhere (a row's actions menu): no button of its own. */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) {
   const router = useRouter();
-  const [open, setOpen] = useState(false);
+  const [openOwn, setOpenOwn] = useState(false);
+  const controlled = openProp !== undefined;
+  const open = controlled ? openProp : openOwn;
+  const setOpen = (value: boolean) => (controlled ? onOpenChange?.(value) : setOpenOwn(value));
   const [pending, startTransition] = useTransition();
   const [email, setEmail] = useState(true);
   const [sms, setSms] = useState(false);
@@ -72,7 +80,7 @@ export default function MessageInvestorsDialog({
 
   return (
     <>
-      <Button
+      {!controlled && <Button
         variant={variant}
         onClick={() => {
           if (target.kind === "company" && !target.companyCode) {
@@ -84,7 +92,7 @@ export default function MessageInvestorsDialog({
         }}
       >
         <Mail className="mr-2 size-4" /> {label}
-      </Button>
+      </Button>}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-xl">
           <DialogHeader>

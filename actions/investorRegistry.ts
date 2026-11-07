@@ -145,3 +145,15 @@ export async function endRouterAssignmentAction(
 export async function runInvestorBillingAction(period: string): Promise<ApiResponse<BillingRunResult>> {
   return write<BillingRunResult>("/investors/billing/run", "POST", { period });
 }
+
+/**
+ * An invoice for paying straight into the platform's account (SYSADMIN): what is owed and what to
+ * enter on M-Pesa or the bank, for one agreement or every one that owes, by email and/or text.
+ * The M-Pesa prompt is payFeeNow (actions/platformFees).
+ */
+export async function sendInvestorInvoice(
+  investorId: string,
+  input: { agreementId?: string | null; email: boolean; sms: boolean }
+): Promise<ApiResponse<import("@/lib/types/investorMessages").InvestorMessageResult>> {
+  return write(`/investors/${encodeURIComponent(investorId)}/invoice`, "POST", input);
+}

@@ -6,7 +6,7 @@ import { isPlatformAdminRole, normalizeRole, ROLE_NAME } from "@/lib/types/roles
 import InvestorsClient from "./_components/InvestorsClient";
 import SystemFeesLedger from "./_components/SystemFeesLedger";
 import type { RouterOption } from "./_components/RouterPicker";
-import { getFeeBalances, getFeeReceivingCandidates } from "@/actions/platformFees";
+import { getFeeBalances, getFeeReceivingAccount, getFeeReceivingCandidates } from "@/actions/platformFees";
 
 export const metadata = { title: "Investors" };
 
@@ -34,6 +34,7 @@ export default async function InvestorsPage({ searchParams }: { searchParams: Pr
     isPlatformAdmin ? getFeeReceivingCandidates() : Promise.resolve([]),
     manage ? getInvestor(manage) : Promise.resolve(null),
   ]);
+  const feeAccount = isPlatformAdmin ? await getFeeReceivingAccount() : null;
   const ownerOf = new Map(owned.map((a) => [a.routerId, `${a.investorName} (${a.investorCode})`]));
   const routers: RouterOption[] = (devices.data ?? [])
     .map((d) => ({
@@ -47,7 +48,7 @@ export default async function InvestorsPage({ searchParams }: { searchParams: Pr
 
   return (
     <>
-      <InvestorsClient investors={investors} routers={routers} isPlatformAdmin={isPlatformAdmin} initialDetail={managed?.success ? managed.data : null} />
+      <InvestorsClient investors={investors} routers={routers} isPlatformAdmin={isPlatformAdmin} initialDetail={managed?.success ? managed.data : null} feeAccount={feeAccount} />
       <SystemFeesLedger
         balances={feeBalances}
         canRecordPayment={isPlatformAdmin}
