@@ -35,7 +35,7 @@ const OUTCOMES: { value: PaybillOutcome | ""; label: string }[] = [
   { value: "RECORDED", label: "Already in IBS" },
   { value: "HANDLED", label: "Handled" },
   { value: "PLATFORM_FEE", label: "System fee" },
-  { value: "NEW", label: "Not decided" },
+  { value: "NEW", label: "Waiting for prompt result" },
 ];
 
 const OUTCOME_STYLE: Record<PaybillOutcome, string> = {
@@ -53,6 +53,7 @@ const REASON_TEXT: Record<string, string> = {
   NO_PACKAGE: "The account has no package",
   UNDERPAID: "Less than the package price",
   FAILED: "Renewal failed; try assigning it",
+  PROMPT_NOT_SETTLED: "Paid at Safaricom, but IBS has no record of this prompt: the customer may not have been connected",
 };
 
 function outcomeLabel(outcome: PaybillOutcome): string {
