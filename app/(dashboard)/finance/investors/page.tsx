@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
-import { getInvestor, listInvestors, listRouterAssignments } from "@/actions/investorRegistry";
+import { getInvestor, listInvestors, listRouterAssignments, listStatementMonths } from "@/actions/investorRegistry";
 import { getMikrotikDevices } from "@/actions/mikrotik";
 import { isPlatformAdminRole, normalizeRole, ROLE_NAME } from "@/lib/types/roles";
 import InvestorsClient from "./_components/InvestorsClient";
@@ -17,8 +17,10 @@ export const metadata = { title: "Investors" };
  * SYSADMIN does everything. A company admin sees the investors linked to their
  * company and assigns or releases their company's routers.
  */
-export default async function InvestorsPage({ searchParams }: { searchParams: Promise<{ manage?: string }> }) {
-  const { manage } = await searchParams;
+export default async function InvestorsPage({ searchParams }: { searchParams: Promise<{ manage?: string; month?: string }> }) {
+  const { manage, month: requestedMonth } = await searchParams;
+  // ?month=YYYY-MM shows that statement month; anything else shows what is owed now
+  const month = requestedMonth && /^\d{4}-(0[1-9]|1[0-2])$/.test(requestedMonth) ? requestedMonth : null;
   const session = await auth();
   const role = session?.user?.role ?? "";
   const isPlatformAdmin = isPlatformAdminRole(role);
@@ -26,8 +28,9 @@ export default async function InvestorsPage({ searchParams }: { searchParams: Pr
   if (!isPlatformAdmin && !isCompanyAdmin) redirect("/dashboard");
 
   // "Manage agreements and routers" on an investor's page lands here with ?manage=<id>
-  const [investors, devices, owned, feeBalances, receivingCandidates, managed] = await Promise.all([
-    listInvestors(),
+  const [investors, statementMonths, devices, owned, feeBalances, receivingCandidates, managed] = await Promise.all([
+    listInvestors(month),
+    listStatementMonths(),
     getMikrotikDevices(),
     listRouterAssignments({ currentOnly: true }),
     getFeeBalances(),
@@ -48,7 +51,7 @@ export default async function InvestorsPage({ searchParams }: { searchParams: Pr
 
   return (
     <>
-      <InvestorsClient investors={investors} routers={routers} isPlatformAdmin={isPlatformAdmin} initialDetail={managed?.success ? managed.data : null} feeAccount={feeAccount} />
+      <InvestorsClient investors={investors} routers={routers} isPlatformAdmin={isPlatformAdmin} initialDetail={managed?.success ? managed.data : null} feeAccount={feeAccount} month={month} statementMonths={statementMonths} />
       <SystemFeesLedger
         balances={feeBalances}
         canRecordPayment={isPlatformAdmin}

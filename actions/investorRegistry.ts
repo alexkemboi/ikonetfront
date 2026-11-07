@@ -34,8 +34,16 @@ async function write<T>(path: string, method: "POST" | "PUT" | "DELETE", body?: 
   return res;
 }
 
-export async function listInvestors(): Promise<InvestorSummary[]> {
-  const res = await apiFetch<InvestorSummary[]>("/investors", { auth: "required", cache: "no-store" });
+/** The register; with a statement month (YYYY-MM), each row also carries that month's figures. */
+export async function listInvestors(month?: string | null): Promise<InvestorSummary[]> {
+  const query = month ? `?month=${encodeURIComponent(month)}` : "";
+  const res = await apiFetch<InvestorSummary[]>(`/investors${query}`, { auth: "required", cache: "no-store" });
+  return res.success && Array.isArray(res.data) ? res.data : [];
+}
+
+/** The months that have investor statements, newest first (YYYY-MM). */
+export async function listStatementMonths(): Promise<string[]> {
+  const res = await apiFetch<string[]>("/investors/statement-months", { auth: "required", cache: "no-store" });
   return res.success && Array.isArray(res.data) ? res.data : [];
 }
 

@@ -55,7 +55,17 @@ type Props = {
   initialDetail?: InvestorDetail | null;
   /** Where the system fee is paid (for the invoice); null until the platform has chosen. */
   feeAccount?: FeeReceivingAccount | null;
+  /** The statement month shown (YYYY-MM), or null for what is owed now. */
+  month?: string | null;
+  /** Months that have statements, newest first: the month picker's choices. */
+  statementMonths?: string[];
 };
+
+/** "2026-10" → "October 2026". */
+function monthName(month: string): string {
+  const [y, m] = month.split("-").map(Number);
+  return new Date(y, m - 1, 1).toLocaleDateString("en-KE", { month: "long", year: "numeric" });
+}
 
 const EMPTY_INVESTOR: InvestorInput = { legalName: "", contactName: "", phone: "", email: "", notes: "" };
 
@@ -90,7 +100,15 @@ function lastMonth(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 }
 
-export default function InvestorsClient({ investors, routers, isPlatformAdmin, initialDetail = null, feeAccount = null }: Props) {
+export default function InvestorsClient({
+  investors,
+  routers,
+  isPlatformAdmin,
+  initialDetail = null,
+  feeAccount = null,
+  month = null,
+  statementMonths = [],
+}: Props) {
   const router = useRouter();
   const { requireCompany, companyCode } = useCompanyScope();
   const [pending, startTransition] = useTransition();
@@ -114,15 +132,25 @@ export default function InvestorsClient({ investors, routers, isPlatformAdmin, i
   const [invoiceFor, setInvoiceFor] = useState<InvestorSummary | null>(null);
   const [messageFor, setMessageFor] = useState<InvestorSummary | null>(null);
 
+  // with a month chosen, the money columns and totals are that statement month's
+  const figures = (i: InvestorSummary) => (month ? i.month ?? null : i.fees ?? null);
   const totals = investors.reduce(
-    (t, i) => ({
-      charged: t.charged + (i.fees?.charged ?? 0),
-      paid: t.paid + (i.fees?.paid ?? 0),
-      outstanding: t.outstanding + Math.max(i.fees?.outstanding ?? 0, 0),
-      late: t.late + (i.fees && (i.fees.standing === "OVERDUE" || i.fees.standing === "SUSPENDED") ? 1 : 0),
-    }),
-    { charged: 0, paid: 0, outstanding: 0, late: 0 }
+    (t, i) => {
+      const f = figures(i);
+      return {
+        revenue: t.revenue + (i.month?.hotspotRevenue ?? 0),
+        charged: t.charged + (f?.charged ?? 0),
+        paid: t.paid + (f?.paid ?? 0),
+        outstanding: t.outstanding + Math.max(f?.outstanding ?? 0, 0),
+        late: t.late + (f && (f.standing === "OVERDUE" || f.standing === "SUSPENDED") ? 1 : 0),
+      };
+    },
+    { revenue: 0, charged: 0, paid: 0, outstanding: 0, late: 0 }
   );
+  const monthChoices = month && !statementMonths.includes(month) ? [month, ...statementMonths] : statementMonths;
+  const showMonth = (value: string) => {
+    router.replace(value ? `/finance/investors?month=${value}` : "/finance/investors", { scroll: false });
+  };
 
   /** Edit details from the list: the form needs the notes, which only the full record has. */
   const editInvestor = (investorId: string) => {
@@ -289,13 +317,46 @@ export default function InvestorsClient({ investors, routers, isPlatformAdmin, i
         )}
       </div>
 
+      {/* which figures the totals and money columns show: what is owed now, or one statement month */}
+      <div className="flex flex-wrap items-center gap-3">
+        <Label htmlFor="investor-month" className="text-sm text-muted-foreground">
+          Show
+        </Label>
+        <select
+          id="investor-month"
+          className={`${selectClass} w-auto min-w-56`}
+          value={month ?? ""}
+          disabled={pending}
+          onChange={(e) => startTransition(() => showMonth(e.target.value))}
+        >
+          <option value="">All months: what is owed now</option>
+          {monthChoices.map((m) => (
+            <option key={m} value={m}>
+              {monthName(m)} statement
+            </option>
+          ))}
+        </select>
+        {pending && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+        {statementMonths.length === 0 && (
+          <span className="text-xs text-muted-foreground">No month-end statements yet.</span>
+        )}
+      </div>
+      {month && (
+        <p className="-mt-3 text-xs text-muted-foreground">
+          Figures for {monthName(month)}: revenue and charges from that month&apos;s statements. Payments settle the
+          oldest month first, so a payment counts toward {monthName(month)} only once earlier months are paid.
+          Invoices always ask for everything owed now. Routers is today&apos;s count.
+        </p>
+      )}
+
       {/* totals over the investors listed (one company, or all) */}
-      {investors.some((i) => i.fees) && (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      {investors.some((i) => figures(i)) && (
+        <div className={`grid grid-cols-2 gap-3 ${month ? "sm:grid-cols-5" : "sm:grid-cols-4"}`}>
           {[
-            { label: "Charged (all statements)", value: kes(totals.charged) },
-            { label: "Paid", value: kes(totals.paid) },
-            { label: "Outstanding", value: kes(totals.outstanding) },
+            ...(month ? [{ label: `Revenue (${monthName(month)})`, value: kes(totals.revenue) }] : []),
+            { label: month ? `Charged for ${monthName(month)}` : "Charged (all statements)", value: kes(totals.charged) },
+            { label: month ? "Paid toward it" : "Paid", value: kes(totals.paid) },
+            { label: month ? "Still owed for it" : "Outstanding", value: kes(totals.outstanding) },
             { label: "Investors overdue or suspended", value: String(totals.late) },
           ].map((t) => (
             <div key={t.label} className="rounded-xl border border-border bg-card p-3">
@@ -314,6 +375,7 @@ export default function InvestorsClient({ investors, routers, isPlatformAdmin, i
                 <TableHead>Investor</TableHead>
                 <TableHead>Companies</TableHead>
                 <TableHead className="text-right">Routers</TableHead>
+                {month && <TableHead className="text-right">Revenue</TableHead>}
                 <TableHead className="text-right">Charged</TableHead>
                 <TableHead className="text-right">Paid</TableHead>
                 <TableHead className="text-right">Outstanding</TableHead>
@@ -325,7 +387,7 @@ export default function InvestorsClient({ investors, routers, isPlatformAdmin, i
             <TableBody>
               {investors.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={9} className="py-10 text-center text-sm text-muted-foreground">
+                  <TableCell colSpan={month ? 10 : 9} className="py-10 text-center text-sm text-muted-foreground">
                     {isPlatformAdmin
                       ? "No investor is registered yet. Start with Register investor."
                       : "No investor is linked to your company. A system administrator registers investors and their agreements."}
@@ -334,7 +396,12 @@ export default function InvestorsClient({ investors, routers, isPlatformAdmin, i
               )}
               {investors.map((inv) => {
                 const fees = inv.fees;
+                // the invoice always follows what is owed now, whichever month is shown
                 const owes = (fees?.outstanding ?? 0) > 0;
+                const shown = figures(inv);
+                const shownOwes = (shown?.outstanding ?? 0) > 0;
+                const shownDue = month ? inv.month?.dueDate ?? null : fees?.nextDueDate ?? null;
+                const noStatement = month !== null && !inv.month?.statement;
                 return (
                   <TableRow key={inv.id} className="cursor-pointer" onClick={() => router.push(`/finance/investors/${inv.id}`)}>
                     <TableCell>
@@ -351,19 +418,37 @@ export default function InvestorsClient({ investors, routers, isPlatformAdmin, i
                       {inv.companies.filter((c) => c.status === "ACTIVE").map((c) => c.companyName).join(", ") || "—"}
                     </TableCell>
                     <TableCell className="text-right tabular-nums">{inv.routerCount}</TableCell>
-                    <TableCell className="text-right tabular-nums">{kes(fees?.charged ?? 0)}</TableCell>
-                    <TableCell className="text-right tabular-nums">{kes(fees?.paid ?? 0)}</TableCell>
-                    <TableCell className={`text-right font-medium tabular-nums ${owes ? "" : "text-muted-foreground"}`}>
-                      {kes(fees?.outstanding ?? 0)}
+                    {month && (
+                      <TableCell className="text-right tabular-nums">
+                        {noStatement ? (
+                          <span className="text-muted-foreground">—</span>
+                        ) : (
+                          <>
+                            {kes(inv.month?.hotspotRevenue ?? 0)}
+                            {(inv.month?.pppoeCustomers ?? 0) > 0 && (
+                              <p className="text-xs text-muted-foreground">{inv.month?.pppoeCustomers} paying PPPoE</p>
+                            )}
+                          </>
+                        )}
+                      </TableCell>
+                    )}
+                    <TableCell className="text-right tabular-nums">{kes(shown?.charged ?? 0)}</TableCell>
+                    <TableCell className="text-right tabular-nums">{kes(shown?.paid ?? 0)}</TableCell>
+                    <TableCell className={`text-right font-medium tabular-nums ${shownOwes ? "" : "text-muted-foreground"}`}>
+                      {kes(shown?.outstanding ?? 0)}
                     </TableCell>
                     <TableCell>
-                      {fees ? (
+                      {noStatement ? (
+                        <span className="text-xs text-muted-foreground">No statement</span>
+                      ) : month && (shown?.charged ?? 0) === 0 ? (
+                        <span className="text-xs text-muted-foreground">Nothing charged</span>
+                      ) : shown ? (
                         <div className="space-y-0.5">
-                          <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${STANDING_CLASS[fees.standing]}`}>
-                            {STANDING_LABEL[fees.standing]}
+                          <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${STANDING_CLASS[shown.standing]}`}>
+                            {STANDING_LABEL[shown.standing]}
                           </span>
-                          {owes && fees.nextDueDate && (
-                            <p className="text-xs text-muted-foreground">Due {feeDate(fees.nextDueDate)}</p>
+                          {shownOwes && shownDue && (
+                            <p className="text-xs text-muted-foreground">Due {feeDate(shownDue)}</p>
                           )}
                         </div>
                       ) : (

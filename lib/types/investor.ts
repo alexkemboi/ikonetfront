@@ -232,6 +232,26 @@ export interface InvestorSummary {
   accountCount: number;
   /** What the investor owes the platform (issued statements less payments), within the listed company. */
   fees?: InvestorFees;
+  /** One statement month's figures; present only when the list was asked for a month. */
+  month?: InvestorMonthFees | null;
+}
+
+/**
+ * One statement month of an investor: what its routers took in, what that month's statements
+ * charged, how much of it payments have covered (oldest month first) and what is left of it.
+ */
+export interface InvestorMonthFees {
+  month: string;
+  /** False when no statement was made for the investor that month. */
+  statement: boolean;
+  hotspotRevenue: number;
+  pppoeCustomers: number;
+  charged: number;
+  paid: number;
+  outstanding: number;
+  standing: "GOOD" | "DUE" | "OVERDUE" | "SUSPENDED";
+  dueDate: string | null;
+  suspendDate: string | null;
 }
 
 export interface InvestorOwingAgreement {
@@ -254,7 +274,7 @@ export interface InvestorFees {
   owing: InvestorOwingAgreement[];
 }
 
-export interface InvestorDetail extends Omit<InvestorSummary, "agreementCount" | "routerCount" | "accountCount" | "fees"> {
+export interface InvestorDetail extends Omit<InvestorSummary, "agreementCount" | "routerCount" | "accountCount" | "fees" | "month"> {
   notes: string | null;
   agreements: InvestorAgreementDetail[];
   routers: RouterAssignment[];
