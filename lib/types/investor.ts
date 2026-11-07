@@ -230,9 +230,31 @@ export interface InvestorSummary {
   agreementCount: number;
   routerCount: number;
   accountCount: number;
+  /** What the investor owes the platform (issued statements less payments), within the listed company. */
+  fees?: InvestorFees;
 }
 
-export interface InvestorDetail extends Omit<InvestorSummary, "agreementCount" | "routerCount" | "accountCount"> {
+export interface InvestorOwingAgreement {
+  agreementId: string;
+  agreementCode: string;
+  companyCode: string | null;
+  companyName: string | null;
+  outstanding: number;
+  dueDate: string | null;
+  standing: "GOOD" | "DUE" | "OVERDUE" | "SUSPENDED";
+}
+
+export interface InvestorFees {
+  charged: number;
+  paid: number;
+  outstanding: number;
+  standing: "GOOD" | "DUE" | "OVERDUE" | "SUSPENDED";
+  nextDueDate: string | null;
+  suspendDate: string | null;
+  owing: InvestorOwingAgreement[];
+}
+
+export interface InvestorDetail extends Omit<InvestorSummary, "agreementCount" | "routerCount" | "accountCount" | "fees"> {
   notes: string | null;
   agreements: InvestorAgreementDetail[];
   routers: RouterAssignment[];

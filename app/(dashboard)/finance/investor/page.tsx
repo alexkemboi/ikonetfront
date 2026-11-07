@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { AgreementsTable, BillingSnapshotsTable, RouterAttributionTable } from "./_components/InvestorTables";
 import { getFeeReceivingAccount, getMyFees } from "@/actions/platformFees";
-import { FeePayNow } from "@/components/finance/FeePayNow";
+import { FeePayNow, feePaymentInstructions } from "@/components/finance/FeePayNow";
 import { feeDate, kes, STANDING_CLASS, STANDING_LABEL } from "@/components/finance/systemFeeFormat";
 import { getMyPortfolio } from "@/actions/investorPortfolio";
 import InvestorPortfolioView from "@/components/investors/InvestorPortfolioView";
@@ -76,6 +76,7 @@ export default async function InvestorPortalPage({
   if (role === ROLE_NAME.INVESTOR) {
     const [{ portfolio, message }, fees, messages] = await Promise.all([getMyPortfolio(period), getMyFees(), getMyMessages()]);
     const owing = fees.filter((f) => f.balance.balance > 0);
+    // the account is shown as the way to pay straight in, beside the M-Pesa prompt
     const account = owing.length > 0 ? await getFeeReceivingAccount() : null;
     return (
       <div className="min-h-screen p-4 text-foreground sm:p-6 lg:p-8">
@@ -99,29 +100,68 @@ export default async function InvestorPortalPage({
             </form>
           </div>
 
-          {owing.length > 0 && (
+          {fees.length > 0 && (
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Pay the system fee</CardTitle>
+                <CardTitle className="text-base">Your invoices</CardTitle>
+                <p className="text-xs text-muted-foreground">
+                  The system fee on each agreement: what the month-end statements charged, what you have paid, and what is
+                  still owed. Pay with an M-Pesa prompt (it records itself) or straight into the account shown. The statement
+                  PDFs are under Agreements below.
+                </p>
               </CardHeader>
-              <CardContent className="space-y-3">
-                {owing.map(({ balance }) => (
-                  <div key={balance.agreementId} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border p-3">
-                    <div>
-                      <p className="text-sm font-medium">
-                        {balance.companyName} · {balance.agreementCode}{" "}
-                        <span className={`ml-1 rounded-full px-2 py-0.5 text-xs font-semibold ${STANDING_CLASS[balance.feeStatus]}`}>
-                          {STANDING_LABEL[balance.feeStatus]}
-                        </span>
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {kes(balance.balance)} due {feeDate(balance.oldestDueDate)} · suspension from {feeDate(balance.suspendDate)}
-                      </p>
-                    </div>
-                    <FeePayNow agreementId={balance.agreementId} agreementCode={balance.agreementCode}
-                      balance={balance.balance} account={account} />
-                  </div>
-                ))}
+              <CardContent className="overflow-x-auto">
+                <table className="w-full min-w-[720px] text-left text-sm tabular-nums">
+                  <thead className="text-xs text-muted-foreground">
+                    <tr className="border-b border-border">
+                      <th className="py-2 pr-3 font-medium">Agreement</th>
+                      <th className="py-2 pr-3 text-right font-medium">Charged</th>
+                      <th className="py-2 pr-3 text-right font-medium">Paid</th>
+                      <th className="py-2 pr-3 text-right font-medium">Outstanding</th>
+                      <th className="py-2 pr-3 font-medium">Standing</th>
+                      <th className="py-2 font-medium">How to pay</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {fees.map(({ balance }) => {
+                      const owes = balance.balance > 0;
+                      return (
+                        <tr key={balance.agreementId} className="border-b border-border align-top">
+                          <td className="py-2 pr-3">
+                            <p className="font-medium">{balance.agreementCode}</p>
+                            <p className="text-xs text-muted-foreground">{balance.companyName}</p>
+                          </td>
+                          <td className="py-2 pr-3 text-right">{kes(balance.charged)}</td>
+                          <td className="py-2 pr-3 text-right">{kes(balance.paid)}</td>
+                          <td className="py-2 pr-3 text-right font-medium">{kes(Math.max(balance.balance, 0))}</td>
+                          <td className="py-2 pr-3">
+                            <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${STANDING_CLASS[balance.feeStatus]}`}>
+                              {STANDING_LABEL[balance.feeStatus]}
+                            </span>
+                            {owes && (
+                              <p className="mt-1 text-xs text-muted-foreground">
+                                Due {feeDate(balance.oldestDueDate)} · suspension from {feeDate(balance.suspendDate)}
+                              </p>
+                            )}
+                          </td>
+                          <td className="py-2">
+                            {owes ? (
+                              <div className="space-y-1">
+                                <FeePayNow agreementId={balance.agreementId} agreementCode={balance.agreementCode}
+                                  balance={balance.balance} account={account} label="Pay with M-Pesa prompt" />
+                                {account && (
+                                  <p className="text-xs text-muted-foreground">Or: {feePaymentInstructions(account, balance.agreementCode)}</p>
+                                )}
+                              </div>
+                            ) : (
+                              <span className="text-xs text-muted-foreground">Nothing owed</span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </CardContent>
             </Card>
           )}

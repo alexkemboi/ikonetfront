@@ -19,6 +19,10 @@ type Props = {
   balance: number;
   /** Null until the platform has chosen where the fee is paid. */
   account: FeeReceivingAccount | null;
+  /** Filled in for the payer, e.g. the investor's phone when an administrator sends the prompt. */
+  defaultPhone?: string | null;
+  /** The button's words; "Pay now" by default. */
+  label?: string;
 };
 
 const POLL_MS = 3_000;
@@ -39,7 +43,7 @@ export function feePaymentInstructions(account: FeeReceivingAccount, agreementCo
  * "Pay now": sends an M-Pesa prompt for a system fee and waits for the answer. The payment
  * records itself when M-Pesa confirms it; nobody types a reference.
  */
-export function FeePayNow({ agreementId, agreementCode, balance, account }: Props) {
+export function FeePayNow({ agreementId, agreementCode, balance, account, defaultPhone, label = "Pay now" }: Props) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [sending, startSending] = useTransition();
@@ -81,7 +85,7 @@ export function FeePayNow({ agreementId, agreementCode, balance, account }: Prop
   }, [prompt?.id, stoppedWaiting]);
 
   const start = () => {
-    setPhone("");
+    setPhone(defaultPhone ?? "");
     setAmount(String(owed));
     setError(null);
     setPrompt(null);
@@ -120,7 +124,7 @@ export function FeePayNow({ agreementId, agreementCode, balance, account }: Prop
   return (
     <>
       <Button size="sm" onClick={start}>
-        Pay now
+        {label}
       </Button>
       <Dialog open={open} onOpenChange={(v) => !sending && setOpen(v)}>
         <DialogContent>
