@@ -720,16 +720,16 @@ export default function CompaniesClient({ companies, readiness, canMutate }: Pro
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="pa-key">Consumer key</Label>
-                <Input id="pa-key" type="password" placeholder="••••••••" value={clientKey} onChange={(e) => setClientKey(e.target.value)} />
+                <Input id="pa-key" type="password" autoComplete="new-password" data-lpignore="true" data-1p-ignore placeholder="••••••••" value={clientKey} onChange={(e) => setClientKey(e.target.value)} />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="pa-secret">Consumer secret</Label>
-                <Input id="pa-secret" type="password" placeholder="••••••••" value={clientSecret} onChange={(e) => setClientSecret(e.target.value)} />
+                <Input id="pa-secret" type="password" autoComplete="new-password" data-lpignore="true" data-1p-ignore placeholder="••••••••" value={clientSecret} onChange={(e) => setClientSecret(e.target.value)} />
               </div>
             </div>
             <div className="space-y-2">
               <Label htmlFor="pa-passkey">Passkey (M-Pesa online)</Label>
-              <Input id="pa-passkey" type="password" placeholder="••••••••" value={passkey} onChange={(e) => setPasskey(e.target.value)} />
+              <Input id="pa-passkey" type="password" autoComplete="new-password" data-lpignore="true" data-1p-ignore placeholder="••••••••" value={passkey} onChange={(e) => setPasskey(e.target.value)} />
               <p className="text-xs text-muted-foreground">Issued by Safaricom with the consumer key and secret. Without it customers cannot be prompted to pay.</p>
             </div>
             {accountType !== "BANK" && (
@@ -856,7 +856,11 @@ export default function CompaniesClient({ companies, readiness, canMutate }: Pro
                   <Input
                     id={`cred-${key}`}
                     type="password"
-                    autoComplete="off"
+                    // "off" is ignored for password fields: Chrome filled the signed-in user's saved
+                    // login password into the consumer key and it was saved (7 Nov 2026)
+                    autoComplete="new-password"
+                    data-lpignore="true"
+                    data-1p-ignore
                     placeholder="Leave blank to keep"
                     value={credentialsFor[key]}
                     onChange={(e) => setCredentialsFor({ ...credentialsFor, [key]: e.target.value })}
