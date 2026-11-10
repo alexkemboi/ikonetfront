@@ -13,6 +13,7 @@ import { DEFAULT_PORTAL_BRAND } from "@/lib/brand";
 import { getHotspotPortalContextAction, type HotspotPortalContext } from "@/actions/hotspot";
 import { HotspotBrandProvider } from "@/lib/hotspot/brand-context";
 import { setPortalRouter, type PortalRouter } from "@/lib/hotspot/portalRouter";
+import { setRouterLinks, type RouterLinks } from "@/lib/hotspot/routerSignIn";
 
 interface HotspotShellProps {
   packages: HotspotPackage[];
@@ -27,6 +28,8 @@ interface HotspotShellProps {
   routerIdentity?: string;
   /** Signed router id from the router's login page (`rid`/`sig`). */
   portalRouter?: PortalRouter | null;
+  /** The router's sign-in address and original page, from its redirect. */
+  routerLinks?: RouterLinks;
   /** Company of the serving router, resolved by the backend on the server render. */
   portalContext?: HotspotPortalContext | null;
 }
@@ -40,7 +43,7 @@ interface HotspotShellProps {
  * company's name is then fetched for it — updating the header/footer, not just
  * the checkout modal.
  */
-export default function HotspotShell({ packages, initialCompanyCode, clientMac, redirectClientMac, clientIp, routerIdentity, portalRouter, portalContext, initialTvDevice, tvPackages, tvPackagesError }: HotspotShellProps) {
+export default function HotspotShell({ packages, initialCompanyCode, clientMac, redirectClientMac, clientIp, routerIdentity, portalRouter, routerLinks, portalContext, initialTvDevice, tvPackages, tvPackagesError }: HotspotShellProps) {
   const [companyCode, setCompanyCode] = useState<string | null>(
     portalContext?.companyCode ?? initialCompanyCode ?? null
   );
@@ -52,6 +55,9 @@ export default function HotspotShell({ packages, initialCompanyCode, clientMac, 
   useEffect(() => {
     setPortalRouter(portalRouter ?? null);
   }, [portalRouter]);
+  useEffect(() => {
+    setRouterLinks(routerLinks ?? {});
+  }, [routerLinks]);
 
   const handleCompanyResolved = (code?: string | null) => {
     if (!code || code === companyCode) return;

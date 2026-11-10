@@ -9,13 +9,25 @@ import type { HotspotPackage, HotspotPaymentOutcome, HotspotVoucherStatusRespons
 import { sanitizeErrorMessage } from "@/lib/brand";
 import { useHotspotBrand } from "@/lib/hotspot/brand-context";
 import { INVALID_PHONE_MESSAGE, toKenyanMobile } from "@/lib/hotspot/phone";
+import { getRouterLinks, routerSignInUrl } from "@/lib/hotspot/routerSignIn";
 
-const POLL_INTERVAL_MS = 5_000;
+// Each check also asks Safaricom when its callback is late, so checking often connects sooner.
+const POLL_INTERVAL_MS = 2_000;
+/** How long after "active" the device signs itself in on the router (lets the RADIUS login settle). */
+const ROUTER_SIGN_IN_DELAY_MS = 1_000;
 const POLL_LIMIT_MS = 120_000;
 /** Status checks that may fail in a row before the customer is told we cannot check. */
 const MAX_FAILED_CHECKS = 3;
 const MAC_ADDRESS = /^(?:[0-9a-fA-F]{2}[:-]){5}[0-9a-fA-F]{2}$/;
 type PaymentView = "checkout" | "pending" | "active" | "failed" | "unavailable" | "notPaid";
+
+/** The sign-in window of some phones blocks storage; the purchase must go on without it. */
+function storeSet(key: string, value: string) {
+  try { window.sessionStorage.setItem(key, value); } catch { /* storage blocked */ }
+}
+function storeRemove(key: string) {
+  try { window.sessionStorage.removeItem(key); } catch { /* storage blocked */ }
+}
 
 /** What to tell the customer when M-Pesa answers that the payment did not happen. Nothing was charged in any of these. */
 const NOT_PAID_MESSAGE: Record<HotspotPaymentOutcome, { title: string; detail: string }> = {
@@ -83,6 +95,27 @@ export default function CheckoutModal({ package: pkg, pendingPurchase: initialPe
   const macAddress = clientMac?.trim() ?? "";
   const requestClientMac = redirectClientMac?.trim() || macAddress;
   const hasUsableMac = MAC_ADDRESS.test(macAddress);
+  const [now, setNow] = useState(() => Date.now());
+  const [signInUrl, setSignInUrl] = useState<string | null>(null);
+
+  // the countdown while the payment is confirmed
+  useEffect(() => {
+    if (view !== "pending") return;
+    const tick = setInterval(() => setNow(Date.now()), 1_000);
+    return () => clearInterval(tick);
+  }, [view]);
+
+  // Paid: the device signs itself in on the router, which shows "You are logged in" and makes
+  // the phone re-test the connection at once. Without the router's sign-in address the server
+  // has already signed the device in.
+  useEffect(() => {
+    if (view !== "active" || !status?.voucherCode) return;
+    const url = routerSignInUrl(getRouterLinks(), status.voucherCode);
+    setSignInUrl(url);
+    if (!url) return;
+    const go = setTimeout(() => window.location.assign(url), ROUTER_SIGN_IN_DELAY_MS);
+    return () => clearTimeout(go);
+  }, [view, status?.voucherCode]);
 
   const stopPolling = useCallback(() => {
     if (intervalRef.current) clearInterval(intervalRef.current);
@@ -114,14 +147,14 @@ export default function CheckoutModal({ package: pkg, pendingPurchase: initialPe
       setStatus(result.data);
       if (result.data.sessionStatus === "ACTIVE") {
         stopPolling();
-        window.sessionStorage.removeItem(PENDING_HOTSPOT_PURCHASE_KEY);
+        storeRemove(PENDING_HOTSPOT_PURCHASE_KEY);
         onPendingPurchase(null);
         setView("active");
       } else if (result.data.paymentOutcome) {
         // M-Pesa has answered and the payment did not happen. The wait is over: say why,
         // and forget this attempt so the customer can send the prompt again.
         stopPolling();
-        window.sessionStorage.removeItem(PENDING_HOTSPOT_PURCHASE_KEY);
+        storeRemove(PENDING_HOTSPOT_PURCHASE_KEY);
         onPendingPurchase(null);
         setOutcome(result.data.paymentOutcome);
         setView("notPaid");
@@ -169,7 +202,7 @@ try {
       if (!result.success || !result.data?.voucherCode) throw new Error(result.message || "Failed to start payment tracking. Please try again.");
       if (result.data.companyId) onCompanyResolved?.(result.data.companyId);
       const nextPurchase: PendingHotspotPurchase = { sessionId: result.data.sessionId, voucherCode: result.data.voucherCode, startedAt: Date.now() };
-      window.sessionStorage.setItem(PENDING_HOTSPOT_PURCHASE_KEY, JSON.stringify(nextPurchase));
+      storeSet(PENDING_HOTSPOT_PURCHASE_KEY, JSON.stringify(nextPurchase));
       onPendingPurchase(nextPurchase);
       setPurchase(nextPurchase);
       setView("pending");
@@ -203,8 +236,18 @@ try {
           {!hasUsableMac && <p role="alert" className="text-sm text-destructive">We can’t identify this Wi-Fi device. Reconnect to the hotspot and open the portal again.</p>}
           <div className="space-y-2"><label htmlFor="phone" className="text-sm font-medium text-foreground block">M-Pesa Phone Number</label><input id="phone" type="tel" inputMode="tel" autoComplete="tel" placeholder="0712 345 678" value={phoneNumber} onChange={(event) => { setPhoneNumber(event.target.value); if (phoneError) setPhoneError(null); }} disabled={isProcessing} aria-invalid={phoneError ? true : undefined} aria-describedby={phoneError ? "phone-error" : undefined} className="w-full px-3 py-2 border border-border rounded-lg bg-background text-sm disabled:opacity-50" />{phoneError && <p id="phone-error" role="alert" className="text-sm text-destructive">{phoneError}</p>}</div>
         </>}
-        {view === "pending" && <div className="space-y-3 text-center"><Loader2 className="w-8 h-8 animate-spin text-primary mx-auto" /><p className="font-medium">Enter your M-Pesa PIN when prompted.</p><p className="text-sm text-muted-foreground">We’ll connect this device as soon as payment is confirmed.</p></div>}
-        {view === "active" && <div className="space-y-3 text-center"><CheckCircle2 className="w-10 h-10 text-green-600 mx-auto" /><p className="font-medium">Your hotspot session is active.</p>{status?.voucherCode && <p className="text-sm">Voucher: <span className="font-mono">{status.voucherCode}</span></p>}{readableExpiry(status) && <p className="text-sm text-muted-foreground">Expires: {readableExpiry(status)}</p>}{status?.minutesRemaining !== undefined && <p className="text-sm text-muted-foreground">{status.minutesRemaining} minutes remaining</p>}</div>}
+        {view === "pending" && (() => {
+          const remaining = purchase ? Math.max(0, Math.ceil((POLL_LIMIT_MS - (now - purchase.startedAt)) / 1000)) : 0;
+          const done = purchase ? Math.min(100, Math.max(0, ((now - purchase.startedAt) / POLL_LIMIT_MS) * 100)) : 0;
+          return <div className="space-y-3 text-center" role="status">
+            <p className="text-lg font-medium">Confirming payment</p>
+            <p className="text-sm text-muted-foreground">Enter your M-Pesa PIN on your phone. We’ll log this device in as soon as the payment is confirmed. Do not pay again.</p>
+            <p className="text-2xl font-semibold tabular-nums">{remaining}s remaining</p>
+            <div className="h-2 w-full overflow-hidden rounded-full bg-secondary" aria-hidden="true"><div className="h-full rounded-full bg-primary transition-[width] duration-1000" style={{ width: `${done}%` }} /></div>
+            <Loader2 className="w-6 h-6 animate-spin text-primary mx-auto" aria-hidden="true" />
+          </div>;
+        })()}
+        {view === "active" && <div className="space-y-3 text-center"><CheckCircle2 className="w-10 h-10 text-green-600 mx-auto" /><p className="font-medium">Payment received. Logging you in…</p>{signInUrl && <p className="text-sm">If nothing happens, <a href={signInUrl} className="font-medium text-primary underline underline-offset-2">tap here</a>.</p>}{status?.voucherCode && <p className="text-sm">Voucher: <span className="font-mono">{status.voucherCode}</span></p>}{readableExpiry(status) && <p className="text-sm text-muted-foreground">Expires: {readableExpiry(status)}</p>}{status?.minutesRemaining !== undefined && <p className="text-sm text-muted-foreground">{status.minutesRemaining} minutes remaining</p>}</div>}
         {view === "notPaid" && outcome && <div className="space-y-2 text-center" role="alert"><XCircle className="w-9 h-9 text-destructive mx-auto" /><p className="font-medium">{NOT_PAID_MESSAGE[outcome].title}</p><p className="text-sm text-muted-foreground">{NOT_PAID_MESSAGE[outcome].detail}</p></div>}
         {(view === "failed" || view === "unavailable") && <div className="space-y-3"><p role="alert" className="text-sm">{notice}</p>{reference !== undefined && <p className="text-xs text-muted-foreground">Session reference: <span className="font-mono">{reference}</span></p>}</div>}
       </div>

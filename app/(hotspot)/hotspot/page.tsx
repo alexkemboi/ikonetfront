@@ -10,7 +10,7 @@ import { parsePortalRouter } from "@/lib/hotspot/portalRouter";
 
 export const dynamic = "force-dynamic"; // Ensure the page is always rendered on the server
 
-type HotspotSearchParams = { rid?: string; sig?: string; company?: string; router?: string; mac?: string; clientMac?: string; ip?: string; identity?: string };
+type HotspotSearchParams = { rid?: string; sig?: string; company?: string; router?: string; mac?: string; clientMac?: string; ip?: string; identity?: string; "link-login"?: string; "link-orig"?: string };
 
 interface HotspotPageProps {
   searchParams: Promise<HotspotSearchParams>;
@@ -61,6 +61,9 @@ export default async function HotspotPage({ searchParams }: HotspotPageProps) {
   // Every router hands out the same hotspot subnet, so the backend pins the
   // serving router (tenant + auto-login target) by its RouterOS identity.
   const routerIdentity = params?.identity?.trim() || params?.router?.trim() || "";
+  // The router's own sign-in address and the page first asked for: after a purchase the device
+  // signs itself in there, which is instant and shows the router's "You are logged in" page.
+  const routerLinks = { linkLogin: params?.["link-login"]?.trim() || null, linkOrig: params?.["link-orig"]?.trim() || null };
 
   // TV packages are per-device (the backend checks the MAC against the portal
   // session), so they are fetched client-side by TvDeviceSetup, not here.
@@ -166,6 +169,7 @@ export default async function HotspotPage({ searchParams }: HotspotPageProps) {
             clientIp={clientIp}
             routerIdentity={routerIdentity}
             portalRouter={portalRouter}
+            routerLinks={routerLinks}
             portalContext={portalContext}
           />
         </div>
