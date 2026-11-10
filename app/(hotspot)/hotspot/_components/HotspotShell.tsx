@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Wifi, Tv } from "lucide-react";
-import HotspotFlow from "./HotspotFlow";
+import HotspotFlow, { type Tab } from "./HotspotFlow";
 import HotspotHelpline from "./HotspotHelpline";
 import HotspotHowTo from "./HotspotHowTo";
 import TvDeviceSetup from "./TvDeviceSetup";
@@ -49,6 +49,7 @@ export default function HotspotShell({ packages, initialCompanyCode, clientMac, 
   );
   const [context, setContext] = useState<HotspotPortalContext | null>(portalContext ?? null);
   const [service, setService] = useState<"hotspot" | "tv">("hotspot");
+  const [flowTab, setFlowTab] = useState<Tab | undefined>(undefined);
   const brand = context?.companyName ?? DEFAULT_PORTAL_BRAND;
 
   // Every call the customer triggers from this page carries the router it was served by.
@@ -58,6 +59,13 @@ export default function HotspotShell({ packages, initialCompanyCode, clientMac, 
   useEffect(() => {
     setRouterLinks(routerLinks ?? {});
   }, [routerLinks]);
+
+  // "Already paid?" in the header: the M-Pesa code form, wherever the customer is on the page.
+  const showAlreadyPaid = () => {
+    setService("hotspot");
+    setFlowTab("activate");
+    requestAnimationFrame(() => document.getElementById("already-paid")?.scrollIntoView({ behavior: "smooth", block: "start" }));
+  };
 
   const handleCompanyResolved = (code?: string | null) => {
     if (!code || code === companyCode) return;
@@ -72,43 +80,38 @@ export default function HotspotShell({ packages, initialCompanyCode, clientMac, 
   return (
     <HotspotBrandProvider value={brand}>
     <div className="w-full">
-      {/* Mobile Header */}
-      <div className="lg:hidden mb-6">
-        <div className="flex items-center gap-3">
-          <div className="inline-flex items-center justify-center w-10 h-10 rounded-lg bg-primary">
-            <Wifi className="w-5 h-5 text-primary-foreground" />
+      {/* Header: brand on the left, the way back for customers who already paid on the right */}
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-2 lg:hidden">
+          <div className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary">
+            <Wifi className="size-4 text-primary-foreground" aria-hidden="true" />
           </div>
-          <div>
-            <h1 className="text-2xl font-normal text-foreground">{brand}</h1>
-            <p className="text-xs text-muted-foreground">Fast Internet Access</p>
-          </div>
+          <h1 className="truncate text-lg font-normal text-foreground">{brand}</h1>
         </div>
+        <h2 className="hidden text-2xl font-normal text-foreground lg:block">
+          {service === "tv" ? "Set up a TV" : "Choose a package"}
+        </h2>
+        <button type="button" onClick={showAlreadyPaid}
+          className="shrink-0 rounded-md border border-primary/40 px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary/5 focus-visible:outline-2 focus-visible:outline-ring">
+          Already paid? Click here
+        </button>
       </div>
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col">
-        <h2 className="text-2xl lg:text-3xl font-normal text-foreground mb-2">
-          {service === "tv" ? "Set up a TV or streaming device" : "Choose Your Plan"}
-        </h2>
-        <p className="text-sm text-muted-foreground mb-8">
-          {service === "tv" ? "Connect your TV or streaming device in a few simple steps." : "Select the perfect hotspot package for your connectivity needs"}
-        </p>
-
-        <div role="group" aria-label="Choose internet service" className="grid grid-cols-2 gap-3 mb-6">
+        <div role="group" aria-label="Choose internet service" className="grid grid-cols-2 gap-2 mb-4">
           {([
-            { id: "hotspot", label: "Hotspot", description: "Internet for this device", Icon: Wifi },
-            { id: "tv", label: "TV & Streaming device", description: "Set up your TV using your phone", Icon: Tv },
-          ] as const).map(({ id, label, description, Icon }) => (
+            { id: "hotspot", label: "Hotspot", Icon: Wifi },
+            { id: "tv", label: "TV & Streaming", Icon: Tv },
+          ] as const).map(({ id, label, Icon }) => (
             <button key={id} type="button" aria-pressed={service === id} aria-controls={`${id}-service-panel`}
               onClick={() => setService(id)}
-              className={`rounded-lg border p-4 text-left focus-visible:outline-2 focus-visible:outline-ring ${service === id ? "border-warning bg-warning text-warning-foreground" : "border-border bg-card text-foreground"}`}>
-              <Icon className="size-5 mb-2" aria-hidden="true" />
-              <span className="block font-medium">{label}</span>
-              <span className="block text-xs mt-1">{description}</span>
+              className={`flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium focus-visible:outline-2 focus-visible:outline-ring ${service === id ? "border-warning bg-warning text-warning-foreground" : "border-border bg-card text-foreground"}`}>
+              <Icon className="size-4" aria-hidden="true" />
+              {label}
             </button>
           ))}
         </div>
-        <HotspotHowTo service={service} />
         <div id="tv-service-panel" hidden={service !== "tv"}>
           <TvDeviceSetup brand={brand} initialDevice={initialTvDevice} packages={tvPackages} packagesError={tvPackagesError} routerIdentity={routerIdentity} clientIp={clientIp} />
         </div>
@@ -122,8 +125,15 @@ export default function HotspotShell({ packages, initialCompanyCode, clientMac, 
             clientIp={clientIp}
             routerIdentity={routerIdentity}
             portalRouter={portalRouter}
+            tab={flowTab}
+            onTabChange={setFlowTab}
           />
         </div>
+      </div>
+
+      {/* Explanations below the packages, for those who want them */}
+      <div className="mt-8">
+        <HotspotHowTo service={service} />
       </div>
 
       {/* Footer with Company Info */}

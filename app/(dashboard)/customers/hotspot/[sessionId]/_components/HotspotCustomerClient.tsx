@@ -107,7 +107,7 @@ export function HotspotCustomerClient({
     {
       label: "Time left",
       value: formatTimeLeft(left),
-      detail: status === "PAUSED" ? "clock stopped" : time.expiresAt ? `ends ${when(time.expiresAt)}` : null,
+      detail: status === "PAUSED" ? (time.resumeAt ? `resumes ${when(time.resumeAt)}` : "clock stopped") : time.expiresAt ? `ends ${when(time.expiresAt)}` : null,
     },
     {
       label: "Data used",
@@ -150,6 +150,7 @@ export function HotspotCustomerClient({
           sessionId={sessionId}
           time={time}
           secondsLeft={left}
+          deviceMac={live?.deviceMac ?? null}
           onChanged={(next) => {
             if (next) setTime(next);
             setNow(Date.now());

@@ -57,7 +57,7 @@ export default function AlreadyPaidForm({ clientMac, clientIp }: AlreadyPaidForm
   const inputClass = "w-full h-9 px-3 py-1 rounded-md border border-input bg-transparent text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50";
 
   return (
-    <section aria-labelledby="already-paid-heading" className="space-y-3 rounded-lg border border-border p-4">
+    <section id="already-paid" aria-labelledby="already-paid-heading" className="scroll-mt-4 space-y-3 rounded-lg border border-border p-4">
       <div>
         <h3 id="already-paid-heading" className="text-sm font-medium">Already paid? Get back online</h3>
         <p className="text-xs text-muted-foreground">

@@ -1,11 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Clock, Loader2, Pause, Play } from "lucide-react";
+import { useSession } from "next-auth/react";
+import { Clock, Loader2, Pause, Play, Tv } from "lucide-react";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { addTvTime, getTvCustomer, pauseTvCustomer, resumeTvCustomer } from "@/actions/subscriberTime";
+import { addTvTime, changeTvDevice, getTvCustomer, pauseTvCustomer, resumeTvCustomer } from "@/actions/subscriberTime";
+import { ResumeAtField, resumeAtIso, resumeAtLabel } from "@/components/subscriber-time/ResumeAtField";
 import type { TvCustomerTime } from "@/lib/types/subscriberTime";
 import { formatLocalPhone, formatTimeLeft, toMinutes } from "@/lib/utils/subscriberTime";
 
@@ -17,7 +19,7 @@ const PRESETS: { label: string; minutes: number }[] = [
 ];
 
 type Unit = "minutes" | "hours" | "days";
-type Busy = "add" | "pause" | "resume" | null;
+type Busy = "add" | "pause" | "resume" | "device" | null;
 
 const FIELD =
   "h-9 rounded-md border border-border bg-background px-3 text-sm text-foreground outline-none focus:border-ring";
@@ -48,6 +50,11 @@ export function ManageTvCustomerDialog({
   const [unit, setUnit] = useState<Unit>("hours");
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState<Busy>(null);
+  const [resumeAt, setResumeAt] = useState("");
+  const [newMac, setNewMac] = useState("");
+  const role = (useSession()?.data?.user?.role ?? "").replace(/^ROLE_/i, "").toUpperCase();
+  // Correcting the TV's address: company and system administrators and management (the server checks too).
+  const canCorrectDevice = ["SYSADMIN", "ADMIN", "01", "02"].includes(role);
   const entitlementId = tv?.entitlementId;
 
   useEffect(() => {
@@ -74,6 +81,8 @@ export function ManageTvCustomerDialog({
     setLoadError("");
     setAmount("");
     setReason("");
+    setResumeAt("");
+    setNewMac("");
     onClose();
   }
 
@@ -91,6 +100,8 @@ export function ManageTvCustomerDialog({
         setTime(res.data);
         setLoadedAt(Date.now());
         setAmount("");
+        setResumeAt("");
+        setNewMac("");
         toast.success(res.message);
         onChanged();
       } else {
@@ -110,17 +121,36 @@ export function ManageTvCustomerDialog({
     void run("add", () => addTvTime(entitlementId, minutes, reason.trim()));
   }
 
+  function pause() {
+    if (entitlementId == null || !needReason()) return;
+    const until = resumeAtIso(resumeAt);
+    if (until === undefined) {
+      toast.error("Pick a resume time in the future, or leave it empty for someone to resume it.");
+      return;
+    }
+    void run("pause", () => pauseTvCustomer(entitlementId, reason.trim(), until));
+  }
+
+  function correctAddress() {
+    if (entitlementId == null || !needReason()) return;
+    if (!newMac.trim()) {
+      toast.error("Enter the TV's MAC address, like AA:BB:CC:DD:EE:FF.");
+      return;
+    }
+    void run("device", () => changeTvDevice(entitlementId, newMac.trim(), reason.trim()));
+  }
+
   const paused = time?.status === "PAUSED";
   const left = time ? secondsLeft(time, loadedAt) : null;
   const pausesLeft = time ? Math.max(0, time.pausesAllowed - time.pausesUsed) : 0;
 
   return (
     <Dialog open={tv != null} onOpenChange={(open) => !open && close()}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="tabular-nums">{formatLocalPhone(tv?.phone) ?? "TV customer"}</DialogTitle>
           <DialogDescription>
-            {tv?.packageName ?? "TV package"} · TV {tv?.macAddress}
+            {tv?.packageName ?? "TV package"} · TV {time?.macAddress ?? tv?.macAddress}
             {tv?.routerName ? ` · ${tv.routerName}` : ""}
           </DialogDescription>
         </DialogHeader>
@@ -141,7 +171,7 @@ export function ManageTvCustomerDialog({
               </p>
               <p className="mt-1 text-xs text-muted-foreground">
                 {paused
-                  ? "The clock is stopped. Resuming gives this time back from that moment."
+                  ? `The clock is stopped. Resuming gives this time back from that moment.${time.resumeAt ? ` Resumes by itself ${resumeAtLabel(time.resumeAt)}.` : ""}`
                   : time.expiresAt
                     ? `Ends ${new Date(time.expiresAt).toLocaleString()}`
                     : ""}
@@ -150,7 +180,7 @@ export function ManageTvCustomerDialog({
 
             <div className="space-y-1.5">
               <label htmlFor="subscriber-reason" className="text-xs font-medium text-muted-foreground">
-                Reason (needed to add time or pause)
+                Reason (needed for every change)
               </label>
               <input
                 id="subscriber-reason"
@@ -199,7 +229,8 @@ export function ManageTvCustomerDialog({
               {paused ? (
                 <>
                   <p className="text-xs text-muted-foreground">
-                    The TV gets {formatTimeLeft(left)} from the moment you resume and is let back in within a minute.
+                    {time.resumeAt ? `Resumes by itself ${resumeAtLabel(time.resumeAt)}. ` : ""}
+                    The TV gets {formatTimeLeft(left)} from the moment it resumes and is let back in within a minute.
                     If it is not, turn the TV&apos;s Wi-Fi off and on.
                   </p>
                   <Button type="button" size="sm" disabled={busy != null}
@@ -214,17 +245,40 @@ export function ManageTvCustomerDialog({
               ) : (
                 <>
                   <p className="text-xs text-muted-foreground">
-                    Disconnects the TV and stops the clock until someone resumes it. {time.pausesUsed} of{" "}
+                    Disconnects the TV and stops the clock until the resume time, or until someone resumes it.{" "}
+                    {time.pausesUsed} of{" "}
                     {time.pausesAllowed} pauses used.
                   </p>
-                  <Button type="button" variant="outline" size="sm" disabled={busy != null || pausesLeft === 0}
-                    onClick={() => entitlementId != null && needReason() && void run("pause", () => pauseTvCustomer(entitlementId, reason.trim()))}>
+                  <ResumeAtField id="tv-resume-at" value={resumeAt} onChange={setResumeAt} className={`${FIELD} w-full`} />
+                  <Button type="button" variant="outline" size="sm" disabled={busy != null || pausesLeft === 0} onClick={pause}>
                     <Pause className="h-4 w-4" /> {busy === "pause" ? "Pausing…" : pausesLeft === 0 ? "No pauses left" : "Pause"}
                   </Button>
                 </>
               )}
             </section>
 
+            {canCorrectDevice && (
+              <section className="space-y-2">
+                <h3 className="flex items-center gap-2 text-sm font-medium">
+                  <Tv className="h-4 w-4 text-muted-foreground" /> TV address
+                </h3>
+                <p className="text-xs text-muted-foreground">
+                  For a TV registered with a wrong MAC address, or one replaced by another TV. The old address is
+                  removed from the router and the time left moves to the new one.
+                </p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <input
+                    value={newMac} onChange={(e) => setNewMac(e.target.value)} maxLength={17}
+                    aria-label="The TV's correct MAC address" placeholder="AA:BB:CC:DD:EE:FF"
+                    autoComplete="off" spellCheck={false}
+                    className={`${FIELD} w-48 font-mono uppercase`}
+                  />
+                  <Button type="button" size="sm" disabled={busy != null || !newMac.trim()} onClick={correctAddress}>
+                    {busy === "device" ? "Saving…" : "Correct address"}
+                  </Button>
+                </div>
+              </section>
+            )}
           </div>
         )}
       </DialogContent>

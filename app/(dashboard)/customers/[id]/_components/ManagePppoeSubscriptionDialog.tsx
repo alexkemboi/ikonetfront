@@ -15,6 +15,7 @@ import {
 } from "@/actions/subscriberTime";
 import type { ActionResult, PppoeSubscriptionTime } from "@/lib/types/subscriberTime";
 import { formatCustomerDate } from "@/lib/utils/customerFormatters";
+import { ResumeAtField, resumeAtIso, resumeAtLabel } from "@/components/subscriber-time/ResumeAtField";
 
 const FIELD =
   "h-9 rounded-md border border-border bg-background px-3 text-sm text-foreground outline-none focus:border-ring";
@@ -40,6 +41,7 @@ export function ManagePppoeSubscriptionDialog({
   const [busy, setBusy] = useState(false);
   const [newStart, setNewStart] = useState("");
   const [newExpiry, setNewExpiry] = useState("");
+  const [resumeAt, setResumeAt] = useState("");
   const subscriptionId = subscription?.id;
   const role = (useSession().data?.user?.role ?? "").replace(/^ROLE_/i, "").toUpperCase();
   // the backend enforces the same rule; this only hides what the caller cannot do
@@ -69,6 +71,7 @@ export function ManagePppoeSubscriptionDialog({
     setReason("");
     setNewStart("");
     setNewExpiry("");
+    setResumeAt("");
     onClose();
   }
 
@@ -85,6 +88,7 @@ export function ManagePppoeSubscriptionDialog({
       if (res.success) {
         setTime(res.data);
         setDays("");
+        setResumeAt("");
         toast.success(res.message);
         onChanged();
       } else {
@@ -104,6 +108,16 @@ export function ManagePppoeSubscriptionDialog({
     void run(() => addPppoeDays(subscriptionId, count, reason.trim()));
   }
 
+  function pause() {
+    if (!subscriptionId || !needReason()) return;
+    const until = resumeAtIso(resumeAt);
+    if (until === undefined) {
+      toast.error("Pick a resume time in the future, or leave it empty for someone to resume it.");
+      return;
+    }
+    void run(() => pausePppoeSubscription(subscriptionId, reason.trim(), until));
+  }
+
   function correctDates() {
     if (!subscriptionId || !needReason()) return;
     if (!newStart || !newExpiry) {
@@ -118,7 +132,7 @@ export function ManagePppoeSubscriptionDialog({
 
   return (
     <Dialog open={subscription != null} onOpenChange={(open) => !open && close()}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{subscription?.packageName ?? "Subscription"}</DialogTitle>
           <DialogDescription>{time?.username ? `PPPoE user ${time.username}` : "PPPoE subscription"}</DialogDescription>
@@ -139,6 +153,7 @@ export function ManagePppoeSubscriptionDialog({
                   <p className="font-medium">Paused · {time.pausedRemainingDays ?? 0} day(s) left</p>
                   <p className="mt-1 text-xs text-muted-foreground">
                     The days are kept. Resuming gives them back, counted from the day of resuming.
+                    {time.resumeAt ? ` Resumes by itself ${resumeAtLabel(time.resumeAt)}.` : ""}
                   </p>
                 </>
               ) : (
@@ -190,11 +205,12 @@ export function ManagePppoeSubscriptionDialog({
                   ) : (
                     <>
                       <p className="text-xs text-muted-foreground">
-                        Disconnects the customer and keeps their remaining days until someone resumes. {time.pausesUsed} of{" "}
+                        Disconnects the customer and keeps their remaining days until the resume time, or until someone
+                        resumes. {time.pausesUsed} of{" "}
                         {time.pausesAllowed} pauses used.
                       </p>
-                      <Button type="button" variant="outline" size="sm" disabled={busy || pausesLeft === 0}
-                        onClick={() => subscriptionId && needReason() && void run(() => pausePppoeSubscription(subscriptionId, reason.trim()))}>
+                      <ResumeAtField id="pppoe-resume-at" value={resumeAt} onChange={setResumeAt} className={`${FIELD} w-full`} />
+                      <Button type="button" variant="outline" size="sm" disabled={busy || pausesLeft === 0} onClick={pause}>
                         <Pause className="h-4 w-4" /> {pausesLeft === 0 ? "No pauses left" : "Pause"}
                       </Button>
                     </>
