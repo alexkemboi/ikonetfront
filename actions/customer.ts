@@ -398,3 +398,24 @@ export async function changePppoeUsername(id: number, username: string) {
     };
   }
 }
+
+/** A customer's PPPoE login as their router dials it. */
+export type PppoeCredentials = { username: string; password: string };
+
+/**
+ * The customer's PPPoE username and current password, read from RADIUS.
+ * Company admin and management only, after re-entering their own password
+ * (step-up); the backend audit-logs every call, so this is fetched on demand
+ * (when staff unmask it), never preloaded.
+ */
+export async function revealPppoePassword(
+  id: number,
+  stepUpToken: string
+): Promise<ApiResponse<PppoeCredentials>> {
+  return apiFetch<PppoeCredentials>(`/customers/${id}/pppoe-password`, {
+    auth: "required",
+    cache: "no-store",
+    // the backend asks staff to re-enter their own password before showing one
+    stepUpToken,
+  });
+}
