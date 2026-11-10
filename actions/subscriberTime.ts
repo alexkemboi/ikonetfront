@@ -40,8 +40,14 @@ export async function addHotspotTime(sessionId: number, minutes: number, reason:
   return post<HotspotSessionTime>(`/hotspot-sessions/${sessionId}/add-time`, { minutes, reason }, "Could not add the time.");
 }
 
-export async function pauseHotspotSession(sessionId: number, reason: string) {
-  return post<HotspotSessionTime>(`/hotspot-sessions/${sessionId}/pause`, { reason }, "Could not pause the session.");
+/** `resumeAt`: ISO time the pause ends by itself; omit for a person to resume it. */
+export async function pauseHotspotSession(sessionId: number, reason: string, resumeAt?: string | null) {
+  return post<HotspotSessionTime>(`/hotspot-sessions/${sessionId}/pause`, { reason, resumeAt: resumeAt || null }, "Could not pause the session.");
+}
+
+/** Admin and management: tie the purchase to another device, or remove its device (blank address). */
+export async function changeHotspotDevice(sessionId: number, macAddress: string, reason: string) {
+  return post<HotspotSessionTime>(`/hotspot-sessions/${sessionId}/device`, { macAddress, reason }, "Could not change the device.");
 }
 
 export async function resumeHotspotSession(sessionId: number) {
@@ -56,8 +62,9 @@ export async function addPppoeDays(subscriptionId: string, days: number, reason:
   return post<PppoeSubscriptionTime>(`/pppoe-subscriptions/${subscriptionId}/add-time`, { days, reason }, "Could not add the days.");
 }
 
-export async function pausePppoeSubscription(subscriptionId: string, reason: string) {
-  return post<PppoeSubscriptionTime>(`/pppoe-subscriptions/${subscriptionId}/pause`, { reason }, "Could not pause the subscription.");
+/** `resumeAt`: ISO time the pause ends by itself; omit for a person to resume it. */
+export async function pausePppoeSubscription(subscriptionId: string, reason: string, resumeAt?: string | null) {
+  return post<PppoeSubscriptionTime>(`/pppoe-subscriptions/${subscriptionId}/pause`, { reason, resumeAt: resumeAt || null }, "Could not pause the subscription.");
 }
 
 export async function resumePppoeSubscription(subscriptionId: string) {
@@ -108,10 +115,16 @@ export async function addTvTime(entitlementId: string, minutes: number, reason: 
   return post<TvCustomerTime>(`/tv-customers/${entitlementId}/add-time`, { minutes, reason }, "Could not add the time.");
 }
 
-export async function pauseTvCustomer(entitlementId: string, reason: string) {
-  return post<TvCustomerTime>(`/tv-customers/${entitlementId}/pause`, { reason }, "Could not pause the TV.");
+/** `resumeAt`: ISO time the pause ends by itself; omit for a person to resume it. */
+export async function pauseTvCustomer(entitlementId: string, reason: string, resumeAt?: string | null) {
+  return post<TvCustomerTime>(`/tv-customers/${entitlementId}/pause`, { reason, resumeAt: resumeAt || null }, "Could not pause the TV.");
 }
 
 export async function resumeTvCustomer(entitlementId: string) {
   return post<TvCustomerTime>(`/tv-customers/${entitlementId}/resume`, {}, "Could not resume the TV.");
+}
+
+/** Admin and management: correct the TV's MAC address. */
+export async function changeTvDevice(entitlementId: string, macAddress: string, reason: string) {
+  return post<TvCustomerTime>(`/tv-customers/${entitlementId}/device`, { macAddress, reason }, "Could not change the TV's address.");
 }

@@ -2,13 +2,15 @@
 
 import { useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { Clock, Pause, Play, Power } from "lucide-react";
+import { useSession } from "next-auth/react";
+import { Clock, Pause, Play, Power, Smartphone } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { addHotspotTime, pauseHotspotSession, resumeHotspotSession } from "@/actions/subscriberTime";
+import { addHotspotTime, changeHotspotDevice, pauseHotspotSession, resumeHotspotSession } from "@/actions/subscriberTime";
 import { disconnectLiveSession } from "@/actions/sessions";
 import type { HotspotSessionTime } from "@/lib/types/subscriberTime";
 import { formatTimeLeft, toMinutes } from "@/lib/utils/subscriberTime";
+import { ResumeAtField, resumeAtIso, resumeAtLabel } from "@/components/subscriber-time/ResumeAtField";
 
 const PRESETS: { label: string; minutes: number }[] = [
   { label: "30 min", minutes: 30 },
@@ -18,7 +20,7 @@ const PRESETS: { label: string; minutes: number }[] = [
 ];
 
 type Unit = "minutes" | "hours" | "days";
-type Busy = "add" | "pause" | "resume" | "disconnect" | null;
+type Busy = "add" | "pause" | "resume" | "device" | "disconnect" | null;
 
 const FIELD =
   "h-9 rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none focus:border-ring";
@@ -70,11 +72,14 @@ export function HotspotManagePanel({
   sessionId,
   time,
   secondsLeft,
+  deviceMac,
   onChanged,
 }: {
   sessionId: number;
   time: HotspotSessionTime;
   secondsLeft: number | null;
+  /** The device the router last saw on this purchase, when known. */
+  deviceMac?: string | null;
   onChanged: (time: HotspotSessionTime | null) => void;
 }) {
   const router = useRouter();
@@ -85,6 +90,13 @@ export function HotspotManagePanel({
   const [pauseReason, setPauseReason] = useState("");
   const [disconnectReason, setDisconnectReason] = useState("");
   const [confirmDisconnect, setConfirmDisconnect] = useState(false);
+  const [resumeAt, setResumeAt] = useState("");
+  const [newMac, setNewMac] = useState("");
+  const [deviceReason, setDeviceReason] = useState("");
+  const [confirmRemove, setConfirmRemove] = useState(false);
+  const role = (useSession()?.data?.user?.role ?? "").replace(/^ROLE_/i, "").toUpperCase();
+  // Correcting the device: company and system administrators and management (the server checks too).
+  const canCorrectDevice = ["SYSADMIN", "ADMIN", "01", "02"].includes(role);
 
   const paused = time.status === "PAUSED";
   const pausesLeft = Math.max(0, time.pausesAllowed - time.pausesUsed);
@@ -125,7 +137,31 @@ export function HotspotManagePanel({
       toast.error("Write why the package is paused. It is kept with the change.");
       return;
     }
-    void run("pause", () => pauseHotspotSession(sessionId, pauseReason.trim()), () => setPauseReason(""));
+    const until = resumeAtIso(resumeAt);
+    if (until === undefined) {
+      toast.error("Pick a resume time in the future, or leave it empty for someone to resume it.");
+      return;
+    }
+    void run("pause", () => pauseHotspotSession(sessionId, pauseReason.trim(), until), () => {
+      setPauseReason("");
+      setResumeAt("");
+    });
+  }
+
+  function changeDevice(remove: boolean) {
+    if (!deviceReason.trim()) {
+      toast.error("Write why the device is changed. It is kept with the change.");
+      return;
+    }
+    if (!remove && !newMac.trim()) {
+      toast.error("Enter the new device's MAC address, like AA:BB:CC:DD:EE:FF.");
+      return;
+    }
+    void run("device", () => changeHotspotDevice(sessionId, remove ? "" : newMac.trim(), deviceReason.trim()), () => {
+      setNewMac("");
+      setDeviceReason("");
+      setConfirmRemove(false);
+    });
   }
 
   async function disconnect() {
@@ -188,7 +224,7 @@ export function HotspotManagePanel({
         <Card
           icon={<Play className="h-4 w-4 text-muted-foreground" />}
           title="Resume"
-          blurb={`The customer gets ${formatTimeLeft(secondsLeft)} from the moment you resume, and connects again the next time their device joins the Wi-Fi.`}
+          blurb={`${time.resumeAt ? `Resumes by itself ${resumeAtLabel(time.resumeAt)}. ` : ""}The customer gets ${formatTimeLeft(secondsLeft)} from the moment it resumes, and connects again the next time their device joins the Wi-Fi.`}
         >
           <div className="mt-auto">
             <Button type="button" size="sm" disabled={busy != null}
@@ -204,12 +240,13 @@ export function HotspotManagePanel({
           blurb={
             time.pausesAllowed === 0
               ? "Only packages longer than one day can be paused. This one cannot."
-              : `Disconnects the customer and stops the clock until someone resumes it. ${time.pausesUsed} of ${time.pausesAllowed} pauses used.`
+              : `Disconnects the customer and stops the clock until the resume time, or until someone resumes it. ${time.pausesUsed} of ${time.pausesAllowed} pauses used.`
           }
         >
           {time.pausesAllowed > 0 && (
             <>
               <ReasonField id="pause-reason" value={pauseReason} onChange={setPauseReason} placeholder="e.g. Customer travelling until Friday" />
+              <ResumeAtField id="pause-resume-at" value={resumeAt} onChange={setResumeAt} className={`${FIELD} w-full`} />
               <div className="mt-auto">
                 <Button type="button" variant="outline" size="sm" disabled={busy != null || pausesLeft === 0} onClick={pause}>
                   <Pause className="h-4 w-4" /> {busy === "pause" ? "Pausing…" : pausesLeft === 0 ? "No pauses left" : "Pause"}
@@ -217,6 +254,48 @@ export function HotspotManagePanel({
               </div>
             </>
           )}
+        </Card>
+      )}
+
+      {canCorrectDevice && (
+        <Card
+          icon={<Smartphone className="h-4 w-4 text-muted-foreground" />}
+          title="Device"
+          blurb={
+            <>
+              Ties this purchase to another device, or removes a wrong one so the customer can sign in again with the
+              code. {deviceMac ? <>The router last saw <span className="font-mono">{deviceMac}</span>.</> : null}
+            </>
+          }
+        >
+          <div className="space-y-1.5">
+            <label htmlFor="device-mac" className="text-xs font-medium text-muted-foreground">New MAC address</label>
+            <input
+              id="device-mac" value={newMac} onChange={(e) => setNewMac(e.target.value)} maxLength={17}
+              placeholder="AA:BB:CC:DD:EE:FF" autoComplete="off" spellCheck={false}
+              className={`${FIELD} w-full font-mono uppercase`}
+            />
+          </div>
+          <ReasonField id="device-reason" value={deviceReason} onChange={setDeviceReason} placeholder="e.g. Paid from the wrong phone" />
+          <div className="mt-auto flex flex-wrap gap-2">
+            <Button type="button" size="sm" disabled={busy != null || !newMac.trim()} onClick={() => changeDevice(false)}>
+              {busy === "device" && !confirmRemove ? "Saving…" : "Use this device"}
+            </Button>
+            {confirmRemove ? (
+              <>
+                <Button type="button" variant="destructive" size="sm" disabled={busy != null} onClick={() => changeDevice(true)}>
+                  {busy === "device" ? "Removing…" : "Yes, remove the device"}
+                </Button>
+                <Button type="button" variant="ghost" size="sm" disabled={busy != null} onClick={() => setConfirmRemove(false)}>
+                  Cancel
+                </Button>
+              </>
+            ) : (
+              <Button type="button" variant="outline" size="sm" disabled={busy != null} onClick={() => setConfirmRemove(true)}>
+                Remove device
+              </Button>
+            )}
+          </div>
         </Card>
       )}
 

@@ -24,4 +24,11 @@ describe("HotspotFlow", () => {
     expect(activateButtons[0]).toHaveClass("text-primary");
     expect(screen.getByRole("textbox", { name: /enter voucher code/i })).toBeInTheDocument();
   });
+
+  it("opens the voucher and M-Pesa code tab when the page asks for it", () => {
+    render(<HotspotFlow packages={[]} tab="activate" />);
+
+    expect(screen.getByRole("textbox", { name: /enter voucher code/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /already paid\? get back online/i })).toBeInTheDocument();
+  });
 });

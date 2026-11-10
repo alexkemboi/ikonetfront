@@ -13,6 +13,8 @@ export interface HotspotSessionTime {
   pausesUsed: number;
   /** 0 = this package cannot be paused (one day or shorter). */
   pausesAllowed: number;
+  /** When a pause ends by itself, UTC; null when a person resumes it (or not paused). */
+  resumeAt?: string | null;
 }
 
 /** `/api/v1/subscriber-time/pppoe-subscriptions/...` */
@@ -26,6 +28,8 @@ export interface PppoeSubscriptionTime {
   pausedRemainingDays: number | null;
   pausesUsed: number;
   pausesAllowed: number;
+  /** When a pause ends by itself, UTC; null when a person resumes it (or not paused). */
+  resumeAt?: string | null;
 }
 
 export type ActionResult<T> = { success: true; data: T; message: string } | { success: false; message: string };
@@ -54,4 +58,6 @@ export interface TvCustomerTime {
   lastSeenAt: string | null;
   bytesDown: number | null;
   bytesUp: number | null;
+  /** When a pause ends by itself, UTC; null when a person resumes it (or not paused). */
+  resumeAt?: string | null;
 }

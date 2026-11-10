@@ -3,41 +3,36 @@
 import { HotspotPackage } from "@/lib/types/hotspot";
 
 interface PackageCardProps {
- pkg: HotspotPackage;
- onSelect: (pkg: HotspotPackage) => void;
+  pkg: HotspotPackage;
+  onSelect: (pkg: HotspotPackage) => void;
 }
 
-/** One package, in plain words: name, how long it lasts, how many devices, price. */
+/** One package as a small tile, so a whole price list fits on one phone screen: name, length, price. */
 export default function PackageCard({ pkg, onSelect }: PackageCardProps) {
-	const validity = pkg.validityValue && pkg.validityType ? `${pkg.validityValue} ${pkg.validityType}` : null;
-	const devices = pkg.maxDevices && pkg.maxDevices > 1 ? `${pkg.maxDevices} devices` : null;
-	const details = [validity, devices].filter(Boolean).join(" · ");
+  const validity = pkg.validityValue && pkg.validityType ? `${pkg.validityValue} ${pkg.validityType}` : null;
+  const devices = pkg.maxDevices && pkg.maxDevices > 1 ? `${pkg.maxDevices} devices` : null;
+  const details = [validity, devices].filter(Boolean).join(" · ");
 
-	return (
-		<div
-			className="border border-border rounded-lg overflow-hidden bg-card transition-all duration-200 hover:border-primary/50"
-			role="button"
-			tabIndex={0}
-			onKeyDown={(e) => {
-				if (e.key === "Enter" || e.key === " ") onSelect(pkg);
-			}}
-			aria-label={`${pkg.packageName} package, KES ${pkg.price}`}
-		>
-			<div className="px-4 py-3 flex items-center justify-between gap-4">
-				<div className="flex-1 min-w-0">
-					<h3 className="text-sm font-normal text-foreground truncate">{pkg.packageName}</h3>
-					{details && <p className="text-xs text-muted-foreground mt-0.5">{details}</p>}
-				</div>
-
-				<span className="text-lg font-bold text-primary shrink-0">KES {pkg.price}</span>
-
-				<button
-					onClick={() => onSelect(pkg)}
-					className="shrink-0 px-3 py-1.5 bg-primary text-primary-foreground text-xs font-semibold rounded transition-opacity hover:opacity-90 whitespace-nowrap"
-				>
-					Select
-				</button>
-			</div>
-		</div>
-	);
+  return (
+    <div
+      className="flex cursor-pointer flex-col gap-1 rounded-lg border border-border bg-card p-3 transition-colors hover:border-primary/60"
+      onClick={() => onSelect(pkg)}
+    >
+      <h3 className="truncate text-sm font-medium text-foreground" title={pkg.packageName}>{pkg.packageName}</h3>
+      {details && <p className="truncate text-xs text-muted-foreground">{details}</p>}
+      <div className="mt-1 flex items-center justify-between gap-2">
+        <span className="text-base font-bold text-primary">KES {pkg.price}</span>
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onSelect(pkg);
+          }}
+          className="rounded bg-primary px-2.5 py-1 text-xs font-semibold text-primary-foreground hover:opacity-90"
+        >
+          Select
+        </button>
+      </div>
+    </div>
+  );
 }

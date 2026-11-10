@@ -8,7 +8,7 @@ import { checkActiveSession } from "@/actions/hotspot";
 import { HotspotPackage, type ReconnectResponseData } from "@/lib/types/hotspot";
 import type { PortalRouter } from "@/lib/hotspot/portalRouter";
 
-type Tab = "activate" | "buy";
+export type Tab = "activate" | "buy";
 
 function resolveInitialTab(): Tab {
   if (typeof window === "undefined") return "buy";
@@ -28,6 +28,9 @@ interface HotspotFlowProps {
   routerIdentity?: string;
   /** Signed id of the serving router; passed in because the page sets the shared one after this mounts. */
   portalRouter?: PortalRouter | null;
+  /** Set by the page header's "Already paid?" link; the tabs below change it back. */
+  tab?: Tab;
+  onTabChange?: (tab: Tab) => void;
 }
 
 export default function HotspotFlow({
@@ -39,8 +42,11 @@ export default function HotspotFlow({
   clientIp,
   routerIdentity,
   portalRouter,
+  tab,
+  onTabChange,
 }: HotspotFlowProps) {
-  const [activeTab, setActiveTab] = useState<Tab>(resolveInitialTab);
+  const [ownTab, setActiveTab] = useState<Tab>(resolveInitialTab);
+  const activeTab = tab ?? ownTab;
   const [reconnected, setReconnected] = useState<ReconnectResponseData | null>(null);
 
   // A device that already paid (and lost its connection to a power cut or a Wi-Fi drop) is
@@ -63,6 +69,7 @@ export default function HotspotFlow({
 
   const handleTabChange = (nextTab: Tab) => {
     setActiveTab(nextTab);
+    onTabChange?.(nextTab);
 
     if (typeof window === "undefined") return;
 
@@ -99,7 +106,7 @@ export default function HotspotFlow({
       )}
 
       {/* Tab navigation */}
-      <div className="flex gap-1 mb-6 border-b border-border">
+      <div className="flex gap-1 mb-4 border-b border-border">
         <button
           onClick={() => handleTabChange("buy")}
           className={`pb-3 px-4 font-medium text-sm transition-colors relative ${activeTab === "buy"
@@ -125,16 +132,6 @@ export default function HotspotFlow({
           )}
         </button>
       </div>
-
-      {/* A customer cut off mid-package should not buy again: the M-Pesa code brings it back. */}
-      {activeTab === "buy" && !reconnected && (
-        <p className="mb-4 text-sm text-muted-foreground">
-          Already paid but not connected?{" "}
-          <button type="button" onClick={() => handleTabChange("activate")} className="font-medium text-primary underline underline-offset-2">
-            Get back online with your M-Pesa code
-          </button>
-        </p>
-      )}
 
       {/* Tab content */}
       <div>

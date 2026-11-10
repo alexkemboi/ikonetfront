@@ -7,7 +7,7 @@ const STEPS = {
   hotspot: {
     title: "How to connect",
     steps: [
-      "Pick a package below and tap Select.",
+      "Pick a package above and tap Select.",
       "Enter the M-Pesa number that will pay. It can be anyone's number; the internet goes to this device.",
       "Check that phone for the M-Pesa prompt and enter the PIN.",
       "Stay on this page. You are connected automatically, usually within a minute.",
@@ -28,7 +28,7 @@ const STEPS = {
   },
 } as const;
 
-/** Short instructions for first-time buyers, closed by default so returning customers go straight to the packages. */
+/** Short instructions for first-time buyers, below the packages and closed by default. */
 export default function HotspotHowTo({ service }: { service: "hotspot" | "tv" }) {
   const [open, setOpen] = useState(false);
   const content = STEPS[service];
