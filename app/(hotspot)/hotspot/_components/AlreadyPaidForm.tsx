@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { reconnectByReceiptAction } from "@/actions/hotspot";
 import { getPortalRouter } from "@/lib/hotspot/portalRouter";
 import { sanitizeErrorMessage } from "@/lib/brand";
+import { signInOnRouter } from "@/lib/hotspot/routerSignIn";
 
 interface AlreadyPaidFormProps {
   /** MikroTik redirect `$(mac)`; the backend recovers it from `clientIp` when a CNA strips it. */
@@ -41,6 +42,9 @@ export default function AlreadyPaidForm({ clientMac, clientIp }: AlreadyPaidForm
       }
       const expiry = result.data.expiresAt ? new Date(result.data.expiresAt) : null;
       setState("connected");
+      // the device signs itself in on the router ("You are logged in")
+      const code = result.data.voucherCode;
+      if (code) setTimeout(() => signInOnRouter(code), 1_000);
       setMessage(expiry && !Number.isNaN(expiry.getTime())
         ? `You're connected again. Valid until ${expiry.toLocaleString()}.`
         : "You're connected again.");

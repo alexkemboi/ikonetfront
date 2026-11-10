@@ -7,6 +7,7 @@ import { activateVoucherAction } from "@/actions/hotspot";
 import { getPortalRouter } from "@/lib/hotspot/portalRouter";
 import { sanitizeErrorMessage } from "@/lib/brand";
 import AlreadyPaidForm from "./AlreadyPaidForm";
+import { signInOnRouter } from "@/lib/hotspot/routerSignIn";
 
 type ValidationState = "idle" | "validating" | "valid" | "invalid" | "activated";
 
@@ -68,6 +69,8 @@ export default function ActivateTab({ clientMac, clientIp, routerIdentity }: Act
             }
             const expiry = result.data.expiresAt ? new Date(result.data.expiresAt) : null;
             setValidationState("activated");
+            // the device signs itself in on the router ("You are logged in")
+            setTimeout(() => signInOnRouter(voucher), 1_000);
             setMessage(expiry && !Number.isNaN(expiry.getTime())
                 ? `You're connected. Valid until ${expiry.toLocaleString()}.`
                 : "You're connected.");

@@ -34,7 +34,8 @@ function readPendingPurchase(): PendingHotspotPurchase | null {
     }
     return null;
   } catch {
-    window.sessionStorage.removeItem(PENDING_HOTSPOT_PURCHASE_KEY);
+    // corrupt, or storage blocked by the phone's sign-in window: forget it either way
+    try { window.sessionStorage.removeItem(PENDING_HOTSPOT_PURCHASE_KEY); } catch { /* storage blocked */ }
     return null;
   }
 }
@@ -224,15 +225,15 @@ const [showCheckout, setShowCheckout] = useState(false);
       onPendingPurchase={(purchase) => {
         // The modal owns the parked purchase in sessionStorage; mirror its
         // clear/refresh back into the store so the modal re-reads correctly.
-        if (purchase) {
-          window.sessionStorage.setItem(
-            PENDING_HOTSPOT_PURCHASE_KEY,
-            JSON.stringify(purchase)
-          );
-        } else {
-          window.sessionStorage.removeItem(PENDING_HOTSPOT_PURCHASE_KEY);
-          setKeepOpen(true);
-        }
+        // some phones' sign-in windows block storage: the purchase goes on without it
+        try {
+          if (purchase) {
+            window.sessionStorage.setItem(PENDING_HOTSPOT_PURCHASE_KEY, JSON.stringify(purchase));
+          } else {
+            window.sessionStorage.removeItem(PENDING_HOTSPOT_PURCHASE_KEY);
+          }
+        } catch { /* storage blocked */ }
+        if (!purchase) setKeepOpen(true);
         window.dispatchEvent(new Event(PENDING_HOTSPOT_PURCHASE_KEY));
       }}
     />
