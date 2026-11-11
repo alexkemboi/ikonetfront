@@ -201,6 +201,28 @@ export async function createCompanyAction(input: {
   });
 }
 
+/** What removing a company did (`DELETE /companies/{code}`). */
+export type CompanyRemovalOutcome = {
+  code: string;
+  name: string;
+  /** true: deleted; false: retired (it has records, which are kept). */
+  deleted: boolean;
+  routersRetired: number;
+  /** Routers that could not go, with the reason (e.g. PPPoE accounts still homed on them). */
+  routersKept: string[];
+};
+
+/**
+ * SYSADMIN-only: remove a company (owner, 2026-11-11). Deleted when nothing refers to it; otherwise
+ * retired: hidden, its accounts no longer sign in, its routers retired. `confirm` must repeat the code.
+ */
+export async function removeCompanyAction(code: string, confirm: string): Promise<ApiResponse<CompanyRemovalOutcome>> {
+  return apiFetch<CompanyRemovalOutcome>(
+    `/companies/${encodeURIComponent(code)}?confirm=${encodeURIComponent(confirm)}`,
+    { method: "DELETE", auth: "required", cache: "no-store" },
+  );
+}
+
 /** SYSADMIN-only: add a payment account to a company (R-01). Step-up gated. */
 export async function createPaymentAccountAction(
   companyCode: string,

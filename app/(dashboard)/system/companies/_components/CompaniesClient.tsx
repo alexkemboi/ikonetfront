@@ -14,6 +14,7 @@ import {
   Palette,
   Radio,
   WalletCards,
+  Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -46,6 +47,7 @@ import {
 } from "@/components/ui/table";
 import {
   createCompanyAction,
+  removeCompanyAction,
   createPaymentAccountAction,
   getCompanyPaymentAccounts,
   registerPaymentAccountStatementAction,
@@ -125,6 +127,8 @@ export default function CompaniesClient({ companies, readiness, canMutate }: Pro
   const [accountFor, setAccountFor] = useState<CompanySummary | null>(null);
   const [brandingFor, setBrandingFor] = useState<CompanySummary | null>(null);
   const [accountsFor, setAccountsFor] = useState<CompanySummary | null>(null);
+  const [removeFor, setRemoveFor] = useState<CompanySummary | null>(null);
+  const [removeConfirm, setRemoveConfirm] = useState("");
   const [probeResult, setProbeResult] = useState<MpesaProbeResult | null>(null);
 
   const [code, setCode] = useState("");
@@ -212,6 +216,23 @@ export default function CompaniesClient({ companies, readiness, canMutate }: Pro
         setRows((prev) => [...prev.filter((c) => c.code !== res.data!.code), res.data!]);
       } else {
         toast.error(res.message || "Failed to create company");
+      }
+    });
+  }
+
+  function handleRemoveCompany() {
+    if (!removeFor) return;
+    const target = removeFor;
+    startTransition(async () => {
+      const res = await removeCompanyAction(target.code, removeConfirm.trim());
+      if (res.success && res.data) {
+        toast.success(res.message || (res.data.deleted ? "Company deleted" : "Company retired"));
+        // deleted or retired, it leaves the list either way
+        setRows((prev) => prev.filter((c) => c.code !== target.code));
+        setRemoveFor(null);
+        setRemoveConfirm("");
+      } else {
+        toast.error(res.message || "Could not remove the company.");
       }
     });
   }
@@ -640,6 +661,20 @@ export default function CompaniesClient({ companies, readiness, canMutate }: Pro
                           Add payment account
                         </Button>
                       )}
+                      {canMutate && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-9 w-full gap-1.5 text-xs text-destructive hover:text-destructive"
+                          onClick={() => {
+                            setRemoveConfirm("");
+                            setRemoveFor(company);
+                          }}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                          Remove company
+                        </Button>
+                      )}
                     </div>
                   </article>
                 );
@@ -648,6 +683,37 @@ export default function CompaniesClient({ companies, readiness, canMutate }: Pro
           )}
         </CardContent>
       </Card>
+
+      {/* Remove company dialog */}
+      <Dialog open={removeFor != null} onOpenChange={(open) => !open && setRemoveFor(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Remove {removeFor?.name}</DialogTitle>
+            <DialogDescription>
+              A company with no records is deleted. A company with customers, payments, routers, packages or users is
+              retired instead: it disappears from every list, its accounts can no longer sign in, and its routers are
+              retired. Its records are kept for the books.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="remove-confirm">
+              Type <span className="font-mono font-medium text-foreground">{removeFor?.code}</span> to confirm
+            </Label>
+            <Input id="remove-confirm" value={removeConfirm} onChange={(e) => setRemoveConfirm(e.target.value)}
+              autoComplete="off" spellCheck={false} className="font-mono" />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRemoveFor(null)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleRemoveCompany}
+              disabled={isPending || removeConfirm.trim().toUpperCase() !== (removeFor?.code ?? "").toUpperCase()}>
+              {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+              Remove company
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* New Company dialog */}
       <Dialog open={companyOpen} onOpenChange={setCompanyOpen}>

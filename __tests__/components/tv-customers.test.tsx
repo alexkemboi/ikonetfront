@@ -13,6 +13,9 @@ vi.mock("@/actions/subscriberTime", () => ({
   pauseTvCustomer: vi.fn(),
   resumeTvCustomer: vi.fn(),
   changeTvDevice: vi.fn(),
+  deactivateTvCustomer: vi.fn(),
+  endTvPackage: vi.fn(),
+  correctTvDates: vi.fn(),
 }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 vi.mock("@/lib/hooks/useVisibleInterval", () => ({ useVisibleInterval: vi.fn() }));
@@ -99,5 +102,43 @@ describe("TV customers tab", () => {
     await user.type(field, local);
     await user.click(screen.getByRole("button", { name: "Pause" }));
     expect(actions.pauseTvCustomer).toHaveBeenCalledWith("e1", "Travelling", new Date(local).toISOString());
+  });
+
+  it("lets management deactivate a TV, keeping its time, and end a package after confirming", async () => {
+    const user = userEvent.setup();
+    vi.mocked(useSession).mockReturnValue({ data: { user: { role: "ROLE_02" } } } as unknown as ReturnType<typeof useSession>);
+    vi.mocked(actions.getTvCustomer).mockResolvedValue({ success: true, data: tv, message: "" });
+    vi.mocked(actions.deactivateTvCustomer).mockResolvedValue({
+      success: true, data: { ...tv, status: "PAUSED", deactivated: true, pausedRemainingSeconds: 3600 }, message: "TV deactivated",
+    });
+    vi.mocked(actions.endTvPackage).mockResolvedValue({ success: true, data: null, message: "Package ended" });
+    render(<TvCustomers initial={[tv]} refreshIntervalSeconds={30} />);
+
+    await user.click(screen.getByRole("button", { name: /Manage/ }));
+    await user.type(await screen.findByLabelText(/Reason/), "Unpaid balance");
+    await user.click(screen.getByRole("button", { name: "Deactivate" }));
+    expect(actions.deactivateTvCustomer).toHaveBeenCalledWith("e1", "Unpaid balance");
+    expect(await screen.findByRole("button", { name: "Activate" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "End package" }));
+    await user.click(screen.getByRole("button", { name: "Yes, end the package" }));
+    expect(actions.endTvPackage).toHaveBeenCalledWith("e1", "Unpaid balance");
+  });
+
+  it("shows correct dates to administrators only", async () => {
+    const user = userEvent.setup();
+    vi.mocked(actions.getTvCustomer).mockResolvedValue({ success: true, data: tv, message: "" });
+    vi.mocked(useSession).mockReturnValue({ data: { user: { role: "ROLE_02" } } } as unknown as ReturnType<typeof useSession>);
+    const { unmount } = render(<TvCustomers initial={[tv]} refreshIntervalSeconds={30} />);
+    await user.click(screen.getByRole("button", { name: /Manage/ }));
+    await screen.findByLabelText(/Reason/);
+    expect(screen.queryByRole("button", { name: "Correct dates" })).not.toBeInTheDocument();
+    unmount();
+
+    vi.mocked(useSession).mockReturnValue({ data: { user: { role: "ROLE_01" } } } as unknown as ReturnType<typeof useSession>);
+    render(<TvCustomers initial={[tv]} refreshIntervalSeconds={30} />);
+    await user.click(screen.getByRole("button", { name: /Manage/ }));
+    await screen.findByLabelText(/Reason/);
+    expect(screen.getByRole("heading", { name: /Correct dates/ })).toBeInTheDocument();
   });
 });

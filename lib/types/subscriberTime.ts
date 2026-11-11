@@ -15,6 +15,10 @@ export interface HotspotSessionTime {
   pausesAllowed: number;
   /** When a pause ends by itself, UTC; null when a person resumes it (or not paused). */
   resumeAt?: string | null;
+  /** Paused by staff with Deactivate (not a customer pause); Activate (resume) clears it. */
+  deactivated?: boolean;
+  /** When the package started, UTC. */
+  startedAt?: string | null;
 }
 
 /** `/api/v1/subscriber-time/pppoe-subscriptions/...` */
@@ -60,4 +64,8 @@ export interface TvCustomerTime {
   bytesUp: number | null;
   /** When a pause ends by itself, UTC; null when a person resumes it (or not paused). */
   resumeAt?: string | null;
+  /** Paused by staff with Deactivate (not a customer pause); Activate (resume) clears it. */
+  deactivated?: boolean;
+  /** When the access started, UTC. */
+  startsAt?: string | null;
 }

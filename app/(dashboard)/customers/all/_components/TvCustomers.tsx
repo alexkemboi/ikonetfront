@@ -174,7 +174,7 @@ export function TvCustomers({
                     <td className="px-4 py-3">
                       <span className={cn("inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium", style.badge)}>
                         <span className={cn("h-1.5 w-1.5 rounded-full", style.dot)} />
-                        {style.label}
+                        {state === "PAUSED" && tv.deactivated ? "Deactivated" : style.label}
                       </span>
                       <p className="mt-0.5 text-[11px] text-muted-foreground">{detail}</p>
                     </td>

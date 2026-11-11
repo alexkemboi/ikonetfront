@@ -3,14 +3,17 @@
 import { useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { Clock, Pause, Play, Power, Smartphone } from "lucide-react";
+import { CalendarClock, Clock, Pause, Play, Power, Smartphone, UserX } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { addHotspotTime, changeHotspotDevice, pauseHotspotSession, resumeHotspotSession } from "@/actions/subscriberTime";
+import {
+  addHotspotTime, changeHotspotDevice, correctHotspotDates, deactivateHotspotSession, pauseHotspotSession, resumeHotspotSession,
+} from "@/actions/subscriberTime";
 import { disconnectLiveSession } from "@/actions/sessions";
 import type { HotspotSessionTime } from "@/lib/types/subscriberTime";
 import { formatTimeLeft, toMinutes } from "@/lib/utils/subscriberTime";
 import { ResumeAtField, resumeAtIso, resumeAtLabel } from "@/components/subscriber-time/ResumeAtField";
+import { CorrectDatesForm } from "@/components/subscriber-time/CorrectDatesForm";
 
 const PRESETS: { label: string; minutes: number }[] = [
   { label: "30 min", minutes: 30 },
@@ -20,7 +23,7 @@ const PRESETS: { label: string; minutes: number }[] = [
 ];
 
 type Unit = "minutes" | "hours" | "days";
-type Busy = "add" | "pause" | "resume" | "device" | "disconnect" | null;
+type Busy = "add" | "pause" | "resume" | "device" | "deactivate" | "dates" | "disconnect" | null;
 
 const FIELD =
   "h-9 rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none focus:border-ring";
@@ -94,9 +97,14 @@ export function HotspotManagePanel({
   const [newMac, setNewMac] = useState("");
   const [deviceReason, setDeviceReason] = useState("");
   const [confirmRemove, setConfirmRemove] = useState(false);
+  const [datesReason, setDatesReason] = useState("");
   const role = (useSession()?.data?.user?.role ?? "").replace(/^ROLE_/i, "").toUpperCase();
   // Correcting the device: company and system administrators and management (the server checks too).
   const canCorrectDevice = ["SYSADMIN", "ADMIN", "01", "02"].includes(role);
+  // Deactivate / Activate: the same people (the server checks too).
+  const canDeactivate = canCorrectDevice;
+  // Correct dates: company and system administrators only, as for PPPoE.
+  const canCorrectDates = ["SYSADMIN", "ADMIN", "01"].includes(role);
 
   const paused = time.status === "PAUSED";
   const pausesLeft = Math.max(0, time.pausesAllowed - time.pausesUsed);
@@ -164,6 +172,25 @@ export function HotspotManagePanel({
     });
   }
 
+  function deactivate() {
+    if (!disconnectReason.trim()) {
+      toast.error("Write why the package is deactivated. It is kept with the change.");
+      return;
+    }
+    void run("deactivate", () => deactivateHotspotSession(sessionId, disconnectReason.trim()), () => {
+      setDisconnectReason("");
+      setConfirmDisconnect(false);
+    });
+  }
+
+  function correctDates(startsAt: string, endsAt: string) {
+    if (!datesReason.trim()) {
+      toast.error("Write why the dates are corrected. It is kept with the change.");
+      return;
+    }
+    void run("dates", () => correctHotspotDates(sessionId, startsAt, endsAt, datesReason.trim()), () => setDatesReason(""));
+  }
+
   async function disconnect() {
     setBusy("disconnect");
     try {
@@ -220,7 +247,24 @@ export function HotspotManagePanel({
         </div>
       </Card>
 
-      {paused ? (
+      {paused && time.deactivated ? (
+        <Card
+          icon={<Play className="h-4 w-4 text-muted-foreground" />}
+          title="Activate"
+          blurb={`Deactivated by staff. Activating gives the customer ${formatTimeLeft(secondsLeft)} from that moment; their device connects again the next time it joins the Wi-Fi.`}
+        >
+          <div className="mt-auto">
+            {canDeactivate ? (
+              <Button type="button" size="sm" disabled={busy != null}
+                onClick={() => void run("resume", () => resumeHotspotSession(sessionId))}>
+                <Play className="h-4 w-4" /> {busy === "resume" ? "Activating…" : "Activate"}
+              </Button>
+            ) : (
+              <p className="text-xs text-muted-foreground">Only an administrator or management can activate it.</p>
+            )}
+          </div>
+        </Card>
+      ) : paused ? (
         <Card
           icon={<Play className="h-4 w-4 text-muted-foreground" />}
           title="Resume"
@@ -303,11 +347,18 @@ export function HotspotManagePanel({
         <Card
           icon={<Power className="h-4 w-4 text-destructive" />}
           title="Disconnect"
-          blurb="Ends the package now and removes the device from the router. The remaining time is lost."
+          blurb={canDeactivate
+            ? "Deactivate signs the device off and keeps the time left until someone activates it, for any package. End package ends it now; the time left is lost."
+            : "Ends the package now and removes the device from the router. The remaining time is lost."}
         >
           <ReasonField id="disconnect-reason" value={disconnectReason} onChange={setDisconnectReason}
-            placeholder="e.g. Shared the code with others" optional />
-          <div className="mt-auto">
+            placeholder="e.g. Shared the code with others" optional={!canDeactivate} />
+          <div className="mt-auto flex flex-wrap gap-2">
+            {canDeactivate && !confirmDisconnect && (
+              <Button type="button" variant="outline" size="sm" disabled={busy != null} onClick={deactivate}>
+                <UserX className="h-4 w-4" /> {busy === "deactivate" ? "Deactivating…" : "Deactivate"}
+              </Button>
+            )}
             {confirmDisconnect ? (
               <div className="flex flex-wrap gap-2">
                 <Button type="button" variant="destructive" size="sm" disabled={busy != null} onClick={disconnect}>
@@ -320,10 +371,22 @@ export function HotspotManagePanel({
             ) : (
               <Button type="button" variant="outline" size="sm" className="text-destructive" disabled={busy != null}
                 onClick={() => setConfirmDisconnect(true)}>
-                <Power className="h-4 w-4" /> Disconnect
+                <Power className="h-4 w-4" /> End package
               </Button>
             )}
           </div>
+        </Card>
+      )}
+
+      {!paused && canCorrectDates && (
+        <Card
+          icon={<CalendarClock className="h-4 w-4 text-muted-foreground" />}
+          title="Correct dates"
+          blurb="For mistakes, such as a wrong start or too much time given. It can shorten the package and records no payment."
+        >
+          <ReasonField id="dates-reason" value={datesReason} onChange={setDatesReason} placeholder="e.g. Sold a day instead of 5 hours" />
+          <CorrectDatesForm key={`${time.startedAt}-${time.expiresAt}`} idPrefix="hotspot-dates" initialStart={time.startedAt}
+            initialEnd={time.expiresAt} busy={busy != null} fieldClass={FIELD} onSubmit={correctDates} />
         </Card>
       )}
     </div>
