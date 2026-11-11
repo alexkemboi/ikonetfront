@@ -2,11 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
-import { Clock, Loader2, Pause, Play, Tv } from "lucide-react";
+import { CalendarClock, Clock, Loader2, Pause, Play, Power, Tv, UserX } from "lucide-react";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { addTvTime, changeTvDevice, getTvCustomer, pauseTvCustomer, resumeTvCustomer } from "@/actions/subscriberTime";
+import {
+  addTvTime, changeTvDevice, correctTvDates, deactivateTvCustomer, endTvPackage, getTvCustomer, pauseTvCustomer, resumeTvCustomer,
+} from "@/actions/subscriberTime";
+import { CorrectDatesForm } from "@/components/subscriber-time/CorrectDatesForm";
 import { ResumeAtField, resumeAtIso, resumeAtLabel } from "@/components/subscriber-time/ResumeAtField";
 import type { TvCustomerTime } from "@/lib/types/subscriberTime";
 import { formatLocalPhone, formatTimeLeft, toMinutes } from "@/lib/utils/subscriberTime";
@@ -19,7 +22,7 @@ const PRESETS: { label: string; minutes: number }[] = [
 ];
 
 type Unit = "minutes" | "hours" | "days";
-type Busy = "add" | "pause" | "resume" | "device" | null;
+type Busy = "add" | "pause" | "resume" | "device" | "deactivate" | "end" | "dates" | null;
 
 const FIELD =
   "h-9 rounded-md border border-border bg-background px-3 text-sm text-foreground outline-none focus:border-ring";
@@ -55,6 +58,11 @@ export function ManageTvCustomerDialog({
   const role = (useSession()?.data?.user?.role ?? "").replace(/^ROLE_/i, "").toUpperCase();
   // Correcting the TV's address: company and system administrators and management (the server checks too).
   const canCorrectDevice = ["SYSADMIN", "ADMIN", "01", "02"].includes(role);
+  // Deactivate, Activate and End package: the same people (the server checks too).
+  const canDeactivate = canCorrectDevice;
+  // Correct dates: company and system administrators only, as for PPPoE.
+  const canCorrectDates = ["SYSADMIN", "ADMIN", "01"].includes(role);
+  const [confirmEnd, setConfirmEnd] = useState(false);
   const entitlementId = tv?.entitlementId;
 
   useEffect(() => {
@@ -140,7 +148,36 @@ export function ManageTvCustomerDialog({
     void run("device", () => changeTvDevice(entitlementId, newMac.trim(), reason.trim()));
   }
 
+  function deactivate() {
+    if (entitlementId == null || !needReason()) return;
+    void run("deactivate", () => deactivateTvCustomer(entitlementId, reason.trim()));
+  }
+
+  async function endPackage() {
+    if (entitlementId == null || !needReason()) return;
+    setBusy("end");
+    try {
+      const res = await endTvPackage(entitlementId, reason.trim());
+      if (res.success) {
+        toast.success(res.message);
+        onChanged();
+        close();
+      } else {
+        toast.error(res.message);
+      }
+    } finally {
+      setBusy(null);
+      setConfirmEnd(false);
+    }
+  }
+
+  function correctDates(startsAt: string, endsAt: string) {
+    if (entitlementId == null || !needReason()) return;
+    void run("dates", () => correctTvDates(entitlementId, startsAt, endsAt, reason.trim()));
+  }
+
   const paused = time?.status === "PAUSED";
+  const deactivated = paused && time?.deactivated === true;
   const left = time ? secondsLeft(time, loadedAt) : null;
   const pausesLeft = time ? Math.max(0, time.pausesAllowed - time.pausesUsed) : 0;
 
@@ -167,7 +204,7 @@ export function ManageTvCustomerDialog({
             <div className="rounded-lg border border-border bg-muted/40 p-3 text-sm">
               <p className="flex items-center gap-2 font-medium">
                 <Clock className="h-4 w-4 text-muted-foreground" />
-                {paused ? "Paused" : "Running"} · {formatTimeLeft(left)} left
+                {deactivated ? "Deactivated" : paused ? "Paused" : "Running"} · {formatTimeLeft(left)} left
               </p>
               <p className="mt-1 text-xs text-muted-foreground">
                 {paused
@@ -225,8 +262,23 @@ export function ManageTvCustomerDialog({
             </section>
 
             <section className="space-y-2">
-              <h3 className="text-sm font-medium">{paused ? "Resume" : "Pause"}</h3>
-              {paused ? (
+              <h3 className="text-sm font-medium">{deactivated ? "Activate" : paused ? "Resume" : "Pause"}</h3>
+              {deactivated ? (
+                canDeactivate ? (
+                  <>
+                    <p className="text-xs text-muted-foreground">
+                      Deactivated by staff. Activating gives the TV {formatTimeLeft(left)} from that moment; it is let back in
+                      within a minute.
+                    </p>
+                    <Button type="button" size="sm" disabled={busy != null}
+                      onClick={() => entitlementId != null && void run("resume", () => resumeTvCustomer(entitlementId))}>
+                      <Play className="h-4 w-4" /> {busy === "resume" ? "Activating…" : "Activate"}
+                    </Button>
+                  </>
+                ) : (
+                  <p className="text-xs text-muted-foreground">Deactivated by staff. Only an administrator or management can activate it.</p>
+                )
+              ) : paused ? (
                 <>
                   <p className="text-xs text-muted-foreground">
                     {time.resumeAt ? `Resumes by itself ${resumeAtLabel(time.resumeAt)}. ` : ""}
@@ -256,6 +308,54 @@ export function ManageTvCustomerDialog({
                 </>
               )}
             </section>
+
+            {canDeactivate && (
+              <section className="space-y-2">
+                <h3 className="flex items-center gap-2 text-sm font-medium">
+                  <Power className="h-4 w-4 text-destructive" /> Disconnect
+                </h3>
+                <p className="text-xs text-muted-foreground">
+                  {paused
+                    ? "End package ends it now; the time left is lost."
+                    : "Deactivate signs the TV off and keeps the time left until someone activates it, for any package. End package ends it now; the time left is lost."}
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {!paused && !confirmEnd && (
+                    <Button type="button" variant="outline" size="sm" disabled={busy != null} onClick={deactivate}>
+                      <UserX className="h-4 w-4" /> {busy === "deactivate" ? "Deactivating…" : "Deactivate"}
+                    </Button>
+                  )}
+                  {confirmEnd ? (
+                    <>
+                      <Button type="button" variant="destructive" size="sm" disabled={busy != null} onClick={endPackage}>
+                        {busy === "end" ? "Ending…" : "Yes, end the package"}
+                      </Button>
+                      <Button type="button" variant="ghost" size="sm" disabled={busy != null} onClick={() => setConfirmEnd(false)}>
+                        Cancel
+                      </Button>
+                    </>
+                  ) : (
+                    <Button type="button" variant="outline" size="sm" className="text-destructive" disabled={busy != null}
+                      onClick={() => setConfirmEnd(true)}>
+                      <Power className="h-4 w-4" /> End package
+                    </Button>
+                  )}
+                </div>
+              </section>
+            )}
+
+            {!paused && canCorrectDates && (
+              <section className="space-y-2 border-t border-border pt-4">
+                <h3 className="flex items-center gap-2 text-sm font-medium">
+                  <CalendarClock className="h-4 w-4 text-muted-foreground" /> Correct dates
+                </h3>
+                <p className="text-xs text-muted-foreground">
+                  For mistakes, such as a wrong start or too much time given. It can shorten the package and records no payment.
+                </p>
+                <CorrectDatesForm key={`${time.startsAt}-${time.expiresAt}`} idPrefix="tv-dates" initialStart={time.startsAt}
+                  initialEnd={time.expiresAt} busy={busy != null} fieldClass={FIELD} onSubmit={correctDates} />
+              </section>
+            )}
 
             {canCorrectDevice && (
               <section className="space-y-2">

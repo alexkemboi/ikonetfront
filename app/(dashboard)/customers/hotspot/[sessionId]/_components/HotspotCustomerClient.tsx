@@ -13,13 +13,14 @@ import { formatLocalPhone, formatTimeLeft, mpesaReceiptOrNull, trimZeroDays } fr
 import { HotspotManagePanel } from "./HotspotManagePanel";
 import { HotspotPurchaseHistory } from "./HotspotPurchaseHistory";
 
-type Status = "ONLINE" | "OFFLINE" | "WAITING" | "PAUSED";
+type Status = "ONLINE" | "OFFLINE" | "WAITING" | "PAUSED" | "DEACTIVATED";
 
 const STATUS_STYLE: Record<Status, { label: string; badge: string; dot: string }> = {
   ONLINE: { label: "Online", badge: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400", dot: "bg-emerald-500" },
   OFFLINE: { label: "Not online", badge: "bg-amber-500/10 text-amber-700 dark:text-amber-400", dot: "bg-amber-500" },
   WAITING: { label: "Not connected yet", badge: "bg-amber-500/10 text-amber-700 dark:text-amber-400", dot: "bg-amber-500" },
   PAUSED: { label: "Paused", badge: "bg-sky-500/10 text-sky-700 dark:text-sky-400", dot: "bg-sky-500" },
+  DEACTIVATED: { label: "Deactivated", badge: "bg-rose-500/10 text-rose-700 dark:text-rose-400", dot: "bg-rose-500" },
 };
 
 const DATE_TIME = new Intl.DateTimeFormat("en-KE", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
@@ -35,7 +36,7 @@ function secondsLeft(time: HotspotSessionTime, now: number): number | null {
 }
 
 function statusOf(time: HotspotSessionTime, live: LiveSessionItem | null): Status {
-  if (time.status === "PAUSED") return "PAUSED";
+  if (time.status === "PAUSED") return time.deactivated ? "DEACTIVATED" : "PAUSED";
   if (!live) return "WAITING";
   const state = sessionState(live);
   return state === "ONLINE" ? "ONLINE" : state === "WAITING" ? "WAITING" : "OFFLINE";
@@ -94,7 +95,7 @@ export function HotspotCustomerClient({
         </span>
       ),
       detail:
-        status === "PAUSED"
+        status === "PAUSED" || status === "DEACTIVATED"
           ? time.pausedAt ? `since ${when(time.pausedAt)}` : null
           : liveState === "ONLINE"
             ? `for ${trimZeroDays(live?.onlineDurationFormatted)}`
@@ -107,7 +108,7 @@ export function HotspotCustomerClient({
     {
       label: "Time left",
       value: formatTimeLeft(left),
-      detail: status === "PAUSED" ? (time.resumeAt ? `resumes ${when(time.resumeAt)}` : "clock stopped") : time.expiresAt ? `ends ${when(time.expiresAt)}` : null,
+      detail: status === "PAUSED" || status === "DEACTIVATED" ? (time.resumeAt ? `resumes ${when(time.resumeAt)}` : "clock stopped") : time.expiresAt ? `ends ${when(time.expiresAt)}` : null,
     },
     {
       label: "Data used",

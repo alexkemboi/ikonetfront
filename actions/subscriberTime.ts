@@ -50,6 +50,17 @@ export async function changeHotspotDevice(sessionId: number, macAddress: string,
   return post<HotspotSessionTime>(`/hotspot-sessions/${sessionId}/device`, { macAddress, reason }, "Could not change the device.");
 }
 
+/** Admin and management: block the customer without losing the time left (any package length). Activate = resume. */
+export async function deactivateHotspotSession(sessionId: number, reason: string) {
+  return post<HotspotSessionTime>(`/hotspot-sessions/${sessionId}/deactivate`, { reason }, "Could not deactivate the package.");
+}
+
+/** Administrators: set when the package started and ends (ISO times). An end that has passed ends it now. */
+export async function correctHotspotDates(sessionId: number, startsAt: string, endsAt: string, reason: string) {
+  return post<HotspotSessionTime>(`/hotspot-sessions/${sessionId}/correct-dates`, { startsAt, endsAt, reason },
+    "Could not correct the dates.");
+}
+
 export async function resumeHotspotSession(sessionId: number) {
   return post<HotspotSessionTime>(`/hotspot-sessions/${sessionId}/resume`, {}, "Could not resume the session.");
 }
@@ -127,4 +138,23 @@ export async function resumeTvCustomer(entitlementId: string) {
 /** Admin and management: correct the TV's MAC address. */
 export async function changeTvDevice(entitlementId: string, macAddress: string, reason: string) {
   return post<TvCustomerTime>(`/tv-customers/${entitlementId}/device`, { macAddress, reason }, "Could not change the TV's address.");
+}
+
+/** Admin and management: block the TV without losing the time left (any package length). Activate = resume. */
+export async function deactivateTvCustomer(entitlementId: string, reason: string) {
+  return post<TvCustomerTime>(`/tv-customers/${entitlementId}/deactivate`, { reason }, "Could not deactivate the TV.");
+}
+
+/** Admin and management: end the TV's package now; the time left is lost. */
+export async function endTvPackage(entitlementId: string, reason: string): Promise<ActionResult<null>> {
+  const res = await apiFetch<null>(`${BASE}/tv-customers/${entitlementId}/end`, { method: "POST", auth: "required", body: { reason } });
+  if (!res.success) return { success: false, message: res.message || "Could not end the package." };
+  revalidatePath("/customers/all");
+  return { success: true, data: null, message: res.message || "Package ended" };
+}
+
+/** Administrators: set when the TV's access started and ends (ISO times). An end that has passed ends it. */
+export async function correctTvDates(entitlementId: string, startsAt: string, endsAt: string, reason: string) {
+  return post<TvCustomerTime>(`/tv-customers/${entitlementId}/correct-dates`, { startsAt, endsAt, reason },
+    "Could not correct the dates.");
 }
