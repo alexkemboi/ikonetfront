@@ -183,8 +183,12 @@ export async function getNasRoutersData(): Promise<{
       })
     );
 
+    // Keep the inventory order stable for every consumer of this router list.
+    const sortedRouters = [...routers].sort((a, b) =>
+      a.name.trim().localeCompare(b.name.trim(), undefined, { sensitivity: "base", numeric: true })
+    );
     // retired routers are not part of the fleet: they never count as offline
-    return { kpis: deriveNasKpis(routers.filter((r) => !r.retired)), routers };
+    return { kpis: deriveNasKpis(routers.filter((r) => !r.retired)), routers: sortedRouters };
   } catch (error: unknown) {
     console.error("Error fetching NAS routers:", error);
     return {

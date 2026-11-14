@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Globe, RefreshCcw, TriangleAlert } from "lucide-react";
 import { toast } from "sonner";
@@ -33,6 +33,12 @@ export function RouterUplinkPanel({
   const [checking, setChecking] = useState<number | null>(null);
   const [open, setOpen] = useState<number | null>(null);
   const [history, setHistory] = useState<UplinkCheck[] | null>(null);
+  const sortedChecks = useMemo(
+    () => [...(checks ?? [])].sort((a, b) =>
+      a.routerName.trim().localeCompare(b.routerName.trim(), undefined, { sensitivity: "base", numeric: true })
+    ),
+    [checks]
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -158,7 +164,7 @@ export function RouterUplinkPanel({
               </tr>
             </thead>
             <tbody>
-              {checks.map((c) => (
+              {sortedChecks.map((c) => (
                 <UplinkRow
                   key={c.routerId}
                   check={c}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { ShieldAlert, Wifi } from "lucide-react";
 import { getLanHealth } from "@/actions/lanHealth";
@@ -44,6 +44,12 @@ export function CustomerNetworkHealth({
   const [error, setError] = useState("");
   const [rolling, setRolling] = useState(false);
   const [rollout, setRollout] = useState<RadiusRolloutResult[] | null>(null);
+  const sortedRouters = useMemo(
+    () => [...(routers ?? [])].sort((a, b) =>
+      a.routerName.trim().localeCompare(b.routerName.trim(), undefined, { sensitivity: "base", numeric: true })
+    ),
+    [routers]
+  );
 
   async function reprovisionAll() {
     setRolling(true);
@@ -225,7 +231,7 @@ export function CustomerNetworkHealth({
               </tr>
             </thead>
             <tbody>
-              {routers.map((r) => (
+              {sortedRouters.map((r) => (
                 <tr key={r.routerId} className="border-b border-border last:border-0 hover:bg-accent/50">
                   <td className="px-4 py-3">
                     <Link href={`/network/routers/${r.routerId}`} className="font-medium text-foreground underline-offset-2 hover:underline">
