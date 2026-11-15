@@ -3,6 +3,7 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   /* config options here */
   output: "standalone",
+  deploymentId: process.env.NEXT_DEPLOYMENT_ID,
 
   /**
    * Declare the `page` cache profile used by `cacheLife("page")` directives.

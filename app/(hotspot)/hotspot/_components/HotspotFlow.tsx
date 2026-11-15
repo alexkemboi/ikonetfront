@@ -10,13 +10,6 @@ import type { PortalRouter } from "@/lib/hotspot/portalRouter";
 
 export type Tab = "activate" | "buy";
 
-function resolveInitialTab(): Tab {
-  if (typeof window === "undefined") return "buy";
-
-  const params = new URLSearchParams(window.location.search);
-  return params.get("tab") === "activate" ? "activate" : "buy";
-}
-
 interface HotspotFlowProps {
   packages: HotspotPackage[];
   companyCode?: string | null;
@@ -45,9 +38,16 @@ export default function HotspotFlow({
   tab,
   onTabChange,
 }: HotspotFlowProps) {
-  const [ownTab, setActiveTab] = useState<Tab>(resolveInitialTab);
+  const [ownTab, setActiveTab] = useState<Tab>("buy");
   const activeTab = tab ?? ownTab;
   const [reconnected, setReconnected] = useState<ReconnectResponseData | null>(null);
+
+  // Keep the first client render identical to the server, then apply URL state after hydration.
+  useEffect(() => {
+    if (tab !== undefined) return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("tab") === "activate") setActiveTab("activate");
+  }, [tab]);
 
   // A device that already paid (and lost its connection to a power cut or a Wi-Fi drop) is
   // signed back in by the backend, so the customer is not left with "buy" as the only choice.
