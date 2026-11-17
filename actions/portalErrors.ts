@@ -24,3 +24,23 @@ export async function reportPortalErrorAction(report: {
       `page=${clip(page, 100)} ua="${clip(report.userAgent, 200)}"`
   );
 }
+
+/** Same as {@link reportPortalErrorAction}, for a crash anywhere else in the app (admin/staff screens). */
+export async function reportAppErrorAction(report: {
+  message?: string;
+  digest?: string;
+  userAgent?: string;
+  page?: string;
+}): Promise<void> {
+  const clip = (value: string | undefined, max: number) => (value ?? '').replace(/\s+/g, ' ').slice(0, max);
+  let page = '';
+  try {
+    page = report.page ? new URL(report.page).pathname : '';
+  } catch {
+    page = '';
+  }
+  console.error(
+    `[APP-ERROR] message="${clip(report.message, 300)}" digest=${clip(report.digest, 40) || '-'} ` +
+      `page=${clip(page, 100)} ua="${clip(report.userAgent, 200)}"`
+  );
+}

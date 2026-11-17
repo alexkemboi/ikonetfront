@@ -42,3 +42,13 @@ next-env.d.ts
 
 # kilo
 .kilo
+
+# models
+.grok
+.claude
+.codex
+
+# configs
+.env
+.env.local
+.env.production
