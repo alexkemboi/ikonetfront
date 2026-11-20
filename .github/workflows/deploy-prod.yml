@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - main
+  # manual redeploy of main (e.g. after a server credential change), no commit needed
+  workflow_dispatch:
 
 env:
   REGISTRY: ghcr.io
