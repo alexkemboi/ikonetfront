@@ -1,4 +1,4 @@
-# Guide — Contract-Driven Frontend Tooling (Beesmart IBS Frontend)
+# Guide — Contract-Driven Frontend Tooling (Ikonex Systems)
 
 This guide explains **what** the contract-driven tooling in this repository is, **how it is meant to be used**, and **how different people** (frontend developers, backend developers, testers/QAs, and code reviewers) make sense of the setup.
 

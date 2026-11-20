@@ -2,7 +2,7 @@ import { getMyAlertSettings, getRecentStaffAlerts } from "@/actions/alerts-prefe
 import { MyAlertsClient } from "@/components/account/MyAlertsClient";
 import { RecentStaffAlerts } from "@/components/account/RecentStaffAlerts";
 
-export const metadata = { title: "My alerts — Beesmart" };
+export const metadata = { title: "My alerts — SpeedLink" };
 
 export default async function MyAlertsPage() {
   const [mine, recent] = await Promise.all([getMyAlertSettings(), getRecentStaffAlerts()]);

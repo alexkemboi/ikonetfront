@@ -28,7 +28,7 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
         <main className="min-h-screen flex items-center justify-center bg-[#F5F5F5] p-6">
           <div className="w-full max-w-sm text-center space-y-5">
             <div className="flex items-center justify-center gap-3">
-              <Image src="/logo.png" alt="Beesmart Bedak ISP" width={40} height={40} className="rounded-lg" />
+              <Image src="/logo.png" alt="SpeedLink" width={40} height={40} className="rounded-lg" />
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#FFF3E0]">
                 <AlertTriangle className="h-5 w-5 text-[#FF9800]" />
               </div>
@@ -37,7 +37,7 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
             <div className="space-y-2">
               <h1 className="text-xl font-medium text-[#333333]">Something went wrong</h1>
               <p className="text-sm text-[#555555]">
-                Beesmart Billing ran into an unexpected error. Your data is safe — try again, or
+                SpeedLink ran into an unexpected error. Your data is safe — try again, or
                 go back to the dashboard.
               </p>
               {error?.digest ? (

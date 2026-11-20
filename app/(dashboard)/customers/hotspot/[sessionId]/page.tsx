@@ -9,7 +9,7 @@ import { HotspotCustomerClient } from "./_components/HotspotCustomerClient";
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-  title: "Hotspot customer — Beesmart Billing",
+  title: "Hotspot customer — SpeedLink",
   description: "One hotspot customer: their package, connection and purchases, and what customer care can do for them.",
 };
 

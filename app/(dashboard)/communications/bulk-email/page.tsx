@@ -12,7 +12,7 @@ import { EmailCampaignHistory } from "@/components/communications/EmailCampaignH
 import { SmsNoticeHistory } from "@/components/communications/SmsNoticeHistory";
 import { getSystemUsers } from "@/actions/system";
 
-export const metadata = { title: "SMS & Emails — Beesmart" };
+export const metadata = { title: "SMS & Emails — SpeedLink" };
 
 export type EmailTemplate = {
  id: string;

@@ -13,7 +13,7 @@ import { PaybillTransactionsPanel } from "@/components/finance/PaybillTransactio
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "M-Pesa Reconciliation | Beesmart Billing",
+  title: "M-Pesa Reconciliation | SpeedLink",
   description: "Daraja PullTransactions sweep and daily reconciliation for M-Pesa payments.",
 };
 

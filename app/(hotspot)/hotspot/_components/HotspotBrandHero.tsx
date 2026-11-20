@@ -17,7 +17,7 @@ export default function HotspotBrandHero({ brand, logoUrl, unoptimized }: { bran
       <div className="relative z-10">
         <div className="flex h-24 w-24 items-center justify-center rounded-2xl bg-white p-3 shadow-xl ring-1 ring-white/20 mx-auto">
           <Image
-            src={logoUrl || "/logo.png"}
+            src={logoUrl || "/speedlink-logo.jpg"}
             alt={brand}
             unoptimized={Boolean(unoptimized)}
             width={160}

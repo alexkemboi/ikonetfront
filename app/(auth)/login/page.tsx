@@ -1,9 +1,7 @@
-import { headers } from "next/headers";
 import LoginForm from "./_components/LoginForm";
-import { getPublicBranding } from "@/actions/branding";
 
 export const metadata = {
-    title: "BEESMARTBEDAK ISP",
+    title: "SpeedLink",
 };
 
 // NextAuth appends ?error=<code> on failed sign-in — map codes to user-friendly copy
@@ -24,13 +22,6 @@ export default async function LoginPage({
 }) {
     const { error } = await searchParams;
 
-    // A company's own web address (subdomain or custom domain) already names the organisation.
-    const host = (await headers()).get("host") ?? undefined;
-    const hostBranding = host ? await getPublicBranding({ host }) : null;
-    const hostOrganisation = hostBranding
-        ? { code: hostBranding.code, name: hostBranding.name, logoUrl: hostBranding.logoUrl ?? null }
-        : null;
-
     const errorMessage = error
         ? (AUTH_ERRORS[error] ?? "An unexpected error occurred. Please try again.")
         : undefined;
@@ -40,7 +31,7 @@ export default async function LoginPage({
             <div className="space-y-1.5">
                 <div className="w-8 h-1 rounded-full bg-warning mb-4" />
                 <h2 className="text-2xl font-normal tracking-normal text-foreground">
-                    {hostOrganisation ? `Welcome to ${hostOrganisation.name}` : "Welcome back"}
+                    Welcome back
                 </h2>
                 <p className="text-sm text-muted-foreground">
                     Sign in to reach your dashboard.

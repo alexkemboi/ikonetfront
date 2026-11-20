@@ -55,7 +55,7 @@ export default function TopBar({
  notificationCount = 0,
  user,
  navGroups = [],
- brandName = "Beesmart",
+ brandName = "SpeedLink",
  sidebarUser,
 }: TopBarProps) {
 const breadcrumbs = useBreadcrumb();

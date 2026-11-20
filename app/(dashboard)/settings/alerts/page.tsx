@@ -3,7 +3,7 @@ import { getProvidersAction } from "@/actions/alerts";
 import { auth } from "@/lib/auth";
 import { isPlatformAdminRole } from "@/lib/types/roles";
 
-export const metadata = { title: "Alert Channels — Beesmart" };
+export const metadata = { title: "Alert Channels — SpeedLink" };
 
 export default async function AlertsPage() {
  const result = await getProvidersAction();

@@ -4,31 +4,33 @@
 @custom-variant dark (&:is(.dark *));
 
 /* ============================================================
-   Beesmart Billing System — Quiet Finance Design System
+  SpeedLink — blue brand design system
    Primary Font : DM Sans (UI) — weight 800/300 contrast voice
    Technical Font: JetBrains Mono (router logs, MAC/IP, scripts only)
    ============================================================ */
 
 :root {
   /* ── Canvas & Surfaces ── */
-  --background: oklch(0.965 0 0);          /* #F5F5F5 – app canvas */
+  --background: #FFFFFF;
   --foreground: oklch(0.2 0 0);            /* #333333 – primary text */
   --card: oklch(1 0 0);                    /* #FFFFFF – card surface */
   --card-foreground: oklch(0.2 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.2 0 0);
 
-  /* ── Brand: Navy Trust ── */
-  --primary: oklch(0.27 0.09 248);         /* #103766 – Navy Trust */
-  --primary-foreground: oklch(1 0 0);      /* white on navy */
+  /* ── SpeedLink brand palette ── */
+  --brand-deep-blue: #064A96;
+  --brand-bright-blue: #087BEE;
+  --primary: var(--brand-deep-blue);
+  --primary-foreground: #FFFFFF;
 
   /* ── Secondary & Muted ── */
   --secondary: oklch(0.965 0 0);
-  --secondary-foreground: oklch(0.27 0.09 248);
+  --secondary-foreground: var(--brand-deep-blue);
   --muted: oklch(0.95 0 0);
   --muted-foreground: oklch(0.45 0 0);     /* ~#555 secondary text */
-  --accent: oklch(0.95 0 0);
-  --accent-foreground: oklch(0.27 0.09 248);
+  --accent: #EAF3FF;
+  --accent-foreground: var(--brand-deep-blue);
 
   /* ── Semantic: Danger (Overdue / Suspended) ── */
   --destructive: oklch(0.63 0.26 29);      /* #FF0000 Alert Red */
@@ -36,8 +38,8 @@
 
   /* ── Borders & Inputs ── */
   --border: oklch(0.935 0 0);              /* #EEEEEE subtle borders */
-  --input: oklch(0.72 0.05 248);           /* navy-tinted hairline — Level 1 elevation */
-  --ring: oklch(0.27 0.09 248);            /* focus ring = Navy Trust */
+  --input: #CBD9E8;
+  --ring: var(--brand-bright-blue);
 
   /* ── Brand Semantics ── */
   --success: oklch(0.52 0.1 155);          /* #2E865F Growth Green */
@@ -51,65 +53,64 @@
   --radius: 0.375rem;                      /* 6px – canonical content radius */
 
   /* ── Charts ── */
-  --chart-1: oklch(0.27 0.09 248);         /* Navy */
-  --chart-2: oklch(0.52 0.1 155);          /* Green */
-  --chart-3: oklch(0.75 0.17 55);          /* Orange */
-  --chart-4: oklch(0.63 0.26 29);          /* Red */
-  --chart-5: oklch(0.6 0.06 248);          /* Light Navy */
+  --chart-1: var(--brand-deep-blue);
+  --chart-2: var(--brand-bright-blue);
+  --chart-3: oklch(0.75 0.14 75);
+  --chart-4: oklch(0.63 0.2 29);
+  --chart-5: oklch(0.68 0.09 155);
 
   /* ── Sidebar ── */
-  --sidebar: oklch(0.27 0.09 248);         /* Navy sidebar background */
+  --sidebar: #07396F;
   --sidebar-foreground: oklch(1 0 0);
-  --sidebar-primary: oklch(1 0 0);
-  --sidebar-primary-foreground: oklch(0.27 0.09 248);
-  --sidebar-accent: oklch(0.32 0.09 248);  /* slightly lighter navy */
+  --sidebar-primary: var(--brand-bright-blue);
+  --sidebar-primary-foreground: #06172B;
+  --sidebar-accent: #0B5DAF;
   --sidebar-accent-foreground: oklch(1 0 0);
-  --sidebar-border: oklch(0.32 0.09 248);
-  --sidebar-ring: oklch(0.5 0.09 248);
+  --sidebar-border: #1D5A96;
+  --sidebar-ring: var(--brand-bright-blue);
 }
 
 .dark {
-  /* Navy night — deep navy canvas, slate-navy cards, sky-blue brand accent */
   /* native controls (select lists, date pickers, scrollbars) are drawn dark too */
   color-scheme: dark;
-  --background: oklch(0.21 0.025 258);     /* #111a28 canvas */
-  --foreground: oklch(0.95 0.005 258);
-  --card: oklch(0.26 0.03 258);            /* #1a2536 card surface */
-  --card-foreground: oklch(0.95 0.005 258);
-  --popover: oklch(0.27 0.03 258);
-  --popover-foreground: oklch(0.95 0.005 258);
-  --primary: oklch(0.71 0.14 254);         /* #60a5fa sky-blue CTA */
-  --primary-foreground: oklch(0.17 0.04 258);
-  --secondary: oklch(0.29 0.03 258);
-  --secondary-foreground: oklch(0.95 0.005 258);
-  --muted: oklch(0.29 0.03 258);
-  --muted-foreground: oklch(0.74 0.02 258);
-  --accent: oklch(0.31 0.035 258);
-  --accent-foreground: oklch(0.95 0.005 258);
+  --background: #101923;
+  --foreground: #E8EEF5;
+  --card: #172331;
+  --card-foreground: #E8EEF5;
+  --popover: #1B2A3B;
+  --popover-foreground: #E8EEF5;
+  --primary: #60A5FA;
+  --primary-foreground: #102033;
+  --secondary: oklch(0.25 0 0);
+  --secondary-foreground: #B9D7FA;
+  --muted: oklch(0.25 0 0);
+  --muted-foreground: #A9B8C8;
+  --accent: #1E3A5F;
+  --accent-foreground: #D8EBFF;
   --destructive: oklch(0.63 0.26 29);
   --destructive-foreground: oklch(1 0 0);
-  --border: oklch(0.35 0.04 258);          /* navy hairline */
-  --input: oklch(0.4 0.045 258);
-  --ring: oklch(0.71 0.14 254);
+  --border: oklch(0.31 0 0);
+  --input: #33465D;
+  --ring: #60A5FA;
   --success: oklch(0.68 0.14 153);
   --success-foreground: oklch(1 0 0);
   --warning: oklch(0.75 0.17 55);          /* orange accent bar */
   --warning-foreground: oklch(0.2 0 0);
   --danger: oklch(0.63 0.26 29);
   --danger-foreground: oklch(1 0 0);
-  --chart-1: oklch(0.71 0.14 254);
-  --chart-2: oklch(0.68 0.14 153);
-  --chart-3: oklch(0.75 0.17 55);
-  --chart-4: oklch(0.63 0.26 29);
-  --chart-5: oklch(0.72 0.02 258);
-  --sidebar: oklch(0.2 0.04 258);          /* #0b1628 brand panel / sidebar */
-  --sidebar-foreground: oklch(0.95 0.005 258);
-  --sidebar-primary: oklch(0.71 0.14 254);
-  --sidebar-primary-foreground: oklch(0.17 0.04 258);
-  --sidebar-accent: oklch(0.24 0.035 258);
-  --sidebar-accent-foreground: oklch(0.95 0.005 258);
-  --sidebar-border: oklch(0.27 0.035 258);
-  --sidebar-ring: oklch(0.71 0.14 254);
+  --chart-1: #60A5FA;
+  --chart-2: #087BEE;
+  --chart-3: oklch(0.78 0.14 75);
+  --chart-4: oklch(0.68 0.18 29);
+  --chart-5: #74C79A;
+  --sidebar: #0A1726;
+  --sidebar-foreground: #E8EEF5;
+  --sidebar-primary: #60A5FA;
+  --sidebar-primary-foreground: #102033;
+  --sidebar-accent: #112A45;
+  --sidebar-accent-foreground: #E8EEF5;
+  --sidebar-border: #243B54;
+  --sidebar-ring: #60A5FA;
 }
 
 @theme inline {
@@ -163,14 +164,14 @@
 }
 
 .dark .sidebar-panel {
-  --sidebar: oklch(0.2 0.04 258);
-  --sidebar-foreground: oklch(0.95 0.005 258);
-  --sidebar-primary: oklch(0.95 0.005 258);
-  --sidebar-primary-foreground: oklch(0.2 0.04 258);
-  --sidebar-accent: oklch(0.24 0.035 258);
-  --sidebar-accent-foreground: oklch(0.95 0.005 258);
-  --sidebar-border: oklch(0.27 0.035 258);
-  --sidebar-ring: oklch(0.6 0.08 254);
+  --sidebar: #0A1726;
+  --sidebar-foreground: #E8EEF5;
+  --sidebar-primary: #60A5FA;
+  --sidebar-primary-foreground: #102033;
+  --sidebar-accent: #112A45;
+  --sidebar-accent-foreground: #E8EEF5;
+  --sidebar-border: #243B54;
+  --sidebar-ring: #60A5FA;
   color-scheme: dark;
 }
 

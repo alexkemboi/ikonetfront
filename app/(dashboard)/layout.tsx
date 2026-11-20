@@ -95,7 +95,7 @@ return (
   <div className="fixed inset-0 flex h-dvh overflow-hidden overscroll-none bg-background">
   <Sidebar
   navGroups={navGroups}
-  brandName="Beesmart"
+  brandName="SpeedLink"
   user={sidebarUser}
   />
 
@@ -115,7 +115,7 @@ return (
    : undefined
    }
    navGroups={navGroups}
-   brandName="Beesmart"
+  brandName="SpeedLink"
    sidebarUser={sidebarUser}
    />
 <CompanyScopeBanner />

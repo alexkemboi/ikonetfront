@@ -22,7 +22,7 @@ import { getMyMessages } from "@/actions/investorMessages";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Investor Portal | Beesmart Billing",
+  title: "Investor Portal | SpeedLink",
   description: "Partner revenue summary, maintenance charges, net payout and router attribution.",
 };
 

@@ -11,7 +11,7 @@ import { SystemFeesPanel } from "@/components/finance/SystemFeesPanel";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Expense Management — Beesmart Billing",
+  title: "Expense Management — SpeedLink",
 };
 
 export default async function ExpensesPage() {

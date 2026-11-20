@@ -50,7 +50,7 @@ export default function AuthLayout({
             overflow-hidden
             border-r
             border-white/30
-            bg-primary
+            bg-sidebar
             text-primary-foreground
             dark:border-border
             dark:bg-sidebar
@@ -160,8 +160,8 @@ export default function AuthLayout({
               "
             >
               <Image
-                src="/logo.png"
-                alt="Beesmart Bedak ISP"
+                src="/speedlink-logo.jpg"
+                alt="SpeedLink"
                 width={160}
                 height={160}
                 priority
@@ -178,7 +178,7 @@ export default function AuthLayout({
                   text-white
                 "
               >
-                BEESMARTBEDAK
+                SpeedLink
               </h2>
 
               <p
@@ -191,7 +191,7 @@ export default function AuthLayout({
                   text-white/60
                 "
               >
-                ISP Management
+                Billing & Network Operations
               </p>
             </div>
           </div>
@@ -244,8 +244,7 @@ export default function AuthLayout({
                 text-white/65
               "
             >
-              Unified billing, PPPoE management, and hotspot provisioning
-              designed to give your ISP complete control from one platform.
+              Billing, connectivity, and network operations in one platform.
             </p>
 
             {/* =================================================
@@ -308,7 +307,7 @@ export default function AuthLayout({
               text-white/40
             "
           >
-            © {new Date().getFullYear()} Beesmart Bedak. All rights reserved.
+            © {new Date().getFullYear()} SpeedLink. All rights reserved.
           </p>
         </aside>
 
@@ -345,8 +344,8 @@ export default function AuthLayout({
               <div
                 className="
                   flex
-                  h-20
-                  w-20
+                  h-24
+                  w-48
                   items-center
                   justify-center
                   rounded-2xl
@@ -358,8 +357,8 @@ export default function AuthLayout({
                 "
               >
                 <Image
-                  src="/logo.png"
-                  alt="Beesmart Bedak ISP"
+                  src="/speedlink-logo.jpg"
+                  alt="SpeedLink"
                   width={140}
                   height={140}
                   priority
@@ -375,7 +374,7 @@ export default function AuthLayout({
                   tracking-tight
                 "
               >
-                BEESMARTBEDAK
+                SpeedLink
               </h2>
 
               <p
@@ -388,7 +387,7 @@ export default function AuthLayout({
                   text-muted-foreground
                 "
               >
-                ISP Management
+                Billing & Network Operations
               </p>
             </div>
 

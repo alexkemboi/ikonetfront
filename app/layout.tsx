@@ -18,8 +18,9 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
- title: "Beesmart Billing",
- description: "Internet Billing & Network Management",
+ title: "SpeedLink",
+ description: "ISP billing and network management by SpeedLink.",
+ icons: { icon: "/speedlink-logo.jpg" },
 };
 
 export default function RootLayout({
