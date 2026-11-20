@@ -1,7 +1,11 @@
 import Image from "next/image";
 import { Phone } from "lucide-react";
+import { getHotspotHelplineAction } from "@/actions/hotspot";
+import { PORTAL_HELPLINE } from "@/lib/brand";
 
-export default function HotspotLoading() {
+export default async function HotspotLoading() {
+ // the database helpline (cached for a minute, so this screen stays instant); built-in number if unreachable
+ const line = (await getHotspotHelplineAction().catch(() => null)) ?? PORTAL_HELPLINE;
  return (
  
  <div className="min-h-screen animate-pulse flex flex-col px-5 sm:px-8 py-8">
@@ -19,11 +23,11 @@ export default function HotspotLoading() {
  </p>
  </div>
  <a
- href="tel:0706354194"
+ href={`tel:${line.tel}`}
  className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline"
  >
  <Phone className="w-3.5 h-3.5" />
- Customer Care: 0706 354 194
+ Customer Care: {line.display}
  </a>
  </div>
 

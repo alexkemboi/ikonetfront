@@ -46,12 +46,13 @@ export function sanitizeErrorMessage(errorMsg: string): string {
 }
 
 /**
- * Helpline shown on the hotspot purchase page for every company: the Ikonex Systems
- * office line, which handles hotspot support for the platform.
+ * Fallback for the hotspot page helpline. The live value comes from the database
+ * (app_settings hotspot.helpline.*, via GET /hotspot/branding/helpline); this is shown only
+ * when the API cannot be reached.
  */
 export const PORTAL_HELPLINE = {
   label: "Ikonex Systems Support",
-  display: "0706 354 194",
-  tel: "+254706354194",
+  display: "0726 837 210",
+  tel: "+254726837210",
   hours: "09:00 – 18:00",
 } as const;

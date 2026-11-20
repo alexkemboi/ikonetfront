@@ -3,14 +3,17 @@
 import { useState } from "react";
 import { ChevronDown, Phone } from "lucide-react";
 import { PORTAL_HELPLINE } from "@/lib/brand";
+import type { HotspotHelplineInfo } from "@/actions/hotspot";
 
 /**
  * Helpline for hotspot customers: one bold button that opens to show the
  * number and a tap-to-call link. A `tel:` link works inside the phone's
  * captive-portal browser, before the customer has any internet access.
  */
-export default function HotspotHelpline() {
+export default function HotspotHelpline({ helpline }: { helpline?: HotspotHelplineInfo | null }) {
   const [open, setOpen] = useState(false);
+  // set by an administrator in the database; the built-in number only when the API was unreachable
+  const line = helpline ?? PORTAL_HELPLINE;
 
   return (
     <div className="mx-auto w-full max-w-xs">
@@ -30,14 +33,14 @@ export default function HotspotHelpline() {
         hidden={!open}
         className="mt-2 rounded-xl border border-border bg-card p-4 text-center"
       >
-        <p className="text-xs text-muted-foreground">{PORTAL_HELPLINE.label}</p>
+        <p className="text-xs text-muted-foreground">{line.label}</p>
         <a
-          href={`tel:${PORTAL_HELPLINE.tel}`}
+          href={`tel:${line.tel}`}
           className="mt-1 block text-2xl font-bold tracking-wide text-foreground underline-offset-4 hover:underline"
         >
-          {PORTAL_HELPLINE.display}
+          {line.display}
         </a>
-        <p className="mt-1 text-xs text-muted-foreground">Tap the number to call · {PORTAL_HELPLINE.hours}</p>
+        <p className="mt-1 text-xs text-muted-foreground">Tap the number to call · {line.hours}</p>
       </div>
     </div>
   );

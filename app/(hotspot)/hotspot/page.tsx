@@ -2,7 +2,7 @@ import HotspotShell from "./_components/HotspotShell";
 import HotspotBrandHero from "./_components/HotspotBrandHero";
 import { cache } from "react";
 import type { Metadata } from "next";
-import { getHotspotPortalContextAction, getPublicHotspotPackagesAction } from "@/actions/hotspot";
+import { getHotspotHelplineAction, getHotspotPortalContextAction, getPublicHotspotPackagesAction } from "@/actions/hotspot";
 import { HotspotPackage } from "@/lib/types/hotspot";
 import { DEFAULT_PORTAL_BRAND, normalizeCompanyCode } from "@/lib/brand";
 import { parsePortalRouter } from "@/lib/hotspot/portalRouter";
@@ -67,12 +67,15 @@ export default async function HotspotPage({ searchParams }: HotspotPageProps) {
 
   // TV packages are per-device (the backend checks the MAC against the portal
   // session), so they are fetched client-side by TvDeviceSetup, not here.
-  const packagesResponse = await getPublicHotspotPackagesAction({
-    portalRouter,
-    routerIdentity: routerIdentity || undefined,
-    clientIp: clientIp || undefined,
-    companyId: initialCompanyCode ?? undefined,
-  });
+  const [packagesResponse, helpline] = await Promise.all([
+    getPublicHotspotPackagesAction({
+      portalRouter,
+      routerIdentity: routerIdentity || undefined,
+      clientIp: clientIp || undefined,
+      companyId: initialCompanyCode ?? undefined,
+    }),
+    getHotspotHelplineAction().catch(() => null),
+  ]);
   const packages: HotspotPackage[] = packagesResponse.success
     ? packagesResponse.data || []
     : [];
@@ -97,6 +100,7 @@ export default async function HotspotPage({ searchParams }: HotspotPageProps) {
             portalRouter={portalRouter}
             routerLinks={routerLinks}
             portalContext={portalContext}
+            helpline={helpline}
           />
         </div>
       </div>

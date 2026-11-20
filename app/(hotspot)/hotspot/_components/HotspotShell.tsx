@@ -10,7 +10,7 @@ import type { TvPackage } from "@/lib/types/tv";
 import type { TvDeviceDetails } from "@/lib/validation/tv-device";
 import { HotspotPackage } from "@/lib/types/hotspot";
 import { DEFAULT_PORTAL_BRAND } from "@/lib/brand";
-import { getHotspotPortalContextAction, type HotspotPortalContext } from "@/actions/hotspot";
+import { getHotspotPortalContextAction, type HotspotHelplineInfo, type HotspotPortalContext } from "@/actions/hotspot";
 import { HotspotBrandProvider } from "@/lib/hotspot/brand-context";
 import { setPortalRouter, type PortalRouter } from "@/lib/hotspot/portalRouter";
 import { setRouterLinks, type RouterLinks } from "@/lib/hotspot/routerSignIn";
@@ -32,6 +32,8 @@ interface HotspotShellProps {
   routerLinks?: RouterLinks;
   /** Company of the serving router, resolved by the backend on the server render. */
   portalContext?: HotspotPortalContext | null;
+  /** Helpline from the database; null falls back to the built-in number. */
+  helpline?: HotspotHelplineInfo | null;
 }
 
 /**
@@ -43,7 +45,7 @@ interface HotspotShellProps {
  * company's name is then fetched for it — updating the header/footer, not just
  * the checkout modal.
  */
-export default function HotspotShell({ packages, initialCompanyCode, clientMac, redirectClientMac, clientIp, routerIdentity, portalRouter, routerLinks, portalContext, initialTvDevice, tvPackages, tvPackagesError }: HotspotShellProps) {
+export default function HotspotShell({ packages, initialCompanyCode, clientMac, redirectClientMac, clientIp, routerIdentity, portalRouter, routerLinks, portalContext, helpline, initialTvDevice, tvPackages, tvPackagesError }: HotspotShellProps) {
   const [companyCode, setCompanyCode] = useState<string | null>(
     portalContext?.companyCode ?? initialCompanyCode ?? null
   );
@@ -142,7 +144,7 @@ export default function HotspotShell({ packages, initialCompanyCode, clientMac, 
           <p>
             Powered by <span className="font-medium text-foreground">{brand}</span>
           </p>
-          <HotspotHelpline />
+          <HotspotHelpline helpline={helpline} />
           <p>© 2026 {brand}. All rights reserved.</p>
         </div>
       </div>

@@ -42,6 +42,29 @@ export interface HotspotPortalContext {
   routerVerified: boolean;
 }
 
+/** Helpline on the hotspot page (`GET /hotspot/branding/helpline`, from app_settings). */
+export interface HotspotHelplineInfo {
+  label: string;
+  /** The number as shown, e.g. "0726 837 210". */
+  display: string;
+  /** The tel: target, e.g. "+254726837210". */
+  tel: string;
+  hours: string;
+}
+
+/**
+ * The helpline an administrator set in the database. Null when the API cannot be reached; the
+ * page then shows the built-in fallback. Cached for a minute, so an edit shows within 60 s.
+ */
+export async function getHotspotHelplineAction(): Promise<HotspotHelplineInfo | null> {
+  const res = await apiFetch<HotspotHelplineInfo>("/hotspot/branding/helpline", {
+    auth: 'public',
+    tags: ['hotspot-helpline'],
+    revalidate: 60,
+  });
+  return res.success && res.data?.tel && res.data?.display ? res.data : null;
+}
+
 /**
  * Which company's hotspot is this? Resolved by the backend from the signed router id;
  * `routerIdentity` / `clientIp` / `company` only help routers that do not have their signed
