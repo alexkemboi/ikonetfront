@@ -20,11 +20,27 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import Link from "next/link";
 import { signIn } from "next-auth/react";
 import { clearCompanyContextCookie } from "@/lib/companyContextClient";
-import { signInAction, signInCodeAction } from "@/actions/auth";
+import { resendSignInCodeAction, signInAction, signInCodeAction } from "@/actions/auth";
 import { cn } from "@/lib/utils";
 import { useHydrated } from "@/lib/useHydrated";
+import OtpVerification, { type OtpResendResult, type OtpVerifyResult } from "./OtpVerification";
 
 const DISMISS_AFTER_MS = 6000;
+/** Used only if an older server answers without timings. */
+const DEFAULT_CODE_SECONDS = 300;
+const DEFAULT_RESEND_SECONDS = 60;
+
+/** Server messages that mean this sign-in is over and the password step must be repeated. */
+const isFinal = (message?: string) => /sign in again|has ended/i.test(message ?? "");
+
+type CodeStep = {
+  username: string;
+  role?: string;
+  challenge?: string;
+  maskedEmail?: string;
+  expiresInSeconds: number;
+  resendInSeconds: number;
+};
 
 // ── Auto-dismissing error alert ────────────────────────────────────────
 function ErrorAlert({ message }: { message: string }) {
@@ -91,9 +107,8 @@ export default function LoginForm({ error }: { error?: string }) {
   const [busy, setBusy] = useState(false);
   const ready = useHydrated();
   const [localError, setLocalError] = useState<string | undefined>(undefined);
-  // set when the password was accepted and the server emailed a sign-in code
-  const [codeStep, setCodeStep] = useState<{ username: string; role?: string } | null>(null);
-  const [code, setCode] = useState("");
+  // set when the password was accepted and the server emailed a sign-in code (memory only)
+  const [codeStep, setCodeStep] = useState<CodeStep | null>(null);
 
   const finish = async (username: string, token: string) => {
     clearCompanyContextCookie();
@@ -105,28 +120,31 @@ export default function LoginForm({ error }: { error?: string }) {
     });
   };
 
-  const submitCode = async (event: React.FormEvent) => {
-    event.preventDefault();
-    if (!codeStep) return;
-    const typed = code.replace(/\s/g, "");
-    if (!/^\d{6}$/.test(typed)) {
-      setLocalError("Enter the 6-digit code from the email.");
-      return;
+  const verifyCode = async (typed: string): Promise<OtpVerifyResult> => {
+    if (!codeStep) return { ok: false, message: "Sign in again.", final: true };
+    const res = await signInCodeAction(codeStep.username, typed, codeStep.role, codeStep.challenge);
+    if (!res.success || !res.data?.token) {
+      const message = res.message || "The sign-in code is not correct.";
+      return { ok: false, message, final: isFinal(message) };
     }
-    setLocalError(undefined);
-    setBusy(true);
-    try {
-      const res = await signInCodeAction(codeStep.username, typed, codeStep.role);
-      if (!res.success || !res.data?.token) {
-        setLocalError(res.message || "The sign-in code is not correct.");
-        return;
-      }
-      await finish(res.data.username || codeStep.username, res.data.token);
-    } catch {
-      setLocalError("Something went wrong. Please try again.");
-    } finally {
-      setBusy(false);
+    await finish(res.data.username || codeStep.username, res.data.token);
+    return { ok: true };
+  };
+
+  const resendCode = async (): Promise<OtpResendResult> => {
+    if (!codeStep?.challenge) {
+      return { ok: false, message: "Go back and sign in again to get a new code.", final: true };
     }
+    const res = await resendSignInCodeAction(codeStep.challenge);
+    if (!res.success) {
+      const message = res.message || "Could not send a new code. Please try again.";
+      return { ok: false, message, final: isFinal(message) };
+    }
+    return {
+      ok: true,
+      expiresInSeconds: res.data?.codeExpiresInSeconds ?? DEFAULT_CODE_SECONDS,
+      resendInSeconds: res.data?.resendInSeconds ?? DEFAULT_RESEND_SECONDS,
+    };
   };
 
   const formik = useFormik({
@@ -139,8 +157,15 @@ export default function LoginForm({ error }: { error?: string }) {
         const username = values.username.trim();
         const res = await signInAction(username, values.password);
         if (res.success && res.data?.codeRequired) {
-          setCode("");
-          setCodeStep({ username: res.data.username || username, role: res.data.role });
+          setCodeStep({
+            username: res.data.username || username,
+            role: res.data.role,
+            challenge: res.data.challenge,
+            maskedEmail: res.data.maskedEmail,
+            expiresInSeconds: res.data.codeExpiresInSeconds ?? DEFAULT_CODE_SECONDS,
+            resendInSeconds: res.data.resendInSeconds ?? DEFAULT_RESEND_SECONDS,
+          });
+          formik.setFieldValue("password", "", false);
           return;
         }
         if (!res.success || !res.data?.token) {
@@ -161,43 +186,17 @@ export default function LoginForm({ error }: { error?: string }) {
 
   if (codeStep) {
     return (
-      <form method="post" onSubmit={submitCode} className="space-y-4" noValidate>
-        {localError && <ErrorAlert message={localError} />}
-        <div className="space-y-1">
-          <p className="text-sm font-medium">Check your email</p>
-          <p className="text-sm text-muted-foreground">
-            We sent a 6-digit sign-in code to the email address on this account. It expires in 10 minutes.
-          </p>
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="signin-code">Sign-in code</Label>
-          <Input
-            id="signin-code"
-            inputMode="numeric"
-            autoComplete="one-time-code"
-            maxLength={6}
-            placeholder="123456"
-            value={code}
-            onChange={(e) => setCode(e.target.value)}
-            disabled={busy}
-            autoFocus
-            className="h-11 tracking-widest"
-          />
-        </div>
-        <Button type="submit" className="h-11 w-full" disabled={busy || !ready}>
-          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Sign in"}
-        </Button>
-        <button
-          type="button"
-          className="w-full text-sm text-muted-foreground hover:underline"
-          onClick={() => {
-            setCodeStep(null);
-            setLocalError(undefined);
-          }}
-        >
-          Back: sign in again to get a new code
-        </button>
-      </form>
+      <OtpVerification
+        maskedEmail={codeStep.maskedEmail}
+        expiresInSeconds={codeStep.expiresInSeconds}
+        resendInSeconds={codeStep.resendInSeconds}
+        onVerify={verifyCode}
+        onResend={resendCode}
+        onBack={() => {
+          setCodeStep(null);
+          setLocalError(undefined);
+        }}
+      />
     );
   }
 

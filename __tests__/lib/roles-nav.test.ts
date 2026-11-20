@@ -191,6 +191,23 @@ describe("permission map + menu tree normalization", () => {
     expect(map["/customers/all"].canView).toBe(true);
   });
 
+  it("a route-less permission entry the role lacks does not hide the dashboard", () => {
+    const withSwitch: ApiMenuItem[] = [
+      menuItem({
+        idxno: 10,
+        label: "Dashboard",
+        route: "/dashboard",
+        children: [menuItem({ idxno: 11, label: "Admin Dashboard", route: "/dashboard/overview" })],
+      }),
+      menuItem({ idxno: 64, label: "Finance data", route: null as unknown as string, canView: false }),
+    ];
+    expect(extractPermissions(withSwitch)["/dashboard/overview"].canView).toBe(true);
+    const labels = apiMenusToNavGroups(withSwitch.map((m) => ({ ...m, canView: true })))
+      .flatMap((g) => g.items)
+      .map((i) => i.label);
+    expect(labels).not.toContain("Finance data");
+  });
+
   it("apiMenusToMenuTree uses normalized routes as node ids", () => {
     const tree = apiMenusToMenuTree(menus);
     expect(tree[0].route).toBe("/system/packages");

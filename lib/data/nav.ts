@@ -70,6 +70,16 @@ export const fetchRoleMenusRaw = cache(async function fetchRoleMenusRaw(
 // ── Converters ─────────────────────────────────────────────────────────
 
 /**
+ * A catalog entry without a route (e.g. "Finance data", permission key FINANCE_DATA) is a
+ * permission switch, not a page. normalizeMenuRoute maps a blank route to /dashboard/overview,
+ * so such an entry must not reach the permission map or the sidebar: one the role does not
+ * hold would overwrite the dashboard's flags and send the role to /no-access.
+ */
+function hasPageRoute(menu: ApiMenuItem): boolean {
+  return Boolean(menu.route?.trim());
+}
+
+/**
  * Convert API menu items → NavGroup[] for the Sidebar.
  *
  * Fail closed: only items the catalog marks `canView` are rendered, and
@@ -81,7 +91,7 @@ export function apiMenusToNavGroups(menus: ApiMenuItem[]): NavGroup[] {
   if (!menus.length) return [];
 
   const toNavItem = (menu: ApiMenuItem): NavItem => {
-    const children = (menu.children ?? []).filter((child) => child.canView);
+    const children = (menu.children ?? []).filter((child) => child.canView && hasPageRoute(child));
     return {
       href:      normalizeMenuRoute(menu.route),
       label:     menu.label,
@@ -100,7 +110,7 @@ export function apiMenusToNavGroups(menus: ApiMenuItem[]): NavGroup[] {
   };
 
   const items: NavItem[] = menus
-    .filter((menu) => menu.canView)
+    .filter((menu) => menu.canView && hasPageRoute(menu))
     .slice()
     .sort((a, b) => a.sortOrder - b.sortOrder)
     .map(toNavItem);
@@ -226,13 +236,15 @@ export function apiMenusToMenuTree(menus: ApiMenuItem[]): MenuNode[] {
 export function extractPermissions(menus: ApiMenuItem[]): PermissionMap {
   const map: PermissionMap = {};
   for (const menu of menus) {
-    map[normalizeMenuRoute(menu.route)] = {
-      canView:   menu.canView,
-      canCreate: menu.canCreate,
-      canEdit:   menu.canEdit,
-      canDelete: menu.canDelete,
-    };
-    for (const child of menu.children ?? []) {
+    if (hasPageRoute(menu)) {
+      map[normalizeMenuRoute(menu.route)] = {
+        canView:   menu.canView,
+        canCreate: menu.canCreate,
+        canEdit:   menu.canEdit,
+        canDelete: menu.canDelete,
+      };
+    }
+    for (const child of (menu.children ?? []).filter(hasPageRoute)) {
       map[normalizeMenuRoute(child.route)] = {
         canView:   child.canView,
         canCreate: child.canCreate,

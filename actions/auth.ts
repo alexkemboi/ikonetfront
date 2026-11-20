@@ -27,8 +27,19 @@ export async function determineAccountTypeAction(username: string, password: str
   });
 }
 
-/** Sign-in answer: a token, or `codeRequired` when an emailed sign-in code must be entered next. */
-export type SignInStep = LoginData & { refreshToken?: string; codeRequired?: boolean };
+/**
+ * Sign-in answer: a token, or `codeRequired` when an emailed sign-in code must be entered next.
+ * With `codeRequired` the server also sends what the code screen shows; never the code itself.
+ */
+export type SignInStep = LoginData & {
+  refreshToken?: string;
+  codeRequired?: boolean;
+  /** Opaque proof of the first step; needed to ask for a new code. Kept in memory only. */
+  challenge?: string;
+  maskedEmail?: string;
+  codeExpiresInSeconds?: number;
+  resendInSeconds?: number;
+};
 
 /**
  * The one sign-in for every account. The server finds the account from the username, email
@@ -45,11 +56,35 @@ export async function signInAction(identifier: string, password: string): Promis
   });
 }
 
-/** The one second step: the emailed code. `role` is what {@link signInAction} answered with. */
-export async function signInCodeAction(identifier: string, code: string, role?: string): Promise<ApiResponse<SignInStep>> {
+/**
+ * The one second step: the emailed code. `role` and `challenge` are what {@link signInAction}
+ * answered with.
+ */
+export async function signInCodeAction(
+  identifier: string,
+  code: string,
+  role?: string,
+  challenge?: string
+): Promise<ApiResponse<SignInStep>> {
   return apiFetch<SignInStep>("/auth/userlogin/verify", {
     method: "POST",
-    body: role ? { username: identifier, code, role } : { username: identifier, code },
+    body: {
+      username: identifier,
+      code,
+      ...(role ? { role } : {}),
+      ...(challenge ? { challenge } : {}),
+    },
+    auth: "public",
+    headers: await clientOriginHeaders(),
+    cache: "no-store",
+  });
+}
+
+/** Email a new sign-in code for the sign-in `challenge` belongs to (cooldown and rate limit on the server). */
+export async function resendSignInCodeAction(challenge: string): Promise<ApiResponse<SignInStep>> {
+  return apiFetch<SignInStep>("/auth/userlogin/resend", {
+    method: "POST",
+    body: { challenge },
     auth: "public",
     headers: await clientOriginHeaders(),
     cache: "no-store",
