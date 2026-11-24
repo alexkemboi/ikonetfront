@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { getAdminDashboardData } from "@/actions/dashboard";
-import { resolveDashboardPathForRole } from "@/lib/utils/dashboardRouting";
+import { resolveDashboardPath } from "@/lib/utils/dashboardRouting";
 import { auth } from "@/lib/auth";
 import { AdminDashboardView } from "../_components/AdminDashboardView";
 
@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 
 export default async function AdminDashboardPage() {
   const session = await auth();
-  const correctPath = resolveDashboardPathForRole(session?.user?.role);
+  const correctPath = await resolveDashboardPath();
   if (correctPath !== "/dashboard/admin") redirect(correctPath);
 
   const result = await getAdminDashboardData();

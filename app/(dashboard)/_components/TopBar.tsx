@@ -21,9 +21,10 @@ import CompanyContextSwitcher from "./CompanyContextSwitcher";
 import StepUpIndicator from "@/components/chrome/StepUpIndicator";
 import ChangePasswordDialog from "@/components/chrome/ChangePasswordDialog";
 import { openOmniSearch } from "@/lib/omniSearchEvents";
-import type { NavGroup } from "@/lib/nav";
-import { normalizeRole, ROLE_NAME } from "@/lib/types/roles";
+import type { NavGroup, SidebarBrand } from "@/lib/nav";
 import { useAppTheme } from "@/providers/AppThemeProvider";
+import { isCustomerAccess } from "@/lib/access";
+import { useAccess } from "@/providers/AccessProvider";
 
 // Pages whose name differs from their address (kept so bookmarks and permissions still work)
 const SEGMENT_LABELS: Record<string, string> = { "bulk-email": "SMS & Emails" };
@@ -47,7 +48,10 @@ type TopBarProps = {
   notificationCount?: number;
   user?: { username: string; initials: string; role: string; fname?: string; middleName?: string; email?: string; companyScope?: string };
   navGroups?: NavGroup[];
-  brandName?: string;
+  /** Company (or platform) brand from the database */
+  brand: SidebarBrand;
+  /** Set when the navigation API failed */
+  navError?: string;
   sidebarUser?: SidebarUser;
 };
 
@@ -55,10 +59,12 @@ export default function TopBar({
  notificationCount = 0,
  user,
  navGroups = [],
- brandName = "SpeedLink",
+ brand,
+ navError,
  sidebarUser,
 }: TopBarProps) {
 const breadcrumbs = useBreadcrumb();
+	const { access } = useAccess();
 	const [mobileOpen, setMobileOpen] = useState(false);
 	const [passwordOpen, setPasswordOpen] = useState(false);
 	const { theme, toggleTheme } = useAppTheme();
@@ -80,7 +86,8 @@ const breadcrumbs = useBreadcrumb();
  <SheetTitle className="sr-only">Mobile navigation</SheetTitle>
  <SidebarInner
  navGroups={navGroups}
- brandName={brandName}
+ brand={brand}
+ navError={navError}
  user={sidebarUser}
  isMobile={true}
  onCloseMobile={() => setMobileOpen(false)}
@@ -197,7 +204,7 @@ const breadcrumbs = useBreadcrumb();
  <KeyRound className="mr-2 h-4 w-4" />
  Change my password
  </DropdownMenuItem>
- {normalizeRole(user.role) !== ROLE_NAME.CUSTOMER && (
+ {!isCustomerAccess(access) && (
  <DropdownMenuItem asChild className="cursor-pointer">
  <Link href="/account/alerts">
  <Bell className="mr-2 h-4 w-4" />

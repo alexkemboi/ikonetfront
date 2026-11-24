@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { auth } from "@/lib/auth";
-import { getLandingRouteForRole } from "@/lib/types/roles";
+import { getLandingRoute } from "@/lib/data/access";
 import { getPermissionForRoute } from "@/lib/data/nav";
 
 export const dynamic = "force-dynamic";
@@ -22,7 +22,7 @@ export default async function DashboardDispatcherPage() {
     redirect("/login");
   }
 
-  const landing = getLandingRouteForRole(session.user.role);
+  const landing = await getLandingRoute();
   if (landing === "/no-access") {
     redirect("/no-access");
   }

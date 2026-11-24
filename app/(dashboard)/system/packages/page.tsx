@@ -3,8 +3,9 @@ import PackagesClient from "./_components/PackagesClient";
 import { getCurrentUserPermissions, NO_PERMISSIONS } from "@/lib/data/nav";
 import { resolveCompanyContextCode } from "@/lib/companyContext";
 import { auth } from "@/lib/auth";
-import { isPlatformAdminRole } from "@/lib/types/roles";
 import { redirect } from "next/navigation";
+import { getAccess } from "@/lib/data/access";
+import { hasPlatformScope } from "@/lib/access";
 
 export const dynamic = "force-dynamic";
 
@@ -17,8 +18,8 @@ export default async function InternetPackagesPage() {
  const pagePerms = permissions["/system/packages"] ?? NO_PERMISSIONS;
  if (!pagePerms.canView) redirect("/dashboard");
 
- const session = await auth();
- const isPlatformAdmin = isPlatformAdminRole(session?.user?.role);
+ // a role that works across companies sees the selected company (or all)
+ const isPlatformAdmin = hasPlatformScope(await getAccess());
  // The company a SYSADMIN has selected; null = all companies. Other roles are
  // always inside their own company.
  const selectedCompany = isPlatformAdmin ? await resolveCompanyContextCode() : null;

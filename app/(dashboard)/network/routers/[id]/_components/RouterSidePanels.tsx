@@ -21,7 +21,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { formatDateTime, useOnDemand } from "./format";
 import { useSession } from "next-auth/react";
-import { canOpenRouters } from "@/lib/types/roles";
+import { useAccess } from "@/providers/AccessProvider";
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -104,7 +104,7 @@ export function HealthCard({ health }: { health: RouterHealthScore }) {
  */
 export function ConnectionPanel({ routerId, canEdit }: { routerId: number; canEdit: boolean }) {
   // WinBox on/off is for the company admin and SYSADMIN only
-  const canOpenRouter = canOpenRouters(useSession().data?.user?.role);
+  const canOpenRouter = useAccess().can("API_ROUTEROPERATIONS_SERVICES", "EDIT");
   const loadConnection = useCallback(() => getRouterConnection(routerId), [routerId]);
   const loadServices = useCallback(() => getRouterServices(routerId), [routerId]);
   const connection = useOnDemand(loadConnection, true);

@@ -15,14 +15,15 @@ import {
  Router, DollarSign, Database, TrendingUp, Landmark,
  Clock, Lock, History, Smartphone, ShoppingCart,
  RotateCcw, Gauge, Megaphone, Search, MapPin, ScrollText,
- Activity, Globe,
+ Activity, Globe, Building2, BookOpen, Wallet, AlertTriangle, RefreshCw, Loader2,
  type LucideIcon,
  } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import type { NavGroup, NavItem } from "@/lib/nav";
+import type { NavGroup, NavItem, SidebarBrand } from "@/lib/nav";
+import { useCompanyScope } from "@/providers/CompanyScopeProvider";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -39,8 +40,9 @@ const SidebarContext = createContext<{
 });
 
 // ── Icon registry ─────────────────────────────────────────────────────
-// Supports both Lucide kebab-case names (used by static nav configs)
-// and Material Design icon names (returned by the API menus endpoint).
+// Maps the icon identifiers stored in the database (navigation_menus.icon,
+// menu_items.icon) to components: Lucide kebab-case and Material Design names.
+// Menus themselves are never defined here.
 const ICON_MAP: Record<string, LucideIcon> = {
  // ── Lucide names (static configs) ──────────────────────────────────
  "layout-dashboard": LayoutDashboard,
@@ -66,6 +68,12 @@ const ICON_MAP: Record<string, LucideIcon> = {
  "activity": Activity,
  "globe": Globe,
  "rotate-cw": RotateCcw,
+ "building-2": Building2,
+ "book-open": BookOpen,
+ "bell": Bell,
+ "wallet": Wallet,
+ "router": Router,
+ "package": Package,
 
  // ── Material Design names (API menus endpoint) ──────────────────────
  "dashboard": LayoutDashboard,
@@ -81,7 +89,6 @@ const ICON_MAP: Record<string, LucideIcon> = {
  "support_agent": Headphones,
  "attach_money": DollarSign,
  "inventory": Package,
- "package": Package,
  "receipt_long": Receipt,
  "confirmation_number": FileText,
  "description": FileText,
@@ -89,7 +96,6 @@ const ICON_MAP: Record<string, LucideIcon> = {
  "sms": MessageSquare,
  "email": Mail,
  "campaign": Megaphone,
- "router": Router,
  "dns": Server,
  "device_hub": Network,
  "shopping_cart": ShoppingCart,
@@ -350,12 +356,17 @@ export type SidebarUser = {
  role: string;
  initials: string;
  username?: string;
+ /** Company in context (name), or "All companies" for a platform admin */
+ company?: string;
 };
 
 export type SidebarProps = {
-  /** Nav groups to render — swap this to change the entire sidebar menu */
+  /** Nav groups to render — from the database (GET /navigation/me) */
   navGroups: NavGroup[];
-  brandName?: string;
+  /** Company (or platform) name and logo — from the database */
+  brand: SidebarBrand;
+  /** Set when the navigation API failed; the sidebar shows it with a retry */
+  navError?: string;
   user?: SidebarUser;
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
@@ -366,7 +377,8 @@ export type SidebarProps = {
 // ── Sidebar inner content (shared between desktop aside + mobile Sheet) ──
 export function SidebarInner({
   navGroups,
-  brandName = "SpeedLink",
+  brand,
+  navError,
   user,
   isCollapsed = false,
   onToggleCollapse,
@@ -374,6 +386,11 @@ export function SidebarInner({
   onCloseMobile,
 }: SidebarProps) {
   const router = useRouter();
+  const { switching } = useCompanyScope();
+  const brandName = brand.name;
+  // Logos stored as a URL elsewhere (or a data: SVG) are shown as they are, like the hotspot hero.
+  const remoteLogo = /^(https?:|data:)/i.test(brand.logoUrl);
+  const roleLine = user ? (user.company ? user.role + " · " + user.company : user.role) : "";
 
   return (
     <SidebarContext.Provider value={{ isCollapsed }}>
@@ -387,7 +404,8 @@ export function SidebarInner({
         )}>
           <div className={cn("flex min-w-0 items-center gap-2", isCollapsed && "justify-center")}>
             <Image
-              src="/speedlink-logo.jpg"
+              src={brand.logoUrl}
+              unoptimized={remoteLogo}
               alt={isCollapsed ? brandName : ""}
               width={32}
               height={32}
@@ -438,8 +456,32 @@ export function SidebarInner({
           "sidebar-navigation flex-1 min-h-0 py-3 transition-all duration-300",
           isCollapsed ? "px-1.5" : "px-5"
         )}>
-          <nav className="space-y-2">
-            {navGroups.length > 0 ? (
+          <nav className="space-y-2" aria-busy={switching || undefined}>
+            {switching ? (
+              // Company switch in progress: the layout is reloading this company's menus.
+              <div className={cn("flex items-center gap-2 py-2 text-sm text-sidebar-foreground/60", isCollapsed && "justify-center")}>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                {!isCollapsed && <span>Loading menu…</span>}
+              </div>
+            ) : navError ? (
+              <div className={cn("space-y-2 py-2 text-sm", isCollapsed && "flex justify-center")} role="alert">
+                {!isCollapsed && (
+                  <p className="flex items-start gap-2 text-sidebar-foreground/70">
+                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                    <span>The menu could not be loaded.</span>
+                  </p>
+                )}
+                <button
+                  type="button"
+                  onClick={() => router.refresh()}
+                  title="Retry loading the menu"
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-sidebar-border px-2.5 py-1.5 text-xs font-medium text-sidebar-foreground/80 transition-colors hover:bg-sidebar-accent"
+                >
+                  <RefreshCw className="h-3.5 w-3.5" />
+                  {!isCollapsed && "Retry"}
+                </button>
+              </div>
+            ) : navGroups.length > 0 ? (
               navGroups.map((group, i) => (
                 <NavGroupSection key={group.label ?? i} group={group} />
               ))
@@ -473,7 +515,7 @@ export function SidebarInner({
                     <DropdownMenuLabel className="font-normal">
                       <div className="flex flex-col space-y-1">
                         <p className="text-sm font-semibold leading-none text-sidebar-foreground">
-                          {user.username || user.name}
+                          {user.name || user.username}
                         </p>
                         <p className="text-xs text-sidebar-foreground/50">
                           {user.email || user.username}
@@ -481,6 +523,11 @@ export function SidebarInner({
                         <p className="text-[10px] text-sidebar-foreground/45 mt-0.5 leading-none font-sans tabular-nums uppercase">
                           Role: {user.role}
                         </p>
+                        {user.company && (
+                          <p className="text-[10px] text-sidebar-foreground/45 leading-none">
+                            {user.company}
+                          </p>
+                        )}
                       </div>
                     </DropdownMenuLabel>
                     <DropdownMenuSeparator className="bg-sidebar-border" />
@@ -505,11 +552,11 @@ export function SidebarInner({
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex-1 overflow-hidden">
-                  <p className="text-sm font-medium text-sidebar-foreground leading-none truncate">
-                    {user.username || user.name}
+                  <p className="text-sm font-medium text-sidebar-foreground leading-none truncate" title={user.username}>
+                    {user.name || user.username}
                   </p>
-                  <p className="text-[11px] text-sidebar-foreground/50 mt-0.5 leading-none truncate">
-                    {user.role}
+                  <p className="text-[11px] text-sidebar-foreground/50 mt-0.5 leading-none truncate" title={roleLine}>
+                    {roleLine}
                   </p>
                 </div>
                 <button

@@ -1,7 +1,6 @@
 import { auth } from "@/lib/auth";
 import { buildApiUrl } from "@/lib/constants";
 import { withCompanyContext } from "@/lib/companyContext";
-import { normalizeRole, ROLE_NAME } from "@/lib/types/roles";
 
 export const dynamic = "force-dynamic";
 
@@ -17,7 +16,8 @@ export async function GET(_request: Request, { params }: { params: Promise<{ sta
   const session = await auth();
   if (!session?.user?.apiToken) return new Response("Not signed in", { status: 401 });
 
-  const investor = normalizeRole(session.user.role) === ROLE_NAME.INVESTOR;
+  // an investor login reads its own statement; staff read through the investor register
+  const investor = session.user.principalType === "INVESTOR";
   const path = investor ? `/investor/statements/${statementId}/pdf` : `/investors/statements/${statementId}/pdf`;
   const headers: Record<string, string> = {
     Authorization: `Bearer ${session.user.apiToken}`,

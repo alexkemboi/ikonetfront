@@ -3,7 +3,8 @@ import { getPaymentsLedgerData } from "@/actions/payments";
 import { PaymentsLedgerView } from "@/components/payments/PaymentsLedgerView";
 import { auth } from "@/lib/auth";
 import { getPermissionForRoute } from "@/lib/data/nav";
-import { normalizeRole, ROLE_NAME } from "@/lib/types/roles";
+import { getAccess } from "@/lib/data/access";
+import { can } from "@/lib/access";
 
 export const dynamic = "force-dynamic";
 
@@ -20,15 +21,18 @@ export default async function PaymentsLedgerPage() {
  ]);
  // Staff (customer care) read payments only: the backend refuses them manual
  // payments (POST /payments/manual) and compensation vouchers.
- const isStaff = normalizeRole(session?.user?.role) === ROLE_NAME.STAFF;
+ const access = await getAccess();
+ // what the API lets this role do: record a manual payment, issue a compensation voucher
+ const canRecord = can(access, "API_MANUALPAYMENT", "CREATE");
+ const canCompensate = can(access, "API_HOTSPOT", "CREATE");
 
  return (
  <PaymentsLedgerView
  kpis={data.kpis}
  payments={data.payments}
  source={data.source}
- canRecordPayment={!isStaff}
- canIssueVoucher={!isStaff && voucherPerms.canCreate}
+ canRecordPayment={canRecord}
+ canIssueVoucher={canCompensate && voucherPerms.canCreate}
  />
  );
 }

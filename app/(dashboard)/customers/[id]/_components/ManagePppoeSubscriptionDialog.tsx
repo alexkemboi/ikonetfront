@@ -16,6 +16,7 @@ import {
 import type { ActionResult, PppoeSubscriptionTime } from "@/lib/types/subscriberTime";
 import { formatCustomerDate } from "@/lib/utils/customerFormatters";
 import { ResumeAtField, resumeAtIso, resumeAtLabel } from "@/components/subscriber-time/ResumeAtField";
+import { useAccess } from "@/providers/AccessProvider";
 
 const FIELD =
   "h-9 rounded-md border border-border bg-background px-3 text-sm text-foreground outline-none focus:border-ring";
@@ -43,9 +44,9 @@ export function ManagePppoeSubscriptionDialog({
   const [newExpiry, setNewExpiry] = useState("");
   const [resumeAt, setResumeAt] = useState("");
   const subscriptionId = subscription?.id;
-  const role = (useSession().data?.user?.role ?? "").replace(/^ROLE_/i, "").toUpperCase();
+  const { can } = useAccess();
   // the backend enforces the same rule; this only hides what the caller cannot do
-  const canCorrectDates = ["SYSADMIN", "ADMIN", "01"].includes(role);
+  const canCorrectDates = can("API_SUBSCRIBERTIME_PPPOE_SUBSCRIPTIONS_CORRECT_PPPOE_DATES", "CREATE");
 
   useEffect(() => {
     if (!subscriptionId) return;

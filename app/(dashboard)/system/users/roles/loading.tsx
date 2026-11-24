@@ -1,6 +1,6 @@
 export default function RolesLoading() {
  return (
- <div className="p-6 h-full animate-pulse">
+ <div className="h-full animate-pulse">
  {/* Header */}
  <div className="flex items-center justify-between mb-6">
  <div className="space-y-2">

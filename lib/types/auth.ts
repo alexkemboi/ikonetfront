@@ -30,6 +30,8 @@ export type JwtPayload = {
   locationId?: number;
   investorScope?: string;
   companyScope?: string;
+  /** STAFF, INVESTOR or CUSTOMER (from the roles table). */
+  principalType?: string;
   companyId?: string;
   iat?: number;
   exp?: number;

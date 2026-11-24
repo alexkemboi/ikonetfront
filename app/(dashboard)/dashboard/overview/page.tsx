@@ -1,7 +1,6 @@
 import { getDashboardOverview } from "@/actions/dashboard";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import { ROLE_NAME, normalizeRole } from "@/lib/types/roles";
 import { ShiftGreetingBanner } from "@/components/dashboard/ShiftGreetingBanner";
 import { LiveTransactionTicker } from "@/components/dashboard/LiveTransactionTicker";
 import { OverviewKpiCards } from "@/components/dashboard/OverviewKpiCards";
@@ -13,18 +12,14 @@ import { NetworkPulseHeatmap } from "@/components/dashboard/NetworkPulseHeatmap"
 import { LiveDataRefresh } from "@/providers/MonitoringHeartbeat";
 import { getCompanyFeeStatus } from "@/actions/platformFees";
 import { systemFeeNextItem } from "@/components/dashboard/systemFeeNextItem";
+import { getAccess } from "@/lib/data/access";
+import { can } from "@/lib/access";
 
 export const dynamic = "force-dynamic";
 
 export default async function OverviewDashboardPage() {
-  const session = await auth();
-  const role = normalizeRole(session?.user?.role);
-  const rawRole = session?.user?.role ?? "";
-
-  const isOperator = role === ROLE_NAME.ADMIN ||
-                     role === ROLE_NAME.MANAGEMENT ||
-                     role === ROLE_NAME.STAFF ||
-                     /^(SYSADMIN|ROLE_SYSADMIN|SUPER_ADMIN|01|02|03)$/i.test(rawRole.trim());
+  // the page reads the operations cockpit: shown to roles that may read it
+  const isOperator = can(await getAccess(), "API_OPERATIONSCOCKPIT", "VIEW");
 
   if (!isOperator) redirect("/dashboard");
 

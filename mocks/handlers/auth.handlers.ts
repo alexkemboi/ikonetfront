@@ -6,8 +6,56 @@ import {
   logoutFixture,
   accountTypeFixture,
 } from "@/contracts/catalog";
-import { adminNavGroups } from "@/config/nav-admin";
 import type { ApiMenuItem } from "@/lib/types/roles";
+
+/**
+ * Routes of the staff dashboard, grouped as the catalogue groups them. Test data
+ * only: the real sidebar comes from GET /navigation/me (navigation_menus).
+ */
+const PERMISSIVE_ROUTES: { href: string; label: string; icon: string; children?: { href: string; label: string; icon: string }[] }[][] = [
+  [{ href: "/dashboard/overview", label: "Overview", icon: "layout-dashboard" }],
+  [
+    { href: "/customers", label: "Subscribers", icon: "users", children: [{ href: "/customers/all", label: "Directory", icon: "users" }] },
+    { href: "/portal/pppoe", label: "PPPoE Clients", icon: "wifi" },
+  ],
+  [
+    { href: "/network/regions", label: "Regions", icon: "globe" },
+    { href: "/network/locations", label: "Locations", icon: "map-pin" },
+    { href: "/network/stations", label: "Stations/POPs", icon: "database" },
+    { href: "/network/routers", label: "Routers (Edge)", icon: "server" },
+    { href: "/network/routers/setup", label: "Link MikroTik", icon: "router" },
+    { href: "/network/equipment", label: "Equipment", icon: "package" },
+    { href: "/network/ip-pools", label: "IP Pools", icon: "database" },
+    { href: "/network/ip-mappings", label: "IP Mappings", icon: "network" },
+    { href: "/network/live-sessions", label: "Live Sessions", icon: "activity" },
+  ],
+  [{ href: "/communications/bulk-email", label: "SMS & Emails", icon: "mail" }],
+  [{ href: "/customers/tickets", label: "Tickets", icon: "headphones" }],
+  [
+    { href: "/finance", label: "Executive Dashboard", icon: "bar-chart-3" },
+    { href: "/finance/ledger", label: "Chart of Accounts", icon: "book-open" },
+    { href: "/finance/expenses", label: "Expenses", icon: "receipt" },
+    { href: "/finance/statements", label: "Statements", icon: "file-text" },
+    { href: "/finance/vouchers", label: "Vouchers", icon: "credit-card" },
+    { href: "/finance/reconciliation", label: "M-Pesa Reconciliation", icon: "rotate-cw" },
+    { href: "/finance/investors", label: "Investors", icon: "users" },
+    {
+      href: "/finance/billing", label: "Billing", icon: "credit-card",
+      children: [
+        { href: "/finance/billing/payments", label: "Payments", icon: "credit-card" },
+        { href: "/finance/billing/invoices", label: "Invoices", icon: "file-text" },
+      ],
+    },
+  ],
+  [{ href: "/analytics", label: "Analytics", icon: "bar-chart-3" }],
+  [
+    { href: "/system/companies", label: "Companies", icon: "building-2" },
+    { href: "/system/packages", label: "Packages", icon: "package" },
+    { href: "/system/users", label: "Users & Access Control", icon: "shield-check" },
+    { href: "/system/audit", label: "Audit Logs", icon: "scroll-text" },
+  ],
+  [{ href: "/settings/alerts", label: "Alert Channels", icon: "bell" }],
+];
 
 /**
  * Permissive role-menu fixture for tests that exercise unrelated actions but
@@ -15,8 +63,8 @@ import type { ApiMenuItem } from "@/lib/types/roles";
  * Fail-closed tests override this with `server.use(... data: [])`.
  */
 function permissiveMenuTree(): ApiMenuItem[] {
-  return adminNavGroups.flatMap((group, gi) =>
-    group.items.map((item, i) => ({
+  return PERMISSIVE_ROUTES.flatMap((group, gi) =>
+    group.map((item, i) => ({
       idxno: gi * 1000 + i + 1,
       label: item.label,
       route: item.href,

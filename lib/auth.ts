@@ -102,6 +102,7 @@ export const authCallbacks = {
         locationId: user.locationId,
         investorScope: user.investorScope,
         companyScope: user.companyScope,
+        principalType: user.principalType,
       };
     }
 
@@ -115,10 +116,16 @@ export const authCallbacks = {
     if (token.apiToken && expiresAt > 0 && Date.now() >= expiresAt - REFRESH_THRESHOLD_MS) {
       const newToken = await getValidAccessToken(String(token.apiToken));
       if (newToken) {
+        // The backend re-reads the account on refresh: carry its current role and scope, so a
+        // role change reaches the dashboard without signing in again.
+        const claims = (() => { try { return decodeJwt(newToken) as Record<string, unknown>; } catch { return {}; } })();
         return {
           ...token,
           apiToken: newToken,
           expiresAt: tokenExpiryMs(newToken) ?? Date.now() + 2 * 60 * 60 * 1000,
+          role: (claims.role as string | undefined) ?? token.role,
+          principalType: (claims.principalType as string | undefined) ?? token.principalType,
+          companyScope: (claims.companyScope as string | undefined) ?? (claims.companyId as string | undefined) ?? token.companyScope,
           error: undefined,
         };
       }
@@ -152,6 +159,7 @@ export const authCallbacks = {
       locationId: token.locationId as number | undefined,
       investorScope: token.investorScope as string | undefined,
       companyScope: token.companyScope as string | undefined,
+      principalType: token.principalType as string | undefined,
     };
     // Propagate the refresh failure so proxy.ts, SessionGuard and app/page.tsx
     // can act on it (they already check `session.error`).
@@ -221,6 +229,7 @@ const { handlers, auth: nextAuth, signIn, signOut } = NextAuth({
             locationId: decoded?.locationId,
             investorScope: decoded?.investorScope,
             companyScope: decoded?.companyScope ?? decoded?.companyId,
+            principalType: decoded?.principalType,
           };
         } catch (error) {
           console.error("[Auth] Authorize exception:", error);

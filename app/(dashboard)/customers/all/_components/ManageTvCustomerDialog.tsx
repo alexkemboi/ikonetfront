@@ -13,6 +13,7 @@ import { CorrectDatesForm } from "@/components/subscriber-time/CorrectDatesForm"
 import { ResumeAtField, resumeAtIso, resumeAtLabel } from "@/components/subscriber-time/ResumeAtField";
 import type { TvCustomerTime } from "@/lib/types/subscriberTime";
 import { formatLocalPhone, formatTimeLeft, toMinutes } from "@/lib/utils/subscriberTime";
+import { useAccess } from "@/providers/AccessProvider";
 
 const PRESETS: { label: string; minutes: number }[] = [
   { label: "30 min", minutes: 30 },
@@ -55,13 +56,13 @@ export function ManageTvCustomerDialog({
   const [busy, setBusy] = useState<Busy>(null);
   const [resumeAt, setResumeAt] = useState("");
   const [newMac, setNewMac] = useState("");
-  const role = (useSession()?.data?.user?.role ?? "").replace(/^ROLE_/i, "").toUpperCase();
+  const { can } = useAccess();
   // Correcting the TV's address: company and system administrators and management (the server checks too).
-  const canCorrectDevice = ["SYSADMIN", "ADMIN", "01", "02"].includes(role);
+  const canCorrectDevice = can("API_SUBSCRIBERTIME_TV_CUSTOMERS_CHANGE_TV_DEVICE", "CREATE");
   // Deactivate, Activate and End package: the same people (the server checks too).
   const canDeactivate = canCorrectDevice;
   // Correct dates: company and system administrators only, as for PPPoE.
-  const canCorrectDates = ["SYSADMIN", "ADMIN", "01"].includes(role);
+  const canCorrectDates = can("API_SUBSCRIBERTIME_TV_CUSTOMERS_CORRECT_TV_DATES", "CREATE");
   const [confirmEnd, setConfirmEnd] = useState(false);
   const entitlementId = tv?.entitlementId;
 

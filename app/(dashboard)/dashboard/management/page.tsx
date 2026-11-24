@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
-import { resolveDashboardPathForRole } from "@/lib/utils/dashboardRouting";
+import { resolveDashboardPath } from "@/lib/utils/dashboardRouting";
 import { getCustomers } from "@/actions/customer";
 import { getPackagesAction } from "@/actions/packages";
 import { ManagementDashboardShell } from "./_components/ManagementDashboardShell";
@@ -10,7 +10,7 @@ export const metadata = { title: "Management Dashboard — SpeedLink" };
 
 export default async function ManagementDashboardPage() {
  const session = await auth();
- const correctPath = resolveDashboardPathForRole(session?.user?.role);
+ const correctPath = await resolveDashboardPath();
 
  if (correctPath !== "/dashboard/management") {
  redirect(correctPath);

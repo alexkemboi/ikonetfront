@@ -5,7 +5,8 @@ export const metadata = { title: "Sign out — SpeedLink" };
 
 export default async function SignOutPage({ searchParams }: { searchParams: Promise<{ reason?: string }> }) {
  const params = await searchParams;
- const forceSignOut = params.reason === "session-expired";
+ // signed out without asking: the session ended, or an administrator changed this account's access
+ const forceSignOut = params.reason === "session-expired" || params.reason === "permissions-changed";
  return (
  <div className="min-h-screen bg-primary flex flex-col items-center justify-center p-6 relative overflow-hidden">
 

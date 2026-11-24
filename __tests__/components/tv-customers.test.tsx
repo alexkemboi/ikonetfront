@@ -18,6 +18,12 @@ vi.mock("@/actions/subscriberTime", () => ({
   correctTvDates: vi.fn(),
 }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
+// the dialog shows what the role's database permissions allow (seeded grants of the built-in roles)
+vi.mock("@/providers/AccessProvider", async () => {
+  const { builtInAccessHook } = await import("../helpers/builtInAccess");
+  const { useSession } = await import("next-auth/react");
+  return { useAccess: () => builtInAccessHook(useSession()?.data?.user?.role) };
+});
 vi.mock("@/lib/hooks/useVisibleInterval", () => ({ useVisibleInterval: vi.fn() }));
 
 const tv: TvCustomerTime = {

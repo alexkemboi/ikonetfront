@@ -59,6 +59,12 @@ interface DataTableProps<TData, TValue> {
  /** Derives the id used for selection tracking; defaults to row index */
  getRowId?: (row: TData) => string
  onRowSelectionChange?: (selectedIds: string[]) => void
+ /** Server-side sorting: the caller holds the sort state and reloads the page when it changes. */
+ manualSorting?: boolean
+ sorting?: SortingState
+ onSortingChange?: (sorting: SortingState) => void
+ /** Shown instead of "No results found." when there are no rows. */
+ emptyState?: React.ReactNode
 }
 
 export function DataTable<TData, TValue>({
@@ -82,8 +88,18 @@ export function DataTable<TData, TValue>({
  enableRowSelection,
  getRowId,
  onRowSelectionChange,
+ manualSorting,
+ sorting: externalSorting,
+ onSortingChange,
+ emptyState,
 }: DataTableProps<TData, TValue>) {
- const [sorting, setSorting] = useState<SortingState>([])
+ const [localSorting, setLocalSorting] = useState<SortingState>([])
+ const sorting = manualSorting ? externalSorting ?? [] : localSorting
+ const setSorting = (updater: SortingState | ((old: SortingState) => SortingState)) => {
+ const next = typeof updater === "function" ? updater(sorting) : updater
+ if (manualSorting) onSortingChange?.(next)
+ else setLocalSorting(next)
+ }
  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
  const [globalFilter, setGlobalFilter] = useState("")
@@ -121,7 +137,7 @@ export function DataTable<TData, TValue>({
  columns: tableColumns,
  getCoreRowModel: getCoreRowModel(),
  ...(manualPagination ? {} : { getPaginationRowModel: getPaginationRowModel() }),
- getSortedRowModel: getSortedRowModel(),
+ ...(manualSorting ? { manualSorting: true } : { getSortedRowModel: getSortedRowModel() }),
  getFilteredRowModel: getFilteredRowModel(),
  onSortingChange: setSorting,
  onColumnFiltersChange: setColumnFilters,
@@ -236,7 +252,7 @@ export function DataTable<TData, TValue>({
  colSpan={columns.length}
  className="h-32 text-center text-sm text-muted-foreground"
  >
- No results found.
+ {emptyState ?? "No results found."}
  </TableCell>
  </TableRow>
  )}

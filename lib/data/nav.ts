@@ -1,8 +1,8 @@
 /**
  * Server-side nav data fetching.
  *
- * Uses native fetch with `next: { tags }` so Next.js can cache and selectively
- * revalidate with `revalidateTag(NAV_MENUS_TAG)` — e.g., after saving permissions.
+ * Permissions and the sidebar are read fresh on every page load (React `cache()` shares one
+ * call within a render), so role and permission changes apply to the next page load.
  *
  * NOT a server action ("use server") — just a plain async function called from
  * server components (layouts, pages). Server actions are for mutations only.
@@ -10,15 +10,10 @@
 
 import { cache } from "react";
 import type { ApiMenuItem, PermissionFlags, PermissionMap } from "@/lib/types/roles";
-import { ROLE_NAME, normalizeRole } from "@/lib/types/roles";
-import type { NavGroup, NavItem, MenuNode } from "@/lib/nav";
+import type { NavGroup, NavItem, MenuNode, ApiNavItem, NavigationPayload } from "@/lib/nav";
 import { auth } from "@/lib/auth";
+import { apiFetch } from "@/lib/apiClient";
 import { buildApiUrl } from "@/lib/constants";
-import { adminNavGroups }      from "@/config/nav-admin";
-import { managementNavGroups } from "@/config/nav-management";
-import { staffNavGroups }      from "@/config/nav-staff";
-import { customerNavGroups }   from "@/config/nav-customer";
-import { investorNavGroups }   from "@/config/nav-investor";
 import { NO_PERMISSIONS, normalizeMenuRoute } from "@/lib/data/nav-constants";
 
 export { NO_PERMISSIONS, normalizeMenuRoute } from "@/lib/data/nav-constants";
@@ -51,12 +46,10 @@ export const fetchRoleMenusRaw = cache(async function fetchRoleMenusRaw(
           "Content-Type": "application/json",
           Authorization: `Bearer ${apiToken}`,
         },
-        // Kept for 5 minutes across requests; saving permissions here calls
-        // revalidateTag(NAV_MENUS_TAG), which marks it stale so the next load refreshes it.
-        // Permission changes made elsewhere show within 5 minutes. Without `revalidate` the
-        // tag alone cached nothing, so every page fetched the menus again (twice: layout and
-        // permission check). `cache()` above shares one fetch within a render.
-        next: { tags: [NAV_MENUS_TAG, `${NAV_MENUS_TAG}-${roleLabel}`], revalidate: 300 },
+        // Read fresh on every page load: a role's permissions (or the role being deactivated) must
+        // apply to page guards at once, as they do in the API. `cache()` above shares the one
+        // fetch between the layout and the page's permission check within a render.
+        cache: "no-store",
       }
     );
 
@@ -66,6 +59,71 @@ export const fetchRoleMenusRaw = cache(async function fetchRoleMenusRaw(
     return [];
   }
 });
+
+// ── Sidebar navigation (GET /navigation/me) ────────────────────────────
+
+export type NavigationResult =
+  | { ok: true; data: NavigationPayload }
+  | { ok: false; message: string; status?: number };
+
+/**
+ * The signed-in caller's sidebar, user details and company brand, all from the
+ * database. The backend derives everything from the token and the selected
+ * company (X-Company-Context, added by apiFetch), so switching company and
+ * refreshing returns that company's brand and menus.
+ *
+ * Not cached across requests: the dashboard layout persists across client
+ * navigations and re-renders only on a full load or router.refresh() (sign-in,
+ * company switch), which is exactly when the menus must be fresh. `cache()`
+ * shares the one call within a render.
+ */
+export const fetchNavigation = cache(async function fetchNavigation(): Promise<NavigationResult> {
+  try {
+    const res = await apiFetch<NavigationPayload>("/navigation/me", { cache: "no-store" });
+    if (res.success && res.data && Array.isArray(res.data.groups)) {
+      return { ok: true, data: res.data };
+    }
+    return { ok: false, message: res.message || "Navigation could not be loaded.", status: res.status };
+  } catch {
+    return { ok: false, message: "Navigation could not be loaded." };
+  }
+});
+
+/**
+ * API navigation groups → NavGroup[] for the Sidebar. The API has already
+ * dropped what the caller may not view; this only reshapes and orders.
+ * A null flag (no catalogue entry) is passed on as undefined, which the
+ * Sidebar treats as visible — the same as the layout it replaces.
+ */
+export function navigationToNavGroups(groups: NavigationPayload["groups"]): NavGroup[] {
+  const byOrder = <T extends { displayOrder?: number }>(a: T, b: T) =>
+    (a.displayOrder ?? 0) - (b.displayOrder ?? 0);
+  const flag = (value: boolean | null | undefined) => (value == null ? undefined : value);
+
+  const toItem = (item: ApiNavItem): NavItem => {
+    const children = (item.children ?? []).slice().sort(byOrder).map(toItem);
+    return {
+      href:      normalizeMenuRoute(item.route),
+      label:     item.label,
+      icon:      item.icon ?? "",
+      exact:     item.exact || undefined,
+      canView:   flag(item.canView),
+      canCreate: flag(item.canCreate),
+      canEdit:   flag(item.canEdit),
+      canDelete: flag(item.canDelete),
+      children:  children.length ? children : undefined,
+    };
+  };
+
+  return groups
+    .slice()
+    .sort(byOrder)
+    .map((group) => ({
+      label: group.label ?? undefined,
+      items: group.items.slice().sort(byOrder).map(toItem),
+    }))
+    .filter((group) => group.items.length > 0);
+}
 
 // ── Converters ─────────────────────────────────────────────────────────
 
@@ -119,76 +177,6 @@ export function apiMenusToNavGroups(menus: ApiMenuItem[]): NavGroup[] {
 }
 
 /**
- * Returns the static nav config for a role.
- * Used as a fallback when the API returns no menus (e.g. permissions not yet configured).
- *
- * Accepts either a role name (preferred) or a code.
- */
-export function getStaticNavForRole(role: string): NavGroup[] {
-  switch (normalizeRole(role)) {
-    case ROLE_NAME.ADMIN:      return adminNavGroups;
-    case ROLE_NAME.MANAGEMENT: return managementNavGroups;
-    case ROLE_NAME.STAFF:      return staffNavGroups;
-    case ROLE_NAME.INVESTOR:   return investorNavGroups;
-    case ROLE_NAME.CUSTOMER:   return customerNavGroups;
-    default:                   return staffNavGroups;
-  }
-}
-
-/**
- * The sidebar layout (groups, labels, order, icons) for a role.
- *
- * Layout lives in the static config; WHO sees each entry is decided by the
- * API permission map (see {@link filterNavByPermissions}). Staff roles share
- * one master layout (the admin one, a superset) so a permission granted in the
- * catalog shows up without a per-role layout edit. Investor and customer keep
- * their own portal layouts. Unknown role ⇒ no layout (fail closed).
- */
-export function getNavLayoutForRole(role: string): NavGroup[] {
-  switch (normalizeRole(role)) {
-    case ROLE_NAME.ADMIN:
-    case ROLE_NAME.MANAGEMENT:
-    case ROLE_NAME.STAFF:      return adminNavGroups;
-    case ROLE_NAME.INVESTOR:   return investorNavGroups;
-    case ROLE_NAME.CUSTOMER:   return customerNavGroups;
-    default:                   return [];
-  }
-}
-
-/**
- * Keep only the layout entries the permission map lets the caller view, and
- * stamp each kept entry with its real flags.
- *
- * Fail closed: a route absent from the map is hidden. A parent stays when its
- * own route is viewable or at least one child is; empty groups are dropped.
- */
-export function filterNavByPermissions(
-  groups: NavGroup[],
-  permissions: PermissionMap
-): NavGroup[] {
-  const flagsFor = (href: string) => permissions[normalizeMenuRoute(href)];
-
-  const result: NavGroup[] = [];
-  for (const group of groups) {
-    const items: NavItem[] = [];
-    for (const item of group.items) {
-      const own = flagsFor(item.href);
-      const children = (item.children ?? [])
-        .filter((child) => flagsFor(child.href)?.canView)
-        .map((child) => ({ ...child, ...flagsFor(child.href) }));
-      if (!own?.canView && children.length === 0) continue;
-      items.push({
-        ...item,
-        ...(own ?? {}),
-        children: children.length ? children : undefined,
-      });
-    }
-    if (items.length) result.push({ ...group, items });
-  }
-  return result;
-}
-
-/**
  * Convert API menu items → MenuNode[] for the Roles page permission tree.
  *
  * Uses `route` as the node `id` (unique, stable key for permission tracking).
@@ -203,6 +191,10 @@ export function apiMenusToMenuTree(menus: ApiMenuItem[]): MenuNode[] {
       return ({
       idxno:      parseInt(menu.idxno.toString()) || 0,
       id:         route,
+      key:        String(menu.idxno),
+      kind:       menu.kind ?? "MENU",
+      module:     menu.module ?? null,
+      permissionKey: menu.permissionKey ?? null,
       menuItemId: menu.idxno,
       route,
       label:      menu.label,
@@ -216,6 +208,10 @@ export function apiMenusToMenuTree(menus: ApiMenuItem[]): MenuNode[] {
               return ({
               idxno:      parseInt(child.idxno.toString()),
               id:         childRoute,
+              key:        String(child.idxno),
+              kind:       child.kind ?? "MENU",
+              module:     child.module ?? null,
+              permissionKey: child.permissionKey ?? null,
               menuItemId: child.idxno,
               route:      childRoute,
               label:      child.label,
@@ -225,6 +221,22 @@ export function apiMenusToMenuTree(menus: ApiMenuItem[]): MenuNode[] {
         : undefined,
     });
     });
+}
+
+/**
+ * A role's grants keyed by catalogue entry id (as text), for the Access Control screen: every
+ * entry, including API permissions and rights that have no route, keeps its own flags.
+ */
+export function extractPermissionsById(menus: ApiMenuItem[]): PermissionMap {
+  const map: PermissionMap = {};
+  const visit = (items: ApiMenuItem[]) => {
+    for (const m of items) {
+      map[String(m.idxno)] = { canView: m.canView, canCreate: m.canCreate, canEdit: m.canEdit, canDelete: m.canDelete };
+      visit(m.children ?? []);
+    }
+  };
+  visit(menus);
+  return map;
 }
 
 /**
@@ -253,27 +265,6 @@ export function extractPermissions(menus: ApiMenuItem[]): PermissionMap {
       };
     }
   }
-  return map;
-}
-
-/**
- * Build a permission map from static nav groups (all flags true for routes
- * that the static config exposes). Used as a fallback when the API-driven
- * menu returns nothing (e.g. roles table empty, or backend misconfigured).
- */
-export function staticNavToPermissions(groups: NavGroup[]): PermissionMap {
-  const map: PermissionMap = {};
-  const visit = (items: NavGroup["items"]) => {
-    for (const item of items) {
-      if (item.href) {
-        map[normalizeMenuRoute(item.href)] = {
-          canView: true, canCreate: true, canEdit: true, canDelete: true,
-        };
-      }
-      if (item.children) visit(item.children);
-    }
-  };
-  for (const g of groups) visit(g.items);
   return map;
 }
 

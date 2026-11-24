@@ -4,11 +4,12 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { getDarajaReconciliation, getReconciliationDay } from "@/actions/payments";
 import { todayEatIso } from "@/lib/dates";
-import { normalizeRole, ROLE_NAME } from "@/lib/types/roles";
 import { canAccessPaybillRegister, canAccessReconciliation } from "@/lib/utils/reconciliationAccess";
 import { DarajaPullTrigger } from "@/components/finance/DarajaPullTrigger";
 import { ReconciliationDayView } from "@/components/finance/ReconciliationDayView";
 import { PaybillTransactionsPanel } from "@/components/finance/PaybillTransactionsPanel";
+import { getAccess } from "@/lib/data/access";
+import { isCustomerAccess, isInvestorAccess } from "@/lib/access";
 
 export const dynamic = "force-dynamic";
 
@@ -22,21 +23,19 @@ export default async function ReconciliationPage({
 }: {
   searchParams: Promise<{ paybill?: string }>;
 }) {
-  const session = await auth();
-  const roleValue = session?.user?.role;
-  const role = normalizeRole(roleValue);
+  const access = await getAccess();
   const { paybill } = await searchParams;
   // a receipt from the universal search (Ctrl+K): letters and digits only
   const paybillQuery = typeof paybill === "string" ? paybill.replace(/[^A-Za-z0-9]/g, "").slice(0, 40) : "";
 
   // Staff see the paybill payments only; the reconciliation itself stays with
   // 01 Admin / 02 Management. Investors and customers go to their own pages.
-  if (!canAccessPaybillRegister(roleValue)) {
-    if (role === ROLE_NAME.INVESTOR) redirect("/finance/investor");
-    if (role === ROLE_NAME.CUSTOMER) redirect("/portal/pppoe");
+  if (!canAccessPaybillRegister(access)) {
+    if (isInvestorAccess(access)) redirect("/finance/investor");
+    if (isCustomerAccess(access)) redirect("/portal/pppoe");
     redirect("/dashboard");
   }
-  if (!canAccessReconciliation(roleValue)) {
+  if (!canAccessReconciliation(access)) {
     return (
       <div className="min-h-screen p-4 text-foreground sm:p-6 lg:p-8">
         <div className="mx-auto max-w-7xl space-y-6">

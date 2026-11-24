@@ -16,6 +16,12 @@ export type PermissionFlags = {
  */
 export type PermissionMap = Record<string, PermissionFlags>;
 
+/**
+ * Roles are data: a role is a row of the roles table (any number of them), and what it may do is
+ * its grants in the permission catalogue. The dashboard never decides by role name: it asks the
+ * signed-in user's access (lib/access.ts, from GET /navigation/me) or a role row's attributes.
+ */
+
 /** Menu/permission item returned by the /{roleCode}/menus endpoint */
 export type ApiMenuItem = {
   /** Database primary key — required for POST /menus assignment calls */
@@ -25,133 +31,16 @@ export type ApiMenuItem = {
   /** Material Design icon name — mapped to Lucide in the Sidebar's ICON_MAP */
   icon: string;
   sortOrder: number;
+  /** MENU, API or RIGHT (permission catalogue kind) */
+  kind?: string;
+  module?: string | null;
+  permissionKey?: string | null;
   canView: boolean;
   canCreate: boolean;
   canEdit: boolean;
   canDelete: boolean;
   children: ApiMenuItem[];
 };
-
-/**
- * Role names as they appear in the JWT / session / users.role column
- * (issued by the Spring Boot backend).
- */
-export const ROLE_NAME = {
-  ADMIN:      "ADMIN",
-  MANAGEMENT: "MANAGEMENT",
-  STAFF:      "STAFF",
-  INVESTOR:   "INVESTOR",
-  CUSTOMER:   "CUSTOMER",
-  /** Fail-closed sentinel for an unrecognized role — never mapped to a working code. */
-  UNKNOWN:    "UNKNOWN",
-} as const;
-
-export type RoleName = (typeof ROLE_NAME)[keyof typeof ROLE_NAME];
-
-/** Every role except {@link ROLE_NAME.UNKNOWN} maps to a backend role code. */
-export type KnownRoleName = Exclude<RoleName, typeof ROLE_NAME.UNKNOWN>;
-
-/**
- * Canonical role codes used in backend URL paths and DB lookups
- * (e.g. /system-setup/{code}/menus, /system-setup/{code}/users).
- * Keep these in sync with the codes expected by the Spring Boot
- * SystemSetupController.
- */
-export const ROLE_CODE: Record<KnownRoleName, string> = {
-  [ROLE_NAME.ADMIN]:      "01",
-  [ROLE_NAME.MANAGEMENT]: "02",
-  [ROLE_NAME.STAFF]:      "03",
-  [ROLE_NAME.INVESTOR]:   "04",
-  [ROLE_NAME.CUSTOMER]:   "05",
-};
-
-export type RoleCode = (typeof ROLE_CODE)[KnownRoleName];
-
-/**
- * Normalize a role value (numeric code, name, or legacy value) to a canonical
- * ROLE_NAME. Handles:
- *   - Numeric codes: "01" → ADMIN, "02" → MANAGEMENT, "03" → STAFF, "04" → INVESTOR, "05" → CUSTOMER
- *   - Names/authorities: "ADMIN", "ROLE_ADMIN", "SYSADMIN", etc.
- *   - Falsy/unknown → UNKNOWN (fail closed; callers must handle it explicitly)
- */
-export function normalizeRole(role?: string | null): RoleName {
-  if (!role) return ROLE_NAME.UNKNOWN;
-
-  const upper = role.toUpperCase().trim();
-
-  // Numeric codes
-  if (upper === "01") return ROLE_NAME.ADMIN;
-  if (upper === "02") return ROLE_NAME.MANAGEMENT;
-  if (upper === "03") return ROLE_NAME.STAFF;
-  if (upper === "04") return ROLE_NAME.INVESTOR;
-  if (upper === "05") return ROLE_NAME.CUSTOMER;
-
-  // String names — match exact or alias
-  if (
-    upper === ROLE_NAME.ADMIN ||
-    upper === "ROLE_ADMIN" ||
-    upper === "ROLE_LEGACY_ADMIN" ||
-    upper === "SYSADMIN" ||
-    upper === "ROLE_SYSADMIN"
-  ) return ROLE_NAME.ADMIN;
-  if (upper === ROLE_NAME.MANAGEMENT || upper === "ROLE_STAFF_ADMIN") return ROLE_NAME.MANAGEMENT;
-  if (upper === ROLE_NAME.STAFF || upper === "ROLE_STAFF" || upper === "ROLE_FINANCE_MANAGER") return ROLE_NAME.STAFF;
-  if (upper === ROLE_NAME.INVESTOR || upper === "ROLE_INVESTOR") return ROLE_NAME.INVESTOR;
-  if (upper === ROLE_NAME.CUSTOMER || upper === "ROLE_CUSTOMER") return ROLE_NAME.CUSTOMER;
-
-  return ROLE_NAME.UNKNOWN;
-}
-
-/**
- * True for the platform role (SYSADMIN): the only role that works across
- * companies and may switch the company context.
- */
-export function isPlatformAdminRole(role?: string | null): boolean {
-  if (!role) return false;
-  return /^(?:ROLE_)?SYSADMIN$/i.test(role.trim());
-}
-
-/**
- * True for the company admin (01) and SYSADMIN: the only roles that open a router remotely
- * (temporary tunnel, WinBox, web console). Owner decision 2026-10-13; the API refuses the rest.
- */
-export function canOpenRouters(role?: string | null): boolean {
-  return normalizeRole(role) === ROLE_NAME.ADMIN;
-}
-
-/**
- * Convert a role name (as it appears in the JWT / session.user.role)
- * to the corresponding backend role code. Used when constructing
- * API URLs that include the role code in the path.
- *
- * Returns an empty string for unknown roles: a caller must not build a URL
- * from an unrecognized role. (The menus URL no longer uses this — it sends the
- * raw session role and lets the backend resolve it.)
- */
-export function roleNameToCode(name: string | null | undefined): string {
-  const normalized = normalizeRole(name);
-  if (normalized === ROLE_NAME.UNKNOWN) return "";
-  return ROLE_CODE[normalized];
-}
-
-export function getLandingRouteForRole(role?: string | null): string {
-  switch (normalizeRole(role)) {
-    case ROLE_NAME.ADMIN:
-      return "/dashboard/overview";
-    case ROLE_NAME.MANAGEMENT:
-      return "/analytics";
-    case ROLE_NAME.STAFF:
-      return "/customers";
-    case ROLE_NAME.INVESTOR:
-      return "/finance/investor";
-    case ROLE_NAME.CUSTOMER:
-      return "/portal/pppoe";
-    case ROLE_NAME.UNKNOWN:
-    default:
-      // Unguarded target: never redirect an unknown role to a guarded landing.
-      return "/no-access";
-  }
-}
 
 /** Payload sent to POST /{roleCode}/menus for each menu item */
 export type MenuAssignment = {
@@ -182,14 +71,13 @@ export type ApiRoleUser = {
   accountLocked?: boolean;
   companyId?: string | null;
   stationId?: string | null;
+  /** Location without a station (with a station, the station's location). */
+  locationId?: number | null;
   /** Investor party a Network Partner account is linked to; null until linked. */
   investorId?: string | null;
+  /** STAFF, INVESTOR or CUSTOMER: the type of the user's role. */
+  principalType?: string | null;
 };
-
-/** True for the Network Partner (investor) role, by code or by name. */
-export function isInvestorRole(role?: string | null): boolean {
-  return normalizeRole(role) === ROLE_NAME.INVESTOR || /NETWORK_PARTNER/i.test(role ?? "");
-}
 
 /** Raw role shape returned by the API */
 export type ApiRole = {
@@ -198,11 +86,62 @@ export type ApiRole = {
   name: string;
   description: string;
   createdAt: string | null;
+  /** Stable key (equals the code for custom roles). */
+  roleKey?: string | null;
+  /** STAFF, INVESTOR or CUSTOMER */
+  principalType?: string | null;
+  /** PLATFORM, COMPANY or STATION */
+  scopeLevel?: string | null;
+  /** One of the built-in roles: cannot be deleted; code and type are fixed. */
+  isSystem?: boolean;
+  /** The platform super admin (every permission, protected). */
+  isSuperAdmin?: boolean;
+  isActive?: boolean;
+  landingRoute?: string | null;
+  updatedAt?: string | null;
 };
+
+/** The role row for a code (or role_key), from a list the API returned. */
+export function findRole(roles: ApiRole[], code?: string | null): ApiRole | undefined {
+  const c = (code ?? "").trim().toUpperCase();
+  if (!c) return undefined;
+  return roles.find((r) => r.roleCode.toUpperCase() === c || (r.roleKey ?? "").toUpperCase() === c);
+}
+
+/** The role is an investor login (roles.principal_type = INVESTOR). */
+export function isInvestorRoleRow(roles: ApiRole[], code?: string | null): boolean {
+  return findRole(roles, code)?.principalType === "INVESTOR";
+}
+
+/**
+ * Roles staff management can offer: active, not the super admin (its own flow), not a customer
+ * role (customer management). Whether the caller may assign each is still decided by the API.
+ */
+export function staffAssignableRoles(roles: ApiRole[]): ApiRole[] {
+  return roles.filter((r) => r.isActive !== false && !r.isSuperAdmin && r.principalType !== "CUSTOMER");
+}
 
 
 export type AddRolePayload = {
   roleCode: string;
   name: string;
   description: string;
+  /** STAFF (default), INVESTOR or CUSTOMER */
+  principalType?: string;
+  /** PLATFORM, COMPANY or STATION */
+  scopeLevel?: string;
+  landingRoute?: string;
+  /** Codes of the roles that may assign this one (the super admin always may). */
+  assignableBy?: string[];
+};
+
+/** Change a role; the code is fixed, omitted fields keep their value. */
+export type UpdateRolePayload = {
+  name?: string;
+  description?: string;
+  principalType?: string;
+  scopeLevel?: string;
+  landingRoute?: string;
+  isActive?: boolean;
+  assignableBy?: string[];
 };

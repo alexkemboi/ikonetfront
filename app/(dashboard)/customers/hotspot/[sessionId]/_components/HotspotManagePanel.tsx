@@ -14,6 +14,7 @@ import type { HotspotSessionTime } from "@/lib/types/subscriberTime";
 import { formatTimeLeft, toMinutes } from "@/lib/utils/subscriberTime";
 import { ResumeAtField, resumeAtIso, resumeAtLabel } from "@/components/subscriber-time/ResumeAtField";
 import { CorrectDatesForm } from "@/components/subscriber-time/CorrectDatesForm";
+import { useAccess } from "@/providers/AccessProvider";
 
 const PRESETS: { label: string; minutes: number }[] = [
   { label: "30 min", minutes: 30 },
@@ -98,13 +99,13 @@ export function HotspotManagePanel({
   const [deviceReason, setDeviceReason] = useState("");
   const [confirmRemove, setConfirmRemove] = useState(false);
   const [datesReason, setDatesReason] = useState("");
-  const role = (useSession()?.data?.user?.role ?? "").replace(/^ROLE_/i, "").toUpperCase();
+  const { can } = useAccess();
   // Correcting the device: company and system administrators and management (the server checks too).
-  const canCorrectDevice = ["SYSADMIN", "ADMIN", "01", "02"].includes(role);
+  const canCorrectDevice = can("API_SUBSCRIBERTIME_HOTSPOT_SESSIONS_CHANGE_HOTSPOT_DEVICE", "CREATE");
   // Deactivate / Activate: the same people (the server checks too).
   const canDeactivate = canCorrectDevice;
   // Correct dates: company and system administrators only, as for PPPoE.
-  const canCorrectDates = ["SYSADMIN", "ADMIN", "01"].includes(role);
+  const canCorrectDates = can("API_SUBSCRIBERTIME_HOTSPOT_SESSIONS_CORRECT_HOTSPOT_DATES", "CREATE");
 
   const paused = time.status === "PAUSED";
   const pausesLeft = Math.max(0, time.pausesAllowed - time.pausesUsed);

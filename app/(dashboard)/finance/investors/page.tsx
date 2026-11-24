@@ -2,11 +2,12 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { getInvestor, listInvestors, listRouterAssignments, listStatementMonths } from "@/actions/investorRegistry";
 import { getMikrotikDevices } from "@/actions/mikrotik";
-import { isPlatformAdminRole, normalizeRole, ROLE_NAME } from "@/lib/types/roles";
 import InvestorsClient from "./_components/InvestorsClient";
 import SystemFeesLedger from "./_components/SystemFeesLedger";
 import type { RouterOption } from "./_components/RouterPicker";
 import { getFeeBalances, getFeeReceivingAccount, getFeeReceivingCandidates } from "@/actions/platformFees";
+import { getAccess } from "@/lib/data/access";
+import { can } from "@/lib/access";
 
 export const metadata = { title: "Investors" };
 
@@ -21,10 +22,10 @@ export default async function InvestorsPage({ searchParams }: { searchParams: Pr
   const { manage, month: requestedMonth } = await searchParams;
   // ?month=YYYY-MM shows that statement month; anything else shows what is owed now
   const month = requestedMonth && /^\d{4}-(0[1-9]|1[0-2])$/.test(requestedMonth) ? requestedMonth : null;
-  const session = await auth();
-  const role = session?.user?.role ?? "";
-  const isPlatformAdmin = isPlatformAdminRole(role);
-  const isCompanyAdmin = normalizeRole(role) === ROLE_NAME.ADMIN && !isPlatformAdmin;
+  const access = await getAccess();
+  const isPlatformAdmin = access.superAdmin;
+  // the investor register: the super admin manages it, roles granted it (company admin) read it
+  const isCompanyAdmin = !isPlatformAdmin && can(access, "API_INVESTORREGISTRY_ROOT", "VIEW");
   if (!isPlatformAdmin && !isCompanyAdmin) redirect("/dashboard");
 
   // "Manage agreements and routers" on an investor's page lands here with ?manage=<id>

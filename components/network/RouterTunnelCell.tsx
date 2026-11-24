@@ -6,9 +6,9 @@ import { Check, Copy, ExternalLink, Lock, LockOpen } from "lucide-react";
 import { toast } from "sonner";
 import { allocateTunnel, deallocateTunnel } from "@/actions/network";
 import { useSession } from "next-auth/react";
-import { canOpenRouters } from "@/lib/types/roles";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useAccess } from "@/providers/AccessProvider";
 
 interface TunnelCellProps {
   deviceId?: number;
@@ -37,8 +37,8 @@ export function RouterTunnelCell({
   canEdit: canEditPage,
 }: TunnelCellProps) {
   // remote access is for the company admin and SYSADMIN only, whatever the page permission says
-  const role = useSession().data?.user?.role;
-  const canEdit = Boolean(canEditPage) && canOpenRouters(role);
+  const { can } = useAccess();
+  const canEdit = Boolean(canEditPage) && can("API_REMOTEACCESS", "CREATE");
   const router = useRouter();
   const [copied, setCopied] = useState(false);
   const [busy, setBusy] = useState<"enable" | "disable" | null>(null);

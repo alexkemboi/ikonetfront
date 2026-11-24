@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
-import { resolveDashboardPathForRole } from "@/lib/utils/dashboardRouting";
+import { resolveDashboardPath } from "@/lib/utils/dashboardRouting";
 import { getCustomers } from "@/actions/customer";
 import { StaffDashboardShell } from "./_components/StaffDashboardShell";
 import { addDaysToDateOnly, todayEatIso } from "@/lib/dates";
@@ -9,7 +9,7 @@ export const metadata = { title: "Staff Dashboard — SpeedLink" };
 
 export default async function StaffDashboardPage() {
  const session = await auth();
- const correctPath = resolveDashboardPathForRole(session?.user?.role);
+ const correctPath = await resolveDashboardPath();
 
  if (correctPath !== "/dashboard/staff") {
  redirect(correctPath);

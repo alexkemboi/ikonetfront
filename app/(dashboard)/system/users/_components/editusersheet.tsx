@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { InvestorPicker } from "./InvestorPicker";
 import type { InvestorOption } from "@/lib/types/investor";
+import type { OrganisationOptions } from "@/lib/types/usersAccess";
 import {
   Sheet,
   SheetContent,
@@ -18,7 +19,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import type { ApiRole, ApiRoleUser } from "@/lib/types/roles";
+import { isInvestorRoleRow, staffAssignableRoles, type ApiRole, type ApiRoleUser } from "@/lib/types/roles";
 import {
   linkSystemUserInvestor,
   updateSystemUser,
@@ -45,6 +46,10 @@ const schema = Yup.object({
 type FormValues = Yup.InferType<typeof schema> & {
   isactive: boolean;
   canLogin: boolean;
+  /** "" = no station. A station decides the location. */
+  stationId: string;
+  /** "" = no location. */
+  locationId: string;
 };
 
 export function EditUserSheet({
@@ -55,6 +60,7 @@ export function EditUserSheet({
   canLinkInvestor,
   investors,
   onLinked,
+  organisation,
 }: {
   open: boolean;
   onClose: () => void;
@@ -64,11 +70,13 @@ export function EditUserSheet({
   /** Active investors of the register, offered when linking a Network Partner account. */
   investors: InvestorOption[];
   onLinked: () => void;
+  /** Locations and stations of the user's company; when given, the sheet edits station and location too. */
+  organisation?: OrganisationOptions | null;
 }) {
   const [investorId, setInvestorId] = useState("");
   const [linking, setLinking] = useState(false);
   const roleOptions = useMemo(
-    () => roles.filter((role) => !["05", "CUSTOMER"].includes(role.roleCode.toUpperCase())),
+    () => staffAssignableRoles(roles),
     [roles]
   );
   const formik = useFormik<FormValues>({
@@ -83,6 +91,8 @@ export function EditUserSheet({
       role: user?.role ?? "",
       isactive: user?.isactive ?? true,
       canLogin: user?.canLogin ?? true,
+      stationId: user?.stationId ?? "",
+      locationId: user?.locationId ? String(user.locationId) : "",
     },
     validationSchema: schema,
     onSubmit: async (values, { setFieldError }) => {
@@ -96,6 +106,11 @@ export function EditUserSheet({
         phoneNumber: values.phoneNumber || undefined,
         isactive: values.isactive,
         canLogin: values.canLogin,
+        // only what changed: "" clears the station; 0 clears the location (a station keeps its own)
+        ...(organisation && values.stationId !== (user.stationId ?? "") ? { stationId: values.stationId } : {}),
+        ...(organisation && !values.stationId && values.locationId !== (user.locationId ? String(user.locationId) : "")
+          ? { locationId: Number(values.locationId || 0) }
+          : {}),
       });
       if (!details.success) {
         const fieldByCode: Record<string, keyof FormValues> = {
@@ -108,7 +123,7 @@ export function EditUserSheet({
         toast.error("Failed to update user", { description: details.message });
         return;
       }
-      const becomesInvestor = values.role === "04" && user.role !== "04";
+      const becomesInvestor = isInvestorRoleRow(roles, values.role) && !isInvestorRoleRow(roles, user.role);
       if (becomesInvestor && canLinkInvestor && !investorId.trim()) {
         toast.error("Choose the investor this account belongs to", {
           description: "A Network Partner account shows one investor's routers and revenue.",
@@ -201,6 +216,48 @@ export function EditUserSheet({
                   ))}
                 </select>
               </div>
+              {organisation && (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="user-location">Location</Label>
+                    <select
+                      id="user-location"
+                      value={formik.values.stationId
+                        ? String(organisation.stations.find((s) => String(s.id) === formik.values.stationId)?.locationId ?? "")
+                        : formik.values.locationId}
+                      onChange={(e) => {
+                        formik.setFieldValue("locationId", e.target.value);
+                        formik.setFieldValue("stationId", "");
+                      }}
+                      className="flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                    >
+                      <option value="">No location</option>
+                      {organisation.locations.map((l) => (
+                        <option key={l.id} value={String(l.id)}>{l.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="user-station">Station</Label>
+                    <select
+                      id="user-station"
+                      value={formik.values.stationId}
+                      onChange={(e) => formik.setFieldValue("stationId", e.target.value)}
+                      className="flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                    >
+                      <option value="">No station</option>
+                      {organisation.stations
+                        .filter((s) => !formik.values.locationId || formik.values.stationId || String(s.locationId) === formik.values.locationId)
+                        .map((s) => (
+                          <option key={s.id} value={String(s.id)}>{s.name}</option>
+                        ))}
+                    </select>
+                  </div>
+                  <p className="text-xs text-muted-foreground sm:col-span-2">
+                    Only this company&apos;s locations and stations are offered. A station sets the location.
+                  </p>
+                </div>
+              )}
               <div className="flex items-center justify-between">
                 <Label htmlFor="user-active">Active</Label>
                 <Switch
@@ -217,16 +274,16 @@ export function EditUserSheet({
                   onCheckedChange={(value) => formik.setFieldValue("canLogin", value)}
                 />
               </div>
-              {canLinkInvestor && (user.role === "04" || formik.values.role === "04") && (
+              {canLinkInvestor && (isInvestorRoleRow(roles, user.role) || isInvestorRoleRow(roles, formik.values.role)) && (
                 <div className="space-y-2 rounded-md border p-3">
                   <Label>Investor</Label>
                   <InvestorPicker value={investorId} onChange={setInvestorId} options={investors} />
                   <p className="text-xs text-muted-foreground">
-                    {user.role === "04"
+                    {isInvestorRoleRow(roles, user.role)
                       ? "Linking updates investor scope on the next sign-in."
                       : "Saving changes the role and links this investor. The account then sees only that investor's routers and revenue."}
                   </p>
-                  {user.role === "04" && (
+                  {isInvestorRoleRow(roles, user.role) && (
                   <Button type="button" variant="outline" onClick={handleInvestorLink} disabled={linking || !investorId.trim()}>
                     {linking && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     Link investor

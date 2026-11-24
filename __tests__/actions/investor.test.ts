@@ -2,6 +2,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const { authMock } = vi.hoisted(() => ({ authMock: vi.fn() }));
 vi.mock("@/lib/auth", () => ({ auth: authMock }));
+// what each role may read comes from its database permissions (seeded grants of the built-in roles)
+vi.mock("@/lib/data/access", async () => {
+  const { builtInAccess } = await import("../helpers/builtInAccess");
+  return { getAccess: async () => builtInAccess((await authMock())?.user?.role) };
+});
 
 import { getInvestorMoneyFlowData } from "@/actions/investor";
 

@@ -39,6 +39,11 @@ const mockDeallocate = vi.fn();
 // the menu reads the signed-in role: remote access (WinBox, web console) is for 01 and SYSADMIN
 const sessionRole = { current: "01" };
 vi.mock("next-auth/react", () => ({ useSession: () => ({ data: { user: { role: sessionRole.current } } }) }));
+// the menu shows what the role's database permissions allow (seeded grants of the built-in roles)
+vi.mock("@/providers/AccessProvider", async () => {
+  const { builtInAccessHook } = await import("../helpers/builtInAccess");
+  return { useAccess: () => builtInAccessHook(sessionRole.current) };
+});
 
 vi.mock("@/actions/network", () => ({
   executeRouterAction: (...args: unknown[]) => mockExecute(...args),

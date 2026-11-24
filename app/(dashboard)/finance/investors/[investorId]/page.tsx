@@ -4,7 +4,6 @@ import { ArrowLeft, Settings2, UserRound } from "lucide-react";
 
 import { auth } from "@/lib/auth";
 import { getInvestorPortfolio } from "@/actions/investorPortfolio";
-import { isPlatformAdminRole, normalizeRole, ROLE_NAME } from "@/lib/types/roles";
 import InvestorPortfolioView from "@/components/investors/InvestorPortfolioView";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -14,6 +13,8 @@ import { Label } from "@/components/ui/label";
 import MessageInvestorsDialog from "@/components/investors/MessageInvestorsDialog";
 import MessageHistory from "@/components/investors/MessageHistory";
 import { getInvestorMessages } from "@/actions/investorMessages";
+import { getAccess } from "@/lib/data/access";
+import { can } from "@/lib/access";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Investor" };
@@ -31,10 +32,10 @@ export default async function InvestorDetailPage({
   params: Promise<{ investorId: string }>;
   searchParams: Promise<{ period?: string }>;
 }) {
-  const session = await auth();
-  const role = session?.user?.role ?? "";
-  const isPlatformAdmin = isPlatformAdminRole(role);
-  const isCompanyAdmin = normalizeRole(role) === ROLE_NAME.ADMIN && !isPlatformAdmin;
+  const access = await getAccess();
+  const isPlatformAdmin = access.superAdmin;
+  // the investor register: the super admin manages it, roles granted it (company admin) read it
+  const isCompanyAdmin = !isPlatformAdmin && can(access, "API_INVESTORREGISTRY_ROOT", "VIEW");
   if (!isPlatformAdmin && !isCompanyAdmin) redirect("/dashboard");
 
   const { investorId } = await params;

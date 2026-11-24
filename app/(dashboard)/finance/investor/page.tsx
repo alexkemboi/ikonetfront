@@ -4,7 +4,6 @@ import type { Metadata } from "next";
 import { auth } from "@/lib/auth";
 import { getInvestorMoneyFlowData } from "@/actions/investor";
 import { getPermissionForRoute } from "@/lib/data/nav";
-import { isPlatformAdminRole, normalizeRole, ROLE_NAME } from "@/lib/types/roles";
 import type { RouterAttributionItem } from "@/lib/types/investor";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -18,6 +17,8 @@ import { getMyPortfolio } from "@/actions/investorPortfolio";
 import InvestorPortfolioView from "@/components/investors/InvestorPortfolioView";
 import MessageHistory from "@/components/investors/MessageHistory";
 import { getMyMessages } from "@/actions/investorMessages";
+import { getAccess } from "@/lib/data/access";
+import { isCustomerAccess, isInvestorAccess } from "@/lib/access";
 
 export const dynamic = "force-dynamic";
 
@@ -53,8 +54,8 @@ export default async function InvestorPortalPage({
   searchParams: Promise<{ period?: string; companyId?: string; investorId?: string }>;
 }) {
   const session = await auth();
-  const role = normalizeRole(session?.user?.role);
-  const platformAdmin = isPlatformAdminRole(session?.user?.role);
+  const access = await getAccess();
+  const platformAdmin = access.superAdmin;
   const params = await searchParams;
   const period = params.period && /^\d{4}-(0[1-9]|1[0-2])$/.test(params.period)
     ? params.period
@@ -66,14 +67,14 @@ export default async function InvestorPortalPage({
   //                         (SYSADMIN or 01 → ADMIN; 02 → MANAGEMENT; 03 → STAFF)
   //  - customer (05)      → /portal/pppoe
   //  - unknown            → /no-access (fail closed)
-  if (role === ROLE_NAME.CUSTOMER) redirect("/portal/pppoe");
-  if (role === ROLE_NAME.UNKNOWN) redirect("/no-access");
+  if (isCustomerAccess(access)) redirect("/portal/pppoe");
+  if (!access.roleCode) redirect("/no-access");
   const pagePerms = await getPermissionForRoute("/finance/investor");
   if (!pagePerms.canView) redirect("/no-access");
 
   // Owner, 2026-10-31: an investor's page tells the whole story of their month (what their
   // routers made, what is theirs, what they owe) per router and per service.
-  if (role === ROLE_NAME.INVESTOR) {
+  if (isInvestorAccess(access)) {
     const [{ portfolio, message }, fees, messages] = await Promise.all([getMyPortfolio(period), getMyFees(), getMyMessages()]);
     const owing = fees.filter((f) => f.balance.balance > 0);
     // the account is shown as the way to pay straight in, beside the M-Pesa prompt

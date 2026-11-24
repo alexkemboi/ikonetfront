@@ -3,9 +3,9 @@ import { auth } from "@/lib/auth";
 import { getPermissionForRoute } from "@/lib/data/nav";
 import { getNasRoutersData } from "@/actions/provisioning";
 import { getRouterOverview } from "@/actions/routerOperations";
-import { isPlatformAdminRole } from "@/lib/types/roles";
 import type { RouterActionsRow } from "@/components/network/RouterActionsDropdown";
 import { RouterOperationsView } from "./_components/RouterOperationsView";
+import { getAccess } from "@/lib/data/access";
 
 export const dynamic = "force-dynamic";
 
@@ -67,7 +67,7 @@ export default async function RouterOperationsPage({ params }: { params: Promise
       initialOverview={overview.data}
       actionsRow={row}
       canEdit={perms.canEdit}
-      isSysadmin={isPlatformAdminRole(session?.user?.role)}
+      isSysadmin={(await getAccess()).superAdmin}
     />
   );
 }

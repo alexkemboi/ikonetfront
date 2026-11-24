@@ -39,6 +39,10 @@ export type SignInStep = LoginData & {
   maskedEmail?: string;
   codeExpiresInSeconds?: number;
   resendInSeconds?: number;
+  /** With a token: signed in with a temporary or expired password; only a password change is allowed. */
+  passwordChangeRequired?: boolean;
+  /** RESET (a temporary password) or EXPIRED. */
+  passwordChangeReason?: string;
 };
 
 /**

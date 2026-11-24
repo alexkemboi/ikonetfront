@@ -5,9 +5,11 @@ import { toast } from "sonner";
 import {
  Shield, Users, Plus, Search, ChevronDown,
  Check, Pencil, UserPlus, X, Save, RotateCcw,
- MoreHorizontal, Loader2,
+ MoreHorizontal, Loader2, Settings, Copy, Trash2,
 } from "lucide-react";
-import { addRoleAction, saveRoleMenusAction } from "@/actions/roles";
+import {
+ addRoleAction, saveRoleMenusAction, updateRoleAction, duplicateRoleAction, deleteRoleAction, getRoleAssignersAction,
+} from "@/actions/roles";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,7 +37,7 @@ import {
 import { NO_PERMISSIONS } from "@/lib/data/nav-constants";
 import type { MenuNode } from "@/lib/nav";
 import type { PermissionFlags, PermissionMap } from "@/lib/types/roles";
-import type { Role, RoleUser, ApiRoleUser } from "../page";
+import type { Role, RoleUser, ApiRoleUser } from "./roleTypes";
 
 // ── Role color accent map ──────────────────────────────────────────────
 const ROLE_COLORS: Record<string, string> = {
@@ -74,9 +76,9 @@ function PermissionNode({
  const [expanded, setExpanded] = useState(true);
  const hasChildren = !!(node.children?.length);
 
- // All routes in this group: the parent's own route plus every child's route.
- // The master checkbox controls all of them together.
- const allRoutes = [node.route, ...(node.children?.map((c) => c.route) ?? [])];
+ // Every entry in this group (by catalogue id): the parent itself, unless it is only a heading,
+ // plus every child. The master checkbox controls all of them together.
+ const allRoutes = [...(node.synthetic ? [] : [node.key]), ...(node.children?.map((c) => c.key) ?? [])];
 
  // allGranted = every route in the group has all four flags true
  const allGranted = allRoutes.every((r) => {
@@ -89,16 +91,19 @@ function PermissionNode({
  const isIndeterminate = !allGranted && anyGranted;
 
  // Badge: how many children have canView (used for "2/4 visible" counter)
- const viewableChildCount = node.children?.filter((c) => permissions[c.route]?.canView).length ?? 0;
+ const viewableChildCount = node.children?.filter((c) => {
+ const f = permissions[c.key];
+ return f?.canView || f?.canCreate || f?.canEdit || f?.canDelete;
+ }).length ?? 0;
 
  function handleParentToggle(checked: boolean) {
  // Sets ALL four flags on ALL routes in the group to the same value
  dispatch(setGroupPermissions({ roleId, routes: allRoutes, checked }));
  }
 
- function handleFlagToggle(route: string, flag: keyof PermissionFlags, checked: boolean) {
- // Dispatches a single flag change; the Redux reducer handles the canView-off cascade
- dispatch(toggleFlag({ roleId, route, flag, checked }));
+ function handleFlagToggle(route: string, flag: keyof PermissionFlags, checked: boolean, independent: boolean) {
+ // Screens: turning View off clears the rest. API permissions and rights: each action stands alone.
+ dispatch(toggleFlag({ roleId, route, flag, checked, independent }));
  }
 
  return (
@@ -107,7 +112,7 @@ function PermissionNode({
  {/* ── Parent / group header row ─────────────────────────────────── */}
  <div className={cn("flex items-center gap-3 px-4 py-3 bg-card", allGranted && "bg-primary/5")}>
  <Checkbox
- id={`perm-${node.route}`}
+ id={`perm-${node.key}`}
  checked={isIndeterminate ? "indeterminate" : allGranted}
  onCheckedChange={(v) => handleParentToggle(v === true)}
  className="data-[state=checked]:bg-primary data-[state=checked]:border-primary
@@ -115,7 +120,7 @@ function PermissionNode({
  title={hasChildren ? "Select / deselect all in this group" : node.label}
  />
  <label
- htmlFor={`perm-${node.route}`}
+ htmlFor={`perm-${node.key}`}
  className="flex-1 text-sm font-semibold text-foreground cursor-pointer select-none"
  >
  {node.label}
@@ -159,7 +164,8 @@ function PermissionNode({
 
  {/* One row per child menu item */}
  {node.children!.map((child) => {
- const flags = permissions[child.route] ?? NO_PERMISSIONS;
+ const flags = permissions[child.key] ?? NO_PERMISSIONS;
+ const independent = (child.kind ?? "MENU") !== "MENU";
  return (
  <div
  key={child.idxno}
@@ -169,20 +175,25 @@ function PermissionNode({
  )}
  >
  <div className="w-4 shrink-0" />
- <span className="flex-1 text-sm text-foreground">{child.label}</span>
+ <span className="flex-1 text-sm text-foreground">
+ {child.label}
+ {independent && child.permissionKey && (
+ <span className="block font-mono text-[10px] text-muted-foreground">{child.permissionKey}</span>
+ )}
+ </span>
 
  {/* The four flag checkboxes */}
  <div className="flex items-center">
  {FLAG_COLS.map(({ key, label, checkedClass }) => {
  // canCreate / canEdit / canDelete are disabled when canView is off —
  // you can't do anything with a page you can't see.
- const isDisabled = key !== "canView" && !flags.canView;
+ const isDisabled = !independent && key !== "canView" && !flags.canView;
  return (
  <div key={key} className="w-13 flex justify-center">
  <Checkbox
  checked={flags[key]}
  disabled={isDisabled}
- onCheckedChange={(v) => handleFlagToggle(child.route, key, v === true)}
+ onCheckedChange={(v) => handleFlagToggle(child.key, key, v === true, independent)}
  className={cn(checkedClass, isDisabled && "opacity-30 cursor-not-allowed")}
  title={label}
  />
@@ -210,10 +221,13 @@ function CreateRoleSheet({
  const [roleCode, setRoleCode] = useState("");
  const [name, setName] = useState("");
  const [desc, setDesc] = useState("");
+ const [principalType, setPrincipalType] = useState("STAFF");
+ const [scopeLevel, setScopeLevel] = useState("STATION");
+ const [landingRoute, setLandingRoute] = useState("");
  const [isLoading, setIsLoading] = useState(false);
 
  function handleClose() {
- setRoleCode(""); setName(""); setDesc("");
+ setRoleCode(""); setName(""); setDesc(""); setPrincipalType("STAFF"); setScopeLevel("STATION"); setLandingRoute("");
  onClose();
  }
 
@@ -225,6 +239,9 @@ function CreateRoleSheet({
  roleCode: roleCode.trim(),
  name: name.trim(),
  description: desc.trim(),
+ principalType,
+ scopeLevel: principalType === "INVESTOR" ? undefined : scopeLevel,
+ landingRoute: landingRoute.trim() || undefined,
  });
  if (result.success) {
  toast.success("Role created", { description: result.message });
@@ -245,7 +262,7 @@ function CreateRoleSheet({
  <SheetHeader className="px-6 py-5 border-b border-border">
  <SheetTitle>Create New Role</SheetTitle>
  <SheetDescription>
- Define the role code, name, and description. You can assign permissions after creation.
+ Define the role; give it permissions on the Permissions tab afterwards. The code cannot change later.
  </SheetDescription>
  </SheetHeader>
  <div className="flex-1 px-6 py-6 space-y-5">
@@ -253,11 +270,11 @@ function CreateRoleSheet({
  <Label htmlFor="role-code">Role Code</Label>
  <Input
  id="role-code"
- placeholder="e.g. ENG, FIN, ADM"
+ placeholder="e.g. NETWORK_ADMIN"
  value={roleCode}
  onChange={(e) => setRoleCode(e.target.value)}
  />
- <p className="text-xs text-muted-foreground">Short unique identifier for this role.</p>
+ <p className="text-xs text-muted-foreground">2-30 capital letters, digits or _. Permanent.</p>
  </div>
  <div className="space-y-2">
  <Label htmlFor="role-name">Role Name</Label>
@@ -278,6 +295,31 @@ function CreateRoleSheet({
  onChange={(e) => setDesc(e.target.value)}
  className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm resize-none outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 placeholder:text-muted-foreground transition-[color,box-shadow]"
  />
+ </div>
+ <div className="grid grid-cols-2 gap-3">
+ <div className="space-y-2">
+ <Label htmlFor="role-type-new">Type</Label>
+ <select id="role-type-new" value={principalType} onChange={(e) => setPrincipalType(e.target.value)}
+ className="h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm">
+ <option value="STAFF">Staff</option>
+ <option value="INVESTOR">Investor login</option>
+ <option value="CUSTOMER">Customer login</option>
+ </select>
+ </div>
+ <div className="space-y-2">
+ <Label htmlFor="role-scope-new">Sees</Label>
+ <select id="role-scope-new" value={scopeLevel} disabled={principalType === "INVESTOR"} onChange={(e) => setScopeLevel(e.target.value)}
+ className="h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm disabled:opacity-50">
+ <option value="STATION">Their station</option>
+ <option value="COMPANY">Their company</option>
+ <option value="PLATFORM">Every company</option>
+ </select>
+ </div>
+ </div>
+ <div className="space-y-2">
+ <Label htmlFor="role-landing-new">Landing page</Label>
+ <Input id="role-landing-new" placeholder="/customers (blank: first menu entry)" value={landingRoute}
+ onChange={(e) => setLandingRoute(e.target.value)} />
  </div>
  </div>
  <div className="px-6 py-4 border-t border-border flex gap-3">
@@ -476,6 +518,183 @@ function UsersTab({
  );
 }
 
+// ── Display tree ───────────────────────────────────────────────────────
+/**
+ * Screens (MENU entries) keep the catalogue tree. API permissions and named rights have no route
+ * and no parent: they are grouped under one heading per module so the matrix stays readable.
+ */
+function buildDisplayTree(menuTree: MenuNode[]): MenuNode[] {
+ const screens = menuTree.filter((n) => (n.kind ?? "MENU") === "MENU");
+ const groups = new Map<string, MenuNode[]>();
+ for (const node of menuTree) {
+ const kind = node.kind ?? "MENU";
+ if (kind === "MENU") continue;
+ const heading = (kind === "RIGHT" ? "Rights · " : "API · ") + (node.module || "General");
+ const list = groups.get(heading) ?? [];
+ list.push({ ...node, children: undefined });
+ groups.set(heading, list);
+ }
+ const synthetic: MenuNode[] = [...groups.entries()]
+ .sort(([a], [b]) => (a.startsWith("Rights") === b.startsWith("Rights") ? a.localeCompare(b) : a.startsWith("Rights") ? 1 : -1))
+ .map(([heading, children], i) => ({
+ idxno: -1 - i,
+ menuItemId: 0,
+ key: `group:${heading}`,
+ kind: "GROUP",
+ synthetic: true,
+ route: "",
+ label: heading,
+ icon: "",
+ children: children.sort((a, b) => a.label.localeCompare(b.label)),
+ }));
+ return [...screens, ...synthetic];
+}
+
+// ── Role settings tab ──────────────────────────────────────────────────
+function RoleSettingsTab({ role, roles }: { role: Role; roles: Role[] }) {
+ const [description, setDescription] = useState(role.description ?? "");
+ const [principalType, setPrincipalType] = useState(role.principalType);
+ const [scopeLevel, setScopeLevel] = useState(role.scopeLevel ?? "");
+ const [landingRoute, setLandingRoute] = useState(role.landingRoute ?? "");
+ const [isActive, setIsActive] = useState(role.isActive);
+ const [assigners, setAssigners] = useState<string[] | null>(null);
+ const [saving, setSaving] = useState(false);
+ const [copyCode, setCopyCode] = useState("");
+ const [copyName, setCopyName] = useState("");
+ const [confirmDelete, setConfirmDelete] = useState(false);
+
+ // The form starts from the role (the tab is remounted per role, see key= below);
+ // only who-may-assign is loaded from the API.
+ useEffect(() => {
+ let live = true;
+ getRoleAssignersAction(role.idxno).then((codes) => { if (live) setAssigners(codes); });
+ return () => { live = false; };
+ }, [role.idxno]);
+
+ const others = roles.filter((r) => r.id !== role.id && !r.isSuperAdmin && r.principalType === "STAFF");
+
+ async function save() {
+ setSaving(true);
+ const res = await updateRoleAction(role.idxno, role.id, {
+ description,
+ principalType: role.isSystem ? undefined : principalType,
+ scopeLevel: role.isSuperAdmin ? undefined : scopeLevel || undefined,
+ landingRoute,
+ isActive: role.isSuperAdmin ? undefined : isActive,
+ assignableBy: role.isSuperAdmin || assigners === null ? undefined : assigners,
+ });
+ setSaving(false);
+ if (res.success) toast.success("Role saved", { description: "Applies to the role's users on their next request." });
+ else toast.error("Role not saved", { description: res.message });
+ }
+
+ async function duplicate() {
+ if (!copyCode.trim() || !copyName.trim()) return;
+ const res = await duplicateRoleAction(role.idxno, copyCode.trim(), copyName.trim());
+ if (res.success) {
+ toast.success("Role copied", { description: `${copyName} has every permission of ${role.name}.` });
+ setCopyCode(""); setCopyName("");
+ } else toast.error("Role not copied", { description: res.message });
+ }
+
+ async function remove() {
+ if (!confirmDelete) { setConfirmDelete(true); return; }
+ const res = await deleteRoleAction(role.idxno);
+ if (res.success) toast.success("Role deleted");
+ else toast.error("Role not deleted", { description: res.message });
+ setConfirmDelete(false);
+ }
+
+ const select = "h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm disabled:opacity-50";
+ return (
+ <div className="space-y-6 max-w-xl">
+ <div className="grid gap-4 sm:grid-cols-2">
+ <div className="space-y-1.5 sm:col-span-2">
+ <Label>Code</Label>
+ <p className="font-mono text-sm">{role.id}{role.isSystem && <Badge variant="outline" className="ml-2 text-[10px]">built-in</Badge>}</p>
+ </div>
+ <div className="space-y-1.5 sm:col-span-2">
+ <Label htmlFor="role-description">Description</Label>
+ <Input id="role-description" value={description} onChange={(e) => setDescription(e.target.value)} />
+ </div>
+ <div className="space-y-1.5">
+ <Label htmlFor="role-type">Type</Label>
+ <select id="role-type" className={select} value={principalType} disabled={role.isSystem}
+ onChange={(e) => setPrincipalType(e.target.value)}>
+ <option value="STAFF">Staff</option>
+ <option value="INVESTOR">Investor login</option>
+ <option value="CUSTOMER">Customer login</option>
+ </select>
+ </div>
+ <div className="space-y-1.5">
+ <Label htmlFor="role-scope">Sees</Label>
+ <select id="role-scope" className={select} value={scopeLevel} disabled={role.isSuperAdmin}
+ onChange={(e) => setScopeLevel(e.target.value)}>
+ <option value="">(investor records only)</option>
+ <option value="STATION">Their station (else their company)</option>
+ <option value="COMPANY">Their whole company</option>
+ <option value="PLATFORM">Every company</option>
+ </select>
+ </div>
+ <div className="space-y-1.5 sm:col-span-2">
+ <Label htmlFor="role-landing">Landing page</Label>
+ <Input id="role-landing" placeholder="/customers (blank: first menu entry)" value={landingRoute}
+ onChange={(e) => setLandingRoute(e.target.value)} />
+ </div>
+ <label className="flex items-center gap-2 text-sm sm:col-span-2">
+ <Checkbox checked={isActive} disabled={role.isSuperAdmin} onCheckedChange={(v) => setIsActive(v === true)} />
+ Active (an inactive role grants nothing and cannot be assigned)
+ </label>
+ </div>
+
+ {!role.isSuperAdmin && (
+ <div className="space-y-2">
+ <Label>Who may assign this role</Label>
+ <p className="text-xs text-muted-foreground">The super admin always may. Roles that work across companies are assigned by the super admin only.</p>
+ {assigners === null ? <Loader2 className="w-4 h-4 animate-spin" /> : (
+ <div className="flex flex-wrap gap-3">
+ {others.map((r) => (
+ <label key={r.id} className="flex items-center gap-1.5 text-sm">
+ <Checkbox checked={assigners.includes(r.id)}
+ onCheckedChange={(v) => setAssigners((cur) => (v === true ? [...(cur ?? []), r.id] : (cur ?? []).filter((c) => c !== r.id)))} />
+ {r.name}
+ </label>
+ ))}
+ </div>
+ )}
+ </div>
+ )}
+
+ <Button onClick={save} disabled={saving} className="gap-2">
+ {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} Save settings
+ </Button>
+
+ {!role.isSuperAdmin && (
+ <div className="space-y-2 border-t border-border pt-5">
+ <Label>Duplicate</Label>
+ <div className="flex flex-wrap gap-2">
+ <Input className="w-40" placeholder="NEW_CODE" value={copyCode} onChange={(e) => setCopyCode(e.target.value)} />
+ <Input className="w-56" placeholder="Name of the copy" value={copyName} onChange={(e) => setCopyName(e.target.value)} />
+ <Button variant="outline" className="gap-2" disabled={!copyCode.trim() || !copyName.trim()} onClick={duplicate}>
+ <Copy className="w-4 h-4" /> Copy role
+ </Button>
+ </div>
+ </div>
+ )}
+
+ {!role.isSystem && (
+ <div className="space-y-2 border-t border-border pt-5">
+ <Label>Delete</Label>
+ <p className="text-xs text-muted-foreground">Only a role nobody holds can be deleted; move its users first, or deactivate it.</p>
+ <Button variant="outline" className="gap-2 text-destructive" onClick={remove}>
+ <Trash2 className="w-4 h-4" /> {confirmDelete ? "Click again to delete " + role.name : "Delete role"}
+ </Button>
+ </div>
+ )}
+ </div>
+ );
+}
+
 // ── Permissions tab ────────────────────────────────────────────────────
 function PermissionsTab({
   role,
@@ -492,7 +711,6 @@ function PermissionsTab({
  const permissions = pending ?? role.permissions;
  const [isSaving, setIsSaving] = useState(false);
 
- console.log("PermissionsTab render", { role, permissions, menuTree });
 
  
 
@@ -501,28 +719,32 @@ function PermissionsTab({
  dispatch(initPendingPermissions({ roleId: role.id, permissions: role.permissions }));
  }, [role.id, role.permissions, dispatch]);
 
- // Count routes where canView=true — the primary "accessible" signal
- const totalGranted = Object.values(permissions).filter((f) => f.canView).length;
- // Count every route in the tree (parent node + each child)
- const totalPossible = menuTree.reduce((acc, node) => acc + 1 + (node.children?.length ?? 0), 0);
+ // Screens keep their tree; API permissions and rights (no route) are grouped by module.
+ const displayTree = buildDisplayTree(menuTree);
 
- // Flatten tree into { route, menuItemId } pairs for the save payload
+ // Every real catalogue entry (headings excluded), for counting and the save payload
  function flattenTree() {
  const nodes: Array<{ route: string; menuItemId: number }> = [];
- for (const node of menuTree) {
- nodes.push({ route: node.route, menuItemId: node.menuItemId });
+ for (const node of displayTree) {
+ if (!node.synthetic) nodes.push({ route: node.key, menuItemId: node.menuItemId });
  for (const child of node.children ?? []) {
- nodes.push({ route: child.route, menuItemId: child.menuItemId });
+ nodes.push({ route: child.key, menuItemId: child.menuItemId });
  }
  }
  return nodes;
  }
+ const entries = flattenTree();
+ const totalGranted = entries.filter(({ route }) => {
+ const f = permissions[route];
+ return f?.canView || f?.canCreate || f?.canEdit || f?.canDelete;
+ }).length;
+ const totalPossible = entries.length;
 
 async function handleSave() {
   // R-17: menu/permission assignments are SYSADMIN-only. Never submit on
   // behalf of a read-only caller.
   if (!canMutate) {
-  toast.error("Only SYSADMIN can save permission changes.");
+  toast.error("Only the super admin can save permission changes.");
   return;
   }
   setIsSaving(true);
@@ -557,6 +779,19 @@ async function handleSave() {
  } finally {
  setIsSaving(false);
  }
+ }
+
+ if (role.isSuperAdmin) {
+ return (
+ <div className="rounded-xl border border-border bg-muted/30 p-5 text-sm text-muted-foreground">
+ <p className="font-medium text-foreground">This is the super admin role.</p>
+ <p className="mt-1">
+ It holds every permission by its role flag, in every company, and cannot be narrowed,
+ deactivated or deleted. Create a role scoped to the platform for administrators who should
+ only have the permissions you grant.
+ </p>
+ </div>
+ );
  }
 
  return (
@@ -603,9 +838,9 @@ async function handleSave() {
  {/* Permission tree */}
  <ScrollArea className="max-h-[calc(100vh-400px)] border border-border rounded-xl overflow-y-auto p-4 ">
  <div className="space-y-3 pr-1">
- {menuTree.map((node) => (
+ {displayTree.map((node) => (
  <PermissionNode
- key={node.idxno}
+ key={node.key}
  node={node}
  roleId={role.id}
  permissions={permissions}
@@ -683,7 +918,10 @@ export default function RolesClient({
  const dispatch = useAppDispatch();
  const editingId = useAppSelector((s) => s.roles.editingRoleId);
 
- const [selectedId, setSelectedId] = useState<string>(roles[0]?.id ?? "");
+ // read-only viewers never see the super admin role (list, or the role opened first)
+ const [selectedId, setSelectedId] = useState<string>(
+ () => (canMutate ? roles : roles.filter((r) => !r.isSuperAdmin))[0]?.id ?? ""
+ );
  const [searchQuery, setSearchQuery] = useState("");
  const [createOpen, setCreateOpen] = useState(false);
  const [editName, setEditName] = useState("");
@@ -691,7 +929,7 @@ export default function RolesClient({
 
  const visibleRoles = canMutate
  ? roles
- : roles.filter((r) => r.id !== "SYSADMIN" && r.id !== "01");
+ : roles.filter((r) => !r.isSuperAdmin);
 
  const filteredRoles = visibleRoles.filter(
  (r) =>
@@ -700,7 +938,7 @@ export default function RolesClient({
  r.description.toLowerCase().includes(searchQuery.toLowerCase())
  );
 
- const selectedRole = roles.find((r) => r.id === selectedId);
+ const selectedRole = visibleRoles.find((r) => r.id === selectedId);
 
 function handleStartEdit(role: Role) {
   if (!canMutate) return;
@@ -709,10 +947,11 @@ function handleStartEdit(role: Role) {
   setTimeout(() => editInputRef.current?.focus(), 50);
 }
 
-function handleSaveEdit() {
-  if (!canMutate) return;
-  // The backend rename endpoint is unmapped until RB-4; never issue the request.
-  toast.error("Renaming roles is not available yet.");
+async function handleSaveEdit() {
+  if (!canMutate || !selectedRole || !editName.trim()) return;
+  const res = await updateRoleAction(selectedRole.idxno, selectedRole.id, { name: editName.trim() });
+  if (res.success) toast.success("Role renamed");
+  else toast.error("Role not renamed", { description: res.message });
   dispatch(stopEditingRole());
   }
 
@@ -808,6 +1047,8 @@ function handleSaveEdit() {
  ) : (
 <div className="flex items-center gap-2 group/title">
   <h2 className="text-lg font-bold text-foreground">{selectedRole.name}</h2>
+  {!selectedRole.isActive && <Badge variant="outline" className="text-[10px]">inactive</Badge>}
+  {selectedRole.isSuperAdmin && <Badge variant="outline" className="text-[10px]">super admin</Badge>}
   {canMutate && (
   <button
   type="button"
@@ -870,6 +1111,15 @@ function handleSaveEdit() {
  <Shield className="w-3.5 h-3.5 mr-1.5" />
  Permissions
  </TabsTrigger>
+ {canMutate && (
+ <TabsTrigger
+ value="settings"
+ className="data-[state=active]:border-b-2 data-[state=active]:border-warning data-[state=active]:text-foreground data-[state=active]:shadow-none rounded-none pb-3 pt-3 px-0 text-sm font-medium text-muted-foreground bg-transparent"
+ >
+ <Settings className="w-3.5 h-3.5 mr-1.5" />
+ Settings
+ </TabsTrigger>
+ )}
  </TabsList>
  </div>
 
@@ -884,6 +1134,11 @@ function handleSaveEdit() {
 <TabsContent value="permissions" className="flex-1 overflow-hidden px-6 py-5 mt-0">
   <PermissionsTab role={selectedRole} menuTree={menuTree} canMutate={canMutate} />
   </TabsContent>
+  {canMutate && (
+  <TabsContent value="settings" className="flex-1 overflow-auto px-6 py-5 mt-0">
+  <RoleSettingsTab key={selectedRole.id} role={selectedRole} roles={roles} />
+  </TabsContent>
+  )}
  </Tabs>
  </div>
  ) : (

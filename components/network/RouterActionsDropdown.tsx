@@ -33,7 +33,6 @@ import {
 } from "@/actions/network";
 import { withStepUp } from "@/lib/stepUp";
 import { useSession } from "next-auth/react";
-import { canOpenRouters } from "@/lib/types/roles";
 import { RouterTelemetryDrawer } from "./RouterTelemetryDrawer";
 import { DiagnoseHealthModal } from "./DiagnoseHealthModal";
 import CompensateOutageModal from "./CompensateOutageModal";
@@ -51,6 +50,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { useAccess } from "@/providers/AccessProvider";
 
 export interface RouterActionsRow {
   /** network_device.id as a string — row identity. */
@@ -118,7 +118,7 @@ export function RouterActionsDropdown({
   const isRow = variant === "row";
   const isPage = variant === "page";
   // remote access (tunnel, WinBox, web console) is for the company admin and SYSADMIN only
-  const canOpen = canOpenRouters(useSession().data?.user?.role);
+  const canOpen = useAccess().can("API_REMOTEACCESS", "CREATE");
   const routerNav = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
   const [coords, setCoords] = useState<{

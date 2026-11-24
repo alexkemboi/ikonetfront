@@ -5,7 +5,7 @@ import { revalidatePath, updateTag } from "next/cache";
 import { auth } from "@/lib/auth";
 import { buildApiUrl } from "@/lib/constants";
 import type { ApiResponse } from "@/lib/types/auth";
-import type { ApiRole, ApiMenuItem, ApiRoleUser, AddRolePayload, MenuAssignment } from "@/lib/types/roles";
+import type { ApiRole, ApiMenuItem, ApiRoleUser, AddRolePayload, UpdateRolePayload, MenuAssignment } from "@/lib/types/roles";
 import { NAV_MENUS_TAG } from "@/lib/data/nav";
 
 async function getAuthHeaders(): Promise<HeadersInit> {
@@ -28,6 +28,15 @@ function normalizeRoleRecord(raw: unknown): ApiRole {
     name: String(r.name ?? r.roleName ?? r.role_name ?? r.title ?? "Untitled role"),
     description: String(r.description ?? r.desc ?? ""),
     createdAt: String(r.createdAt ?? r.created_at ?? ""),
+    // what the role is, from the roles table (screens decide by these, never by the role's name)
+    roleKey: (r.roleKey ?? r.role_key ?? null) as string | null,
+    principalType: (r.principalType ?? r.principal_type ?? null) as string | null,
+    scopeLevel: (r.scopeLevel ?? r.scope_level ?? null) as string | null,
+    isSystem: Boolean(r.isSystem ?? r.is_system),
+    isSuperAdmin: Boolean(r.isSuperAdmin ?? r.is_super_admin),
+    isActive: (r.isActive ?? r.is_active) !== false,
+    landingRoute: (r.landingRoute ?? r.landing_route ?? null) as string | null,
+    updatedAt: (r.updatedAt ?? r.updated_at ?? null) as string | null,
   };
 }
 
@@ -146,9 +155,51 @@ export async function addRoleAction(
   );
   const data: ApiResponse<ApiRole> = await res.json();
   if (data.success) {
-    revalidatePath("/system/access");
+    revalidatePath("/system/users/roles");
   }
   return data;
+}
+
+async function roleRequest<T>(path: string, method: string, body?: unknown): Promise<ApiResponse<T>> {
+  try {
+    const res = await fetch(buildApiUrl(path), {
+      method,
+      headers: await getAuthHeaders(),
+      body: body === undefined ? undefined : JSON.stringify(body),
+      cache: "no-store",
+    });
+    const data: ApiResponse<T> = await res.json();
+    if (data.success) {
+      // role changes alter who sees which menus: expire the cached menus at once
+      updateTag(NAV_MENUS_TAG);
+      revalidatePath("/system/users/roles");
+      revalidatePath("/system/users");
+    }
+    return data;
+  } catch {
+    return { success: false, status: 0, message: "Could not reach the server." } as ApiResponse<T>;
+  }
+}
+
+/** Change a role's name, description, type, scope, landing page, active state or assigners. */
+export async function updateRoleAction(idxno: number, roleCode: string, payload: UpdateRolePayload): Promise<ApiResponse<ApiRole>> {
+  return roleRequest<ApiRole>(`/system-setup/update-role/${idxno}`, "PUT", { roleCode, ...payload });
+}
+
+/** Copy a role (type, scope and every grant) under a new code and name. */
+export async function duplicateRoleAction(idxno: number, roleCode: string, name: string): Promise<ApiResponse<ApiRole>> {
+  return roleRequest<ApiRole>(`/system-setup/roles/${idxno}/duplicate`, "POST", { roleCode, name });
+}
+
+/** Delete a custom role that no user holds. */
+export async function deleteRoleAction(idxno: number): Promise<ApiResponse<null>> {
+  return roleRequest<null>(`/system-setup/roles/${idxno}`, "DELETE");
+}
+
+/** Codes of the roles that may assign this role (besides the super admin). */
+export async function getRoleAssignersAction(idxno: number): Promise<string[]> {
+  const res = await roleRequest<string[]>(`/system-setup/roles/${idxno}/assigners`, "GET");
+  return res.success && Array.isArray(res.data) ? res.data : [];
 }
 
 /**
@@ -177,7 +228,7 @@ export async function saveRoleMenusAction(
       // sidebar on its next page load (revalidateTag(…, 'max') served the old one once more)
       updateTag(NAV_MENUS_TAG);
       updateTag(`${NAV_MENUS_TAG}-${roleCode}`);
-      revalidatePath("/system/access");
+      revalidatePath("/system/users/roles");
 
       return { success: assignments.length, failed: 0 };
     }

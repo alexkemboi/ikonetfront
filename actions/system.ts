@@ -38,6 +38,9 @@ function normalizeUserRecord(raw: unknown): ApiRoleUser {
     investorId: typeof (r.investorId ?? r.investor_id) === "string"
       ? String(r.investorId ?? r.investor_id)
       : null,
+    locationId: typeof (r.locationId ?? r.location_id) === "number"
+      ? Number(r.locationId ?? r.location_id)
+      : null,
   };
 }
 
@@ -66,11 +69,18 @@ export type UserData = {
   companyId?:  string;
   /** Investor party id. Required by the backend for the Network Partner role, refused for any other. */
   investorId?: string;
+  /** Station (idxno as text); decides the location. */
+  stationId?: string;
+  /** Location without a station. */
+  locationId?: number;
 };
 
 export type SystemUserUpdate = Partial<
   Pick<ApiRoleUser, "username" | "fname" | "middleName" | "otherName" | "email" | "phoneNumber" | "companyId" | "stationId" | "isactive" | "canLogin">
->;
+> & {
+  /** Location id; 0 clears it. With a station the station's location is used. */
+  locationId?: number;
+};
 
 export type SystemUsersPage = {
   content: ApiRoleUser[];
@@ -162,6 +172,13 @@ export async function linkSystemUserInvestor(
   });
   if (!res.success) return normalizeApiResponse(res, null);
   revalidatePath("/system/users");
+  return { ...res, data: normalizeUserRecord(res.data) };
+}
+
+/** One staff account, for the edit sheet. */
+export async function getSystemUser(id: number): Promise<ApiResponse<ApiRoleUser | null>> {
+  const res = await apiFetch<unknown>(`${SYSTEM_USERS_URL}/${id}`, { auth: "required", cache: "no-store" });
+  if (!res.success) return normalizeApiResponse(res, null);
   return { ...res, data: normalizeUserRecord(res.data) };
 }
 

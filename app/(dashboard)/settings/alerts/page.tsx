@@ -1,7 +1,8 @@
 import AlertsClient from "./_components/AlertsClient";
 import { getProvidersAction } from "@/actions/alerts";
 import { auth } from "@/lib/auth";
-import { isPlatformAdminRole } from "@/lib/types/roles";
+import { getAccess } from "@/lib/data/access";
+import { can } from "@/lib/access";
 
 export const metadata = { title: "Alert Channels — SpeedLink" };
 
@@ -10,8 +11,7 @@ export default async function AlertsPage() {
  const providers = result.success ? (result.data ?? []) : [];
  // Providers are shared by every company: only SYSADMIN may add, change or delete one
  // (the API refuses anyone else and shows the API key to SYSADMIN only).
- const session = await auth();
- const canManage = isPlatformAdminRole(session?.user?.role ?? "");
+ const canManage = can(await getAccess(), "API_NOTIFICATIONPROVIDER", "CREATE");
 
  return (
  <div className="p-6">

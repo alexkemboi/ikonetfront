@@ -15,9 +15,9 @@ import { useAppDispatch } from "@/store/hooks";
 import { openRenewSheet, openPasswordSheet } from "@/store/slices/customerslice";
 import { cn } from "@/lib/utils";
 import { usePermissions } from "@/providers/PermissionsProvider";
-import { normalizeRole, ROLE_NAME } from "@/lib/types/roles";
 import { useSession } from "next-auth/react";
 import { PppoeLoginField } from "./PppoeLoginField";
+import { useAccess } from "@/providers/AccessProvider";
 
 interface CustomerSubscriptionPanelProps {
  customer: Customer;
@@ -52,11 +52,10 @@ export function CustomerSubscriptionPanel({
  const dispatch = useAppDispatch();
  const isPPPoE = customer.custtype === "pppoe";
  const perms = usePermissions("/customers");
- const { data: session } = useSession();
- const role = normalizeRole(session?.user?.role);
+ const { can } = useAccess();
  // The backend lets only the company admin (and SYSADMIN) and management read a PPPoE password.
  const canSeePppoeLogin =
- isPPPoE && perms.canEdit && (role === ROLE_NAME.ADMIN || role === ROLE_NAME.MANAGEMENT);
+ isPPPoE && perms.canEdit && can("API_CUSTOMER_PPPOE_PASSWORD", "VIEW");
 
  return (
  <motion.div

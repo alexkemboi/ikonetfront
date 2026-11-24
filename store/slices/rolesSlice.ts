@@ -58,6 +58,8 @@ const rolesSlice = createSlice({
         route:  string;
         flag:   keyof PermissionFlags;
         checked: boolean;
+        /** API permissions and rights: turning View off leaves the other actions alone. */
+        independent?: boolean;
       }>
     ) {
       const { roleId, route, flag, checked } = action.payload;
@@ -66,8 +68,9 @@ const rolesSlice = createSlice({
 
       let updated = { ...existing, [flag]: checked };
 
-      // Turning off canView must revoke all other flags — nothing can be done without view access
-      if (flag === "canView" && !checked) {
+      // Turning off canView must revoke all other flags — nothing can be done without view access.
+      // Not for API permissions and rights: each action there stands alone (create without view).
+      if (flag === "canView" && !checked && !action.payload.independent) {
         updated = { ...ALL_FALSE };
       }
 

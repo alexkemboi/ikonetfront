@@ -4,8 +4,9 @@ import { notFound, redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { getInvestorRouterOverview } from "@/actions/routerOperations";
 import { getPermissionForRoute } from "@/lib/data/nav";
-import { isPlatformAdminRole, normalizeRole, ROLE_NAME } from "@/lib/types/roles";
 import { RouterOperationsView } from "@/app/(dashboard)/network/routers/[id]/_components/RouterOperationsView";
+import { getAccess } from "@/lib/data/access";
+import { isCustomerAccess, isInvestorAccess } from "@/lib/access";
 
 export const dynamic = "force-dynamic";
 
@@ -21,9 +22,9 @@ export const metadata: Metadata = {
  */
 export default async function InvestorRouterPage({ params }: { params: Promise<{ deviceId: string }> }) {
   const session = await auth();
-  const role = normalizeRole(session?.user?.role);
-  if (role === ROLE_NAME.CUSTOMER) redirect("/portal/pppoe");
-  if (role !== ROLE_NAME.INVESTOR && !isPlatformAdminRole(session?.user?.role)) redirect("/no-access");
+  const access = await getAccess();
+  if (isCustomerAccess(access)) redirect("/portal/pppoe");
+  if (!isInvestorAccess(access) && !access.superAdmin) redirect("/no-access");
   const perm = await getPermissionForRoute("/finance/investor/routers");
   if (!perm.canView) redirect("/no-access");
 

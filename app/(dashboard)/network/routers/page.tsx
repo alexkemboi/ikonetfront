@@ -11,7 +11,8 @@ import { getLanHealth } from "@/actions/lanHealth";
 import { getUplink } from "@/actions/uplink";
 import { RouterUplinkPanel } from "@/components/network/RouterUplinkPanel";
 import { auth } from "@/lib/auth";
-import { isPlatformAdminRole } from "@/lib/types/roles";
+import { getAccess } from "@/lib/data/access";
+import { can } from "@/lib/access";
 
 export const metadata = {
  title: "NAS & Routers — IBS",
@@ -25,10 +26,10 @@ export default async function NasRoutersPage() {
 
 const [result, lanHealth, uplink, session] = await Promise.all([getNasRoutersData(), getLanHealth(), getUplink(), auth()]);
   // the bulk Reprovision is for system and platform administrators (the backend checks it too)
-  const role = (session?.user?.role ?? "").replace(/^ROLE_/i, "").toUpperCase();
-  const canReprovisionAll = role === "SYSADMIN" || role === "ADMIN";
+  const access = await getAccess();
+  const canReprovisionAll = can(access, "API_RADIUSPASSWORD", "CREATE");
   // "Check now" on the uplink panel: system administrators, company admins (01) and managers (02)
-  const canCheckUplink = canReprovisionAll || role === "01" || role === "02";
+  const canCheckUplink = can(access, "API_UPLINK", "CREATE");
   if (result.error) {
    return <div className="min-h-screen p-4 sm:p-6 lg:p-8"><div role="alert" className="mx-auto max-w-7xl rounded-lg border border-destructive/30 bg-destructive/5 p-5 text-sm"><h1 className="font-medium">Router data unavailable</h1><p className="mt-1 text-muted-foreground">{result.error}</p></div></div>;
   }
@@ -52,7 +53,7 @@ const [result, lanHealth, uplink, session] = await Promise.all([getNasRoutersDat
 <div className="flex flex-wrap items-center gap-3">
   {/* Old direct-IP linking: it cannot reach a router behind NAT (every site we run), so
       only a system administrator sees it. Routers are linked with ZTP. */}
-  {isPlatformAdminRole(role) && (
+  {access.superAdmin && (
   <Button variant="secondary" size="sm" asChild>
     <Link href="/network/routers/onboard">
       <ExternalLink className="h-4 w-4" /> Direct API Link (legacy)

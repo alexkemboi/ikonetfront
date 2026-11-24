@@ -4,9 +4,10 @@ import { getAuditLogPage } from "@/actions/audit";
 import { auth } from "@/lib/auth";
 import { resolveCompanyContextCode } from "@/lib/companyContext";
 import { getPermissionForRoute } from "@/lib/data/nav";
-import { isPlatformAdminRole } from "@/lib/types/roles";
 import { cn } from "@/lib/utils";
 import AuditLogsClient from "./_components/AuditLogsClient";
+import { getAccess } from "@/lib/data/access";
+import { can } from "@/lib/access";
 
 export const metadata = { title: "Audit Logs — SpeedLink" };
 
@@ -18,8 +19,7 @@ export default async function AuditLogsPage({
  const pagePerms = await getPermissionForRoute("/system/audit");
  if (!pagePerms.canView) redirect("/dashboard");
 
- const session = await auth();
- const isPlatformAdmin = isPlatformAdminRole(session?.user?.role);
+ const isPlatformAdmin = can(await getAccess(), "API_AUDITLOG_PLATFORM", "VIEW");
  // The platform log (company switches, events that belong to no company) is SYSADMIN-only.
  const showPlatform = isPlatformAdmin && (await searchParams).scope === "platform";
 

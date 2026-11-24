@@ -4,9 +4,10 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { getInvestorRouters } from "@/actions/investor";
 import { getPermissionForRoute } from "@/lib/data/nav";
-import { isPlatformAdminRole, normalizeRole, ROLE_NAME } from "@/lib/types/roles";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { InvestorRoutersTable } from "./_components/InvestorRoutersTable";
+import { getAccess } from "@/lib/data/access";
+import { isCustomerAccess, isInvestorAccess } from "@/lib/access";
 
 export const dynamic = "force-dynamic";
 
@@ -16,11 +17,10 @@ export const metadata: Metadata = {
 };
 
 export default async function InvestorRoutersPage() {
-  const session = await auth();
-  const role = normalizeRole(session?.user?.role);
+  const access = await getAccess();
 
-  if (role === ROLE_NAME.CUSTOMER) redirect("/portal/pppoe");
-  if (role !== ROLE_NAME.INVESTOR && !isPlatformAdminRole(session?.user?.role)) {
+  if (isCustomerAccess(access)) redirect("/portal/pppoe");
+  if (!isInvestorAccess(access) && !access.superAdmin) {
     redirect("/no-access");
   }
   const routerPerm = await getPermissionForRoute("/finance/investor/routers");

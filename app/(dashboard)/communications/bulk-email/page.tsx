@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getPermissionForRoute } from "@/lib/data/nav";
-import { auth } from "@/lib/auth";
+import { getAccess } from "@/lib/data/access";
+import { can } from "@/lib/access";
 import { cn } from "@/lib/utils";
 import { getOptOuts, getPromotions } from "@/actions/promotions";
 import { PromotionsClient } from "@/components/communications/PromotionsClient";
@@ -64,15 +65,14 @@ export default async function BulkEmailPage({
   );
 
   if (senderTab) {
-    const [session, sender] = await Promise.all([auth(), getSenderSettings()]);
-    const role = (session?.user?.role ?? "").replace(/^ROLE_/i, "").toUpperCase();
+    const [access, sender] = await Promise.all([getAccess(), getSenderSettings()]);
     return (
       <div className="p-6 h-full">
         {tabs}
         {sender.message && !sender.data ? (
           <p role="alert" className="text-sm text-muted-foreground">{sender.message}</p>
         ) : (
-          <SenderSettingsClient initial={sender.data} canEdit={role === "SYSADMIN" || role === "ADMIN" || role === "01"} />
+          <SenderSettingsClient initial={sender.data} canEdit={can(access, "API_COMMUNICATIONS_SENDER_SETTINGS", "EDIT")} />
         )}
       </div>
     );
@@ -80,9 +80,7 @@ export default async function BulkEmailPage({
 
   if (promotionsTab) {
     // Only this tab's data is loaded; the email tab's customer and staff lists are not needed here.
-    const [session, promotions, optOuts, tree] = await Promise.all([auth(), getPromotions(), getOptOuts(), getAudienceTree()]);
-    const role = (session?.user?.role ?? "").replace(/^ROLE_/i, "").toUpperCase();
-    const isAdmin = role === "SYSADMIN" || role === "ADMIN" || role === "01";
+    const [access, promotions, optOuts, tree] = await Promise.all([getAccess(), getPromotions(), getOptOuts(), getAudienceTree()]);
     return (
       <div className="p-6 h-full">
         {tabs}
@@ -91,9 +89,9 @@ export default async function BulkEmailPage({
           initialPromotions={promotions.data}
           initialOptOuts={optOuts.data}
           loadError={promotions.error ?? optOuts.error ?? undefined}
-          canDraft={isAdmin || role === "02"}
-          canSend={isAdmin}
-          canRemoveOptOut={isAdmin}
+          canDraft={can(access, "API_PROMO_ROOT", "CREATE")}
+          canSend={can(access, "API_PROMO_SEND", "CREATE")}
+          canRemoveOptOut={can(access, "API_PROMO_OPT_OUTS", "DELETE")}
         />
       </div>
     );

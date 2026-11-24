@@ -2,15 +2,9 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { server } from "@/mocks/server";
 import { http, HttpResponse } from "msw";
 import { API_PREFIX } from "@/mocks/handlers/auth-guard";
-import {
-  normalizeRole,
-  isPlatformAdminRole,
-  getLandingRouteForRole,
-  roleNameToCode,
-  ROLE_NAME,
-  ROLE_CODE,
-  type ApiMenuItem,
-} from "@/lib/types/roles";
+import { type ApiMenuItem } from "@/lib/types/roles";
+import { can, holdsRight, hasPlatformScope, isCustomerAccess, isInvestorAccess, NO_ACCESS, type NavAccess } from "@/lib/access";
+import { getLandingRoute } from "@/lib/data/access";
 import {
   normalizeMenuRoute,
   extractPermissions,
@@ -18,12 +12,16 @@ import {
   apiMenusToNavGroups,
   getPermissionForRoute,
   getCurrentUserPermissions,
-  getStaticNavForRole,
-  getNavLayoutForRole,
-  filterNavByPermissions,
+  navigationToNavGroups,
+  fetchNavigation,
 } from "@/lib/data/nav";
-import { resolveDashboardPathForRole } from "@/lib/utils/dashboardRouting";
+import type { NavigationPayload } from "@/lib/nav";
 import { auth } from "@/lib/auth";
+import { apiFetch } from "@/lib/apiClient";
+
+// fetchNavigation goes through apiFetch; the other helpers here call fetch directly.
+vi.mock("@/lib/apiClient", () => ({ apiFetch: vi.fn() }));
+const mockedApiFetch = vi.mocked(apiFetch);
 
 const mockedAuth = vi.mocked(auth);
 
@@ -58,73 +56,58 @@ beforeEach(() => {
   } as never);
 });
 
-describe("role normalization (lib/types/roles.ts)", () => {
-  it("treats only SYSADMIN authorities as platform-wide administrators", () => {
-    expect(isPlatformAdminRole("SYSADMIN")).toBe(true);
-    expect(isPlatformAdminRole("ROLE_SYSADMIN")).toBe(true);
-    expect(isPlatformAdminRole("ADMIN")).toBe(false);
-    expect(isPlatformAdminRole("01")).toBe(false);
-    expect(isPlatformAdminRole("SUPER_ADMIN")).toBe(false);
+describe("access from the database (lib/access.ts)", () => {
+  const custom: NavAccess = { superAdmin: false, roleCode: "NETWORK_ADMIN", principalType: "STAFF",
+    scopeLevel: "COMPANY", permissions: { API_NETWORKDEVICE: ["VIEW", "EDIT"], SYSTEM_FEE_PAY: ["VIEW"] } };
+
+  it("a role may do exactly what it is granted", () => {
+    expect(can(custom, "API_NETWORKDEVICE", "EDIT")).toBe(true);
+    expect(can(custom, "API_NETWORKDEVICE", "DELETE")).toBe(false);   // view/edit never imply delete
+    expect(can(custom, "API_EXPENSE")).toBe(false);
+    expect(holdsRight(custom, "SYSTEM_FEE_PAY")).toBe(true);
   });
 
-  it("maps numeric codes 01→05 to canonical names", () => {
-    expect(normalizeRole("01")).toBe(ROLE_NAME.ADMIN);
-    expect(normalizeRole("02")).toBe(ROLE_NAME.MANAGEMENT);
-    expect(normalizeRole("03")).toBe(ROLE_NAME.STAFF);
-    expect(normalizeRole("04")).toBe(ROLE_NAME.INVESTOR);
-    expect(normalizeRole("05")).toBe(ROLE_NAME.CUSTOMER);
+  it("the super admin holds every permission", () => {
+    expect(can({ superAdmin: true, permissions: {} }, "API_ANYTHING", "DELETE")).toBe(true);
   });
 
-  it("handles authority-style aliases", () => {
-    expect(normalizeRole("ROLE_INVESTOR")).toBe(ROLE_NAME.INVESTOR);
-    expect(normalizeRole("ROLE_CUSTOMER")).toBe(ROLE_NAME.CUSTOMER);
-    expect(normalizeRole("ROLE_SYSADMIN")).toBe(ROLE_NAME.ADMIN);
-    expect(normalizeRole("ROLE_LEGACY_ADMIN")).toBe(ROLE_NAME.ADMIN);
-    expect(normalizeRole("ROLE_STAFF_ADMIN")).toBe(ROLE_NAME.MANAGEMENT);
-    expect(normalizeRole("SYSADMIN")).toBe(ROLE_NAME.ADMIN);
+  it("no access, or a failed API, grants nothing (fail closed)", () => {
+    expect(can(NO_ACCESS, "API_NETWORKDEVICE")).toBe(false);
+    expect(can(undefined, "API_NETWORKDEVICE")).toBe(false);
   });
 
-  it("returns UNKNOWN for falsy/unknown roles (fail closed, no STAFF default)", () => {
-    expect(normalizeRole(undefined)).toBe(ROLE_NAME.UNKNOWN);
-    expect(normalizeRole("")).toBe(ROLE_NAME.UNKNOWN);
-    expect(normalizeRole("SCI-FI_ROLE")).toBe(ROLE_NAME.UNKNOWN);
-  });
-
-  it("roleNameToCode round-trips known roles and returns empty for unknown", () => {
-    expect(roleNameToCode(ROLE_NAME.INVESTOR)).toBe("04");
-    expect(roleNameToCode(ROLE_NAME.CUSTOMER)).toBe("05");
-    expect(roleNameToCode("ROLE_INVESTOR")).toBe(ROLE_CODE.INVESTOR);
-    expect(roleNameToCode("unsupported")).toBe("");
+  it("role type and scope come from the role, not its name", () => {
+    expect(isInvestorAccess({ ...NO_ACCESS, principalType: "INVESTOR" })).toBe(true);
+    expect(isCustomerAccess({ ...NO_ACCESS, principalType: "CUSTOMER" })).toBe(true);
+    expect(hasPlatformScope(custom)).toBe(false);
+    expect(hasPlatformScope({ ...custom, scopeLevel: "PLATFORM" })).toBe(true);
+    expect(hasPlatformScope({ superAdmin: true, permissions: {} })).toBe(true);
   });
 });
 
-describe("landing route dispatch", () => {
-  it("returns the canonical landing route per role", () => {
-    expect(getLandingRouteForRole(ROLE_NAME.ADMIN)).toBe("/dashboard/overview");
-    expect(getLandingRouteForRole(ROLE_NAME.MANAGEMENT)).toBe("/analytics");
-    expect(getLandingRouteForRole(ROLE_NAME.STAFF)).toBe("/customers");
-    expect(getLandingRouteForRole(ROLE_NAME.INVESTOR)).toBe("/finance/investor");
-    expect(getLandingRouteForRole(ROLE_NAME.CUSTOMER)).toBe("/portal/pppoe");
+describe("landing route dispatch (roles.landing_route)", () => {
+  const nav = (access: Partial<NavAccess> | null, groups: NavigationPayload["groups"] = []) => ({
+    status: 200, success: true, message: "ok",
+    data: { user: { username: "u", displayName: "U", role: "X" }, company: null, platform: null, portal: "STAFF",
+      groups, access: access ? { superAdmin: false, permissions: {}, ...access } : undefined },
+  });
+  const firstGroup = [{ key: "g", label: "G", displayOrder: 1, items: [{ key: "i", label: "Customers", route: "/customers", displayOrder: 1 }] }];
+
+  it("uses the role's landing page", async () => {
+    mockedApiFetch.mockResolvedValueOnce(nav({ roleCode: "02", landingRoute: "/analytics" }, firstGroup) as never);
+    expect(await getLandingRoute()).toBe("/analytics");
   });
 
-  it("investor 04/ROLE_INVESTOR dispatches to /finance/investor, never staff/customer", () => {
-    expect(getLandingRouteForRole("04")).toBe("/finance/investor");
-    expect(getLandingRouteForRole("ROLE_INVESTOR")).toBe("/finance/investor");
-    expect(getLandingRouteForRole("04")).not.toBe("/customers");
-    expect(getLandingRouteForRole("04")).not.toBe("/portal/pppoe");
+  it("falls back to the first sidebar entry for a role without one", async () => {
+    mockedApiFetch.mockResolvedValueOnce(nav({ roleCode: "NETWORK_ADMIN", landingRoute: null }, firstGroup) as never);
+    expect(await getLandingRoute()).toBe("/customers");
   });
 
-  it("resolveDashboardPathForRole uses the same helper (legacy routing cannot diverge)", () => {
-    expect(resolveDashboardPathForRole("04")).toBe("/finance/investor");
-    expect(resolveDashboardPathForRole("ROLE_INVESTOR")).toBe("/finance/investor");
-    expect(resolveDashboardPathForRole("02")).toBe("/analytics");
-    expect(resolveDashboardPathForRole(null)).toBe("/no-access");
-  });
-
-  it("unknown/falsy roles dispatch to the unguarded no-access route (no redirect loop)", () => {
-    expect(getLandingRouteForRole("SCI-FI_ROLE")).toBe("/no-access");
-    expect(getLandingRouteForRole(null)).toBe("/no-access");
-    expect(getLandingRouteForRole(undefined)).toBe("/no-access");
+  it("an unknown role or a failed API goes to the unguarded no-access page (no redirect loop)", async () => {
+    mockedApiFetch.mockResolvedValueOnce(nav(null) as never);
+    expect(await getLandingRoute()).toBe("/no-access");
+    mockedApiFetch.mockResolvedValueOnce({ status: 500, success: false, message: "x", data: null } as never);
+    expect(await getLandingRoute()).toBe("/no-access");
   });
 });
 
@@ -241,24 +224,6 @@ describe("permission map + menu tree normalization", () => {
     expect(flat.map((i) => i.label)).toEqual(["Visible"]);
     expect(flat[0].children?.map((c) => c.label)).toEqual(["VisibleChild"]);
   });
-
-  it("getStaticNavForRole returns investor nav for 04/ROLE_INVESTOR", () => {
-    const groups = getStaticNavForRole("04");
-    expect(groups.flatMap((g) => g.items).map((i) => i.href)).toContain("/finance/investor");
-  });
-
-  it("staff nav no longer exposes admin-only router/onboarding surfaces (Trap 3)", () => {
-    const groups = getStaticNavForRole("03");
-    const hrefs = groups.flatMap((g) => g.items).map((i) => i.href);
-    expect(hrefs).not.toContain("/network/routers");
-    expect(hrefs).not.toContain("/network/routers/onboard");
-    expect(hrefs).not.toContain("/network/routers/setup");
-    expect(hrefs).not.toContain("/network/ip-pools");
-    expect(hrefs).not.toContain("/network/ip-mappings");
-    // Read-only monitoring surfaces remain for staff.
-    expect(hrefs).toContain("/network/live-sessions");
-    expect(hrefs).toContain("/network/mikrotik");
-  });
 });
 
 describe("getPermissionForRoute alias tolerance", () => {
@@ -348,40 +313,86 @@ describe("fail-closed runtime getters", () => {
   });
 });
 
-describe("sidebar = static layout filtered by API permissions", () => {
-  const view = { canView: true, canCreate: false, canEdit: false, canDelete: false };
-  const hidden = { canView: false, canCreate: false, canEdit: false, canDelete: false };
+describe("sidebar = database navigation (GET /navigation/me)", () => {
+  const groups: NavigationPayload["groups"] = [
+    {
+      key: "staff.finance",
+      label: "Finance",
+      displayOrder: 60,
+      items: [
+        { key: "staff.finance.statements", label: "Statements", route: "/finance/statements", icon: "file-text", displayOrder: 40, canView: true, canCreate: false, canEdit: false, canDelete: false },
+        { key: "staff.finance.expenses", label: "Expenses", route: "/finance/expenses", icon: "receipt", displayOrder: 30, canView: true, canCreate: true, canEdit: false, canDelete: false },
+      ],
+    },
+    {
+      key: "staff.overview",
+      label: "Overview",
+      displayOrder: 10,
+      items: [
+        { key: "staff.overview.overview", label: "Overview", route: "/dashboard/overview", icon: "layout-dashboard", exact: true, canView: true },
+      ],
+    },
+    {
+      key: "staff.billing",
+      label: "Billing",
+      displayOrder: 70,
+      items: [
+        {
+          key: "staff.billing.billing", label: "Billing", route: "/finance/billing", icon: "credit-card", canView: null,
+          children: [
+            { key: "staff.billing.invoices", label: "Invoices", route: "/finance/billing/invoices", icon: "file-text", displayOrder: 20, canView: true },
+            { key: "staff.billing.payments", label: "Payments", route: "/finance/billing/payments", icon: "credit-card", displayOrder: 10, canView: true },
+          ],
+        },
+      ],
+    },
+    { key: "staff.empty", label: "Empty", displayOrder: 5, items: [] },
+  ];
 
-  it("staff roles share the admin layout; investor/customer keep theirs; unknown gets none", () => {
-    expect(getNavLayoutForRole("SYSADMIN")).toBe(getNavLayoutForRole("03"));
-    expect(getNavLayoutForRole("02")).toBe(getNavLayoutForRole("01"));
-    expect(getNavLayoutForRole("04")).toBe(getStaticNavForRole("04"));
-    expect(getNavLayoutForRole("05")).toBe(getStaticNavForRole("05"));
-    expect(getNavLayoutForRole("WHATEVER")).toEqual([]);
-  });
-
-  it("an empty permission map renders an empty sidebar (fail closed)", () => {
-    expect(filterNavByPermissions(getNavLayoutForRole("01"), {})).toEqual([]);
-  });
-
-  it("keeps the static groups, labels and order for the routes the role may view", () => {
-    const nav = filterNavByPermissions(getNavLayoutForRole("03"), {
-      "/finance/expenses": view,
-      "/finance/statements": view,
-      "/network/regions": view,
-      "/system/users": hidden,
-    });
-    expect(nav.map((g) => g.label)).toEqual(["Network", "Finance"]);
+  it("orders sections and entries by display order and drops empty sections", () => {
+    const nav = navigationToNavGroups(groups);
+    expect(nav.map((g) => g.label)).toEqual(["Overview", "Finance", "Billing"]);
     expect(nav[1].items.map((i) => i.label)).toEqual(["Expenses", "Statements"]);
-    expect(nav[1].items[0].canCreate).toBe(false);
+    expect(nav[2].items[0].children?.map((c) => c.label)).toEqual(["Payments", "Invoices"]);
   });
 
-  it("a parent stays for a viewable child and loses the children the role cannot view", () => {
-    const nav = filterNavByPermissions(getNavLayoutForRole("01"), {
-      "/finance/billing/payments": view,
-      "/finance/billing/invoices": hidden,
-    });
-    const billing = nav.flatMap((g) => g.items).find((i) => i.href === "/finance/billing");
-    expect(billing?.children?.map((c) => c.label)).toEqual(["Payments"]);
+  it("normalizes routes and keeps the permission flags and exact matching", () => {
+    const nav = navigationToNavGroups(groups);
+    expect(nav[0].items[0]).toMatchObject({ href: "/dashboard/overview", exact: true, canView: true });
+    expect(nav[1].items[0]).toMatchObject({ href: "/finance/expenses", canCreate: true, canEdit: false });
+    expect(nav[1].items[1].href).toBe("/finance/statements");
+  });
+
+  it("a null flag (no catalogue entry) becomes undefined, which the sidebar renders", () => {
+    const billing = navigationToNavGroups(groups)[2].items[0];
+    expect(billing.canView).toBeUndefined();
+  });
+
+  it("no groups from the API means an empty sidebar (fail closed)", () => {
+    expect(navigationToNavGroups([])).toEqual([]);
+  });
+
+  it("fetchNavigation returns the payload on success", async () => {
+    const payload: NavigationPayload = {
+      user: { username: "jane", displayName: "Jane Doe", role: "01", roleName: "ADMIN" },
+      company: { code: "CMP-ACM-001", name: "Acme Net", logoUrl: "https://cdn.example/acme.svg" },
+      platform: null,
+      portal: "STAFF",
+      groups,
+    };
+    mockedApiFetch.mockResolvedValueOnce({ status: 200, success: true, message: "ok", data: payload } as never);
+    const result = await fetchNavigation();
+    expect(mockedApiFetch).toHaveBeenCalledWith("/navigation/me", { cache: "no-store" });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.data.company?.name).toBe("Acme Net");
+      expect(result.data.user.displayName).toBe("Jane Doe");
+    }
+  });
+
+  it("fetchNavigation reports an error instead of falling back to a hardcoded menu", async () => {
+    mockedApiFetch.mockResolvedValueOnce({ status: 500, success: false, message: "boom", data: null } as never);
+    const result = await fetchNavigation();
+    expect(result.ok).toBe(false);
   });
 });

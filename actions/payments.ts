@@ -10,6 +10,7 @@ import { timeoutSignal, unwrapPostings } from "@/lib/finance/ledger";
 import { withCompanyContext } from "@/lib/companyContext";
 import { revalidatePath } from "next/cache";
 import type { AccountPosting } from "@/lib/types/finance";
+import { getAccess } from "@/lib/data/access";
 import type {
   PaymentLedgerItem,
   PaymentLedgerKpis,
@@ -625,7 +626,7 @@ export async function triggerDarajaPull(
   if (!session?.user?.apiToken) {
     return { success: false, message: "You must be signed in to run the Daraja pull." };
   }
-  if (!canAccessReconciliation(session.user.role)) {
+  if (!canAccessReconciliation(await getAccess())) {
     return { success: false, message: "You don't have permission to run reconciliation." };
   }
   try {
@@ -673,7 +674,7 @@ export async function getDarajaReconciliation(
   if (!session?.user?.apiToken) {
     return { entries: [], summary: {}, message: "You must be signed in." };
   }
-  if (!canAccessReconciliation(session.user.role)) {
+  if (!canAccessReconciliation(await getAccess())) {
     return { entries: [], summary: {}, message: "You don't have permission to view reconciliation." };
   }
   const targetDate = isValidDateString(date) ? date : todayEatIso();
@@ -716,7 +717,7 @@ export async function forcePostReconcile(
   if (!session?.user?.apiToken) {
     return { success: false, message: "You must be signed in to force-post to the ledger." };
   }
-  if (!canAccessReconciliation(session.user.role)) {
+  if (!canAccessReconciliation(await getAccess())) {
     return { success: false, message: "You don't have permission to force-post to the ledger." };
   }
   if (!receiptNo.trim() || !isValidDateString(date)) {
@@ -947,7 +948,7 @@ export async function getPaybillTransactions(
   if (!session?.user?.apiToken) {
     return { data: EMPTY_PAYBILL_PAGE, message: "You must be signed in." };
   }
-  if (!canAccessPaybillRegister(session.user.role)) {
+  if (!canAccessPaybillRegister(await getAccess())) {
     return { data: EMPTY_PAYBILL_PAGE, message: "You don't have permission to view paybill payments." };
   }
   const params = new URLSearchParams();
@@ -1000,7 +1001,7 @@ export async function assignPaybillTransaction(
   if (!session?.user?.apiToken) {
     return { success: false, message: "You must be signed in." };
   }
-  if (!canAccessPaybillRegister(session.user.role)) {
+  if (!canAccessPaybillRegister(await getAccess())) {
     return { success: false, message: "You don't have permission to change paybill payments." };
   }
   if (!accountNumber.trim()) {
@@ -1036,7 +1037,7 @@ export async function markPaybillTransactionHandled(
   if (!session?.user?.apiToken) {
     return { success: false, message: "You must be signed in." };
   }
-  if (!canAccessPaybillRegister(session.user.role)) {
+  if (!canAccessPaybillRegister(await getAccess())) {
     return { success: false, message: "You don't have permission to change paybill payments." };
   }
   if (!note.trim()) {

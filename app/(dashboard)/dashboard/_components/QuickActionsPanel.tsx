@@ -55,10 +55,10 @@ const QUICK_ACTIONS: QuickAction[] = [
   iconColor: "text-orange-600",
   },
  {
- label: "Access Control",
- description: "Manage roles and permissions",
+ label: "Users & Access",
+ description: "Manage users, roles and security",
  icon: ShieldCheck,
- href: "/system/access",
+ href: "/system/users",
  color: "bg-red-50 hover:bg-red-100",
  iconColor: "text-destructive",
  },

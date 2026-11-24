@@ -19,7 +19,8 @@ import { withCompanyContext } from "@/lib/companyContext";
 import { auth } from "@/lib/auth";
 import { buildApiUrl } from "@/lib/constants";
 import { apiFetch } from "@/lib/apiClient";
-import { isInvestorRole, isPlatformAdminRole } from "@/lib/types/roles";
+import { getAccess } from "@/lib/data/access";
+import { can } from "@/lib/access";
 import type {
   InvestorAgreement,
   InvestorBillingSnapshot,
@@ -63,8 +64,8 @@ function defaultPeriod(): string {
  * (role 04) must not call them at all, so the money-flow page degrades cleanly
  * instead of rendering two 403 sections.
  */
-function isSysadminRole(rawRole?: string | null): boolean {
-  return isPlatformAdminRole(rawRole);
+async function isSuperAdmin(): Promise<boolean> {
+  return (await getAccess()).superAdmin;
 }
 
 async function getRevenueSummary(
@@ -153,9 +154,10 @@ export async function getInvestorMoneyFlowData(
     : defaultPeriod();
   const headers = await getAuthHeaders();
   const session = await auth();
-  const billingDetailsVisible =
-    isSysadminRole(session?.user?.role) || isInvestorRole(session?.user?.role);
-  const scopeFilters = isSysadminRole(session?.user?.role)
+  const access = await getAccess();
+  // agreements and billing snapshots: shown to roles the API lets read them
+  const billingDetailsVisible = can(access, "API_INVESTOR_AGREEMENTS", "VIEW");
+  const scopeFilters = access.superAdmin
     ? {
         companyId: input.companyId?.trim() || undefined,
         investorId: input.investorId?.trim() || undefined,
@@ -227,8 +229,7 @@ export async function getInvestorRouters(): Promise<{
  * account: the active investors of the register (`GET /investors/parties`).
  */
 export async function getInvestorOptions(): Promise<InvestorOption[]> {
-  const session = await auth();
-  if (!isSysadminRole(session?.user?.role)) return [];
+  if (!can(await getAccess(), "API_INVESTORREGISTRY_PARTIES", "VIEW")) return [];
   const res = await apiFetch<InvestorOption[]>("/investors/parties", { auth: "required", cache: "no-store" });
   return res.success && Array.isArray(res.data) ? res.data : [];
 }

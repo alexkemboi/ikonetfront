@@ -16,6 +16,7 @@ import {
   BackupsTab, EventsTab, InterfacesTab, LogsTab, PaymentsTab, SchedulerTab, ScriptsTab, UsersTab,
 } from "./RouterTabs";
 import { visibleInterval } from "@/lib/hooks/useVisibleInterval";
+import { useAccess } from "@/providers/AccessProvider";
 
 type TabKey = "system" | "customer-network" | "users" | "payments" | "interfaces" | "events" | "logs" | "backups" | "scheduler" | "scripts";
 
@@ -77,8 +78,8 @@ export function RouterOperationsView({
   const r = overview.router;
   const deviceId = r.deviceId;
   // "Check now": system administrators, company admins (01) and managers (02), as on the routers page
-  const role = (useSession().data?.user?.role ?? "").replace(/^ROLE_/i, "").toUpperCase();
-  const canCheckContact = ["SYSADMIN", "ADMIN", "01", "02"].includes(role);
+  const { can } = useAccess();
+  const canCheckContact = can("API_UPLINK", "CREATE");
 
   return (
     <div className="min-h-screen p-4 text-foreground sm:p-6 lg:p-8">

@@ -2,8 +2,8 @@ import { getRegions } from "@/actions/network";
 import { getPermissionForRoute } from "@/lib/data/nav";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import { isPlatformAdminRole } from "@/lib/types/roles";
 import { OnboardingWizard } from "./_components/OnboardingWizard";
+import { getAccess } from "@/lib/data/access";
 
 export const metadata = {
   title: "Onboard Network Router - IBS",
@@ -20,11 +20,12 @@ export default async function OnboardRouterPage() {
   // behind NAT (every site we run) can be reached on. Routers are linked with ZTP at
   // /network/routers/setup; only a system administrator may still open this one.
   const session = await auth();
-  const role = session?.user?.role;
-  if (!isPlatformAdminRole(role)) redirect("/network/routers/setup");
+  // the legacy wizard is kept for the super admin only (routers are linked with ZTP)
+  const access = await getAccess();
+  if (!access.superAdmin) redirect("/network/routers/setup");
   const pagePerms = await getPermissionForRoute("/network/routers/setup");
   if (!pagePerms.canView) redirect("/dashboard");
-  const isPlatformAdmin = role === "SYSADMIN" || role === "ADMIN";
+  const isPlatformAdmin = access.superAdmin;
   const companyScope = session?.user?.companyScope;
 
   const regionsResult = await getRegions(true);

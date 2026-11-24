@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useFormik } from "formik";
 import * as Yup from "yup";
 import { motion, AnimatePresence } from "framer-motion";
@@ -24,6 +24,7 @@ import { resendSignInCodeAction, signInAction, signInCodeAction } from "@/action
 import { cn } from "@/lib/utils";
 import { useHydrated } from "@/lib/useHydrated";
 import OtpVerification, { type OtpResendResult, type OtpVerifyResult } from "./OtpVerification";
+import PasswordChangeStep from "./PasswordChangeStep";
 
 const DISMISS_AFTER_MS = 6000;
 /** Used only if an older server answers without timings. */
@@ -109,6 +110,21 @@ export default function LoginForm({ error }: { error?: string }) {
   const [localError, setLocalError] = useState<string | undefined>(undefined);
   // set when the password was accepted and the server emailed a sign-in code (memory only)
   const [codeStep, setCodeStep] = useState<CodeStep | null>(null);
+  // set when the account signed in with a temporary or expired password (memory only)
+  const [changeStep, setChangeStep] = useState<{ username: string; token: string; reason?: string } | null>(null);
+  // the password typed in the first step; the required password change needs it (memory only)
+  const typedPassword = useRef("");
+
+  /** Finishes sign-in, or first asks for a new password when the server requires one. */
+  const proceed = async (data: { username?: string; token: string; passwordChangeRequired?: boolean; passwordChangeReason?: string }, fallbackUsername: string) => {
+    const username = data.username || fallbackUsername;
+    if (data.passwordChangeRequired) {
+      setCodeStep(null);
+      setChangeStep({ username, token: data.token, reason: data.passwordChangeReason });
+      return;
+    }
+    await finish(username, data.token);
+  };
 
   const finish = async (username: string, token: string) => {
     clearCompanyContextCookie();
@@ -127,7 +143,7 @@ export default function LoginForm({ error }: { error?: string }) {
       const message = res.message || "The sign-in code is not correct.";
       return { ok: false, message, final: isFinal(message) };
     }
-    await finish(res.data.username || codeStep.username, res.data.token);
+    await proceed({ ...res.data, token: res.data.token }, codeStep.username);
     return { ok: true };
   };
 
@@ -155,6 +171,7 @@ export default function LoginForm({ error }: { error?: string }) {
       setBusy(true);
       try {
         const username = values.username.trim();
+        typedPassword.current = values.password;
         const res = await signInAction(username, values.password);
         if (res.success && res.data?.codeRequired) {
           setCodeStep({
@@ -172,7 +189,7 @@ export default function LoginForm({ error }: { error?: string }) {
           setLocalError(res.message || "Invalid username or password.");
           return;
         }
-        await finish(res.data.username || username, res.data.token);
+        await proceed({ ...res.data, token: res.data.token }, username);
       } catch {
         setLocalError("Something went wrong. Please try again.");
       } finally {
@@ -183,6 +200,25 @@ export default function LoginForm({ error }: { error?: string }) {
 
   const usernameError = formik.touched.username ? formik.errors.username : undefined;
   const passwordError = formik.touched.password ? formik.errors.password : undefined;
+
+  if (changeStep) {
+    return (
+      <PasswordChangeStep
+        token={changeStep.token}
+        currentPassword={typedPassword.current}
+        reason={changeStep.reason}
+        onChanged={async () => {
+          typedPassword.current = "";
+          await finish(changeStep.username, changeStep.token);
+        }}
+        onCancel={() => {
+          typedPassword.current = "";
+          setChangeStep(null);
+          formik.setFieldValue("password", "", false);
+        }}
+      />
+    );
+  }
 
   if (codeStep) {
     return (
