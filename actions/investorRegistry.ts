@@ -71,8 +71,18 @@ export async function deleteInvestorAction(investorId: string): Promise<ApiRespo
 }
 
 /** Links the investor to the selected company (the backend takes the company from the context). */
-export async function linkInvestorCompanyAction(investorId: string): Promise<ApiResponse<InvestorDetail>> {
-  return write<InvestorDetail>(`/investors/${encodeURIComponent(investorId)}/companies`, "POST", {});
+/** Links the investor to a company: the one named, else the selected company (the request's context). */
+export async function linkInvestorCompanyAction(investorId: string, companyCode?: string): Promise<ApiResponse<InvestorDetail>> {
+  const res = await apiFetch<InvestorDetail>(`/investors/${encodeURIComponent(investorId)}/companies`, {
+    method: "POST",
+    body: companyCode ? { companyCode } : {},
+    auth: "required",
+    cache: "no-store",
+    // the named company is the request's company context, whatever the switcher shows
+    ...(companyCode ? { headers: { "X-Company-Context": companyCode } } : {}),
+  });
+  if (res.success) revalidatePath(PAGE);
+  return res;
 }
 
 export async function unlinkInvestorCompanyAction(

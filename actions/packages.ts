@@ -60,6 +60,8 @@ export type CompanyPackageAvailability = {
 };
 
 export type PackagePayload = {
+  /** Owning company (code), chosen in the form; required for a new package. */
+  companyId?:      string;
   packageName:     string;
   price:           string;
   packageCategory: string;
@@ -136,9 +138,12 @@ export async function createPackageAction(
   payload: PackagePayload
 ): Promise<ApiResponse<InternetPackage>> {
   try {
+    // the package's company (its form's Company field) is the request's company context
+    const headers = (await getAuthHeaders()) as Record<string, string>;
+    if (payload.companyId) headers["X-Company-Context"] = payload.companyId;
     const res = await fetch(BASE(), {
       method:  "POST",
-      headers: await getAuthHeaders(),
+      headers,
       body:    JSON.stringify(payload),
       cache:   "no-store",
     });

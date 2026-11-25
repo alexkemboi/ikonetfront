@@ -24,6 +24,7 @@ import { Label } from "@/components/ui/label";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useCompanyScope } from "@/providers/CompanyScopeProvider";
+import { CompanyField, useDefaultCompany } from "@/components/tenant/CompanyField";
 import {
   assignRouterAction,
   createAgreementAction,
@@ -111,6 +112,10 @@ export default function InvestorsClient({
 }: Props) {
   const router = useRouter();
   const { requireCompany, companyCode } = useCompanyScope();
+  // a new investor's first company, chosen in the register form (required)
+  const defaultCompany = useDefaultCompany();
+  const [investorCompany, setInvestorCompany] = useState("");
+  const [investorCompanyError, setInvestorCompanyError] = useState<string | undefined>();
   const [pending, startTransition] = useTransition();
 
   const [detail, setDetail] = useState<InvestorDetail | null>(initialDetail);
@@ -222,9 +227,22 @@ export default function InvestorsClient({
       return;
     }
     const id = investorForm.id;
+    if (!id && !investorCompany) {
+      setInvestorCompanyError("Choose the company this investor works with");
+      return;
+    }
+    const company = investorCompany;
     run(
-      () => (id ? updateInvestorAction(id, values) : createInvestorAction(values)),
-      id ? "Investor updated" : "Investor registered",
+      async () => {
+        if (id) return updateInvestorAction(id, values);
+        // the register is the platform's; the investor is then linked to the chosen company
+        const created = await createInvestorAction(values);
+        if (!created.success || !created.data) return created;
+        const linked = await linkInvestorCompanyAction(created.data.id, company);
+        return linked.success ? linked
+          : { ...linked, message: `The investor was registered but not linked to ${company}: ${linked.message ?? "unknown error"}. Link it from its details.` };
+      },
+      id ? "Investor updated" : "Investor registered and linked",
       () => setInvestorForm(null)
     );
   };
@@ -309,7 +327,11 @@ export default function InvestorsClient({
               Month-end statements
             </Button>
             <MessageInvestorsDialog target={{ kind: "company", companyCode }} label="Message investors" />
-            <Button onClick={() => setInvestorForm({ id: null, values: EMPTY_INVESTOR })}>
+            <Button onClick={() => {
+              setInvestorCompany(defaultCompany);
+              setInvestorCompanyError(undefined);
+              setInvestorForm({ id: null, values: EMPTY_INVESTOR });
+            }}>
               <Plus className="mr-2 h-4 w-4" />
               Register investor
             </Button>
@@ -783,6 +805,15 @@ export default function InvestorsClient({
                   />
                 </div>
               ))}
+              {!investorForm.id && (
+                <CompanyField
+                  id="inv-company"
+                  value={investorCompany}
+                  onChange={(code) => { setInvestorCompany(code); setInvestorCompanyError(undefined); }}
+                  error={investorCompanyError}
+                  hint="The investor is linked to this company; link more companies from its details later."
+                />
+              )}
               {investorForm.id && (
                 <div className="space-y-1">
                   <Label htmlFor="inv-status">Status</Label>

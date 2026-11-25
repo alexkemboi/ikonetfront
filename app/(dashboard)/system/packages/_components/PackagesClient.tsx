@@ -1,6 +1,6 @@
 "use client";
 
-import { useCompanyScope } from "@/providers/CompanyScopeProvider";
+import { CompanyField, useDefaultCompany } from "@/components/tenant/CompanyField";
 import { useState, useMemo } from "react";
 import { useFormik } from "formik";
 import * as Yup from "yup";
@@ -123,6 +123,15 @@ function PackageSheet({
  defaultService: PackageService;
  onSaved: (pkg: InternetPackage, isEdit: boolean) => void;
 }) {
+ // a new package's company, chosen in the form (required); an edited package keeps its own
+ const defaultCompany = useDefaultCompany();
+ const [company, setCompany] = useState(defaultCompany);
+ const [companyError, setCompanyError] = useState<string | undefined>();
+ const [wasOpen, setWasOpen] = useState(open);
+ if (open !== wasOpen) {
+ setWasOpen(open);
+ if (open) { setCompany(defaultCompany); setCompanyError(undefined); }
+ }
  const formik = useFormik({
  enableReinitialize: true,
  initialValues: editing
@@ -146,8 +155,13 @@ function PackageSheet({
  : { ...EMPTY_FORM, serviceType: defaultService },
  validationSchema,
  onSubmit: async (values, { setFieldError }) => {
+ if (!editing && !company) {
+ setCompanyError("Choose the company this package belongs to");
+ return;
+ }
  const payload: PackagePayload = {
  ...values,
+ ...(editing ? {} : { companyId: company }),
  price: values.price,
  validityValue: Number(values.validityValue),
  speedDownload: Number(values.speedDownload),
@@ -227,6 +241,15 @@ function PackageSheet({
  </p>
  </FormField>
 
+ {!editing && (
+ <CompanyField
+ id="package-company"
+ value={company}
+ onChange={(code) => { setCompany(code); setCompanyError(undefined); }}
+ error={companyError}
+ hint="The package is offered to this company's customers only."
+ />
+ )}
  <FormField label="Package Name" error={touched.packageName ? errors.packageName : undefined} required>
  <Input
  placeholder="e.g. Ksh 50 – 1 Hour"
@@ -423,7 +446,6 @@ export default function PackagesClient({
  const [deletingId, setDeletingId] = useState<number | null>(null);
  const [togglingId, setTogglingId] = useState<number | null>(null);
  const perms = usePermissions("/system/packages");
- const { requireCompany } = useCompanyScope();
 
  // Derive unique categories from data + fixed set
  const categories = useMemo(() => {
@@ -718,7 +740,7 @@ export default function PackagesClient({
  </p>
  </div>
  {perms.canCreate && (
- <Button onClick={() => requireCompany(openAdd)} className="gap-2 shrink-0">
+ <Button onClick={() => openAdd} className="gap-2 shrink-0">
  <Plus className="w-4 h-4" /> Add Package
  </Button>
  )}
@@ -766,7 +788,7 @@ export default function PackagesClient({
  </p>
  </div>
  {activeCategory === "All" && perms.canCreate && (
- <Button onClick={() => requireCompany(openAdd)} variant="outline" className="gap-2">
+ <Button onClick={() => openAdd} variant="outline" className="gap-2">
  <Plus className="w-4 h-4" /> Create Package
  </Button>
  )}

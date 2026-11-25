@@ -148,6 +148,8 @@ export async function setUserSessionLimit(id: number, sessionLimit: number | nul
 export async function inviteUser(payload: InvitePayload): Promise<ApiResponse<{ id: string } | null>> {
   const res = await apiFetch<{ id: string }>(`${USERS}/invitations`, {
     method: "POST",
+    // the invitation's company (its form's Company field) is the request's company context
+    ...(payload.companyId ? { headers: { "X-Company-Context": payload.companyId } } : {}),
     body: payload,
     auth: "required",
     cache: "no-store",

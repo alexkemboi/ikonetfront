@@ -114,6 +114,8 @@ export async function addSystemUser(
   // company, or from the company a SYSADMIN has selected in the dashboard.
   const res = await apiFetch<unknown>(SYSTEM_USERS_URL, {
     method: "POST",
+    // the account's company (its form's Company field) is the request's company context
+    ...(userData.companyId ? { headers: { "X-Company-Context": userData.companyId } } : {}),
     body: {
       ...userData,
       middleName: userData.middleName || undefined,

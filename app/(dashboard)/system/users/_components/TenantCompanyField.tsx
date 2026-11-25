@@ -65,7 +65,7 @@ export function TenantCompanyField({
   return (
     <div className="space-y-1.5">
       <Label htmlFor={id} className="text-sm font-medium">
-        Tenant / company{canChoose && <span className="ml-0.5 text-destructive">*</span>}
+        Tenant / company<span className="ml-0.5 text-destructive">*</span>
       </Label>
       {canChoose ? (
         <select

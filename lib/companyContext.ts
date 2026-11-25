@@ -53,6 +53,10 @@ export async function withCompanyContext(
   headers: Record<string, string>,
   explicitScope?: string | null
 ): Promise<Record<string, string>> {
+  // a request that names its company (a form's Company field) keeps it over the switcher's
+  if (headers["X-Company-Context"]) {
+    return headers;
+  }
   const code = await resolveCompanyContextCode(explicitScope);
   if (code) {
     headers["X-Company-Context"] = code;
