@@ -209,6 +209,8 @@ export type InvitePayload = {
   stationId?: string;
   locationId?: number;
   companyId?: string;
+  /** Tenant id of companyId; the API checks both name the same organisation. */
+  tenantId?: string;
 };
 
 export type InvitationPreview = {

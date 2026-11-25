@@ -69,6 +69,8 @@ export type UserData = {
   companyId?:  string;
   /** Investor party id. Required by the backend for the Network Partner role, refused for any other. */
   investorId?: string;
+  /** Tenant id of companyId; the API checks both name the same organisation. */
+  tenantId?: string;
   /** Station (idxno as text); decides the location. */
   stationId?: string;
   /** Location without a station. */

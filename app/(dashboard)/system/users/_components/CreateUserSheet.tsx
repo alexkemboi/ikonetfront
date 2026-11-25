@@ -20,6 +20,8 @@ import {
 import { INVESTOR_ID_PATTERN, InvestorPicker } from "./InvestorPicker";
 import type { InvestorOption } from "@/lib/types/investor";
 import type { OrganisationOptions } from "@/lib/types/usersAccess";
+import type { CompanySummary } from "@/actions/companies";
+import { TenantCompanyField, tenantIdOf } from "./TenantCompanyField";
 import { addSystemUser, type UserData } from "@/actions/system";
 import { isInvestorRoleRow, staffAssignableRoles, type ApiRole } from "@/lib/types/roles";
 import { cn } from "@/lib/utils";
@@ -94,6 +96,8 @@ export function CreateUserSheet({
  investors,
  isPlatformAdmin,
  organisation,
+ companies = [],
+ canChooseCompany = false,
 }: {
  open: boolean;
  onClose: () => void;
@@ -102,11 +106,25 @@ export function CreateUserSheet({
  companyId: string | null;
  investors: InvestorOption[];
  isPlatformAdmin: boolean;
- /** Locations and stations of the company the account will belong to. */
+ /** Locations and stations of the company in scope (reused while it stays chosen). */
  organisation?: OrganisationOptions | null;
+ /** Organisations a role that reaches every company may create the account in. */
+ companies?: CompanySummary[];
+ /** The caller reaches every company: the form asks for the tenant / company. */
+ canChooseCompany?: boolean;
 }) {
  const [stationId, setStationId] = useState("");
  const [locationId, setLocationId] = useState("");
+ // the account's organisation: chosen in the form, starting from the one in scope
+ const [company, setCompany] = useState(companyId ?? "");
+ const [companyError, setCompanyError] = useState<string | undefined>();
+ const [options, setOptions] = useState<OrganisationOptions | null>(organisation ?? null);
+ // each time the form opens it starts from the company in scope (state adjusted while rendering)
+ const [wasOpen, setWasOpen] = useState(open);
+ if (open !== wasOpen) {
+   setWasOpen(open);
+   if (open) setCompany(companyId ?? "");
+ }
  // Offer only roles the backend lets this caller assign: SYSADMIN and customer
  // accounts have their own flows, and only a SYSADMIN creates a Network Partner.
  const assignableRoles = staffAssignableRoles(roles).filter(
@@ -127,8 +145,8 @@ export function CreateUserSheet({
  // A Network Partner login belongs to no company, so an investor working with several
  // companies is not tied to one; every other account belongs to the selected company.
  const investorLogin = isInvestorRoleRow(roles, values.role);
- if (!companyId && !investorLogin) {
- toast.error("Choose a company in the top bar before creating a staff account.");
+ if (!company && !investorLogin) {
+ setCompanyError("Choose the organisation this account belongs to");
  return;
  }
  const payload: UserData = {
@@ -140,7 +158,8 @@ export function CreateUserSheet({
  phoneNumber: values.phoneNumber || undefined,
  role: values.role,
  password: values.password,
- ...(investorLogin ? { investorId: values.investorId } : { companyId: companyId ?? undefined }),
+ // the company by code and by tenant id: the API checks both name the same organisation
+ ...(investorLogin ? { investorId: values.investorId } : { companyId: company, tenantId: tenantIdOf(companies, company) }),
  ...(!investorLogin && stationId ? { stationId } : {}),
  ...(!investorLogin && !stationId && locationId ? { locationId: Number(locationId) } : {}),
  };
@@ -176,6 +195,10 @@ export function CreateUserSheet({
 
  function handleClose() {
  formik.resetForm();
+ setCompany(companyId ?? "");
+ setCompanyError(undefined);
+ setStationId("");
+ setLocationId("");
  setShowPassword(false);
  setShowConfirm(false);
  onClose();
@@ -301,19 +324,30 @@ export function CreateUserSheet({
  </div>
 
  {/* ── Organisation ── */}
- {organisation && !isInvestorRoleRow(roles, formik.values.role) && (
+ {!isInvestorRoleRow(roles, formik.values.role) && (
  <div className="space-y-4">
  <SectionDivider label="Organisation" />
+ <TenantCompanyField
+ id="create-company"
+ companies={companies}
+ canChoose={canChooseCompany}
+ value={company}
+ onChange={(code) => { setCompany(code); setCompanyError(undefined); setStationId(""); setLocationId(""); }}
+ onOptions={setOptions}
+ initialOptions={{ code: companyId, options: organisation ?? null }}
+ error={companyError}
+ />
+ {options && (
  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
  <Field label="Location">
  <select
  aria-label="Location"
- value={stationId ? String(organisation.stations.find((s) => String(s.id) === stationId)?.locationId ?? "") : locationId}
+ value={stationId ? String(options.stations.find((s) => String(s.id) === stationId)?.locationId ?? "") : locationId}
  onChange={(e) => { setLocationId(e.target.value); setStationId(""); }}
  className="flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
  >
  <option value="">No location</option>
- {organisation.locations.map((l) => <option key={l.id} value={String(l.id)}>{l.name}</option>)}
+ {options.locations.map((l) => <option key={l.id} value={String(l.id)}>{l.name}</option>)}
  </select>
  </Field>
  <Field label="Station">
@@ -324,12 +358,13 @@ export function CreateUserSheet({
  className="flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
  >
  <option value="">No station</option>
- {organisation.stations
+ {options.stations
  .filter((s) => !locationId || String(s.locationId) === locationId)
  .map((s) => <option key={s.id} value={String(s.id)}>{s.name}</option>)}
  </select>
  </Field>
  </div>
+ )}
  </div>
  )}
 

@@ -12,6 +12,8 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "
 import { inviteUser } from "@/actions/usersAccess";
 import { staffAssignableRoles, type ApiRole } from "@/lib/types/roles";
 import type { OrganisationOptions } from "@/lib/types/usersAccess";
+import type { CompanySummary } from "@/actions/companies";
+import { TenantCompanyField, tenantIdOf } from "./TenantCompanyField";
 import { cn } from "@/lib/utils";
 
 const schema = Yup.object({
@@ -39,21 +41,41 @@ export function InviteUserSheet({
   roles,
   companyId,
   organisation,
+  companies = [],
+  canChooseCompany = false,
 }: {
   open: boolean;
   onClose: () => void;
   onInvited: () => void;
   roles: ApiRole[];
   companyId: string | null;
+  /** Locations and stations of the company in scope (reused while it stays chosen). */
   organisation: OrganisationOptions | null;
+  /** Organisations a role that reaches every company may invite into. */
+  companies?: CompanySummary[];
+  /** The caller reaches every company: the form asks for the tenant / company. */
+  canChooseCompany?: boolean;
 }) {
   const [busy, setBusy] = useState(false);
+  const [company, setCompany] = useState(companyId ?? "");
+  const [companyError, setCompanyError] = useState<string | undefined>();
+  const [options, setOptions] = useState<OrganisationOptions | null>(organisation);
+  // each time the form opens it starts from the company in scope (state adjusted while rendering)
+  const [wasOpen, setWasOpen] = useState(open);
+  if (open !== wasOpen) {
+    setWasOpen(open);
+    if (open) setCompany(companyId ?? "");
+  }
   const roleOptions = staffAssignableRoles(roles).filter((r) => r.principalType !== "INVESTOR");
 
   const formik = useFormik<Values>({
     initialValues: EMPTY,
     validationSchema: schema,
     onSubmit: async (values, { resetForm, setFieldError }) => {
+      if (!company) {
+        setCompanyError("Choose the organisation this person will belong to");
+        return;
+      }
       setBusy(true);
       try {
         const res = await inviteUser({
@@ -64,7 +86,9 @@ export function InviteUserSheet({
           role: values.role,
           stationId: values.stationId || undefined,
           locationId: !values.stationId && values.locationId ? Number(values.locationId) : undefined,
-          companyId: companyId ?? undefined,
+          // the company by code and by tenant id: the API checks both name the same organisation
+          companyId: company,
+          tenantId: tenantIdOf(companies, company),
         });
         if (!res.success) {
           if (res.code === "EMAIL_ALREADY_EXISTS" || res.code === "INVITATION_EXISTS") setFieldError("email", res.message);
@@ -85,6 +109,7 @@ export function InviteUserSheet({
   const error = (field: keyof Values) => (formik.touched[field] ? formik.errors[field] : undefined);
   const close = () => {
     formik.resetForm();
+    setCompanyError(undefined);
     onClose();
   };
 
@@ -126,21 +151,36 @@ export function InviteUserSheet({
                 {roleOptions.map((r) => <option key={r.roleCode} value={r.roleCode}>{r.name}</option>)}
               </select>
             </FormField>
-            {organisation && (
+            <TenantCompanyField
+              id="invite-company"
+              companies={companies}
+              canChoose={canChooseCompany}
+              value={company}
+              onChange={(code) => {
+                setCompany(code);
+                setCompanyError(undefined);
+                formik.setFieldValue("stationId", "");
+                formik.setFieldValue("locationId", "");
+              }}
+              onOptions={setOptions}
+              initialOptions={{ code: companyId, options: organisation }}
+              error={companyError}
+            />
+            {options && (
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <FormField id="invite-location" label="Location">
                   <select id="invite-location" value={formik.values.locationId}
                     onChange={(e) => { formik.setFieldValue("locationId", e.target.value); formik.setFieldValue("stationId", ""); }}
                     className="flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm">
                     <option value="">No location</option>
-                    {organisation.locations.map((l) => <option key={l.id} value={String(l.id)}>{l.name}</option>)}
+                    {options.locations.map((l) => <option key={l.id} value={String(l.id)}>{l.name}</option>)}
                   </select>
                 </FormField>
                 <FormField id="invite-station" label="Station">
                   <select id="invite-station" {...formik.getFieldProps("stationId")}
                     className="flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm">
                     <option value="">No station</option>
-                    {organisation.stations
+                    {options.stations
                       .filter((s) => !formik.values.locationId || String(s.locationId) === formik.values.locationId)
                       .map((s) => <option key={s.id} value={String(s.id)}>{s.name}</option>)}
                   </select>

@@ -91,6 +91,7 @@ export default function UsersAccessClient({
   investors,
   organisation,
   isPlatformAdmin,
+  platformReach = false,
   requireChangeAfterReset,
   can,
 }: {
@@ -100,6 +101,8 @@ export default function UsersAccessClient({
   investors: InvestorOption[];
   organisation: OrganisationOptions | null;
   isPlatformAdmin: boolean;
+  /** The role reaches every company: the create and invite forms ask for the tenant / company. */
+  platformReach?: boolean;
   requireChangeAfterReset: boolean;
   can: UsersAccessPermissions;
 }) {
@@ -482,14 +485,15 @@ export default function UsersAccessClient({
             Export
           </Button>
           {can.invite && (
-            <Button variant="outline" size="sm" className="gap-2" onClick={() => requireCompany(() => setInviteOpen(true))}>
+            <Button variant="outline" size="sm" className="gap-2"
+              onClick={() => (platformReach ? setInviteOpen(true) : requireCompany(() => setInviteOpen(true)))}>
               <MailPlus className="size-4" /> Invite user
             </Button>
           )}
           {can.createUsers && (
             <Button size="sm" className="gap-2"
-              // a SYSADMIN may open the form with no company: a Network Partner login needs none
-              onClick={() => (isPlatformAdmin ? setCreateOpen(true) : requireCompany(() => setCreateOpen(true)))}>
+              // a role that reaches every company chooses the tenant / company in the form itself
+              onClick={() => (platformReach ? setCreateOpen(true) : requireCompany(() => setCreateOpen(true)))}>
               <UserPlus className="size-4" /> Create user
             </Button>
           )}
@@ -531,7 +535,8 @@ export default function UsersAccessClient({
             {activeFilterCount > 0 ? (
               <Button variant="link" size="sm" onClick={() => { setFilters(NO_FILTERS); setSearch(""); setPageIndex(0); }}>Clear filters</Button>
             ) : can.invite ? (
-              <Button variant="link" size="sm" onClick={() => requireCompany(() => setInviteOpen(true))}>Invite the first user</Button>
+              <Button variant="link" size="sm"
+                onClick={() => (platformReach ? setInviteOpen(true) : requireCompany(() => setInviteOpen(true)))}>Invite the first user</Button>
             ) : null}
           </div>
         }
@@ -590,6 +595,8 @@ export default function UsersAccessClient({
         investors={investors}
         isPlatformAdmin={isPlatformAdmin}
         organisation={organisation}
+        companies={companies}
+        canChooseCompany={platformReach}
       />
       <InviteUserSheet
         open={inviteOpen}
@@ -598,6 +605,8 @@ export default function UsersAccessClient({
         roles={roles}
         companyId={companyCode}
         organisation={organisation}
+        companies={companies}
+        canChooseCompany={platformReach}
       />
       <EditUserSheet
         key={editing?.idxno ?? "none"}

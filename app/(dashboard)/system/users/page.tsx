@@ -6,6 +6,7 @@ import { getOrganisationOptions, getSecurityPolicy, getUserDirectory, getUserSum
 import { Skeleton } from "@/components/ui/skeleton";
 import UsersAccessClient from "./_components/UsersAccessClient";
 import { getUsersAccessRights } from "./_lib/access";
+import { hasPlatformScope } from "@/lib/access";
 
 export const metadata = { title: "Users & Access Control — SpeedLink" };
 
@@ -43,6 +44,7 @@ async function UsersPage() {
       investors={investors}
       organisation={organisation.success ? organisation.data : null}
       isPlatformAdmin={rights.access.superAdmin}
+      platformReach={hasPlatformScope(rights.access)}
       // without the policy (no right to read it) assume the default: a reset password is temporary
       requireChangeAfterReset={policy?.success && policy.data ? policy.data.requireChangeAfterReset : true}
       can={{

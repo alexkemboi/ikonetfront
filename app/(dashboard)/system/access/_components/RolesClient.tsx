@@ -38,16 +38,15 @@ import { NO_PERMISSIONS } from "@/lib/data/nav-constants";
 import type { MenuNode } from "@/lib/nav";
 import type { PermissionFlags, PermissionMap } from "@/lib/types/roles";
 import type { Role, RoleUser, ApiRoleUser } from "./roleTypes";
+import type { ColumnDef } from "@tanstack/react-table";
+import { DataTable } from "@/components/shared/data-table";
+import {
+ DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ConfirmDialog, type PendingConfirm } from "../../users/_components/UserActionDialogs";
 
 // ── Role color accent map ──────────────────────────────────────────────
-const ROLE_COLORS: Record<string, string> = {
- admin: "bg-primary/10 text-primary border-primary/20",
- finance: "bg-success/10 text-success border-success/20",
- management: "bg-warning/10 text-warning border-warning/20",
- support: "bg-warning/10 text-warning border-warning/20",
- "cs-agent": "bg-muted text-muted-foreground border-border",
-};
-
 // ── Flag column config ─────────────────────────────────────────────────
 // Defines the four permission flags in display order, with labels and colors.
 // Keeping this outside the component means the array is created once, not on every render.
@@ -853,57 +852,11 @@ async function handleSave() {
 }
 
 // ── Role card (left panel) ─────────────────────────────────────────────
-function RoleCard({
- role,
- isSelected,
- onSelect,
-}: {
- role: Role;
- isSelected: boolean;
- onSelect: () => void;
-}) {
- return (
- <button
- type="button"
- onClick={onSelect}
- className={cn(
- "w-full text-left rounded-xl border p-4 transition-all duration-150 group",
- isSelected
- ? "border-warning bg-warning/5 shadow-sm"
- : "border-border hover:border-warning/40 hover:bg-muted/50"
- )}
- >
- <div className="flex items-start justify-between gap-2 mb-2">
- <div className="flex items-center gap-2">
- {isSelected ? (
- <div className="w-2 h-2 rounded-full bg-warning shrink-0 mt-0.5" />
- ) : (
- <div className="w-2 h-2 rounded-full bg-border shrink-0 mt-0.5 group-hover:bg-warning/40" />
- )}
- <span
- className={cn(
- "text-sm font-semibold transition-colors",
- isSelected ? "text-foreground" : "text-foreground/80 group-hover:text-foreground"
- )}
- >
- {role.name}
- </span>
- </div>
- <Badge
- variant="outline"
- className={cn("text-[10px] px-2 py-0.5 shrink-0", ROLE_COLORS[role.id])}
- >
- {role.userCount} {role.userCount === 1 ? "user" : "users"}
- </Badge>
- </div>
- <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2 pl-4">
- {role.description}
- </p>
- </button>
- );
-}
+const TYPE_LABELS: Record<string, string> = { STAFF: "Staff", INVESTOR: "Network Partner", CUSTOMER: "Customer" };
+const REACH_LABELS: Record<string, string> = { PLATFORM: "All companies", COMPANY: "Whole company", STATION: "Station" };
 
-// ── Main component ─────────────────────────────────────────────────────
+type DetailTab = "permissions" | "users" | "settings";
+
 export default function RolesClient({
   roles,
   menuTree,
@@ -915,243 +868,342 @@ export default function RolesClient({
   allSystemUsers: ApiRoleUser[];
   canMutate?: boolean;
 }) {
- const dispatch = useAppDispatch();
- const editingId = useAppSelector((s) => s.roles.editingRoleId);
+  const dispatch = useAppDispatch();
+  const editingId = useAppSelector((s) => s.roles.editingRoleId);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [createOpen, setCreateOpen] = useState(false);
+  const [detail, setDetail] = useState<{ id: string; tab: DetailTab } | null>(null);
+  const [confirm, setConfirm] = useState<PendingConfirm | null>(null);
+  const [duplicateOf, setDuplicateOf] = useState<Role | null>(null);
+  const [copyCode, setCopyCode] = useState("");
+  const [copyName, setCopyName] = useState("");
+  const [copying, setCopying] = useState(false);
+  const [editName, setEditName] = useState("");
+  const editInputRef = useRef<HTMLInputElement>(null);
 
- // read-only viewers never see the super admin role (list, or the role opened first)
- const [selectedId, setSelectedId] = useState<string>(
- () => (canMutate ? roles : roles.filter((r) => !r.isSuperAdmin))[0]?.id ?? ""
- );
- const [searchQuery, setSearchQuery] = useState("");
- const [createOpen, setCreateOpen] = useState(false);
- const [editName, setEditName] = useState("");
- const editInputRef = useRef<HTMLInputElement>(null);
+  // read-only viewers never see the super admin role
+  const visibleRoles = canMutate ? roles : roles.filter((r) => !r.isSuperAdmin);
+  const filteredRoles = visibleRoles.filter((r) => {
+    const q = searchQuery.trim().toLowerCase();
+    return !q || r.name.toLowerCase().includes(q) || r.id.toLowerCase().includes(q) || r.description.toLowerCase().includes(q);
+  });
+  const selectedRole = detail ? visibleRoles.find((r) => r.id === detail.id) : undefined;
 
- const visibleRoles = canMutate
- ? roles
- : roles.filter((r) => !r.isSuperAdmin);
-
- const filteredRoles = visibleRoles.filter(
- (r) =>
- !searchQuery ||
- r.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
- r.description.toLowerCase().includes(searchQuery.toLowerCase())
- );
-
- const selectedRole = visibleRoles.find((r) => r.id === selectedId);
-
-function handleStartEdit(role: Role) {
-  if (!canMutate) return;
-  setEditName(role.name);
-  dispatch(startEditingRole(role.id));
-  setTimeout(() => editInputRef.current?.focus(), 50);
-}
-
-async function handleSaveEdit() {
-  if (!canMutate || !selectedRole || !editName.trim()) return;
-  const res = await updateRoleAction(selectedRole.idxno, selectedRole.id, { name: editName.trim() });
-  if (res.success) toast.success("Role renamed");
-  else toast.error("Role not renamed", { description: res.message });
-  dispatch(stopEditingRole());
+  function open(role: Role, tab: DetailTab) {
+    dispatch(stopEditingRole());
+    setDetail({ id: role.id, tab });
   }
 
- return (
- <>
- {/* Page header */}
- <div className="flex items-center justify-between mb-6">
- <div>
- <h1 className="text-xl font-normal text-foreground">Roles & Permissions</h1>
- <p className="text-sm text-muted-foreground mt-0.5">
- Manage staff roles and control access to each module.
- </p>
-</div>
-  {canMutate && (
-  <Button className="gap-2 h-9" onClick={() => setCreateOpen(true)}>
-  <Plus className="w-4 h-4" />
-  New Role
-  </Button>
-  )}
-  </div>
+  function handleStartEdit(role: Role) {
+    if (!canMutate) return;
+    setEditName(role.name);
+    dispatch(startEditingRole(role.id));
+    setTimeout(() => editInputRef.current?.focus(), 50);
+  }
 
- {/* Two-pane layout */}
- <div className="flex flex-col md:flex-row gap-5 h-[calc(100vh-180px)]">
+  async function handleSaveEdit() {
+    if (!canMutate || !selectedRole || !editName.trim()) return;
+    const res = await updateRoleAction(selectedRole.idxno, selectedRole.id, { name: editName.trim() });
+    if (res.success) toast.success("Role renamed");
+    else toast.error("Role not renamed", { description: res.message });
+    dispatch(stopEditingRole());
+  }
 
- {/* ── Left: Role list ── */}
- <div className="w-72 shrink-0 flex flex-col gap-3">
- {/* Search */}
- <div className="relative">
- <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
- <Input
- placeholder="Search roles…"
- value={searchQuery}
- onChange={(e) => setSearchQuery(e.target.value)}
- className="pl-9 h-9"
- />
- </div>
+  async function handleDuplicate() {
+    if (!duplicateOf || !copyCode.trim() || !copyName.trim()) return;
+    setCopying(true);
+    try {
+      const res = await duplicateRoleAction(duplicateOf.idxno, copyCode.trim().toUpperCase(), copyName.trim());
+      if (!res.success) {
+        toast.error("Role not copied", { description: res.message });
+        return;
+      }
+      toast.success("Role copied", { description: `${copyName.trim()} has the same type, reach and permissions.` });
+      setDuplicateOf(null);
+    } finally {
+      setCopying(false);
+    }
+  }
 
- {/* Role cards */}
- <ScrollArea className="flex-1">
- <div className="space-y-2 pr-1">
- {filteredRoles.map((role) => (
- <RoleCard
- key={role.id}
- role={role}
- isSelected={selectedId === role.id}
- onSelect={() => setSelectedId(role.id)}
- />
- ))}
- {filteredRoles.length === 0 && (
- <p className="text-xs text-muted-foreground text-center py-8">
- No roles match your search.
- </p>
- )}
- </div>
- </ScrollArea>
- </div>
+  const run = async (work: () => Promise<{ success: boolean; message?: string }>, done: string): Promise<string | void> => {
+    const res = await work();
+    if (!res.success) {
+      toast.error(res.message || "The action failed.");
+      return res.message || "failed";
+    }
+    toast.success(done);
+  };
 
- {/* ── Right: Role detail ── */}
- {selectedRole ? (
- <div className="flex-1 bg-card rounded-2xl border border-border overflow-hidden flex flex-col">
- {/* Role detail header */}
- <div className="px-6 py-5 border-b border-border">
- <div className="flex items-start justify-between gap-4">
- <div className="flex-1 min-w-0">
- {/* Role name — inline editable via Redux */}
- {editingId === selectedRole.id ? (
- <div className="flex items-center gap-2">
- <input
- ref={editInputRef}
- value={editName}
- onChange={(e) => setEditName(e.target.value)}
- onKeyDown={(e) => {
-  if (e.key === "Enter") handleSaveEdit();
- if (e.key === "Escape") dispatch(stopEditingRole());
- }}
- className="text-lg font-bold bg-transparent border-b-2 border-primary outline-none text-foreground w-48"
- />
- <button
- type="button"
-  onClick={()=>handleSaveEdit()}
- className="text-success hover:text-success/80 transition-colors"
- >
- <Check className="w-4 h-4" />
- </button>
- <button
- type="button"
- onClick={() => dispatch(stopEditingRole())}
- className="text-muted-foreground hover:text-foreground transition-colors"
- >
- <X className="w-4 h-4" />
- </button>
- </div>
- ) : (
-<div className="flex items-center gap-2 group/title">
-  <h2 className="text-lg font-bold text-foreground">{selectedRole.name}</h2>
-  {!selectedRole.isActive && <Badge variant="outline" className="text-[10px]">inactive</Badge>}
-  {selectedRole.isSuperAdmin && <Badge variant="outline" className="text-[10px]">super admin</Badge>}
-  {canMutate && (
-  <button
-  type="button"
-  onClick={() => handleStartEdit(selectedRole)}
-  className="opacity-0 group-hover/title:opacity-100 text-muted-foreground hover:text-foreground transition-all"
-  aria-label="Edit role name"
-  >
-  <Pencil className="w-3.5 h-3.5" />
-  </button>
-  )}
-  </div>
- )}
- <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
- {selectedRole.description}
- </p>
- </div>
+  const columns: ColumnDef<Role>[] = [
+    {
+      id: "role",
+      header: "Role",
+      cell: ({ row }) => {
+        const r = row.original;
+        return (
+          <button type="button" onClick={() => open(r, "permissions")}
+            className="block max-w-72 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 rounded-md">
+            <span className="flex items-center gap-1.5">
+              <span className="truncate text-sm font-medium text-foreground hover:underline">{r.name}</span>
+              {r.isSuperAdmin && <Badge variant="outline" className="text-[10px]">super admin</Badge>}
+              {r.isSystem && !r.isSuperAdmin && <Badge variant="outline" className="text-[10px]">built in</Badge>}
+            </span>
+            <span className="block truncate text-[11px] text-muted-foreground">
+              <span className="font-mono">{r.id}</span>{r.description ? ` · ${r.description}` : ""}
+            </span>
+          </button>
+        );
+      },
+    },
+    {
+      id: "type",
+      header: "Type",
+      cell: ({ row }) => <span className="whitespace-nowrap text-sm">{TYPE_LABELS[row.original.principalType] ?? row.original.principalType}</span>,
+    },
+    {
+      id: "reach",
+      header: "Reach",
+      cell: ({ row }) => (
+        <span className="whitespace-nowrap text-sm">
+          {row.original.isSuperAdmin ? "All companies" : REACH_LABELS[row.original.scopeLevel ?? ""] ?? "Own scope"}
+        </span>
+      ),
+    },
+    {
+      id: "members",
+      header: "Members",
+      cell: ({ row }) => (
+        <button type="button" onClick={() => open(row.original, "users")}
+          className="inline-flex items-center gap-1.5 rounded-md text-sm tabular-nums hover:underline">
+          <Users className="size-3.5 text-muted-foreground" aria-hidden /> {row.original.userCount}
+        </button>
+      ),
+    },
+    {
+      id: "status",
+      header: "Status",
+      cell: ({ row }) => row.original.isActive
+        ? <Badge variant="outline" className="text-[11px] font-medium bg-success/10 text-success border-success/25">Active</Badge>
+        : <Badge variant="outline" className="text-[11px] font-medium bg-muted text-muted-foreground border-border">Inactive</Badge>,
+    },
+    {
+      id: "actions",
+      header: () => <span className="sr-only">Actions</span>,
+      enableHiding: false,
+      cell: ({ row }) => {
+        const r = row.original;
+        const deletable = canMutate && !r.isSystem && !r.isSuperAdmin && r.userCount === 0;
+        return (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="size-8 p-0" aria-label={`Actions for ${r.name}`}>
+                <MoreHorizontal className="size-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-52">
+              <DropdownMenuLabel>Actions</DropdownMenuLabel>
+              <DropdownMenuItem onClick={() => open(r, "permissions")}>
+                {canMutate && !r.isSuperAdmin ? "Edit permissions" : "View permissions"}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => open(r, "users")}>View members</DropdownMenuItem>
+              {canMutate && (
+                <>
+                  <DropdownMenuItem onClick={() => open(r, "settings")}>Edit details</DropdownMenuItem>
+                  {!r.isSuperAdmin && (
+                    <DropdownMenuItem onClick={() => {
+                      setCopyCode(`${r.id}_COPY`.slice(0, 30));
+                      setCopyName(`${r.name} (copy)`.slice(0, 50));
+                      setDuplicateOf(r);
+                    }}>Duplicate</DropdownMenuItem>
+                  )}
+                  {!r.isSuperAdmin && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem className={r.isActive ? "text-destructive" : undefined} onClick={() => setConfirm(r.isActive ? {
+                        title: `Deactivate ${r.name}?`,
+                        description: <>An inactive role grants nothing and cannot be newly assigned. Its {r.userCount} member{r.userCount === 1 ? "" : "s"} lose its permissions until it is activated again.</>,
+                        confirmLabel: "Deactivate",
+                        destructive: true,
+                        run: () => run(() => updateRoleAction(r.idxno, r.id, { isActive: false }), `${r.name} deactivated`),
+                      } : {
+                        title: `Activate ${r.name}?`,
+                        description: <>Its members get its permissions again, and it can be assigned.</>,
+                        confirmLabel: "Activate",
+                        run: () => run(() => updateRoleAction(r.idxno, r.id, { isActive: true }), `${r.name} activated`),
+                      })}>
+                        {r.isActive ? "Deactivate" : "Activate"}
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                  {deletable && (
+                    <DropdownMenuItem className="text-destructive" onClick={() => setConfirm({
+                      title: `Delete ${r.name}?`,
+                      description: <>The role and its permissions are removed for good. Only a custom role with no members can be deleted.</>,
+                      confirmLabel: "Delete role",
+                      destructive: true,
+                      run: () => run(() => deleteRoleAction(r.idxno), `${r.name} deleted`),
+                    })}>
+                      Delete
+                    </DropdownMenuItem>
+                  )}
+                  {!deletable && !r.isSystem && !r.isSuperAdmin && (
+                    <DropdownMenuItem disabled>Delete (move its members first)</DropdownMenuItem>
+                  )}
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        );
+      },
+    },
+  ];
 
- <div className="flex items-center gap-2 shrink-0">
- <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-muted text-sm">
- <Users className="w-3.5 h-3.5 text-muted-foreground" />
- <span className="font-semibold text-foreground billing-table">
- {selectedRole.userCount}
- </span>
- <span className="text-muted-foreground text-xs">
- {selectedRole.userCount === 1 ? "member" : "members"}
- </span>
- </div>
- <button
- type="button"
- aria-label="More options"
- className="w-8 h-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
- >
- <MoreHorizontal className="w-4 h-4" />
- </button>
- </div>
- </div>
- </div>
+  return (
+    <>
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 className="text-lg font-normal text-foreground">Roles &amp; Permissions</h2>
+          <p className="text-sm text-muted-foreground">
+            {visibleRoles.length} roles. Open a role to set what it may view, create, edit and delete.
+          </p>
+        </div>
+        {canMutate && (
+          <Button className="h-9 gap-2" onClick={() => setCreateOpen(true)}>
+            <Plus className="size-4" />
+            New role
+          </Button>
+        )}
+      </div>
 
- {/* Tabs */}
- <Tabs defaultValue="permissions" className="flex-1 flex flex-col overflow-hidden">
- <div className="px-6 border-b border-border">
- <TabsList className="h-auto bg-transparent p-0 gap-6 rounded-none">
- <TabsTrigger
- value="users"
- className="data-[state=active]:border-b-2 data-[state=active]:border-warning data-[state=active]:text-foreground data-[state=active]:shadow-none rounded-none pb-3 pt-3 px-0 text-sm font-medium text-muted-foreground bg-transparent"
- >
- <Users className="w-3.5 h-3.5 mr-1.5" />
- Members
- <Badge
- variant="outline"
- className="ml-1.5 h-4 px-1.5 text-[10px] bg-muted border-border"
- >
- {selectedRole.users.length}
- </Badge>
- </TabsTrigger>
- <TabsTrigger
- value="permissions"
- className="data-[state=active]:border-b-2 data-[state=active]:border-warning data-[state=active]:text-foreground data-[state=active]:shadow-none rounded-none pb-3 pt-3 px-0 text-sm font-medium text-muted-foreground bg-transparent"
- >
- <Shield className="w-3.5 h-3.5 mr-1.5" />
- Permissions
- </TabsTrigger>
- {canMutate && (
- <TabsTrigger
- value="settings"
- className="data-[state=active]:border-b-2 data-[state=active]:border-warning data-[state=active]:text-foreground data-[state=active]:shadow-none rounded-none pb-3 pt-3 px-0 text-sm font-medium text-muted-foreground bg-transparent"
- >
- <Settings className="w-3.5 h-3.5 mr-1.5" />
- Settings
- </TabsTrigger>
- )}
- </TabsList>
- </div>
+      <DataTable
+        columns={columns}
+        data={filteredRoles}
+        getRowId={(r) => r.id}
+        searchPlaceholder="Search roles by name, code or description…"
+        searchValue={searchQuery}
+        onSearchChange={setSearchQuery}
+        manualFiltering
+        columnsHiddenUntilLg={["type"]}
+        emptyState={
+          <div className="flex flex-col items-center gap-2 py-6">
+            <Shield className="size-6 text-muted-foreground/60" aria-hidden />
+            <p>{searchQuery ? "No roles match your search." : "No roles yet."}</p>
+          </div>
+        }
+      />
 
- <TabsContent value="users" className="flex-1 overflow-auto px-6 py-5 mt-0">
- <UsersTab
- users={selectedRole.users}
- roleName={selectedRole.name}
- allSystemUsers={allSystemUsers}
- />
- </TabsContent>
+      <Sheet open={Boolean(selectedRole)} onOpenChange={(v) => { if (!v) { setDetail(null); dispatch(stopEditingRole()); } }}>
+        <SheetContent className="flex w-full flex-col gap-0 p-0 sm:max-w-3xl">
+          {selectedRole && (
+            <>
+              <SheetHeader className="border-b border-border px-6 py-5">
+                {editingId === selectedRole.id ? (
+                  <div className="flex items-center gap-2">
+                    <input
+                      ref={editInputRef}
+                      value={editName}
+                      aria-label="Role name"
+                      onChange={(e) => setEditName(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") handleSaveEdit();
+                        if (e.key === "Escape") dispatch(stopEditingRole());
+                      }}
+                      className="w-56 border-b-2 border-primary bg-transparent text-lg font-bold text-foreground outline-none"
+                    />
+                    <button type="button" onClick={() => handleSaveEdit()} aria-label="Save name" className="text-success hover:text-success/80">
+                      <Check className="size-4" />
+                    </button>
+                    <button type="button" onClick={() => dispatch(stopEditingRole())} aria-label="Cancel" className="text-muted-foreground hover:text-foreground">
+                      <X className="size-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <SheetTitle className="flex items-center gap-2">
+                    {selectedRole.name}
+                    {!selectedRole.isActive && <Badge variant="outline" className="text-[10px]">inactive</Badge>}
+                    {selectedRole.isSuperAdmin && <Badge variant="outline" className="text-[10px]">super admin</Badge>}
+                    {canMutate && (
+                      <button type="button" onClick={() => handleStartEdit(selectedRole)} aria-label="Rename role"
+                        className="text-muted-foreground hover:text-foreground">
+                        <Pencil className="size-3.5" />
+                      </button>
+                    )}
+                  </SheetTitle>
+                )}
+                <SheetDescription>
+                  <span className="font-mono">{selectedRole.id}</span>
+                  {" · "}{TYPE_LABELS[selectedRole.principalType] ?? selectedRole.principalType}
+                  {" · "}{selectedRole.isSuperAdmin ? "All companies" : REACH_LABELS[selectedRole.scopeLevel ?? ""] ?? "Own scope"}
+                  {selectedRole.description ? ` · ${selectedRole.description}` : ""}
+                </SheetDescription>
+              </SheetHeader>
+              <Tabs value={detail?.tab ?? "permissions"} onValueChange={(v) => setDetail({ id: selectedRole.id, tab: v as DetailTab })}
+                className="flex flex-1 flex-col overflow-hidden">
+                <div className="border-b border-border px-6">
+                  <TabsList className="h-auto gap-6 rounded-none bg-transparent p-0">
+                    <TabsTrigger value="permissions"
+                      className="rounded-none bg-transparent px-0 pb-3 pt-3 text-sm font-medium text-muted-foreground data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-foreground data-[state=active]:shadow-none">
+                      <Shield className="mr-1.5 size-3.5" /> Permissions
+                    </TabsTrigger>
+                    <TabsTrigger value="users"
+                      className="rounded-none bg-transparent px-0 pb-3 pt-3 text-sm font-medium text-muted-foreground data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-foreground data-[state=active]:shadow-none">
+                      <Users className="mr-1.5 size-3.5" /> Members
+                      <Badge variant="outline" className="ml-1.5 h-4 border-border bg-muted px-1.5 text-[10px]">{selectedRole.users.length}</Badge>
+                    </TabsTrigger>
+                    {canMutate && (
+                      <TabsTrigger value="settings"
+                        className="rounded-none bg-transparent px-0 pb-3 pt-3 text-sm font-medium text-muted-foreground data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-foreground data-[state=active]:shadow-none">
+                        <Settings className="mr-1.5 size-3.5" /> Details
+                      </TabsTrigger>
+                    )}
+                  </TabsList>
+                </div>
+                <TabsContent value="permissions" className="mt-0 flex-1 overflow-hidden px-6 py-5">
+                  <PermissionsTab role={selectedRole} menuTree={menuTree} canMutate={canMutate} />
+                </TabsContent>
+                <TabsContent value="users" className="mt-0 flex-1 overflow-auto px-6 py-5">
+                  <UsersTab users={selectedRole.users} roleName={selectedRole.name} allSystemUsers={allSystemUsers} />
+                </TabsContent>
+                {canMutate && (
+                  <TabsContent value="settings" className="mt-0 flex-1 overflow-auto px-6 py-5">
+                    <RoleSettingsTab key={selectedRole.id} role={selectedRole} roles={roles} />
+                  </TabsContent>
+                )}
+              </Tabs>
+            </>
+          )}
+        </SheetContent>
+      </Sheet>
 
-<TabsContent value="permissions" className="flex-1 overflow-hidden px-6 py-5 mt-0">
-  <PermissionsTab role={selectedRole} menuTree={menuTree} canMutate={canMutate} />
-  </TabsContent>
-  {canMutate && (
-  <TabsContent value="settings" className="flex-1 overflow-auto px-6 py-5 mt-0">
-  <RoleSettingsTab key={selectedRole.id} role={selectedRole} roles={roles} />
-  </TabsContent>
-  )}
- </Tabs>
- </div>
- ) : (
- <div className="flex-1 bg-card rounded-2xl border border-border flex items-center justify-center">
- <div className="text-center space-y-2">
- <Shield className="w-10 h-10 text-muted-foreground/30 mx-auto" />
- <p className="text-sm text-muted-foreground">Select a role to view details</p>
- </div>
- </div>
- )}
- </div>
+      <Dialog open={Boolean(duplicateOf)} onOpenChange={(v) => !v && !copying && setDuplicateOf(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Duplicate {duplicateOf?.name}</DialogTitle>
+            <DialogDescription>The copy gets the same type, reach and permissions, and no members.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="copy-code">Role code</Label>
+              <Input id="copy-code" value={copyCode} onChange={(e) => setCopyCode(e.target.value.toUpperCase())}
+                placeholder="e.g. FIELD_SUPPORT" aria-describedby="copy-code-help" />
+              <p id="copy-code-help" className="text-xs text-muted-foreground">2–30 capital letters, digits or _. It cannot change later.</p>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="copy-name">Role name</Label>
+              <Input id="copy-name" value={copyName} onChange={(e) => setCopyName(e.target.value)} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDuplicateOf(null)} disabled={copying}>Cancel</Button>
+            <Button onClick={handleDuplicate} disabled={copying || !/^[A-Z0-9_]{2,30}$/.test(copyCode.trim()) || !copyName.trim()}>
+              {copying ? <Loader2 className="size-4 animate-spin" /> : "Duplicate"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-{canMutate && <CreateRoleSheet open={createOpen} onClose={() => setCreateOpen(false)} />}
-  </>
- );
+      <ConfirmDialog pending={confirm} onClose={() => setConfirm(null)} />
+      {canMutate && <CreateRoleSheet open={createOpen} onClose={() => setCreateOpen(false)} />}
+    </>
+  );
 }
