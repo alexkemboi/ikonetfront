@@ -9,7 +9,23 @@ import { CompanyPickerList, useCompanyScope } from "@/providers/CompanyScopeProv
  * read-only overview, and every write needs a selected company.
  */
 export function CompanyScopeBanner() {
-  const { needsCompany } = useCompanyScope();
+  const { needsCompany, isPlatformAdmin, companyCode, homeCompanyCode, companies } = useCompanyScope();
+  if (isPlatformAdmin && companyCode === null && homeCompanyCode) {
+    const home = companies.find((c) => c.code === homeCompanyCode);
+    return (
+      <div
+        role="status"
+        className="mx-3 mt-2 flex items-center gap-2 rounded-2xl border border-border bg-muted/60 px-4 py-2 text-xs text-muted-foreground shadow-sm md:px-6"
+      >
+        <Building2 className="h-3.5 w-3.5 shrink-0" />
+        <span>
+          Viewing all companies. Records you create or change are saved to your own organisation,{" "}
+          <b className="font-medium text-foreground">{home ? home.name : homeCompanyCode}</b>, unless you select another
+          company in the top bar.
+        </span>
+      </div>
+    );
+  }
   if (!needsCompany) return null;
   return (
     <div

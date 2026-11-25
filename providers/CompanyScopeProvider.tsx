@@ -38,8 +38,13 @@ type CompanyScope = {
   companyCode: string | null;
   /** Active companies a SYSADMIN may select (empty for every other role). */
   companies: CompanySummary[];
-  /** SYSADMIN viewing all companies: reads work, writes need a company first. */
+  /**
+   * Viewing all companies with nowhere to make changes: the account belongs to no company, so a
+   * write needs a company chosen first. With an account company, writes go there instead.
+   */
   needsCompany: boolean;
+  /** The company the signed-in account belongs to; changes go there while none is selected. */
+  homeCompanyCode: string | null;
   switching: boolean;
   /** Switch the company context (`null` = all companies) and rerun server reads. */
   selectCompany: (code: string | null) => void;
@@ -55,6 +60,7 @@ const CompanyScopeContext = createContext<CompanyScope>({
   companyCode: null,
   companies: [],
   needsCompany: false,
+  homeCompanyCode: null,
   switching: false,
   selectCompany: () => {},
   requireCompany: (action) => action(),
@@ -73,11 +79,14 @@ export function CompanyScopeProvider({
   isPlatformAdmin,
   companyCode,
   companies,
+  homeCompanyCode = null,
   children,
 }: {
   isPlatformAdmin: boolean;
   companyCode: string | null;
   companies: CompanySummary[];
+  /** The account's own company (from /navigation/me): the fallback when none is selected. */
+  homeCompanyCode?: string | null;
   children: ReactNode;
 }) {
   const router = useRouter();
@@ -130,7 +139,10 @@ export function CompanyScopeProvider({
   // a platform admin does not require a strict check 
   // A temporary path logic is needed for the vouchers page since this section is a dependency in the application
  
-  const needsCompany = path.includes("/finance/vouchers") && isPlatformAdmin ? false :(companyCode === null || selectionIsStale) ? true : false;
+  // With no company selected, changes go to the account's own company (the API falls back to it
+  // too); only an account that belongs to no company must choose one first.
+  const needsCompany = path.includes("/finance/vouchers") && isPlatformAdmin ? false
+    : selectionIsStale || (companyCode === null && !homeCompanyCode);
 
   const requireCompany = useCallback(
     (action: () => void) => {
@@ -158,11 +170,12 @@ export function CompanyScopeProvider({
       companyCode: selectionIsStale ? null : companyCode,
       companies,
       needsCompany,
+      homeCompanyCode,
       switching: isPending,
       selectCompany,
       requireCompany,
     }),
-    [isPlatformAdmin, companyCode, selectionIsStale, companies, needsCompany, isPending, selectCompany, requireCompany]
+    [isPlatformAdmin, companyCode, selectionIsStale, companies, needsCompany, homeCompanyCode, isPending, selectCompany, requireCompany]
   );
 
   return (

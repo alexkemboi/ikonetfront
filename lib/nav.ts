@@ -81,6 +81,8 @@ export type NavUser = {
   platformAdmin?: boolean;
   stationId?: string | null;
   companyCode?: string | null;
+  /** The company the account itself belongs to: where changes go when none is selected. */
+  homeCompanyCode?: string | null;
 };
 
 export type NavigationPayload = {

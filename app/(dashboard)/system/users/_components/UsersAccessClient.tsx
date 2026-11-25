@@ -107,7 +107,9 @@ export default function UsersAccessClient({
   can: UsersAccessPermissions;
 }) {
   const router = useRouter();
-  const { requireCompany, companyCode, companies } = useCompanyScope();
+  const { requireCompany, companyCode: selectedCompany, companies, homeCompanyCode } = useCompanyScope();
+  // forms start from the selected company, else the account's own
+  const companyCode = selectedCompany ?? homeCompanyCode;
   const [page, setPage] = useState(initialPage);
   const [summary, setSummary] = useState(initialSummary);
   const [pageIndex, setPageIndex] = useState(initialPage.number);
@@ -464,7 +466,7 @@ export default function UsersAccessClient({
     setSysAdminUsername("");
   };
 
-  const showTenantFilter = isPlatformAdmin && !companyCode && companies.length > 0;
+  const showTenantFilter = isPlatformAdmin && !selectedCompany && companies.length > 0;
   const stations = organisation?.stations.filter((s) => !filters.location || String(s.locationId) === filters.location) ?? [];
 
   return (

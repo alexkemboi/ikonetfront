@@ -132,7 +132,8 @@ export default async function DashboardLayout({ children }: { children: ReactNod
   return (
     <PermissionsProvider permissions={permissionMap}>
      <AccessProvider access={access}>
-      <CompanyScopeProvider isPlatformAdmin={isPlatformAdmin} companyCode={scopedCompany} companies={companies}>
+      <CompanyScopeProvider isPlatformAdmin={isPlatformAdmin} companyCode={scopedCompany} companies={companies}
+        homeCompanyCode={nav?.user?.homeCompanyCode ?? null}>
         <SessionHeartbeat />
         <StepUpProvider>
           <TenantTheme branding={themeBranding}>
