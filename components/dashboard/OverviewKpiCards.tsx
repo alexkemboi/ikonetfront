@@ -22,16 +22,15 @@ interface Props {
  /** Cockpit's online total; used when the per-service breakdown is unavailable. */
  onlineCount: number;
  online: OnlineBreakdown | null;
- smsCredits: number | null;
- smsCreditLow: boolean;
  /** Access points reporting / not reporting; null when unavailable. */
  accessPointsSeen: number | null;
  accessPointsNotSeen: number | null;
- /** MikroTik routers online out of all; null when unavailable. */
- mikrotikOnline: number | null;
- mikrotikTotal: number | null;
+ /** Registered routers (NAS devices); null when unavailable. */
+ routers: number | null;
  /** Customers that have ever connected, per service; null when unavailable. */
  customers: CustomerBreakdown | null;
+ /** Companies on the platform; null outside the platform-wide view. */
+ companies: { total: number; active: number } | null;
 }
 
 /** part/whole as 0..100; a ratio across mismatched populations can never exceed a full bar. */
@@ -61,13 +60,11 @@ export function OverviewKpiCards({
  activePppoeSubscriptions,
  onlineCount,
  online,
- smsCredits,
- smsCreditLow,
  accessPointsSeen,
  accessPointsNotSeen,
- mikrotikOnline,
- mikrotikTotal,
+ routers,
  customers,
+ companies,
 }: Props) {
  const customersTotal = customers ? customers.hotspot + customers.pppoe + customers.tv : 0;
  const onlineTotal = online?.total ?? onlineCount;
@@ -165,25 +162,20 @@ export function OverviewKpiCards({
  </div>
 
  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
- {/* SMS Credits */}
- <Card label="SMS CREDITS" value={smsCredits === null ? "—" : smsCredits}>
- <p className="mt-2 text-xs font-medium text-muted-foreground">
- {smsCredits === null ? "Balance unavailable" : smsCredits <= 0 ? "No credits remaining" : smsCreditLow ? "Low balance · top up soon" : "Balance available"}
+ {/* Companies on the platform (platform-wide views only) */}
+ <Card label="COMPANIES" value={companies === null ? "—" : companies.total.toLocaleString()}>
+ <p className="mt-2 text-xs text-muted-foreground">
+ {companies === null
+ ? "Shown in the platform-wide view"
+ : `${companies.active.toLocaleString()} active on the platform`}
  </p>
  </Card>
 
- {/* MikroTik routers online */}
- <Card label="MIKROTIKS ONLINE" value={count(mikrotikOnline)}>
+ {/* Registered routers (NAS devices) */}
+ <Card label="ROUTERS" value={count(routers)}>
  <p className="mt-2 text-xs text-muted-foreground">
- {mikrotikOnline === null || mikrotikTotal === null
- ? "Router status unavailable"
- : `of ${mikrotikTotal.toLocaleString()} routers · ${Math.max(0, mikrotikTotal - mikrotikOnline).toLocaleString()} offline`}
+ {routers === null ? "Router count unavailable" : "registered NAS devices"}
  </p>
- {mikrotikOnline !== null && mikrotikTotal !== null && mikrotikTotal > 0 && (
- <div className="mt-5 h-1 w-full rounded-full bg-secondary">
- <div className="h-1 rounded-full bg-emerald-500" style={{ width: `${sharePercent(mikrotikOnline, mikrotikTotal)}%` }} />
- </div>
- )}
  </Card>
 
  {/* Access points seen */}

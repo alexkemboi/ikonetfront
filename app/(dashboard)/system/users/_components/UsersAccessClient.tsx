@@ -53,6 +53,8 @@ import {
 export type UsersAccessPermissions = {
   createUsers: boolean;
   editUsers: boolean;
+  /** May give a user another role (API_SYSTEMUSERSCRUD_ROLE EDIT). */
+  changeRoles: boolean;
   deleteUsers: boolean;
   unlock: boolean;
   resetPassword: boolean;
@@ -617,6 +619,7 @@ export default function UsersAccessClient({
         onClose={() => setEditing(null)}
         onLinked={reload}
         canLinkInvestor={isPlatformAdmin}
+        canChangeRole={can.changeRoles}
         investors={investors}
         roles={roles}
         organisation={editing?.companyId && editing.companyId === (companyCode ?? editing.companyId) ? organisation : null}

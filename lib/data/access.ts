@@ -2,11 +2,14 @@
  * Server-side access of the signed-in user (server components and route handlers).
  * Shares the one GET /navigation/me call of the render with the dashboard layout.
  */
+import { redirect } from "next/navigation";
 import { fetchNavigation, normalizeMenuRoute } from "@/lib/data/nav";
 import { NO_ACCESS, type NavAccess } from "@/lib/access";
 
 export async function getAccess(): Promise<NavAccess> {
   const nav = await fetchNavigation();
+  // token refused (access changed since sign-in): sign out, as the dashboard layout does
+  if (!nav.ok && nav.status === 401) redirect("/signout?reason=permissions-changed");
   return nav.ok && nav.data.access ? nav.data.access : NO_ACCESS;
 }
 

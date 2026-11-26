@@ -50,6 +50,7 @@ async function UsersPage() {
       can={{
         createUsers: rights.createUsers && rights.menu.canCreate,
         editUsers: rights.editUsers,
+        changeRoles: rights.changeRoles,
         deleteUsers: rights.deleteUsers && rights.menu.canDelete,
         unlock: rights.unlock,
         resetPassword: rights.resetPassword,

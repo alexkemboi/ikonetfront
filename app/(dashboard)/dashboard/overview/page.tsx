@@ -61,12 +61,12 @@ export default async function OverviewDashboardPage() {
  activePppoeSubscriptions={overview.activeSubscriptionsCount}
  onlineCount={overview.onlineSubscribersCount}
  online={online}
- smsCredits={overview.smsCreditsCount}
- smsCreditLow={overview.smsCreditLow}
  accessPointsSeen={overview.accessPointsSeenCount ?? null}
  accessPointsNotSeen={overview.accessPointsNotSeenCount ?? null}
- mikrotikOnline={overview.mikrotikOnlineCount ?? null}
- mikrotikTotal={overview.mikrotikTotalCount ?? null}
+ routers={overview.mikrotikTotalCount ?? null}
+ companies={overview.companiesCount != null && overview.companiesActiveCount != null
+  ? { total: overview.companiesCount, active: overview.companiesActiveCount }
+  : null}
  customers={customers}
  />
 

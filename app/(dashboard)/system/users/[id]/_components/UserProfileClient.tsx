@@ -32,7 +32,7 @@ import {
   LoginStatusBadge,
 } from "../../_components/status";
 
-type Can = { edit: boolean; unlock: boolean; resetPassword: boolean; viewSessions: boolean; endSessions: boolean };
+type Can = { edit: boolean; changeRole: boolean; unlock: boolean; resetPassword: boolean; viewSessions: boolean; endSessions: boolean };
 
 const SECTIONS = [
   ["personal", "Personal"],
@@ -432,6 +432,7 @@ export default function UserProfileClient({
         onClose={() => setEditing(null)}
         onLinked={refresh}
         canLinkInvestor={isPlatformAdmin}
+        canChangeRole={can.changeRole}
         investors={investors}
         roles={roles}
         organisation={organisation}

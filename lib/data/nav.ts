@@ -9,6 +9,7 @@
  */
 
 import { cache } from "react";
+import { redirect } from "next/navigation";
 import type { ApiMenuItem, PermissionFlags, PermissionMap } from "@/lib/types/roles";
 import type { NavGroup, NavItem, MenuNode, ApiNavItem, NavigationPayload } from "@/lib/nav";
 import { auth } from "@/lib/auth";
@@ -38,8 +39,9 @@ export const fetchRoleMenusRaw = cache(async function fetchRoleMenusRaw(
   const roleLabel = role?.trim() ?? "";
   if (!roleLabel || !apiToken) return [];
 
+  let res: Response;
   try {
-    const res = await fetch(
+    res = await fetch(
       buildApiUrl(`/system-setup/${encodeURIComponent(roleLabel)}/menus`),
       {
         headers: {
@@ -52,7 +54,17 @@ export const fetchRoleMenusRaw = cache(async function fetchRoleMenusRaw(
         cache: "no-store",
       }
     );
+  } catch {
+    return [];
+  }
 
+  // The API refused the token (role, company or active state changed since sign-in, or the
+  // session ended). The dashboard layout only notices on a full page load, so every page's
+  // permission check signs out here: the next sign-in carries the new role's permissions.
+  // Outside the try: redirect() works by throwing.
+  if (res.status === 401) redirect("/signout?reason=permissions-changed");
+
+  try {
     const data = await res.json();
     return data.success && Array.isArray(data.data) ? data.data : [];
   } catch {

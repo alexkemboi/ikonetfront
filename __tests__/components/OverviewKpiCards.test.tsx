@@ -7,17 +7,15 @@ const base = {
   activePppoeSubscriptions: 0,
   onlineCount: 0,
   online: null,
-  smsCredits: null,
-  smsCreditLow: false,
   accessPointsSeen: null,
   accessPointsNotSeen: null,
-  mikrotikOnline: null,
-  mikrotikTotal: null,
+  routers: null,
   customers: null,
+  companies: null,
 };
 
 describe("OverviewKpiCards", () => {
-  it("shows today's payments, routers and access points instead of revenue", () => {
+  it("shows customers, payments, routers, companies and access points", () => {
     render(
       <OverviewKpiCards
         {...base}
@@ -25,8 +23,8 @@ describe("OverviewKpiCards", () => {
         onlineCount={34}
         accessPointsSeen={9}
         accessPointsNotSeen={2}
-        mikrotikOnline={3}
-        mikrotikTotal={5}
+        routers={24}
+        companies={{ total: 7, active: 6 }}
         customers={{ pppoe: 250, hotspot: 990, tv: 10 }}
       />
     );
@@ -41,13 +39,18 @@ describe("OverviewKpiCards", () => {
     expect(screen.getByText("12")).toBeInTheDocument();
     expect(screen.getByText("completed since midnight")).toBeInTheDocument();
     expect(screen.queryByText(/KES/)).not.toBeInTheDocument();
-    expect(screen.getByText("MIKROTIKS ONLINE")).toBeInTheDocument();
-    expect(screen.getByText("of 5 routers · 2 offline")).toBeInTheDocument();
+    expect(screen.queryByText("MIKROTIKS ONLINE")).not.toBeInTheDocument();
+    expect(screen.getByText("ROUTERS")).toBeInTheDocument();
+    expect(screen.getByText("24")).toBeInTheDocument();
+    expect(screen.getByText("registered NAS devices")).toBeInTheDocument();
     expect(screen.getByText("ACCESS POINTS SEEN")).toBeInTheDocument();
     expect(screen.getByText("9")).toBeInTheDocument();
     expect(screen.getByText("ACCESS POINTS NOT SEEN")).toBeInTheDocument();
     expect(screen.getByText("watched access points gone quiet")).toBeInTheDocument();
-    expect(screen.getByText("Balance unavailable")).toBeInTheDocument();
+    expect(screen.queryByText("SMS CREDITS")).not.toBeInTheDocument();
+    expect(screen.getByText("COMPANIES")).toBeInTheDocument();
+    expect(screen.getByText("7")).toBeInTheDocument();
+    expect(screen.getByText("6 active on the platform")).toBeInTheDocument();
     expect(screen.getByText("34")).toBeInTheDocument();
     expect(screen.getByText("sessions connected · breakdown unavailable")).toBeInTheDocument();
   });
@@ -55,7 +58,8 @@ describe("OverviewKpiCards", () => {
   it("shows a dash when router and access point counts are unavailable", () => {
     render(<OverviewKpiCards {...base} />);
 
-    expect(screen.getByText("Router status unavailable")).toBeInTheDocument();
+    expect(screen.getByText("Router count unavailable")).toBeInTheDocument();
+    expect(screen.getByText("Shown in the platform-wide view")).toBeInTheDocument();
     expect(screen.getByText("Customer count unavailable")).toBeInTheDocument();
     expect(screen.getAllByText("Access point status unavailable")).toHaveLength(2);
   });
@@ -67,8 +71,6 @@ describe("OverviewKpiCards", () => {
         activePppoeSubscriptions={1}
         onlineCount={41}
         online={{ total: 41, hotspot: 41, pppoe: 0 }}
-        mikrotikOnline={7}
-        mikrotikTotal={4}
       />
     );
 

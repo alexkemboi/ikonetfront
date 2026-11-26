@@ -95,6 +95,9 @@ export interface DashboardOverviewData {
   customersPppoeCount?: number | null;
   customersTvCount?: number | null;
   customersHotspotCount?: number | null;
+  /** Companies on the platform (all, and active), the platform entity left out; null/absent outside the platform-wide view. */
+  companiesCount?: number | null;
+  companiesActiveCount?: number | null;
   todayRecentPayments: {
     id: string;
     amount: number;

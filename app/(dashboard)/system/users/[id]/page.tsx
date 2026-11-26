@@ -52,6 +52,7 @@ export default async function UserProfilePage({ params }: { params: Promise<{ id
       isPlatformAdmin={rights.access.superAdmin}
       can={{
         edit: rights.editUsers,
+        changeRole: rights.changeRoles,
         unlock: rights.unlock,
         resetPassword: rights.resetPassword,
         viewSessions: rights.viewSessions,

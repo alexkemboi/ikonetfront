@@ -58,6 +58,7 @@ export function EditUserSheet({
   user,
   roles,
   canLinkInvestor,
+  canChangeRole,
   investors,
   onLinked,
   organisation,
@@ -67,6 +68,8 @@ export function EditUserSheet({
   user: ApiRoleUser | null;
   roles: ApiRole[];
   canLinkInvestor: boolean;
+  /** May give the user another role; without it the role is shown but cannot be changed. */
+  canChangeRole: boolean;
   /** Active investors of the register, offered when linking a Network Partner account. */
   investors: InvestorOption[];
   onLinked: () => void;
@@ -209,12 +212,19 @@ export function EditUserSheet({
                 <select
                   id="user-role"
                   {...formik.getFieldProps("role")}
+                  disabled={!canChangeRole}
+                  aria-describedby={canChangeRole ? undefined : "user-role-locked"}
                   className="flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
                 >
                   {roleOptions.map((role) => (
                     <option key={role.roleCode} value={role.roleCode}>{role.name}</option>
                   ))}
                 </select>
+                {!canChangeRole && (
+                  <p id="user-role-locked" className="text-xs text-muted-foreground">
+                    Your role cannot change the role of other users.
+                  </p>
+                )}
               </div>
               {organisation && (
                 <div className="grid gap-3 sm:grid-cols-2">
