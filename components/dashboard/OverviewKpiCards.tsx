@@ -25,8 +25,6 @@ interface Props {
  /** Access points reporting / not reporting; null when unavailable. */
  accessPointsSeen: number | null;
  accessPointsNotSeen: number | null;
- /** Registered routers (NAS devices); null when unavailable. */
- routers: number | null;
  /** Customers that have ever connected, per service; null when unavailable. */
  customers: CustomerBreakdown | null;
  /** Companies on the platform; null outside the platform-wide view. */
@@ -62,7 +60,6 @@ export function OverviewKpiCards({
  online,
  accessPointsSeen,
  accessPointsNotSeen,
- routers,
  customers,
  companies,
 }: Props) {
@@ -161,7 +158,7 @@ export function OverviewKpiCards({
  </Card>
  </div>
 
- <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+ <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
  {/* Companies on the platform (platform-wide views only) */}
  <Card label="COMPANIES" value={companies === null ? "—" : companies.total.toLocaleString()}>
  <p className="mt-2 text-xs text-muted-foreground">
@@ -171,12 +168,6 @@ export function OverviewKpiCards({
  </p>
  </Card>
 
- {/* Registered routers (NAS devices) */}
- <Card label="ROUTERS" value={count(routers)}>
- <p className="mt-2 text-xs text-muted-foreground">
- {routers === null ? "Router count unavailable" : "registered NAS devices"}
- </p>
- </Card>
 
  {/* Access points seen */}
  <Card label="ACCESS POINTS SEEN" value={count(accessPointsSeen)}>

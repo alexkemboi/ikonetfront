@@ -1,4 +1,7 @@
+"use client";
+
 import Image from "next/image";
+import { useSiteBrand } from "@/providers/SiteBrandProvider";
 import { Zap, Shield, Clock } from "lucide-react";
 
 /**
@@ -7,6 +10,7 @@ import { Zap, Shield, Clock } from "lucide-react";
  * context to show (that fetch may be what failed), so it renders this with only the defaults.
  */
 export default function HotspotBrandHero({ brand, logoUrl, unoptimized }: { brand: string; logoUrl?: string | null; unoptimized?: boolean }) {
+  const site = useSiteBrand();
   return (
     <div className="hidden lg:flex lg:w-1/2 bg-primary relative overflow-hidden flex-col justify-between p-12">
       {/* Decorative circles */}
@@ -17,7 +21,7 @@ export default function HotspotBrandHero({ brand, logoUrl, unoptimized }: { bran
       <div className="relative z-10">
         <div className="flex h-24 w-24 items-center justify-center rounded-2xl bg-white p-3 shadow-xl ring-1 ring-white/20 mx-auto">
           <Image
-            src={logoUrl || "/speedlink-logo.jpg"}
+            src={logoUrl || site.logo}
             alt={brand}
             unoptimized={Boolean(unoptimized)}
             width={160}

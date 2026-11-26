@@ -4,7 +4,7 @@ import { resolveDashboardPath } from "@/lib/utils/dashboardRouting";
 import { auth } from "@/lib/auth";
 import { AdminDashboardView } from "../_components/AdminDashboardView";
 
-export const metadata = { title: "Admin Dashboard — SpeedLink" };
+export const metadata = { title: "Admin Dashboard" };
 export const dynamic = "force-dynamic";
 
 export default async function AdminDashboardPage() {

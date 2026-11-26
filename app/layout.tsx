@@ -4,7 +4,8 @@ import ReduxProvider from "@/providers/ReduxProvider";
 import { AppThemeProvider } from "@/providers/AppThemeProvider";
 import "./globals.css";
 import AuthProvider from "./authProvider";
-import { getAuthBrand } from "@/lib/authBrand";
+import { getSiteBrand } from "@/lib/siteBrand.server";
+import { SiteBrandProvider } from "@/providers/SiteBrandProvider";
 
 const dmSans = DM_Sans({
  variable: "--font-dm-sans",
@@ -18,21 +19,23 @@ const jetbrainsMono = JetBrains_Mono({
  display: "swap",
 });
 
-// the brand follows the domain (beesmartbedak.com is BeeSmart, sandbox is SpeedLink)
+// the brand follows the domain (beesmartbedak.com is BEESMARTBEDAK, sandbox is SpeedLink);
+// pages give only their own title and the brand is appended here
 export async function generateMetadata(): Promise<Metadata> {
- const brand = await getAuthBrand();
+ const brand = await getSiteBrand();
  return {
-  title: brand.title,
+  title: { default: brand.title, template: `%s — ${brand.title}` },
   description: `ISP billing and network management by ${brand.legalName}.`,
   icons: { icon: brand.logo },
  };
 }
 
-export default function RootLayout({
+export default async function RootLayout({
  children,
 }: Readonly<{
  children: React.ReactNode;
 }>) {
+ const brand = await getSiteBrand();
  return (
  <html lang="en" suppressHydrationWarning>
  <head>
@@ -78,7 +81,7 @@ export default function RootLayout({
  >
  <AppThemeProvider>
   <AuthProvider>
-   <ReduxProvider>{children}</ReduxProvider>
+   <ReduxProvider><SiteBrandProvider brand={brand}>{children}</SiteBrandProvider></ReduxProvider>
   </AuthProvider>
  </AppThemeProvider>
  </body>

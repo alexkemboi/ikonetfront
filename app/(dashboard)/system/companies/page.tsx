@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { getPaymentReadiness, listCompanies } from "@/actions/companies";
 import CompaniesClient from "./_components/CompaniesClient";
 
-export const metadata = { title: "Companies — SpeedLink" };
+export const metadata = { title: "Companies" };
 
 export default async function CompaniesPage() {
   // shown to roles that may read the companies; only those that may create one change them

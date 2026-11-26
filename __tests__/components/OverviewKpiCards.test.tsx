@@ -9,7 +9,6 @@ const base = {
   online: null,
   accessPointsSeen: null,
   accessPointsNotSeen: null,
-  routers: null,
   customers: null,
   companies: null,
 };
@@ -23,7 +22,6 @@ describe("OverviewKpiCards", () => {
         onlineCount={34}
         accessPointsSeen={9}
         accessPointsNotSeen={2}
-        routers={24}
         companies={{ total: 7, active: 6 }}
         customers={{ pppoe: 250, hotspot: 990, tv: 10 }}
       />
@@ -40,9 +38,7 @@ describe("OverviewKpiCards", () => {
     expect(screen.getByText("completed since midnight")).toBeInTheDocument();
     expect(screen.queryByText(/KES/)).not.toBeInTheDocument();
     expect(screen.queryByText("MIKROTIKS ONLINE")).not.toBeInTheDocument();
-    expect(screen.getByText("ROUTERS")).toBeInTheDocument();
-    expect(screen.getByText("24")).toBeInTheDocument();
-    expect(screen.getByText("registered NAS devices")).toBeInTheDocument();
+    expect(screen.queryByText("ROUTERS")).not.toBeInTheDocument();
     expect(screen.getByText("ACCESS POINTS SEEN")).toBeInTheDocument();
     expect(screen.getByText("9")).toBeInTheDocument();
     expect(screen.getByText("ACCESS POINTS NOT SEEN")).toBeInTheDocument();
@@ -58,7 +54,6 @@ describe("OverviewKpiCards", () => {
   it("shows a dash when router and access point counts are unavailable", () => {
     render(<OverviewKpiCards {...base} />);
 
-    expect(screen.getByText("Router count unavailable")).toBeInTheDocument();
     expect(screen.getByText("Shown in the platform-wide view")).toBeInTheDocument();
     expect(screen.getByText("Customer count unavailable")).toBeInTheDocument();
     expect(screen.getAllByText("Access point status unavailable")).toHaveLength(2);

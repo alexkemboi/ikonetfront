@@ -1,11 +1,7 @@
-import { getAuthBrand } from "@/lib/authBrand";
 import { previewInvitation } from "@/actions/usersAccess";
 import AcceptInviteForm from "./_components/AcceptInviteForm";
 
-export async function generateMetadata() {
-  const brand = await getAuthBrand();
-  return { title: `Accept invitation — ${brand.title}` };
-}
+export const metadata = { title: "Accept invitation" };
 
 /** Opened from an invitation email: shows what the link offers, then the person chooses a username and password. */
 export default async function AcceptInvitePage({ searchParams }: { searchParams: Promise<{ token?: string }> }) {

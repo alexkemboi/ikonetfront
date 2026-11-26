@@ -2,7 +2,7 @@ import { getCustomers } from "@/actions/customer";
 import { SubscribersTabs } from "@/components/subscribers/SubscribersTabs";
 import { PPPoECustomerTable } from "./_components/PPPoECustomerTable";
 
-export const metadata = { title: "PPPoE Clients — SpeedLink" };
+export const metadata = { title: "PPPoE Clients" };
 
 export default async function PppoeCustomersPage({
   searchParams,

@@ -14,7 +14,7 @@ import { isCustomerAccess, isInvestorAccess } from "@/lib/access";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "M-Pesa Reconciliation | SpeedLink",
+  title: "M-Pesa Reconciliation",
   description: "Daraja PullTransactions sweep and daily reconciliation for M-Pesa payments.",
 };
 

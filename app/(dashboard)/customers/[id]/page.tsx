@@ -2,7 +2,7 @@ import { getCustomerById } from "@/actions/customer";
 import { notFound } from "next/navigation";
 import { CustomerCockpit } from "./_components/CustomerCockpit";
 
-export const metadata = { title: "Customer Profile — SpeedLink" };
+export const metadata = { title: "Customer Profile" };
 
 interface CustomerDetailsPageProps {
  params: Promise<{ id: string }>;

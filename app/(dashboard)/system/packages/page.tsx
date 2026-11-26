@@ -10,7 +10,7 @@ import { hasPlatformScope } from "@/lib/access";
 export const dynamic = "force-dynamic";
 
 export const metadata = {
- title: "Internet Packages — SpeedLink",
+ title: "Internet Packages",
 };
 
 export default async function InternetPackagesPage() {

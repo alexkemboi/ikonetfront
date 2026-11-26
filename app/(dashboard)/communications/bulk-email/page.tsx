@@ -13,7 +13,7 @@ import { EmailCampaignHistory } from "@/components/communications/EmailCampaignH
 import { SmsNoticeHistory } from "@/components/communications/SmsNoticeHistory";
 import { getSystemUsers } from "@/actions/system";
 
-export const metadata = { title: "SMS & Emails — SpeedLink" };
+export const metadata = { title: "SMS & Emails" };
 
 export type EmailTemplate = {
  id: string;

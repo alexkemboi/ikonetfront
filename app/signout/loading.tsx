@@ -1,6 +1,8 @@
 import Image from "next/image";
+import { getSiteBrand } from "@/lib/siteBrand.server";
 
-export default function SignoutLoading() {
+export default async function SignoutLoading() {
+ const brand = await getSiteBrand();
  return (
  <div className="min-h-screen bg-primary flex flex-col items-center justify-center p-6 relative overflow-hidden">
  {/* Decorative circles */}
@@ -9,7 +11,7 @@ export default function SignoutLoading() {
 
  {/* Logo */}
  <div className="flex items-center gap-3 mb-10">
- <Image src="/speedlink-logo.jpg" alt="SpeedLink" width={112} height={72} className="rounded-md bg-white p-1" />
+ <Image src={brand.logo} alt={brand.legalName} width={112} height={72} className="rounded-md bg-white p-1" />
  </div>
 
  {/* Spinner */}

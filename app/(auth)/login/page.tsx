@@ -1,10 +1,6 @@
-import { getAuthBrand } from "@/lib/authBrand";
 import LoginForm from "./_components/LoginForm";
 
-export async function generateMetadata() {
-  const brand = await getAuthBrand();
-  return { title: brand.title };
-}
+// the tab title is the brand alone (root layout)
 
 // NextAuth appends ?error=<code> on failed sign-in — map codes to user-friendly copy
 const AUTH_ERRORS: Record<string, string> = {

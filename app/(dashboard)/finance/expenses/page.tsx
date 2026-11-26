@@ -12,7 +12,7 @@ import { holdsRight } from "@/lib/access";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Expense Management — SpeedLink",
+  title: "Expense Management",
 };
 
 export default async function ExpensesPage() {

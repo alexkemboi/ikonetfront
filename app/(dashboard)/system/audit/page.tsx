@@ -9,7 +9,7 @@ import AuditLogsClient from "./_components/AuditLogsClient";
 import { getAccess } from "@/lib/data/access";
 import { can } from "@/lib/access";
 
-export const metadata = { title: "Audit Logs — SpeedLink" };
+export const metadata = { title: "Audit Logs" };
 
 export default async function AuditLogsPage({
  searchParams,

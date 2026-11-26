@@ -1,13 +1,13 @@
 import type { ReactNode } from "react";
 import Image from "next/image";
-import { getAuthBrand } from "@/lib/authBrand";
+import { getSiteBrand } from "@/lib/siteBrand.server";
 
 export default async function AuthLayout({
   children,
 }: {
   children: ReactNode;
 }) {
-  const brand = await getAuthBrand();
+  const brand = await getSiteBrand();
   return (
     <div
       className="

@@ -2,8 +2,10 @@ import Image from "next/image";
 import { Phone } from "lucide-react";
 import { getHotspotHelplineAction } from "@/actions/hotspot";
 import { PORTAL_HELPLINE } from "@/lib/brand";
+import { getSiteBrand } from "@/lib/siteBrand.server";
 
 export default async function HotspotLoading() {
+ const brand = await getSiteBrand();
  // the database helpline (cached for a minute, so this screen stays instant); built-in number if unreachable
  const line = (await getHotspotHelplineAction().catch(() => null)) ?? PORTAL_HELPLINE;
  return (
@@ -12,7 +14,7 @@ export default async function HotspotLoading() {
  {/* Header */}
  <div className="mb-8 text-center space-y-2">
  <div className="inline-flex items-center justify-center w-48 h-24 rounded-xl bg-white p-2 shadow-sm mb-1">
- <Image src="/speedlink-logo.jpg" alt="SpeedLink" width={192} height={128} className="h-full w-full object-contain" />
+ <Image src={brand.logo} alt={brand.legalName} width={192} height={128} className="h-full w-full object-contain" />
  </div>
  <div>
  <h1 className="text-2xl font-normal tracking-normal text-foreground">
@@ -41,7 +43,7 @@ export default async function HotspotLoading() {
  </div>
 
  <p className="mt-6 text-center text-xs text-muted-foreground">
- Powered by <span className="font-medium text-foreground">SpeedLink</span>
+ Powered by <span className="font-medium text-foreground">{brand.legalName}</span>
  </p>
  </div>
  );

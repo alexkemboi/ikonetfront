@@ -63,7 +63,6 @@ export default async function OverviewDashboardPage() {
  online={online}
  accessPointsSeen={overview.accessPointsSeenCount ?? null}
  accessPointsNotSeen={overview.accessPointsNotSeenCount ?? null}
- routers={overview.mikrotikTotalCount ?? null}
  companies={overview.companiesCount != null && overview.companiesActiveCount != null
   ? { total: overview.companiesCount, active: overview.companiesActiveCount }
   : null}

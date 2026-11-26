@@ -7,7 +7,7 @@ import { getAccess } from "@/lib/data/access";
 import type { MenuNode } from "@/lib/nav";
 import { redirect } from "next/navigation";
 
-export const metadata = { title: "Roles & Permissions — SpeedLink" };
+export const metadata = { title: "Roles & Permissions" };
 
 // ── Page ────────────────────────────────────────────────────────────────
 export default async function RolesPage() {

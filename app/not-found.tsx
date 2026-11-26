@@ -4,9 +4,11 @@ import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { Construction, ArrowLeft, Wifi } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useSiteBrand } from "@/providers/SiteBrandProvider";
 
 export default function NotFound() {
  const router = useRouter();
+ const brand = useSiteBrand();
 
  return (
  <div className="min-h-screen bg-background flex items-center justify-center p-6">
@@ -59,7 +61,7 @@ export default function NotFound() {
  Page Under Development
  </h1>
  <p className="text-muted-foreground text-sm leading-relaxed max-w-sm mx-auto">
- This section of SpeedLink is still being built.
+ This section of {brand.legalName} is still being built.
  Our team is working on it — check back soon.
  </p>
  </motion.div>
@@ -114,7 +116,7 @@ export default function NotFound() {
  transition={{ duration: 0.4, delay: 0.55 }}
  className="text-xs text-muted-foreground"
  >
- SpeedLink · Internet Management Platform
+ {brand.legalName} · Internet Management Platform
  </motion.p>
  </div>
  </div>

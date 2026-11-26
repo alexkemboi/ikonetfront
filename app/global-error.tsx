@@ -1,9 +1,12 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 import Image from "next/image";
 import { AlertTriangle, RotateCw, Home } from "lucide-react";
 import { reportAppErrorAction } from "@/actions/portalErrors";
+import { brandFor, type SiteBrand } from "@/lib/siteBrand";
+
+const noSubscription = () => () => {};
 import "./globals.css";
 
 /**
@@ -22,13 +25,16 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
     }).catch(() => undefined);
   }, [error]);
 
+  // no providers here (this replaces the root layout): the brand comes from the address itself
+  const brand = useSyncExternalStore(noSubscription, (): SiteBrand | null => brandFor(window.location.host), () => null);
+
   return (
     <html lang="en">
       <body className="antialiased">
         <main className="min-h-screen flex items-center justify-center bg-[#F5F5F5] p-6">
           <div className="w-full max-w-sm text-center space-y-5">
             <div className="flex items-center justify-center gap-3">
-              <Image src="/logo.png" alt="SpeedLink" width={40} height={40} className="rounded-lg" />
+              {brand && <Image src={brand.logo} alt={brand.legalName} width={40} height={40} className="rounded-lg" />}
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#FFF3E0]">
                 <AlertTriangle className="h-5 w-5 text-[#FF9800]" />
               </div>
@@ -37,7 +43,7 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
             <div className="space-y-2">
               <h1 className="text-xl font-medium text-[#333333]">Something went wrong</h1>
               <p className="text-sm text-[#555555]">
-                SpeedLink ran into an unexpected error. Your data is safe — try again, or
+                {brand ? brand.legalName : "The app"} ran into an unexpected error. Your data is safe — try again, or
                 go back to the dashboard.
               </p>
               {error?.digest ? (

@@ -1,10 +1,12 @@
 import SignOutCard from "./_components/SignOutCard";
 import Image from "next/image";
+import { getSiteBrand } from "@/lib/siteBrand.server";
 
-export const metadata = { title: "Sign out — SpeedLink" };
+export const metadata = { title: "Sign out" };
 
 export default async function SignOutPage({ searchParams }: { searchParams: Promise<{ reason?: string }> }) {
  const params = await searchParams;
+ const brand = await getSiteBrand();
  // signed out without asking: the session ended, or an administrator changed this account's access
  const forceSignOut = params.reason === "session-expired" || params.reason === "permissions-changed";
  return (
@@ -17,7 +19,7 @@ export default async function SignOutPage({ searchParams }: { searchParams: Prom
 
  {/* Logo */}
  <div className="flex items-center gap-3 mb-10">
- <Image src="/speedlink-logo.jpg" alt="SpeedLink" width={112} height={72} className="rounded-md bg-white p-1" />
+ <Image src={brand.logo} alt={brand.legalName} width={112} height={72} className="rounded-md bg-white p-1" />
  </div>
 
  {/* Card */}

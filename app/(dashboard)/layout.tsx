@@ -11,7 +11,7 @@ import {
   navigationToNavGroups,
 } from "@/lib/data/nav";
 import type { NavGroup, SidebarBrand } from "@/lib/nav";
-import { DEFAULT_PLATFORM_BRAND } from "@/lib/brand";
+import { getSiteBrand } from "@/lib/siteBrand.server";
 import { PermissionsProvider } from "@/providers/PermissionsProvider";
 import type { PermissionMap } from "@/lib/types/roles";
 import type { TenantBranding } from "@/lib/types/company";
@@ -90,13 +90,11 @@ export default async function DashboardLayout({ children }: { children: ReactNod
 
   const scopedCompany = isPlatformAdmin ? contextCompany : (session.user.companyScope ?? null);
 
-  // Brand: the company in context, else the company of this site's address, else
-  // the platform's own entity; the built-in platform mark only when none has one.
-  const brandSource = nav?.company ?? tenantBranding ?? nav?.platform ?? null;
-  const brand: SidebarBrand = {
-    name: brandSource?.name?.trim() || DEFAULT_PLATFORM_BRAND.name,
-    logoUrl: brandSource?.logoUrl?.trim() || DEFAULT_PLATFORM_BRAND.logoUrl,
-  };
+  // Brand: the deployment's (BEESMARTBEDAK on production, SpeedLink on sandbox), the same as
+  // the sign-in page, so the platform entity's name ("Platform") or another product's mark is
+  // never shown. Company colours still follow the company (themeBranding below).
+  const siteBrand = await getSiteBrand();
+  const brand: SidebarBrand = { name: siteBrand.name, logoUrl: siteBrand.logo };
 
   // Tenant colours: the site's company (custom domain / subdomain), else the company in context.
   const themeBranding: TenantBranding | null =

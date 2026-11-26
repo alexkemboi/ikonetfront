@@ -4,7 +4,7 @@ import { auth } from "@/lib/auth";
 import { getAccess } from "@/lib/data/access";
 import { can } from "@/lib/access";
 
-export const metadata = { title: "Alert Channels — SpeedLink" };
+export const metadata = { title: "Alert Channels" };
 
 export default async function AlertsPage() {
  const result = await getProvidersAction();

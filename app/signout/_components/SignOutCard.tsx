@@ -7,9 +7,11 @@ import { LogOut, ArrowLeft, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { logoutAction } from "@/actions/auth";
 import { clearCompanyContextCookie } from "@/lib/companyContextClient";
+import { useSiteBrand } from "@/providers/SiteBrandProvider";
 
 export default function SignOutCard({ forceSignOut = false }: { forceSignOut?: boolean }) {
   const router = useRouter();
+  const brand = useSiteBrand();
   const [loading, setLoading] = useState(false);
   const autoSignOutStarted = useRef(false);
   const forceSignOutOnLoad = useRef(forceSignOut);
@@ -53,7 +55,7 @@ export default function SignOutCard({ forceSignOut = false }: { forceSignOut?: b
  </h1>
  <p className="text-sm text-muted-foreground leading-relaxed">
  Are you sure you want to sign out of{" "}
- <span className="font-medium text-foreground">SpeedLink</span>?
+ <span className="font-medium text-foreground">{brand.legalName}</span>?
  You&apos;ll need to sign in again to access your dashboard.
  </p>
  </div>
@@ -87,7 +89,7 @@ export default function SignOutCard({ forceSignOut = false }: { forceSignOut?: b
 
  {/* Footer */}
  <p className="text-center text-xs text-white/30 mt-6">
- © {new Date().getFullYear()} SpeedLink. All rights reserved.
+ © {new Date().getFullYear()} {brand.legalName}. All rights reserved.
  </p>
  </div>
  );

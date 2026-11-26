@@ -8,7 +8,7 @@ import UsersAccessClient from "./_components/UsersAccessClient";
 import { getUsersAccessRights } from "./_lib/access";
 import { hasPlatformScope } from "@/lib/access";
 
-export const metadata = { title: "Users & Access Control — SpeedLink" };
+export const metadata = { title: "Users & Access Control" };
 
 async function UsersPage() {
   const rights = await getUsersAccessRights();

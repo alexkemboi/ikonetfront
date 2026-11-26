@@ -23,7 +23,7 @@ import { isCustomerAccess, isInvestorAccess } from "@/lib/access";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Investor Portal | SpeedLink",
+  title: "Investor Portal",
   description: "Partner revenue summary, maintenance charges, net payout and router attribution.",
 };
 

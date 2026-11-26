@@ -56,13 +56,3 @@ export const PORTAL_HELPLINE = {
   tel: "+254726837210",
   hours: "09:00 – 18:00",
 } as const;
-
-/**
- * Dashboard brand of last resort: shown only when neither the selected company nor the
- * platform's own entity (companies.entity_type = PLATFORM_ENTITY) has branding in the
- * database, or the API cannot be reached. It is the platform's mark, never a company's.
- */
-export const DEFAULT_PLATFORM_BRAND = {
-  name: "Ikonex Systems",
-  logoUrl: "/logo.png",
-} as const;

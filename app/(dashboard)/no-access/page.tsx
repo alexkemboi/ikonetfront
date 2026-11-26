@@ -5,7 +5,7 @@ import { auth } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
-export const metadata = { title: "No access — SpeedLink" };
+export const metadata = { title: "No access" };
 
 /**
  * Unguarded terminal page for the fail-closed nav.

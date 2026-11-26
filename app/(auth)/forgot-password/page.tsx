@@ -1,12 +1,8 @@
-import { getAuthBrand } from "@/lib/authBrand";
 import Link from "next/link";
 import ForgotPasswordForm from "./_components/ForgotPasswordForm";
 import { ArrowLeft } from "lucide-react";
 
-export async function generateMetadata() {
-  const brand = await getAuthBrand();
-  return { title: `Reset Password — ${brand.title}` };
-}
+export const metadata = { title: "Reset Password" };
 
 export default async function ForgotPasswordPage({
  searchParams,
