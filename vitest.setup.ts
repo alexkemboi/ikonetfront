@@ -34,7 +34,7 @@ vi.mock("@/lib/auth", () => ({
   }),
 }));
 
-vi.mock("next/navigation", () => ({
+vi.mock("next/navigation", async () => ({
   redirect: vi.fn(),
   useRouter: vi.fn(() => ({
     back: vi.fn(),
@@ -45,6 +45,10 @@ vi.mock("next/navigation", () => ({
   })),
   usePathname: vi.fn(),
   useSearchParams: vi.fn(() => new URLSearchParams()),
+  // a pure check, kept real so stale-build handling is tested as it runs
+  unstable_isUnrecognizedActionError: (
+    await vi.importActual<typeof import("next/navigation")>("next/navigation")
+  ).unstable_isUnrecognizedActionError,
 }));
 
 vi.mock("next/cache", () => ({

@@ -5,6 +5,7 @@ import { AlertCircle, ArrowLeft, CheckCircle2, Clock, Loader2, Mail, RotateCw } 
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
+import { reloadIfStaleBuild } from "@/lib/staleBuild";
 
 const CODE_LENGTH = 6;
 
@@ -146,7 +147,8 @@ export default function OtpVerification({
         setNotice({ tone: "error", text: result.message });
         if (result.final) setEnded(true);
         else clearDigits();
-      } catch {
+      } catch (error) {
+        if (reloadIfStaleBuild(error)) return;
         setNotice({ tone: "error", text: "Something went wrong. Please try again." });
       } finally {
         setVerifying(false);
@@ -171,7 +173,8 @@ export default function OtpVerification({
         setNotice({ tone: "error", text: result.message });
         if (result.final) setEnded(true);
       }
-    } catch {
+    } catch (error) {
+      if (reloadIfStaleBuild(error)) return;
       setNotice({ tone: "error", text: "Could not send a new code. Please try again." });
     } finally {
       setResending(false);

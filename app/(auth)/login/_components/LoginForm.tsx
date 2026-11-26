@@ -25,6 +25,7 @@ import { cn } from "@/lib/utils";
 import { useHydrated } from "@/lib/useHydrated";
 import OtpVerification, { type OtpResendResult, type OtpVerifyResult } from "./OtpVerification";
 import PasswordChangeStep from "./PasswordChangeStep";
+import { reloadIfStaleBuild } from "@/lib/staleBuild";
 
 const DISMISS_AFTER_MS = 6000;
 /** Used only if an older server answers without timings. */
@@ -190,7 +191,8 @@ export default function LoginForm({ error }: { error?: string }) {
           return;
         }
         await proceed({ ...res.data, token: res.data.token }, username);
-      } catch {
+      } catch (error) {
+        if (reloadIfStaleBuild(error)) return;
         setLocalError("Something went wrong. Please try again.");
       } finally {
         setBusy(false);
