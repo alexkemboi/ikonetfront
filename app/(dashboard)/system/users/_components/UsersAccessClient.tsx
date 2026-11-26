@@ -118,7 +118,8 @@ export default function UsersAccessClient({
   const [pageSize, setPageSize] = useState(initialPage.size || 20);
   const [search, setSearch] = useState("");
   const [filters, setFilters] = useState<Filters>(NO_FILTERS);
-  const [sorting, setSorting] = useState<SortingState>([]);
+  // most recent sign-in first, as the API orders it by default
+  const [sorting, setSorting] = useState<SortingState>([{ id: "lastLoginAt", desc: true }]);
   const [isPending, startTransition] = useTransition();
   const [loadError, setLoadError] = useState<string | null>(null);
   const requestSequence = useRef(0);
