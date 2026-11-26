@@ -82,10 +82,13 @@ export function EditUserSheet({
 }) {
   const [investorId, setInvestorId] = useState("");
   const [linking, setLinking] = useState(false);
-  const roleOptions = useMemo(
-    () => staffAssignableRoles(roles),
-    [roles]
-  );
+  const roleOptions = useMemo(() => {
+    const assignable = staffAssignableRoles(roles);
+    // the user's own role stays listed (e.g. a platform administrator's, which is never offered
+    // as a new role), so the field shows what they hold and saving leaves it unchanged
+    const current = roles.find((r) => r.roleCode === user?.role);
+    return current && !assignable.some((r) => r.roleCode === current.roleCode) ? [current, ...assignable] : assignable;
+  }, [roles, user?.role]);
   const { companies } = useCompanyScope();
   const currentCompany = user?.companyId ?? "";
   const [company, setCompany] = useState(currentCompany);
