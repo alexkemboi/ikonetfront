@@ -4,6 +4,7 @@ import ReduxProvider from "@/providers/ReduxProvider";
 import { AppThemeProvider } from "@/providers/AppThemeProvider";
 import "./globals.css";
 import AuthProvider from "./authProvider";
+import { getAuthBrand } from "@/lib/authBrand";
 
 const dmSans = DM_Sans({
  variable: "--font-dm-sans",
@@ -17,11 +18,15 @@ const jetbrainsMono = JetBrains_Mono({
  display: "swap",
 });
 
-export const metadata: Metadata = {
- title: "SpeedLink",
- description: "ISP billing and network management by SpeedLink.",
- icons: { icon: "/speedlink-logo.jpg" },
-};
+// the brand follows the domain (beesmartbedak.com is BeeSmart, sandbox is SpeedLink)
+export async function generateMetadata(): Promise<Metadata> {
+ const brand = await getAuthBrand();
+ return {
+  title: brand.title,
+  description: `ISP billing and network management by ${brand.legalName}.`,
+  icons: { icon: brand.logo },
+ };
+}
 
 export default function RootLayout({
  children,

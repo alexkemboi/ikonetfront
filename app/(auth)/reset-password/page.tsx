@@ -1,10 +1,12 @@
+import { getAuthBrand } from "@/lib/authBrand";
 import Link from "next/link";
 import ResetPasswordForm from "./_components/ResetPasswordForm";
 import { ArrowLeft } from "lucide-react";
 
-export const metadata = {
- title: "Set New Password — SpeedLink",
-};
+export async function generateMetadata() {
+  const brand = await getAuthBrand();
+  return { title: `Set New Password — ${brand.title}` };
+}
 
 export default async function ResetPasswordPage({
  searchParams,

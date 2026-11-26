@@ -1,8 +1,10 @@
+import { getAuthBrand } from "@/lib/authBrand";
 import LoginForm from "./_components/LoginForm";
 
-export const metadata = {
-    title: "SpeedLink",
-};
+export async function generateMetadata() {
+  const brand = await getAuthBrand();
+  return { title: brand.title };
+}
 
 // NextAuth appends ?error=<code> on failed sign-in — map codes to user-friendly copy
 const AUTH_ERRORS: Record<string, string> = {

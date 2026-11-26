@@ -1,11 +1,13 @@
 import type { ReactNode } from "react";
 import Image from "next/image";
+import { getAuthBrand } from "@/lib/authBrand";
 
-export default function AuthLayout({
+export default async function AuthLayout({
   children,
 }: {
   children: ReactNode;
 }) {
+  const brand = await getAuthBrand();
   return (
     <div
       className="
@@ -160,8 +162,8 @@ export default function AuthLayout({
               "
             >
               <Image
-                src="/speedlink-logo.jpg"
-                alt="SpeedLink"
+                src={brand.logo}
+                alt={brand.legalName}
                 width={160}
                 height={160}
                 priority
@@ -178,7 +180,7 @@ export default function AuthLayout({
                   text-white
                 "
               >
-                SpeedLink
+                {brand.name}
               </h2>
 
               <p
@@ -307,7 +309,7 @@ export default function AuthLayout({
               text-white/40
             "
           >
-            © {new Date().getFullYear()} SpeedLink. All rights reserved.
+            © {new Date().getFullYear()} {brand.legalName}. All rights reserved.
           </p>
         </aside>
 
@@ -357,8 +359,8 @@ export default function AuthLayout({
                 "
               >
                 <Image
-                  src="/speedlink-logo.jpg"
-                  alt="SpeedLink"
+                  src={brand.logo}
+                  alt={brand.legalName}
                   width={140}
                   height={140}
                   priority
@@ -374,7 +376,7 @@ export default function AuthLayout({
                   tracking-tight
                 "
               >
-                SpeedLink
+                {brand.name}
               </h2>
 
               <p
