@@ -621,6 +621,7 @@ export default function UsersAccessClient({
         onLinked={reload}
         canLinkInvestor={isPlatformAdmin}
         canChangeRole={can.changeRoles}
+        canChangeCompany={isPlatformAdmin}
         investors={investors}
         roles={roles}
         organisation={editing?.companyId && editing.companyId === (companyCode ?? editing.companyId) ? organisation : null}

@@ -5,7 +5,7 @@ import { revalidatePath, updateTag } from "next/cache";
 import { auth } from "@/lib/auth";
 import { buildApiUrl } from "@/lib/constants";
 import type { ApiResponse } from "@/lib/types/auth";
-import type { ApiRole, ApiMenuItem, ApiRoleUser, AddRolePayload, UpdateRolePayload, MenuAssignment } from "@/lib/types/roles";
+import type { ApiRole, ApiMenuItem, ApiRoleUser, AddRolePayload, UpdateRolePayload, MenuAssignment, NavLayoutRow } from "@/lib/types/roles";
 import { NAV_MENUS_TAG } from "@/lib/data/nav";
 
 async function getAuthHeaders(): Promise<HeadersInit> {
@@ -110,6 +110,20 @@ export async function getAllMenusAction(): Promise<ApiResponse<ApiMenuItem[]>> {
     return await res.json();
   } catch {
     return { status: 500, success: false, message: "Failed to fetch menus", data: null as unknown as ApiMenuItem[], timestamp: "" };
+  }
+}
+
+/**
+ * The sidebar layout (GET /navigation/menus), so Access Control can list screens the way the
+ * sidebar shows them. Read-only: no cache tags are touched (it runs while the page renders).
+ */
+export async function getNavigationLayoutAction(): Promise<NavLayoutRow[]> {
+  try {
+    const res = await fetch(buildApiUrl("/navigation/menus"), { headers: await getAuthHeaders(), cache: "no-store" });
+    const data: ApiResponse<NavLayoutRow[]> = await res.json();
+    return data.success && Array.isArray(data.data) ? data.data : [];
+  } catch {
+    return [];
   }
 }
 

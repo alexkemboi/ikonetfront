@@ -145,3 +145,16 @@ export type UpdateRolePayload = {
   isActive?: boolean;
   assignableBy?: string[];
 };
+
+/** One sidebar layout row (navigation_menus): a section, an entry or a sub-entry. */
+export type NavLayoutRow = {
+  id: number;
+  menuKey: string;
+  label: string;
+  parentId: number | null;
+  portal: string;
+  route: string | null;
+  displayOrder: number;
+  isActive: boolean;
+  permissionKey: string | null;
+};

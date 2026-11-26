@@ -26,6 +26,7 @@ import {
   updateSystemUserRole,
 } from "@/actions/system";
 import { cn } from "@/lib/utils";
+import { useCompanyScope } from "@/providers/CompanyScopeProvider";
 
 const schema = Yup.object({
   fname: Yup.string().max(50).required("First name is required"),
@@ -59,6 +60,7 @@ export function EditUserSheet({
   roles,
   canLinkInvestor,
   canChangeRole,
+  canChangeCompany = false,
   investors,
   onLinked,
   organisation,
@@ -70,6 +72,8 @@ export function EditUserSheet({
   canLinkInvestor: boolean;
   /** May give the user another role; without it the role is shown but cannot be changed. */
   canChangeRole: boolean;
+  /** May move the user to another company (platform administrators). */
+  canChangeCompany?: boolean;
   /** Active investors of the register, offered when linking a Network Partner account. */
   investors: InvestorOption[];
   onLinked: () => void;
@@ -82,6 +86,10 @@ export function EditUserSheet({
     () => staffAssignableRoles(roles),
     [roles]
   );
+  const { companies } = useCompanyScope();
+  const currentCompany = user?.companyId ?? "";
+  const [company, setCompany] = useState(currentCompany);
+  const movesCompany = canChangeCompany && company !== currentCompany;
   const formik = useFormik<FormValues>({
     enableReinitialize: true,
     initialValues: {
@@ -109,9 +117,11 @@ export function EditUserSheet({
         phoneNumber: values.phoneNumber || undefined,
         isactive: values.isactive,
         canLogin: values.canLogin,
+        // a move to another company clears the old company's station and location (the API does it)
+        ...(movesCompany ? { companyId: company } : {}),
         // only what changed: "" clears the station; 0 clears the location (a station keeps its own)
-        ...(organisation && values.stationId !== (user.stationId ?? "") ? { stationId: values.stationId } : {}),
-        ...(organisation && !values.stationId && values.locationId !== (user.locationId ? String(user.locationId) : "")
+        ...(!movesCompany && organisation && values.stationId !== (user.stationId ?? "") ? { stationId: values.stationId } : {}),
+        ...(!movesCompany && organisation && !values.stationId && values.locationId !== (user.locationId ? String(user.locationId) : "")
           ? { locationId: Number(values.locationId || 0) }
           : {}),
       });
@@ -222,11 +232,34 @@ export function EditUserSheet({
                 </select>
                 {!canChangeRole && (
                   <p id="user-role-locked" className="text-xs text-muted-foreground">
-                    Your role cannot change the role of other users.
+                    Only a platform administrator can change a user&apos;s role.
                   </p>
                 )}
               </div>
-              {organisation && (
+              {canChangeCompany && (
+                <div className="space-y-1.5">
+                  <Label htmlFor="user-company">Company</Label>
+                  <select
+                    id="user-company"
+                    value={company}
+                    onChange={(e) => setCompany(e.target.value)}
+                    className="flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                  >
+                    {/* the current company stays choosable even when it is not in the switcher's list */}
+                    {currentCompany && !companies.some((c) => c.code === currentCompany) && (
+                      <option value={currentCompany}>{currentCompany}</option>
+                    )}
+                    {!currentCompany && <option value="">No company</option>}
+                    {companies.map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}
+                  </select>
+                  {movesCompany && (
+                    <p className="text-xs text-muted-foreground">
+                      Saving moves this user to the new company; their station and location are cleared.
+                    </p>
+                  )}
+                </div>
+              )}
+              {organisation && !movesCompany && (
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div className="space-y-1.5">
                     <Label htmlFor="user-location">Location</Label>

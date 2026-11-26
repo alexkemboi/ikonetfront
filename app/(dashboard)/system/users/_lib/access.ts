@@ -44,8 +44,9 @@ export const getUsersAccessRights = cache(async (): Promise<UsersAccessRights> =
     viewUsers,
     createUsers: viewUsers && can(access, "API_SYSTEMUSERSCRUD_ROOT", "CREATE"),
     editUsers: viewUsers && can(access, "API_SYSTEMUSERSCRUD_ROOT", "EDIT"),
-    deleteUsers: viewUsers && can(access, "API_SYSTEMUSERSCRUD_ROOT", "DELETE"),
-    changeRoles: viewUsers && can(access, "API_SYSTEMUSERSCRUD_ROLE", "EDIT"),
+    // deleting users and assigning roles: platform administrators only (the API refuses everyone else)
+    deleteUsers: viewUsers && access.superAdmin,
+    changeRoles: viewUsers && access.superAdmin,
     unlock: viewUsers && can(access, "API_SYSTEMUSERSCRUD_UNLOCK", "CREATE"),
     resetPassword: viewUsers && can(access, "API_SYSTEMUSERSCRUD_RESET_PASSWORD", "CREATE"),
     viewSessions: viewUsers && can(access, "API_USER_SESSIONS", "VIEW"),

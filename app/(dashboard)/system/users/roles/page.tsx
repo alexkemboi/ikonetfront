@@ -1,6 +1,6 @@
 import RolesClient from "../../access/_components/RolesClient";
 import type { Role, RoleUser } from "../../access/_components/roleTypes";
-import { getAllMenusAction, getRolesAction, getRoleMenusAction, getRoleUsersAction } from "@/actions/roles";
+import { getAllMenusAction, getNavigationLayoutAction, getRolesAction, getRoleMenusAction, getRoleUsersAction } from "@/actions/roles";
 import { getSystemUsers } from "@/actions/system";
 import { apiMenusToMenuTree, extractPermissionsById, getCurrentUserPermissions, NO_PERMISSIONS } from "@/lib/data/nav";
 import { getAccess } from "@/lib/data/access";
@@ -19,10 +19,11 @@ export default async function RolesPage() {
   const canMutate = (await getAccess()).superAdmin;
 
  // Fetch menu catalog, roles, and all system users in parallel
- const [catalogResult, rolesResult, allSystemUsers] = await Promise.all([
+ const [catalogResult, rolesResult, allSystemUsers, navLayout] = await Promise.all([
  getAllMenusAction(),
  getRolesAction(),
  getSystemUsers(),
+ getNavigationLayoutAction(),
  ]);
 
  const catalogMenus = catalogResult.success ? (catalogResult.data ?? []) : [];
@@ -76,7 +77,7 @@ export default async function RolesPage() {
 
  return (
  <div className="h-full">
- <RolesClient roles={roles} menuTree={menuTree} allSystemUsers={allSystemUsers} canMutate={canMutate} />
+ <RolesClient roles={roles} menuTree={menuTree} navLayout={navLayout} allSystemUsers={allSystemUsers} canMutate={canMutate} />
  </div>
  );
 }

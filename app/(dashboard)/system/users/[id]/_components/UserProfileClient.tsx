@@ -433,6 +433,7 @@ export default function UserProfileClient({
         onLinked={refresh}
         canLinkInvestor={isPlatformAdmin}
         canChangeRole={can.changeRole}
+        canChangeCompany={isPlatformAdmin}
         investors={investors}
         roles={roles}
         organisation={organisation}

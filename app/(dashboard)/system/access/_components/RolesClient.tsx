@@ -36,7 +36,7 @@ import {
 } from "@/store/slices/rolesSlice";
 import { NO_PERMISSIONS } from "@/lib/data/nav-constants";
 import type { MenuNode } from "@/lib/nav";
-import type { PermissionFlags, PermissionMap } from "@/lib/types/roles";
+import type { NavLayoutRow, PermissionFlags, PermissionMap } from "@/lib/types/roles";
 import type { Role, RoleUser, ApiRoleUser } from "./roleTypes";
 import type { ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/components/shared/data-table";
@@ -518,35 +518,81 @@ function UsersTab({
 }
 
 // ── Display tree ───────────────────────────────────────────────────────
+type Leaf = Omit<MenuNode, "children">;
+
+const PORTAL_PREFIX: Record<string, string> = { STAFF: "", INVESTOR: "Investor portal · ", CUSTOMER: "Customer portal · " };
+
+function heading(key: string, label: string, children: Leaf[], i: number): MenuNode {
+ return { idxno: -1 - i, menuItemId: 0, key, kind: "GROUP", synthetic: true, route: "", label, icon: "", children };
+}
+
 /**
- * Screens (MENU entries) keep the catalogue tree. API permissions and named rights have no route
- * and no parent: they are grouped under one heading per module so the matrix stays readable.
+ * Screens are listed the way the sidebar shows them: one heading per sidebar section, each entry
+ * under the sidebar's own name, in the sidebar's order (navigation_menus), so every menu in the
+ * sidebar can be found and granted. An entry grants its catalogue item (matched by permission
+ * key); two sidebar entries on one item (e.g. Routers and Router Monitoring) show as one row.
+ * Screens of the catalogue that the sidebar does not show come under "Other screens", so the
+ * save (which replaces a role's whole set) still carries every entry exactly once. API
+ * permissions and named rights have no route: they are grouped by module.
  */
-function buildDisplayTree(menuTree: MenuNode[]): MenuNode[] {
- const screens = menuTree.filter((n) => (n.kind ?? "MENU") === "MENU");
- const groups = new Map<string, MenuNode[]>();
+export function buildDisplayTree(menuTree: MenuNode[], navLayout: NavLayoutRow[]): MenuNode[] {
+ // every catalogue entry once, nested ones included
+ const all: Leaf[] = [];
  for (const node of menuTree) {
+ const { children, ...self } = node;
+ all.push(self);
+ for (const child of children ?? []) all.push(child);
+ }
+ const screens = all.filter((n) => (n.kind ?? "MENU") === "MENU");
+ const byPermission = new Map<string, Leaf>();
+ for (const n of screens) if (n.permissionKey && !byPermission.has(n.permissionKey)) byPermission.set(n.permissionKey, n);
+
+ const rows = navLayout.filter((r) => r.isActive);
+ const childrenOf = (id: number) => rows.filter((r) => r.parentId === id).sort((a, b) => a.displayOrder - b.displayOrder);
+ const portalRank = (p: string) => ["STAFF", "INVESTOR", "CUSTOMER"].indexOf(p);
+ const sections = rows
+ .filter((r) => r.parentId == null)
+ .sort((a, b) => portalRank(a.portal) - portalRank(b.portal) || a.displayOrder - b.displayOrder);
+
+ const used = new Map<string, Leaf>();
+ const result: MenuNode[] = [];
+ sections.forEach((section, i) => {
+ const leaves: Leaf[] = [];
+ // entries, each followed by its sub-entries (one level)
+ for (const entry of childrenOf(section.id)) {
+ for (const row of [entry, ...childrenOf(entry.id)]) {
+ const item = row.permissionKey ? byPermission.get(row.permissionKey) : undefined;
+ if (!item) continue;
+ const seen = used.get(item.key);
+ if (seen) {
+ // a second sidebar entry on the same catalogue item: name both on the one row
+ if (!seen.label.split(" · ").includes(row.label)) seen.label = `${seen.label} · ${row.label}`;
+ continue;
+ }
+ const leaf = { ...item, label: row.label };
+ used.set(item.key, leaf);
+ leaves.push(leaf);
+ }
+ }
+ if (leaves.length) result.push(heading(`section:${section.menuKey}`, (PORTAL_PREFIX[section.portal] ?? "") + section.label, leaves, i));
+ });
+
+ const others = screens.filter((n) => !used.has(n.key)).sort((a, b) => a.label.localeCompare(b.label));
+ if (others.length) result.push(heading("section:other", "Other screens", others, sections.length));
+
+ const groups = new Map<string, Leaf[]>();
+ for (const node of all) {
  const kind = node.kind ?? "MENU";
  if (kind === "MENU") continue;
- const heading = (kind === "RIGHT" ? "Rights · " : "API · ") + (node.module || "General");
- const list = groups.get(heading) ?? [];
- list.push({ ...node, children: undefined });
- groups.set(heading, list);
+ const title = (kind === "RIGHT" ? "Rights · " : "API · ") + (node.module || "General");
+ const list = groups.get(title) ?? [];
+ list.push(node);
+ groups.set(title, list);
  }
  const synthetic: MenuNode[] = [...groups.entries()]
  .sort(([a], [b]) => (a.startsWith("Rights") === b.startsWith("Rights") ? a.localeCompare(b) : a.startsWith("Rights") ? 1 : -1))
- .map(([heading, children], i) => ({
- idxno: -1 - i,
- menuItemId: 0,
- key: `group:${heading}`,
- kind: "GROUP",
- synthetic: true,
- route: "",
- label: heading,
- icon: "",
- children: children.sort((a, b) => a.label.localeCompare(b.label)),
- }));
- return [...screens, ...synthetic];
+ .map(([title, children], i) => heading(`group:${title}`, title, children.sort((a, b) => a.label.localeCompare(b.label)), sections.length + 1 + i));
+ return [...result, ...synthetic];
 }
 
 // ── Role settings tab ──────────────────────────────────────────────────
@@ -698,10 +744,12 @@ function RoleSettingsTab({ role, roles }: { role: Role; roles: Role[] }) {
 function PermissionsTab({
   role,
   menuTree,
+  navLayout,
   canMutate,
 }: {
   role: Role;
   menuTree: MenuNode[];
+  navLayout: NavLayoutRow[];
   canMutate: boolean;
 }) {
  const dispatch = useAppDispatch();
@@ -718,8 +766,8 @@ function PermissionsTab({
  dispatch(initPendingPermissions({ roleId: role.id, permissions: role.permissions }));
  }, [role.id, role.permissions, dispatch]);
 
- // Screens keep their tree; API permissions and rights (no route) are grouped by module.
- const displayTree = buildDisplayTree(menuTree);
+ // Screens as the sidebar lists them; API permissions and rights (no route) grouped by module.
+ const displayTree = buildDisplayTree(menuTree, navLayout);
 
  // Every real catalogue entry (headings excluded), for counting and the save payload
  function flattenTree() {
@@ -860,11 +908,14 @@ type DetailTab = "permissions" | "users" | "settings";
 export default function RolesClient({
   roles,
   menuTree,
+  navLayout = [],
   allSystemUsers,
   canMutate = true,
 }: {
   roles: Role[];
   menuTree: MenuNode[];
+  /** The sidebar layout: screens are listed by sidebar section and name. */
+  navLayout?: NavLayoutRow[];
   allSystemUsers: ApiRoleUser[];
   canMutate?: boolean;
 }) {
@@ -1159,7 +1210,7 @@ export default function RolesClient({
                   </TabsList>
                 </div>
                 <TabsContent value="permissions" className="mt-0 flex-1 overflow-hidden px-6 py-5">
-                  <PermissionsTab role={selectedRole} menuTree={menuTree} canMutate={canMutate} />
+                  <PermissionsTab role={selectedRole} menuTree={menuTree} navLayout={navLayout} canMutate={canMutate} />
                 </TabsContent>
                 <TabsContent value="users" className="mt-0 flex-1 overflow-auto px-6 py-5">
                   <UsersTab users={selectedRole.users} roleName={selectedRole.name} allSystemUsers={allSystemUsers} />
