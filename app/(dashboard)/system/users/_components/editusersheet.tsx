@@ -115,6 +115,9 @@ export function EditUserSheet({
     validationSchema: schema,
     onSubmit: async (values, { setFieldError }) => {
       if (!user) return;
+      // an account without a company that also changes role takes the company with the role (one
+      // statement in the API): moved first, under its old role, the database can refuse it
+      const companyWithRole = movesCompany && !user.companyId && values.role !== user.role;
       const details = await updateSystemUser(user.idxno, {
         fname: values.fname,
         middleName: values.middleName || undefined,
@@ -125,7 +128,7 @@ export function EditUserSheet({
         isactive: values.isactive,
         canLogin: values.canLogin,
         // a move to another company clears the old company's station and location (the API does it)
-        ...(movesCompany ? { companyId: company } : {}),
+        ...(movesCompany && !companyWithRole ? { companyId: company } : {}),
         // only what changed: "" clears the station; 0 clears the location (a station keeps its own)
         ...(!movesCompany && organisation && values.stationId !== (user.stationId ?? "") ? { stationId: values.stationId } : {}),
         ...(!movesCompany && organisation && !values.stationId && values.locationId !== (user.locationId ? String(user.locationId) : "")
@@ -151,7 +154,7 @@ export function EditUserSheet({
         return;
       }
       if (values.role !== user.role) {
-        const roleResult = await updateSystemUserRole(user.idxno, values.role);
+        const roleResult = await updateSystemUserRole(user.idxno, values.role, companyWithRole ? company : undefined);
         if (!roleResult.success) {
           toast.error("User details saved, but role update failed", {
             description: roleResult.message,

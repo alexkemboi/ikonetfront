@@ -150,12 +150,14 @@ export async function updateSystemUser(
 
 export async function updateSystemUserRole(
   id: number,
-  role: string
+  role: string,
+  /** For an account with no company, when the new role needs one (the API defaults to the selected company). */
+  companyId?: string
 ): Promise<ApiResponse<ApiRoleUser | null>> {
   const res = await apiFetch<unknown>(`${SYSTEM_USERS_URL}/${id}/role`, {
     method: "PUT",
     // the backend field is `roleCode` (AssignRoleRequest); `role` was refused as "Validation failed"
-    body: { roleCode: role },
+    body: companyId ? { roleCode: role, companyId } : { roleCode: role },
     auth: "required",
     cache: "no-store",
   });
