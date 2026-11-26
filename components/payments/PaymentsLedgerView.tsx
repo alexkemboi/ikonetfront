@@ -43,6 +43,10 @@ interface Props {
   /** Confirm a refund was paid back (posts it to the ledger). */
   canProcessRefund?: boolean;
   refunds?: RefundItem[];
+  /** The summary cards at the top: shown on Finance › Payments, left out on Billing › Payments. */
+  showSummary?: boolean;
+  /** Small label above the title, e.g. "BILLING — LEDGER". */
+  eyebrow?: string;
 }
 
 export function PaymentsLedgerView({
@@ -54,6 +58,8 @@ export function PaymentsLedgerView({
   canRefund = false,
   canProcessRefund = false,
   refunds = [],
+  showSummary = true,
+  eyebrow = "BILLING — LEDGER",
 }: Props) {
   const router = useRouter();
   const [recordOpen, setRecordOpen] = useState(false);
@@ -106,7 +112,7 @@ export function PaymentsLedgerView({
         <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
           <div>
             <span className="text-[11px] font-sans tabular-nums tracking-wider text-muted-foreground uppercase">
-              BILLING — LEDGER
+              {eyebrow}
             </span>
             <h1 className="text-3xl font-sans font-normal text-foreground">
               Payments ledger.
@@ -146,7 +152,7 @@ export function PaymentsLedgerView({
           )}
         </div>
 
-        <PaymentsKpiCards kpis={kpis} />
+        {showSummary && <PaymentsKpiCards kpis={kpis} />}
         <PaymentsDataTable payments={payments} canIssueVoucher={canIssueVoucher} canRefund={canRefund} />
         <RefundsCard refunds={refunds} canProcess={canProcessRefund} />
       </div>

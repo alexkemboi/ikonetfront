@@ -33,7 +33,6 @@ export function normalizeMenuRoute(route: string): string {
     "/routers": "/network/routers",
     "/finance/coa": "/finance/ledger",
     "/finance/chart-of-accounts": "/finance/ledger",
-    "/finance/payments": "/finance/billing/payments",
     "/finance/invoices": "/finance/billing/invoices",
     "/investor/dashboard": "/finance/investor",
   };

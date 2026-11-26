@@ -506,6 +506,20 @@ export async function generateVoucherBatch(
   return { success: true, data: res.data ?? undefined, message: res.message };
 }
 
+/** Receipts serve both Payments pages: a grant on either Billing › Payments or Finance › Payments. */
+async function paymentsPermissions() {
+  const [billing, finance] = await Promise.all([
+    getPermissionForRoute("/finance/billing/payments"),
+    getPermissionForRoute("/finance/payments"),
+  ]);
+  return {
+    canView: billing.canView || finance.canView,
+    canCreate: billing.canCreate || finance.canCreate,
+    canEdit: billing.canEdit || finance.canEdit,
+    canDelete: billing.canDelete || finance.canDelete,
+  };
+}
+
 export async function downloadReceiptPdf(
   statementId?: number
 ): Promise<ArrayBuffer | null> {
@@ -514,7 +528,7 @@ export async function downloadReceiptPdf(
     console.warn("[Payments] Unauthenticated receipt download rejected.");
     return null;
   }
-  const perms = await getPermissionForRoute("/finance/payments");
+  const perms = await paymentsPermissions();
   if (!perms.canView) {
     console.warn("[Payments] User lacks permission to download receipts.");
     return null;
@@ -553,7 +567,7 @@ export async function emailReceipt(
   if (!session?.user?.apiToken) {
     return { success: false, message: "You must be signed in to email receipts." };
   }
-  const perms = await getPermissionForRoute("/finance/payments");
+  const perms = await paymentsPermissions();
   if (!perms.canEdit && !perms.canCreate) {
     return { success: false, message: "You don't have permission to email receipts." };
   }

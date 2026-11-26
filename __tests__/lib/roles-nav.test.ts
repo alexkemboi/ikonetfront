@@ -133,7 +133,8 @@ describe("normalizeMenuRoute (lib/data/nav.ts)", () => {
     expect(normalizeMenuRoute("/customers/pppoe")).toBe("/portal/pppoe");
     expect(normalizeMenuRoute("/network/microtick")).toBe("/network/mikrotik");
     expect(normalizeMenuRoute("/finance/coa")).toBe("/finance/ledger");
-    expect(normalizeMenuRoute("/finance/payments")).toBe("/finance/billing/payments");
+    // Finance › Payments is its own page now, not an alias of Billing › Payments
+    expect(normalizeMenuRoute("/finance/payments")).toBe("/finance/payments");
     expect(normalizeMenuRoute("/finance/invoices")).toBe("/finance/billing/invoices");
     expect(normalizeMenuRoute("/investor/dashboard")).toBe("/finance/investor");
   });

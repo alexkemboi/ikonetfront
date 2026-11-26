@@ -41,6 +41,8 @@ export default async function PaymentsLedgerPage() {
             canRefund={can(access, "API_REFUND_ROOT", "CREATE") && paymentPerms.canCreate}
             canProcessRefund={can(access, "API_REFUND_PROCESS", "CREATE") && paymentPerms.canEdit}
             refunds={refunds}
+            // the summary cards live on Finance › Payments; Billing is the working list
+            showSummary={false}
         />
     );
 }
