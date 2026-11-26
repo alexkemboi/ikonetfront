@@ -56,6 +56,7 @@ export async function getUserDirectory(q: DirectoryQuery = {}): Promise<ApiRespo
     direction: q.direction,
     page: Math.max(0, q.page ?? 0),
     size: Math.min(100, Math.max(1, q.size ?? 20)),
+    view: q.view,
   })}`, { auth: "required", cache: "no-store" });
 }
 

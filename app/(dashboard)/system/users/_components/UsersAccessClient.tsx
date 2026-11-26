@@ -21,7 +21,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { DataTable } from "@/components/shared/data-table";
 import { DataTableColumnHeader } from "@/components/shared/column-header";
 import { useCompanyScope } from "@/providers/CompanyScopeProvider";
-import { deleteSystemUser, getSystemUser, unlockSysAdminAction, unlockSystemUser } from "@/actions/system";
+import { deleteSystemUser, getSystemUser, restoreSystemUser, unlockSysAdminAction, unlockSystemUser } from "@/actions/system";
 import {
   activateUser,
   deactivateUser,
@@ -67,9 +67,17 @@ export type UsersAccessPermissions = {
 
 type Filters = Required<Pick<DirectoryQuery, "role" | "accountStatus" | "invitationStatus" | "loginStatus" | "company" | "station">> & {
   location: string;
+  /** "" = staff; CUSTOMERS or DELETED accounts (platform administrators) */
+  view: string;
 };
 
-const NO_FILTERS: Filters = { role: "", accountStatus: "", invitationStatus: "", loginStatus: "", company: "", station: "", location: "" };
+const NO_FILTERS: Filters = { role: "", accountStatus: "", invitationStatus: "", loginStatus: "", company: "", station: "", location: "", view: "" };
+
+const VIEW_OPTIONS = [
+  { value: "", label: "Staff accounts" },
+  { value: "CUSTOMERS", label: "Customer accounts" },
+  { value: "DELETED", label: "Deleted accounts" },
+];
 
 /** Column id → the server's sort key. */
 const SORT_KEYS: Record<string, string> = {
@@ -144,6 +152,7 @@ export default function UsersAccessClient({
     location: filters.location ? Number(filters.location) : undefined,
     sort: sorting[0] ? SORT_KEYS[sorting[0].id] : undefined,
     direction: sorting[0] ? (sorting[0].desc ? "desc" : "asc") : undefined,
+    view: (filters.view || undefined) as DirectoryQuery["view"],
   }), [search, filters, sorting]);
 
   const reload = useCallback(() => {
@@ -206,6 +215,24 @@ export default function UsersAccessClient({
 
   const actionsFor = (row: DirectoryRow) => {
     const items: React.ReactNode[] = [];
+    // customer and deleted accounts are listed to find who holds an email, phone or username;
+    // a deleted one can be restored, customers are managed under Customers
+    if (filters.view) {
+      if (filters.view === "DELETED" && row.userId) {
+        const id = row.userId;
+        items.push(
+          <DropdownMenuItem key="restore" onClick={() => setConfirm({
+            title: "Restore user?",
+            description: <>{nameOf(row)} comes back switched off. Review the account, then switch it on from Edit user.</>,
+            confirmLabel: "Restore user",
+            run: () => runAction(() => restoreSystemUser(id), "User restored"),
+          })}>
+            Restore user
+          </DropdownMenuItem>
+        );
+      }
+      return items;
+    }
     if (row.kind === "INVITATION") {
       const open = row.invitationStatus === "PENDING" || row.invitationStatus === "EXPIRED";
       if (can.manageInvitations && open && row.invitationId) {
@@ -547,6 +574,11 @@ export default function UsersAccessClient({
         }
         filters={
           <>
+            {isPlatformAdmin && (
+              <select aria-label="Which accounts" value={filters.view} onChange={(e) => setFilter("view", e.target.value)} className={selectClass}>
+                {VIEW_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
+            )}
             <select aria-label="Filter by role" value={filters.role} onChange={(e) => setFilter("role", e.target.value)} className={selectClass}>
               <option value="">All roles</option>
               {roles.filter((r) => r.principalType !== "CUSTOMER").map((r) => <option key={r.roleCode} value={r.roleCode}>{r.name}</option>)}

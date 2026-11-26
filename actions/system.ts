@@ -198,6 +198,17 @@ export async function deleteSystemUser(id: number): Promise<ApiResponse<null>> {
   return res;
 }
 
+/** Brings back a deleted account; it comes back switched off. */
+export async function restoreSystemUser(id: number): Promise<ApiResponse<ApiRoleUser | null>> {
+  const res = await apiFetch<ApiRoleUser>(`${SYSTEM_USERS_URL}/${id}/restore`, {
+    method: "POST",
+    auth: "required",
+    cache: "no-store",
+  });
+  if (res.success) revalidatePath("/system/users");
+  return res;
+}
+
 /** Clears the lock set after five wrong passwords. The password is not changed. */
 export async function unlockSystemUser(id: number): Promise<ApiResponse<ApiRoleUser | null>> {
   const res = await apiFetch<ApiRoleUser>(`${SYSTEM_USERS_URL}/${id}/unlock`, {

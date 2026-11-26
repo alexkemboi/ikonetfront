@@ -54,6 +54,8 @@ export type DirectoryQuery = {
   direction?: "asc" | "desc";
   page?: number;
   size?: number;
+  /** STAFF (default), CUSTOMERS or DELETED accounts; the last two for platform administrators. */
+  view?: "STAFF" | "CUSTOMERS" | "DELETED";
 };
 
 export type UserSummary = {
