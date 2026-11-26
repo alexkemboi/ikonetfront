@@ -90,6 +90,7 @@ const SORT_KEYS: Record<string, string> = {
   lastLoginAt: "lastLogin",
   lastActiveAt: "lastActivity",
   failedLoginAttempts: "failedAttempts",
+  createdAt: "created",
 };
 
 const selectClass = "h-8 rounded-md border border-input bg-background px-2 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50";
@@ -361,10 +362,20 @@ export default function UsersAccessClient({
               {initials || "?"}
             </div>
             <div className="min-w-0">
-              <p className="truncate text-sm font-medium text-foreground">{name}</p>
+              <p className="flex items-center gap-1.5 truncate text-sm font-medium text-foreground">
+                <span className="truncate">{name}</span>
+                {r.currentUser && (
+                  <span className="shrink-0 rounded bg-primary/10 px-1.5 py-px text-[10px] font-semibold uppercase text-primary">You</span>
+                )}
+              </p>
               <p className="truncate text-[11px] text-muted-foreground">
                 {[r.username, r.email].filter(Boolean).join(" · ") || "—"}
               </p>
+              {r.accountSource === "APIUSER_MIGRATION" && (
+                <p className="truncate text-[10px] text-muted-foreground" title="Moved into Users from the former platform administrator table">
+                  Migrated platform admin
+                </p>
+              )}
             </div>
           </div>
         );
@@ -412,6 +423,11 @@ export default function UsersAccessClient({
       id: "lastActiveAt",
       header: ({ column }) => <DataTableColumnHeader column={column} title="Last Activity" />,
       cell: ({ row }) => <span className="whitespace-nowrap text-xs tabular-nums text-muted-foreground" title={formatDateTime(row.original.lastActiveAt)}>{formatRelative(row.original.lastActiveAt)}</span>,
+    },
+    {
+      id: "createdAt",
+      header: ({ column }) => <DataTableColumnHeader column={column} title="Created" />,
+      cell: ({ row }) => <span className="whitespace-nowrap text-xs tabular-nums text-muted-foreground" title={formatDateTime(row.original.createdAt)}>{formatRelative(row.original.createdAt)}</span>,
     },
     {
       id: "failedLoginAttempts",
@@ -462,7 +478,7 @@ export default function UsersAccessClient({
         if (p + 1 >= res.data.totalPages) break;
       }
       const header = ["Name", "Username", "Email", "Phone", "Tenant", "Station", "Location", "Role", "Account status",
-        "Invitation", "Login status", "Last login", "Last activity", "Failed attempts"];
+        "Invitation", "Login status", "Last login", "Last activity", "Failed attempts", "Created", "Source"];
       const cell = (v: unknown) => {
         const text = v === null || v === undefined ? "" : String(v);
         // a leading = + - @ would run as a formula in a spreadsheet
@@ -471,7 +487,7 @@ export default function UsersAccessClient({
       };
       const lines = [header, ...rows.map((r) => [r.fullName, r.username, r.email, r.phoneNumber, r.companyName ?? r.companyCode,
         r.stationName, r.locationName, r.roleName ?? r.roleCode, r.accountStatus, r.invitationStatus, r.loginStatus,
-        r.lastLoginAt, r.lastActiveAt, r.kind === "USER" ? r.failedLoginAttempts : ""])].map((line) => line.map(cell).join(","));
+        r.lastLoginAt, r.lastActiveAt, r.kind === "USER" ? r.failedLoginAttempts : "", r.createdAt, r.accountSource ?? ""])].map((line) => line.map(cell).join(","));
       const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -558,7 +574,7 @@ export default function UsersAccessClient({
         manualSorting
         sorting={sorting}
         onSortingChange={(next) => { setSorting(next); setPageIndex(0); }}
-        columnsHiddenUntilLg={["invitationStatus", "lastLoginAt", "failedLoginAttempts"]}
+        columnsHiddenUntilLg={["invitationStatus", "lastLoginAt", "failedLoginAttempts", "createdAt"]}
         loading={isPending}
         emptyState={
           <div className="flex flex-col items-center gap-2 py-6">

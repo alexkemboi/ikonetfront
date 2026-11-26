@@ -31,6 +31,10 @@ export type DirectoryRow = {
   privileged: boolean;
   createdAt: string | null;
   invitationExpiresAt: string | null;
+  /** USERS, INVITATION, or APIUSER_MIGRATION (a platform administrator moved from the old admin table). */
+  accountSource?: "USERS" | "INVITATION" | "APIUSER_MIGRATION" | null;
+  /** The signed-in account itself. */
+  currentUser?: boolean;
 };
 
 export type Paged<T> = {
