@@ -43,7 +43,8 @@ export function parseAnalyticsFilters(raw: Raw): AnalyticsFilters {
   const period = first(raw, "period")?.toUpperCase();
 
   const filters: AnalyticsFilters = {
-    period: "MONTHLY",
+    // today, unless the URL asks for another period
+    period: "DAILY",
     service: service === "HOTSPOT" || service === "PPPOE" ? service : "ALL",
   };
   if (interval === "DAY" || interval === "WEEK" || interval === "MONTH") filters.interval = interval;
@@ -66,7 +67,7 @@ export function analyticsHref(filters: AnalyticsFilters, pathname = "/analytics"
     query.set("from", filters.from);
     if (filters.to && filters.to !== filters.from) query.set("to", filters.to);
   } else {
-    query.set("period", PERIOD_OPTIONS.find((o) => o.value === filters.period)?.param ?? "monthly");
+    query.set("period", PERIOD_OPTIONS.find((o) => o.value === filters.period)?.param ?? "daily");
   }
   if (filters.routerId) query.set("routerId", filters.routerId);
   if (filters.service !== "ALL") query.set("service", filters.service.toLowerCase());

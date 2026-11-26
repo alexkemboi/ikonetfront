@@ -4,8 +4,8 @@ import { formatCompact, formatDelta, formatDuration, formatMoney, periodLabel } 
 import { heatStep } from "@/components/analytics/HeatmapGrid";
 
 describe("analytics filters", () => {
-  it("defaults to this month, all routers, all services", () => {
-    expect(parseAnalyticsFilters({})).toEqual({ period: "MONTHLY", service: "ALL" });
+  it("defaults to today, all routers, all services", () => {
+    expect(parseAnalyticsFilters({})).toEqual({ period: "DAILY", service: "ALL" });
   });
 
   it("reads the URL the page writes, in any letter case", () => {
@@ -23,7 +23,7 @@ describe("analytics filters", () => {
 
   it("ignores values it does not know instead of sending them on", () => {
     expect(parseAnalyticsFilters({ period: "fortnight", service: "tv", interval: "hour", routerId: "1 OR 1=1", from: "yesterday" })).toEqual({
-      period: "MONTHLY",
+      period: "DAILY",
       service: "ALL",
     });
   });
