@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { SubscribersHeaderActions } from "@/components/subscribers/SubscribersHeaderActions";
 import { SubscriberKpiCards } from "@/components/subscribers/SubscriberKpiCards";
 import { SubscriberDataTable } from "@/components/subscribers/SubscriberDataTable";
+import { SubscribersTabs } from "@/components/subscribers/SubscribersTabs";
 
 export const dynamic = "force-dynamic";
 
@@ -13,7 +14,11 @@ export const metadata = { title: "Subscribers — IBS" };
 export default async function SubscribersPage({ searchParams }: { searchParams: Promise<{ page?: string; statusFilter?: string; search?: string; size?: string }> }) {
  const permissions = await getCurrentUserPermissions();
  const pagePerms = permissions["/customers"] ?? NO_PERMISSIONS;
- if (!pagePerms.canView) redirect("/dashboard");
+ if (!pagePerms.canView) {
+ // the Subscribers menu also serves roles that can only open PPPoE Clients
+ if (permissions["/portal/pppoe"]?.canView) redirect("/portal/pppoe");
+ redirect("/dashboard");
+ }
 
  const query = await searchParams;
  const page = Math.max(0, Number(query.page ?? 0) || 0);
@@ -25,6 +30,7 @@ export default async function SubscribersPage({ searchParams }: { searchParams: 
  return (
  <div className="min-h-screen p-4 text-foreground sm:p-6 lg:p-8">
  <div className="mx-auto max-w-7xl space-y-6">
+ <SubscribersTabs />
  {/* Header */}
  <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
  <div>

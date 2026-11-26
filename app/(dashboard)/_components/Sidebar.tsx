@@ -135,6 +135,15 @@ const submenuVariants = {
  },
 } as const;
 
+// Entries whose page has tabs living under another route: Subscribers also covers PPPoE Clients.
+const ALSO_ACTIVE_ON: Record<string, string[]> = {
+  "/customers": ["/portal/pppoe"],
+};
+
+function matchesRoute(pathname: string, href: string): boolean {
+  return pathname === href || pathname.startsWith(href + "/");
+}
+
 // ── Single nav item (leaf) ─────────────────────────────────────────────
 function NavLeaf({
   item,
@@ -147,7 +156,8 @@ function NavLeaf({
   const pathname = usePathname();
   const isActive = item.exact
     ? pathname === item.href
-    : pathname === item.href || pathname.startsWith(item.href + "/");
+    : matchesRoute(pathname, item.href) ||
+      (ALSO_ACTIVE_ON[item.href] ?? []).some((href) => matchesRoute(pathname, href));
 
   if (isCollapsed) {
     if (isChild) return null;
