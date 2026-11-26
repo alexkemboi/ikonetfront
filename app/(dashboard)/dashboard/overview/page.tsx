@@ -7,7 +7,6 @@ import { OverviewKpiCards } from "@/components/dashboard/OverviewKpiCards";
 import { RenewalsDueCard } from "@/components/dashboard/RenewalsDueCard";
 import { RouterTrafficCard } from "@/components/dashboard/RouterTrafficCard";
 import { WhatsNextActionQueue } from "@/components/dashboard/WhatsNextActionQueue";
-import { TodayActivityFeed } from "@/components/dashboard/TodayActivityFeed";
 import { NetworkPulseHeatmap } from "@/components/dashboard/NetworkPulseHeatmap";
 import { LiveDataRefresh } from "@/providers/MonitoringHeartbeat";
 import { getCompanyFeeStatus } from "@/actions/platformFees";
@@ -35,6 +34,9 @@ export default async function OverviewDashboardPage() {
  const online = overview.onlineHotspotCount != null && overview.onlinePppoeCount != null
   ? { total: overview.onlineSubscribersCount, hotspot: overview.onlineHotspotCount, pppoe: overview.onlinePppoeCount }
   : null;
+ const customers = overview.customersPppoeCount != null && overview.customersHotspotCount != null && overview.customersTvCount != null
+  ? { pppoe: overview.customersPppoeCount, hotspot: overview.customersHotspotCount, tv: overview.customersTvCount }
+  : null;
 
   return (
  <div className="min-h-screen p-4 text-foreground sm:p-6 lg:p-8">
@@ -55,14 +57,17 @@ export default async function OverviewDashboardPage() {
 
  {/* 3. Primary KPI Metric Cards */}
  <OverviewKpiCards
- revenueToday={overview.revenueToday}
- revenueChangePercent={overview.revenueTodayChangePercent ?? null}
- mobileMoneyToday={overview.mobileMoneyRevenueToday}
+ paymentsTodayCount={overview.todayEventsCount}
  activePppoeSubscriptions={overview.activeSubscriptionsCount}
  onlineCount={overview.onlineSubscribersCount}
  online={online}
  smsCredits={overview.smsCreditsCount}
  smsCreditLow={overview.smsCreditLow}
+ accessPointsSeen={overview.accessPointsSeenCount ?? null}
+ accessPointsNotSeen={overview.accessPointsNotSeenCount ?? null}
+ mikrotikOnline={overview.mikrotikOnlineCount ?? null}
+ mikrotikTotal={overview.mikrotikTotalCount ?? null}
+ customers={customers}
  />
 
  {/* 4. Two-Column Operational Split */}
@@ -71,13 +76,8 @@ export default async function OverviewDashboardPage() {
  <RouterTrafficCard items={overview.routerTraffic} />
  </div>
 
- {/* 5. What's Next Action Queue | Today Activity Feed */}
- <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
- <div className="lg:col-span-2">
+ {/* 5. What's Next Action Queue */}
  <WhatsNextActionQueue items={whatsNext} />
- </div>
- <TodayActivityFeed eventsCount={overview.todayEventsCount} payments={overview.todayRecentPayments} />
- </div>
 
  {/* 6. 7x24 Traffic Heatmap */}
  <NetworkPulseHeatmap heatmap={overview.heatmap} />

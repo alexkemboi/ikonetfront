@@ -85,6 +85,16 @@ export interface DashboardOverviewData {
   whatsNextQueue: WhatsNextItem[];
   heatmap: HeatmapSummary;
   todayEventsCount: number;
+  /** Access points reporting / not reporting, as on the routers page; null/absent when unavailable. */
+  accessPointsSeenCount?: number | null;
+  accessPointsNotSeenCount?: number | null;
+  /** MikroTik routers online (healthy or degraded) out of all; null/absent when unavailable. */
+  mikrotikOnlineCount?: number | null;
+  mikrotikTotalCount?: number | null;
+  /** Customers that have ever connected: PPPoE accounts, TV and hotspot devices; null/absent when unavailable. */
+  customersPppoeCount?: number | null;
+  customersTvCount?: number | null;
+  customersHotspotCount?: number | null;
   todayRecentPayments: {
     id: string;
     amount: number;
