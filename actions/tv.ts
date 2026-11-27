@@ -228,6 +228,8 @@ export async function redeemTvVoucherForDeviceAction(values: {
   voucherCode: string;
   macAddress: string;
   customerPhone: string;
+  /** Platform staff: the company the voucher belongs to (its customer and TV access go there). */
+  companyCode?: string;
 }): Promise<{ success: true; data: TvVoucherRedemption } | { success: false; error: string }> {
   const res = await apiFetch<TvVoucherRedemption>("/tv/vouchers/redeem", {
     method: "POST",
@@ -235,6 +237,7 @@ export async function redeemTvVoucherForDeviceAction(values: {
       voucherCode: values.voucherCode.trim().toUpperCase(),
       macAddress: values.macAddress.trim(),
       customerPhone: values.customerPhone.trim(),
+      ...(values.companyCode ? { companyCode: values.companyCode } : {}),
     },
     auth: "required",
     cache: "no-store",

@@ -1,11 +1,12 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { AlertCircle, CheckCircle2 } from "lucide-react";
 import { redeemTvVoucherForDeviceAction, type TvVoucherRedemption } from "@/actions/tv";
 import { normalizeTvMacAddress } from "@/lib/validation/tv-device";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { useCompanyScope } from "@/providers/CompanyScopeProvider";
 
 interface Props {
   isOpen: boolean;
@@ -20,12 +21,21 @@ const MAC = /^([0-9A-F]{2}:){5}[0-9A-F]{2}$/;
  * nothing is posted, since the voucher batch was recorded when it was sold.
  */
 export function RedeemTvVoucherModal({ isOpen, onClose }: Props) {
+  // Platform staff reach every company: the voucher's company is chosen here (it starts as the
+  // company selected in the header). Everyone else redeems in their own company.
+  const scope = useCompanyScope();
+  const chooseCompany = scope.isPlatformAdmin && scope.companies.length > 0;
+  const [company, setCompany] = useState("");
   const [code, setCode] = useState("");
   const [mac, setMac] = useState("");
   const [phone, setPhone] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<TvVoucherRedemption | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) setCompany(scope.companyCode ?? scope.homeCompanyCode ?? "");
+  }, [isOpen, scope.companyCode, scope.homeCompanyCode]);
 
   function close() {
     setCode(""); setMac(""); setPhone(""); setError(null); setDone(null);
@@ -36,12 +46,16 @@ export function RedeemTvVoucherModal({ isOpen, onClose }: Props) {
     event.preventDefault();
     setError(null);
     const normalizedMac = normalizeTvMacAddress(mac);
+    if (chooseCompany && !company) return setError("Choose the company the voucher belongs to.");
     if (!code.trim()) return setError("Enter the voucher code.");
     if (!MAC.test(normalizedMac)) return setError("Enter the TV's MAC address: 12 letters (A–F) and numbers, e.g. AA:BB:CC:DD:EE:FF.");
     if (!phone.trim()) return setError("Enter the customer's phone number.");
     setIsSubmitting(true);
     try {
-      const result = await redeemTvVoucherForDeviceAction({ voucherCode: code, macAddress: normalizedMac, customerPhone: phone });
+      const result = await redeemTvVoucherForDeviceAction({
+        voucherCode: code, macAddress: normalizedMac, customerPhone: phone,
+        companyCode: chooseCompany ? company : undefined,
+      });
       if (result.success) setDone(result.data);
       else setError(result.error);
     } catch {
@@ -75,6 +89,18 @@ export function RedeemTvVoucherModal({ isOpen, onClose }: Props) {
           </div>
         ) : (
           <form onSubmit={submit} noValidate className="space-y-3">
+            {chooseCompany && (
+              <label className="block text-xs font-medium text-muted-foreground">
+                Company
+                <select value={company} onChange={(e) => setCompany(e.target.value)}
+                  className="mt-1 w-full rounded-lg border border-border bg-muted p-2.5 text-sm text-foreground">
+                  <option value="">Choose the company the voucher belongs to</option>
+                  {scope.companies.map((c) => (
+                    <option key={c.code} value={c.code}>{c.name} ({c.code})</option>
+                  ))}
+                </select>
+              </label>
+            )}
             <label className="block text-xs font-medium text-muted-foreground">
               Voucher code
               <input value={code} onChange={(e) => setCode(e.target.value)} autoComplete="off" spellCheck={false}
